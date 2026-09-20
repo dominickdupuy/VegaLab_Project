@@ -76,9 +76,17 @@ def summarize(results: Sequence[EpisodeResult]) -> EvalSummary:
     )
 
 
-def evaluate(config: RunConfig, policy: Policy | None = None) -> EvalSummary:
-    """Run ``config.n_episodes`` episodes with seeds ``seed, seed+1, ...``."""
+def run_episodes(config: RunConfig, policy: Policy | None = None) -> tuple[EpisodeResult, ...]:
+    """Run ``config.n_episodes`` episodes with seeds ``seed, seed+1, ...``.
+
+    The per-episode grain, kept separate from ``summarize`` so the artifact writer
+    can persist every row while the gates only need the aggregate.
+    """
     env = build_env(config)
     pol = policy if policy is not None else make_policy(config.policy, roll_dte=config.env.roll_dte)
     seeds = range(config.seed, config.seed + config.n_episodes)
-    return summarize([run_episode(env, pol, s) for s in seeds])
+    return tuple(run_episode(env, pol, s) for s in seeds)
+
+
+def evaluate(config: RunConfig, policy: Policy | None = None) -> EvalSummary:
+    return summarize(run_episodes(config, policy))
