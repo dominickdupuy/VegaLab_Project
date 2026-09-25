@@ -52,11 +52,12 @@ def test_cost_identity_holds_for_every_seller() -> None:
 # -- check 2: cash settlement carries no exit cost -------------------------- #
 
 
-def test_a_seller_held_to_expiry_pays_only_its_opens() -> None:
+def test_a_settled_structure_is_never_charged_an_exit() -> None:
     audit = audit_episode(SHORT, make_seller(IRON_CONDOR, None), seed=2000)
     assert audit.n_settlements >= 1, "this config must reach at least one expiry"
-    assert audit.n_early_closes == 0
-    assert audit.n_crossings == audit.n_opens
+    # Every charged crossing is an open or a real close. The settlements are free,
+    # so the count cannot exceed what the trades account for.
+    assert audit.n_crossings == audit.n_opens + audit.n_early_closes
     assert audit.settlement_crossings == 0
 
 
@@ -85,26 +86,35 @@ def test_a_rolled_seller_pays_for_the_close_it_actually_makes() -> None:
     assert audit.cost_charged > 0.0
 
 
-# -- check 3: the defect found on the first run ----------------------------- #
+# -- check 3: nothing leaves the book without paying ------------------------ #
 
 
 @pytest.mark.parametrize("action_id", [IRON_CONDOR, PUT_CREDIT_SPREAD])
-def test_a_position_open_at_the_horizon_has_an_unpaid_exit(action_id: int) -> None:
-    """Records the defect the drag check found, so the fix has a test to flip.
+def test_a_live_structure_at_the_horizon_is_closed_and_pays_its_exit(action_id: int) -> None:
+    """The defect the drag check found, now fixed.
 
-    A hold-to-expiry seller ends the episode holding an unexpired structure. It is
-    marked at mid and no exit is ever charged, so the reported P&L is one crossing
-    better than anything the episode could have realised.
+    A hold-to-expiry seller used to end the episode still holding an unexpired
+    structure, marked at mid with no exit ever charged, so the reported P&L was one
+    crossing better than anything the episode could have realised.
     """
     audit = audit_episode(SHORT, make_seller(action_id, None), seed=2000)
-    assert audit.open_at_horizon, "this config must end holding an open structure"
-    assert audit.unpaid_exit > 0.0
+    assert not audit.open_at_horizon, "the episode must not end holding an open structure"
+    assert audit.unpaid_exit == 0.0
+    assert audit.n_early_closes >= 1, "the horizon close is a real trade"
 
 
-def test_the_drag_check_reports_the_gap_rather_than_passing() -> None:
+def test_measured_drag_equals_the_predicted_drag() -> None:
     report = cost_drag_check(n_episodes=6, seed=2000)
-    assert not report.passed, "the unpaid exit at the horizon is still open"
-    assert all(row.identity_holds and row.settlement_is_free for row in report.rows)
-    assert any(row.drag_gap > 0.0 for row in report.rows)
-    rendered = report.render()
-    assert "[FAIL] no unpaid exit at the horizon" in rendered
+    assert report.passed, chr(10) + report.render()
+    for row in report.rows:
+        assert row.drag_gap == pytest.approx(0.0, abs=1e-9), row
+        assert row.measured_drag == pytest.approx(row.predicted_drag)
+        assert row.measured_drag > 0.0, "a seller in a fair-priced world loses its costs"
+
+
+def test_the_episode_pnl_is_realisable() -> None:
+    # Nothing is left marked at mid: the book is flat when the episode ends, so the
+    # reported P&L is a figure the episode could have taken.
+    audit = audit_episode(SHORT, make_seller(IRON_CONDOR, None), seed=2000)
+    assert audit.n_crossings == audit.n_opens + audit.n_early_closes
+    assert audit.unpaid_exit == 0.0

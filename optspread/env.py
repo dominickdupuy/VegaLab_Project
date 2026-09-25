@@ -6,7 +6,8 @@ Step order (all causal):
     1. the policy's action is executed at today's chain (close prices);
     2. the path advances one day;
     3. an expired structure is cash-settled; a margin breach forces liquidation;
-    4. reward = today's equity change / initial cash.
+    4. on the last step, a structure still live is closed and pays its exit;
+    5. reward = today's equity change / initial cash.
 
 OBS_NAMES is a specification decision, not an implementation detail (project
 document 10.3). It is APPEND-ONLY: a saved policy's input layout is fixed.
@@ -95,8 +96,14 @@ class SpreadEnv(gym.Env[NDArray[np.float32], int]):
         if book.position is not None and book.equity(chain) < book.margin_used(chain):
             cost += book.rebalance(None, chain, self.costs)  # margin breach: forced flat
 
-        pnl = book.equity(chain) - equity_before
         done = self.provider.done or self._day >= self.config.episode_days
+        if done:
+            # A live structure is closed at the horizon and pays its exit; an expired
+            # one already settled in cash above. Charged before P&L is read, so the
+            # episode reports a figure it could have realised.
+            cost += book.liquidate(chain, self.costs)
+
+        pnl = book.equity(chain) - equity_before
         return self._obs(), pnl / self.config.initial_cash, done, False, self._info(pnl, cost)
 
     # -- internals ----------------------------------------------------------- #

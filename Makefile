@@ -1,4 +1,4 @@
-.PHONY: check lint typecheck test format bench gate
+.PHONY: check lint typecheck test format bench gate drag
 
 PY ?= .venv/Scripts/python
 
@@ -23,3 +23,6 @@ bench:
 
 gate:
 	$(PY) scripts/wave0_gate.py
+
+drag:
+	$(PY) scripts/cost_drag.py

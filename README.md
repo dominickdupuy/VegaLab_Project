@@ -52,15 +52,41 @@ Representative table at 100 episodes per arm, mean net P&L per 63-day episode:
 arm           costs       mean P&L        se  trades
 flat          False              0         0     0.0
 flat          True               0         0     0.0
-always_on     False           -509     1,157     2.0
-always_on     True            -846     1,158     2.0
-random        False            144       267    54.9
-random        True          -8,452       301    54.9
+always_on     False           -509     1,157     3.0
+always_on     True          -1,049     1,170     3.0
+random        False           -333       370    70.7
+random        True          -9,843       375    70.7
 ```
 
 Three orderings are asserted: flat sits at exactly zero either way, always-on
 reads zero without costs and turns negative with them, and the churning random
 policy bleeds fastest. The numbers move with the seed; the inequalities do not.
+
+## Checking the cost model against arithmetic
+
+`make drag` runs four scripted sellers, a hold-to-expiry and a rolled version of
+the iron condor and the put credit spread. They are not strategies. Under fair
+implied volatility a seller has no premium to collect, so its expected result is
+minus its costs and nothing else, which makes the average loss a number that can
+be predicted by hand and compared.
+
+```
+seller           structure               free   costed     drag  predicted      gap
+hold_condor      IRON_CONDOR             -515     -999      484        484        0
+hold_put_spread  PUT_CREDIT_SPREAD     -2,058   -2,300      242        242        0
+roll_condor      IRON_CONDOR            1,716    1,113      603        603        0
+roll_put_spread  PUT_CREDIT_SPREAD       -817   -1,187      370        370        0
+```
+
+Three checks: costs change the accounting and nothing else (`pnl_costed` equals
+`pnl_free` minus what was charged, per seed, on shared paths); a cash settlement
+charges nothing; and no structure leaves the book without paying. The third one
+failed on the first run, 74 to 128 dollars an episode short of the prediction. A
+hold-to-expiry seller ended the episode still holding an unexpired structure,
+marked at mid, with no exit ever charged, so the reported P&L was one crossing
+better than anything the episode could have realised. Expiry and a live close are
+now distinct paths in the book: the first is free because SPX settles in cash, the
+second crosses the spread.
 
 ## Proving the world is clean
 
