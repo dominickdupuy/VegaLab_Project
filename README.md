@@ -115,19 +115,44 @@ is not. This costs no training compute, which is why it runs in CI.
 Passing this suite shows we catch the modes it is built to catch. It does not
 prove the absence of unknown leakage anywhere in the codebase.
 
-## Reproducibility
-
-A `RunConfig` plus a seed fully determines a run's numerical output. `config_hash`
-is the content address; `RunManifest` records the git SHA, the config, library
-versions, and a SHA-256 for every artifact. Every figure in the final report will
-carry the hash that produced it.
-
 ## Throughput
 
-Measured, not assumed (project document section 11): about **1,800 environment
-steps per second per core** under a random policy, inside the 500 to 3,000
-estimate. Re-measure with `make bench` on any machine that will run the sweep.
-The PPO-inclusive figure follows once decision 7.4 is settled.
+Measured, not assumed (project document section 11). `make bench` times four
+workloads rather than one, because the first version of this benchmark was
+misleading: timing the env with a FLAT action gave 37,000 steps/s, which looked
+like the environment was free, but a flat book never prices a leg.
+
+```
+flat            37,071/s   empty book; the floor, not a planning number
+always_on        1,772/s   one structure held and re-marked: the steady state
+random           2,175/s   churns, but FLAT a quarter of the time, so it marks less
+ppo          not measured  stable-baselines3 not installed
+```
+
+The cost is **per-step position marking, not trading**. `random` comes out faster
+than `always_on` despite 24 times the trades, because one action in four is FLAT
+and those steps mark nothing. Re-pricing greeks for every held leg dominates; the
+policy's own decision is nanoseconds.
+
+Plan the sweep off **about 1,800 steps per second per core**, the `always_on`
+figure, which is what a trained policy will mostly do. That sits inside the
+document's 500 to 3,000 estimate. Re-measure on any machine that will run the
+sweep. The `ppo` arm is wired at the fixed hyperparameters of decision D3 and
+reports a figure once Stable-Baselines3 is installed.
+
+## Reproducibility, enforced
+
+A `RunConfig` plus a seed fully determines a run's numerical output. Every run
+directory holds two halves: `manifest.json` for provenance and `run.json` for
+results, written in that order so the manifest hashes the bytes on disk.
+`RunRecord` carries a schema version, and a reader that meets a version it does
+not know refuses rather than misreading fields.
+
+`RunManifest.write` validates before it writes. A manifest missing its run id,
+git SHA, config hash, config or library versions is refused, as is one whose
+`config_hash` has drifted from its own config, and one whose git SHA is unknown.
+A run nobody can reproduce cannot reach the results folder, which is a rule the
+tooling enforces rather than one the team remembers.
 
 ## What comes next
 

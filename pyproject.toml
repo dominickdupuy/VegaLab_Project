@@ -41,7 +41,7 @@ plugins = ["pydantic.mypy"]
 warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
-module = ["scipy.*", "gymnasium.*"]
+module = ["scipy.*", "gymnasium.*", "stable_baselines3.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
