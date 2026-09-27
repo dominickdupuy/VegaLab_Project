@@ -1,4 +1,4 @@
-.PHONY: check lint typecheck test format bench gate drag
+.PHONY: check lint typecheck test format bench gate drag leaks m1
 
 PY ?= .venv/Scripts/python
 
@@ -26,3 +26,9 @@ gate:
 
 drag:
 	$(PY) scripts/cost_drag.py
+
+leaks:
+	$(PY) -m scripts.leak_report
+
+m1:
+	$(PY) -m scripts.m1_gate_report
