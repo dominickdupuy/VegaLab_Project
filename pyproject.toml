@@ -15,6 +15,13 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# The learner (decision D3: Stable-Baselines3 PPO at fixed hyperparameters). An
+# extra rather than a core dependency so `make check` does not pull torch: nothing
+# in optspread/ imports it, and the benchmark and gate report report it as
+# unmeasured when it is absent.
+train = [
+    "stable-baselines3>=2.3",
+]
 dev = [
     "pytest>=7.4",
     "pytest-cov>=4.1",

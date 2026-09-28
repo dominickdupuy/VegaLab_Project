@@ -13,12 +13,12 @@ argument; this README covers what is in the repository today.
 ## Quick start
 
 ```bash
-python -m venv .venv && .venv/Scripts/pip install -e ".[dev]"
+python -m venv .venv && .venv/Scripts/pip install -e ".[dev,train]"
 make check                   # ruff + mypy --strict + pytest with a coverage floor
 make gate                    # the Wave 0 economic sanity table
 make drag                    # scripted sellers against the predicted cost drag
 make leaks                   # leak coverage across every observation field
-make bench                   # environment throughput, measured not assumed
+make bench                   # throughput by workload, measured not assumed
 make m1                      # rebuild docs/M1_GATE_REPORT.md from live runs
 ```
 
@@ -163,10 +163,10 @@ evidence, and on a failure what failed first. There are three verdicts, not two:
 the third is `NO CRITERION`, for an item with evidence but no rule another person
 could check, and it does not clear a gate whatever the evidence says.
 
-`make m1` writes `docs/M1_GATE_REPORT.md`. It currently reads **NOT CLEARED**:
-seven of eight items pass, and the PPO-inclusive throughput arm fails because
-Stable-Baselines3 is not installed, so it reports `not measured`. That is the
-report doing its job. Partial work is not called done.
+`make m1` writes `docs/M1_GATE_REPORT.md`. It currently reads **PASS** on all
+eight items. It read NOT CLEARED until the PPO arm was measured, which is the
+report doing its job: partial work is not called done, and the item that was
+outstanding was named rather than folded into a passing summary.
 
 ## Throughput
 
@@ -176,10 +176,10 @@ misleading: timing the env with a FLAT action gave 37,000 steps/s, which looked
 like the environment was free, but a flat book never prices a leg.
 
 ```
-flat            37,071/s   empty book; the floor, not a planning number
-always_on        1,772/s   one structure held and re-marked: the steady state
-random           2,175/s   churns, but FLAT a quarter of the time, so it marks less
-ppo          not measured  stable-baselines3 not installed
+flat            39,674/s   empty book; the floor, not a planning number
+always_on        1,869/s   one structure held and re-marked: the steady state
+random           2,233/s   churns, but FLAT a quarter of the time, so it marks less
+ppo              1,009/s   includes the training update
 ```
 
 The cost is **per-step position marking, not trading**. `random` comes out faster
@@ -187,11 +187,21 @@ than `always_on` despite 24 times the trades, because one action in four is FLAT
 and those steps mark nothing. Re-pricing greeks for every held leg dominates; the
 policy's own decision is nanoseconds.
 
+`ppo` belongs next to `random`, not `always_on`, because an untrained policy
+explores close to uniformly, so that is the workload it puts on the environment.
+The gap between them is the training update: **55% of PPO wall clock**, the rest
+being the environment. Both halves are worth optimising if the sweep ever needs to
+be faster.
+
 Plan the sweep off **about 1,800 steps per second per core**, the `always_on`
-figure, which is what a trained policy will mostly do. That sits inside the
-document's 500 to 3,000 estimate. Re-measure on any machine that will run the
-sweep. The `ppo` arm is wired at the fixed hyperparameters of decision D3 and
-reports a figure once Stable-Baselines3 is installed.
+figure, which is what a trained policy will mostly do, and **about 1,000** once
+training is included. Both sit inside the document's unvalidated 500 to 3,000
+estimate. Re-measure on any machine that will run the sweep.
+
+The learner is the `train` extra rather than a core dependency, so `make check`
+does not pull torch: nothing in `optspread/` imports it. When it is installed,
+`library_versions` records torch and Stable-Baselines3 in every manifest, so the
+presence of those two fields is itself the evidence that a learner was involved.
 
 ## Reproducibility, enforced
 
@@ -214,10 +224,10 @@ advisor meeting and are recorded in `docs/PRE_REGISTRATION.md` with their reject
 alternatives: the decision rule, the effect-size axis (planted volatility points,
 not Sharpe), and Stable-Baselines3 PPO at fixed hyperparameters.
 
-Next: install Stable-Baselines3 and measure the PPO arm, which is the one M1 item
-still failing; review the gate report with the advisor on September 28 and present
-M1; then the variance components pilot, which sets the sweep budget for M2 from
-`Var(grand mean) = tau^2/S + sigma^2/(S*N)` at 80% power. Undefined-risk margin
+Next: review the gate report with the advisor on September 28 and present M1; then
+the variance components pilot, which sets the sweep budget for M2 from
+`Var(grand mean) = tau^2/S + sigma^2/(S*N)` at 80% power, now costed against a
+measured 1,000 steps/s/core with training included. Undefined-risk margin
 hardening, sweep orchestration and the dashboard follow the M1 to M5 schedule. The
 action library closes at the November 1 cutoff with whatever is verified; it holds
 FLAT, the iron condor, the short strangle and the put credit spread today.

@@ -161,10 +161,12 @@ def manifest_item() -> GateItem:
     )
 
 
-def throughput_item(steps: int) -> GateItem:
+def throughput_item(steps: int) -> tuple[GateItem, float]:
+    """Returns the item and the random-arm rate, which the PPO item compares against."""
     from scripts.bench import bench_policy
 
     arm = bench_policy("always_on", steps)
+    random_arm = bench_policy("random", steps)
     inside = 500.0 <= arm.per_second <= 3000.0
     return GateItem(
         name="Throughput, measured",
@@ -173,28 +175,40 @@ def throughput_item(steps: int) -> GateItem:
             "the schedule uses a measured steps/s figure for the steady-state "
             "workload, not the document's unvalidated 500-3,000 estimate"
         ),
-        evidence=f"{arm.per_second:,.0f} steps/s/core over {arm.steps:,} steps (always_on)",
+        evidence=(
+            f"{arm.per_second:,.0f} steps/s/core over {arm.steps:,} steps (always_on); "
+            f"{random_arm.per_second:,.0f} steps/s under random"
+        ),
         passed=inside,
         failed_first="" if inside else f"{arm.per_second:,.0f} steps/s falls outside 500-3,000",
-    )
+    ), random_arm.per_second
 
 
-def ppo_item() -> GateItem:
-    try:
-        import stable_baselines3  # noqa: F401
+def ppo_item(steps: int, env_rate: float) -> GateItem:
+    """The training-update arm. Compared against ``random``, since an untrained
+    policy explores close to uniformly, so that is the workload it puts on the env."""
+    from scripts.bench import bench_ppo
 
-        available = True
-    except ImportError:
-        available = False
+    arm = bench_ppo(steps)
+    measured = arm.steps > 0 and arm.per_second > 0.0
+    share = 1.0 - arm.per_second / env_rate if measured and env_rate > 0 else 0.0
     return GateItem(
         name="PPO-inclusive throughput",
         owner="Ilan Danial",
-        criterion="the training-update arm reports a measured steps/s figure",
-        evidence="the ppo arm is wired at the fixed hyperparameters of decision D3",
-        passed=available,
+        criterion=(
+            "the training-update arm reports a measured steps/s figure at the fixed "
+            "hyperparameters of decision D3, so the sweep budget covers training"
+        ),
+        evidence=(
+            f"{arm.per_second:,.0f} steps/s/core over {arm.steps:,} steps; the update is "
+            f"{share:.0%} of wall clock against the {env_rate:,.0f} steps/s random arm"
+            if measured
+            else "the arm is wired but reports 'not measured'"
+        ),
+        passed=measured,
         failed_first=""
-        if available
-        else "stable-baselines3 is not installed, so the arm reports 'not measured'",
+        if measured
+        else "stable-baselines3 is not installed (pip install -e '.[train]')",
     )
 
 
@@ -205,6 +219,7 @@ def main() -> int:
     args = parser.parse_args()
     episodes, seeds, steps = (20, 5, 4_000) if args.quick else (100, 10, 20_000)
 
+    throughput, random_rate = throughput_item(steps)
     report = build_report(
         "M1",
         [
@@ -214,8 +229,8 @@ def main() -> int:
             leak_item(seeds),
             floor_item(seeds),
             manifest_item(),
-            throughput_item(steps),
-            ppo_item(),
+            throughput,
+            ppo_item(steps, random_rate),
         ],
         date.today(),
     )

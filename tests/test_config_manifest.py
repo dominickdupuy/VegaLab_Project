@@ -5,6 +5,7 @@ never reaches the results folder, which is a rule the tooling enforces rather
 than one the team remembers.
 """
 
+import importlib.util
 import json
 from pathlib import Path
 
@@ -19,6 +20,7 @@ from optspread.manifest import (
     IncompleteManifestError,
     RunManifest,
     file_sha256,
+    library_versions,
 )
 
 
@@ -106,3 +108,20 @@ def test_reading_an_incomplete_manifest_raises_rather_than_returning_it(tmp_path
     (tmp_path / MANIFEST_FILENAME).write_text(json.dumps(broken))
     with pytest.raises(IncompleteManifestError):
         RunManifest.read(tmp_path)
+
+
+def test_the_learner_versions_are_recorded_when_installed() -> None:
+    # A training run cannot be produced without the learner, so its presence in the
+    # manifest is the evidence that one was involved. Optional, so not required.
+    versions = library_versions()
+    assert set(REQUIRED_VERSIONS) <= versions.keys()
+    for name in ("torch", "stable_baselines3"):
+        installed = importlib.util.find_spec(name) is not None
+        assert (name in versions) == installed, name
+
+
+def test_a_manifest_without_the_learner_still_validates(tmp_path: Path) -> None:
+    m = _complete(tmp_path)
+    m.versions = {k: v for k, v in m.versions.items() if k in REQUIRED_VERSIONS}
+    m.validate_complete()
+    assert m.write(tmp_path).exists()

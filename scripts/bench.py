@@ -13,7 +13,7 @@ environment. The arms below hold the workload comparable:
     flat        empty book: the floor, and not a number to plan with
     always_on   one structure held and re-marked every step: the steady state
     random      churns, but is FLAT a quarter of the time
-    ppo         always_on plus the Stable-Baselines3 update (decision D3)
+    ppo         the Stable-Baselines3 learn loop (decision D3)
 
 The measurement says the cost is **per-step position marking**, not trading.
 ``flat`` runs about 20x ``always_on`` because a flat book never prices a leg, and
@@ -24,6 +24,9 @@ every held leg dominates; the policy's own decision is nanoseconds.
 So plan the sweep off ``always_on``, which is what a trained policy will mostly
 do, and ignore ``flat``: it is the arm that made the first version of this
 benchmark misleading.
+
+``ppo`` belongs next to ``random``, not ``always_on``, because an untrained policy
+explores close to uniformly. The gap between those two is the training update.
 
     python scripts/bench.py --steps 20000
     python scripts/bench.py --steps 20000 --ppo
@@ -51,7 +54,7 @@ class Arm:
     name: str
     steps: int
     seconds: float
-    trades: float
+    trades: float | None  # None when the arm does not account for its own trades
     note: str = ""
 
     @property
@@ -61,9 +64,10 @@ class Arm:
     def render(self) -> str:
         if not self.steps:
             return f"{self.name:<11}{'not measured':>14}   {self.note}"
+        trades = f"{self.trades:>9.1f}" if self.trades is not None else f"{'--':>9}"
         return (
             f"{self.name:<11}{self.per_second:>11,.0f}/s{self.steps:>9,} steps"
-            f"{self.seconds:>8.2f}s{self.trades:>9.1f} trades/ep   {self.note}"
+            f"{self.seconds:>8.2f}s{trades} trades/ep   {self.note}"
         )
 
 
@@ -82,16 +86,20 @@ def bench_policy(policy_name: PolicyName, target: int, note: str = "") -> Arm:
 
 
 def bench_ppo(target: int) -> Arm:
-    """always_on's workload plus the PPO update, at the fixed hyperparameters of D3."""
+    """The PPO learn loop at the fixed hyperparameters of decision D3.
+
+    Compare this against ``random``, not ``always_on``: an untrained policy explores
+    close to uniformly over the library, so that is the workload it puts on the
+    environment. The difference between the two arms is the training update.
+    """
     try:
         from stable_baselines3 import PPO
     except ImportError:
-        return Arm("ppo", 0, 0.0, 0.0, "stable-baselines3 not installed; install to measure")
-    env = build_env(RunConfig(policy="always_on"))
-    model = PPO("MlpPolicy", env, verbose=0, seed=0)
+        return Arm("ppo", 0, 0.0, None, "stable-baselines3 not installed; install to measure")
+    model = PPO("MlpPolicy", build_env(RunConfig()), verbose=0, seed=0)
     start = time.perf_counter()
     model.learn(total_timesteps=target)
-    return Arm("ppo", target, time.perf_counter() - start, 0.0, "includes the training update")
+    return Arm("ppo", target, time.perf_counter() - start, None, "includes the training update")
 
 
 def main() -> None:
@@ -112,6 +120,12 @@ def main() -> None:
         print(
             f"{chr(10)}per-step marking is {ratio:.0f}x the empty path: the cost is"
             " pricing held legs, not trading. Plan the sweep off always_on."
+        )
+    if {"random", "ppo"} <= by_name.keys():
+        share = 1.0 - by_name["ppo"].per_second / by_name["random"].per_second
+        print(
+            f"the training update costs {share:.0%} of PPO wall clock; the rest is the"
+            " environment, so both halves are worth optimising."
         )
 
 

@@ -16,6 +16,7 @@ contract would not have done that.
 from __future__ import annotations
 
 import hashlib
+import importlib.metadata
 import json
 import platform
 import subprocess
@@ -63,13 +64,27 @@ def file_sha256(path: Path) -> str:
 
 
 def library_versions() -> dict[str, str]:
-    return {
+    """Every library whose version can change a number, recorded per run.
+
+    The learner is optional (the ``train`` extra), so torch and stable-baselines3
+    are recorded when present and simply absent otherwise. They are not in
+    REQUIRED_VERSIONS: a scripted-policy run is reproducible without them, and a
+    training run cannot be produced at all without them, so their presence in a
+    manifest is itself the evidence that a learner was involved.
+    """
+    versions = {
         "python": platform.python_version(),
         "optspread": __version__,
         "numpy": numpy.__version__,
         "scipy": scipy.__version__,
         "pydantic": pydantic.__version__,
     }
+    for name in ("torch", "stable_baselines3"):
+        try:
+            versions[name] = importlib.metadata.version(name.replace("_", "-"))
+        except importlib.metadata.PackageNotFoundError:
+            continue
+    return versions
 
 
 class IncompleteManifestError(ValueError):
