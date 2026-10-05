@@ -16,7 +16,7 @@ Changing it needs review from two members and a gate rerun.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, TypeAlias
 
 import gymnasium as gym
 import numpy as np
@@ -48,8 +48,13 @@ OBS_NAMES: tuple[str, ...] = (
 OBS_DIM = len(OBS_NAMES)
 REALIZED_VOL_WINDOW = 20
 
+# An action id: the plain int a policy returns, or the numpy integer a Discrete space
+# samples. Gymnasium types Discrete over numpy integers, so the env's action type has to
+# admit both for the space and the step signature to agree under mypy --strict.
+Action: TypeAlias = int | np.integer[Any]
 
-class SpreadEnv(gym.Env[NDArray[np.float32], int]):
+
+class SpreadEnv(gym.Env[NDArray[np.float32], Action]):
     """Every collaborator is injected; the env constructs none of them."""
 
     def __init__(self, provider: ChainProvider, costs: CostModel, config: EnvConfig) -> None:
@@ -75,7 +80,7 @@ class SpreadEnv(gym.Env[NDArray[np.float32], int]):
         self._log_returns = []
         return self._obs(), self._info(pnl=0.0, cost=0.0)
 
-    def step(self, action: int) -> tuple[NDArray[np.float32], float, bool, bool, dict[str, Any]]:
+    def step(self, action: Action) -> tuple[NDArray[np.float32], float, bool, bool, dict[str, Any]]:
         chain = self._require_chain()
         book = self._book
         equity_before = book.equity(chain)
