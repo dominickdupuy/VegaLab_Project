@@ -16,7 +16,7 @@ Changing it needs review from two members and a gate rerun.
 
 from __future__ import annotations
 
-from typing import Any, TypeAlias
+from typing import Any
 
 import gymnasium as gym
 import numpy as np
@@ -51,7 +51,7 @@ REALIZED_VOL_WINDOW = 20
 # An action id: the plain int a policy returns, or the numpy integer a Discrete space
 # samples. Gymnasium types Discrete over numpy integers, so the env's action type has to
 # admit both for the space and the step signature to agree under mypy --strict.
-Action: TypeAlias = int | np.integer[Any]
+type Action = int | np.integer[Any]
 
 
 class SpreadEnv(gym.Env[NDArray[np.float32], Action]):
