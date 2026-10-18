@@ -1,11 +1,36 @@
-"""Margin: max-loss for defined-risk structures, Reg-T style for undefined risk.
+"""Margin: max-loss for defined risk, the Cboe naked index rule for undefined risk.
 
 Lane: Hemdutt Rao (market layer).
 
 Build order from the project document: defined-risk first (margin is max-loss
-arithmetic, verified in tests), undefined-risk second. The undefined-risk rule
-below is the standard broker approximation for naked short index options. The
-per-step re-mark with breach-driven liquidation lives in ``optspread.env``.
+arithmetic, verified in tests), undefined-risk second. The per-step re-mark with
+breach-driven liquidation lives in ``optspread.env``; the pre-trade check that
+refuses an open the book cannot carry lives in ``optspread.portfolio``.
+
+Undefined risk follows Cboe Rule 10.3(c)(5)(A) for a short uncovered option on a
+broad-based index, which SPX is. Per contract, times the multiplier:
+
+    100% of the option's current market value
+    plus 15% of the underlying index value, less any out-of-the-money amount,
+    never below the current market value plus
+        10% of the underlying index value for a call,
+        10% of the exercise price for a put.
+
+The out-of-the-money amount is ``K - S`` for a call and ``S - K`` for a put, when
+positive. FINRA Rule 4210(f)(2)(E)(i) carries the same 15% and 10% for a broad
+index stock group, and spells out the asymmetric floor: the call's is a share of
+the underlying, the put's a share of its aggregate exercise price. The rule this
+replaced charged the equity-option 20% and floored both rights at 10% of the
+strike, so SPX was over-margined and a far call was floored on the wrong
+quantity. The rule text was read from the SEC's approval order for SR-CBOE-2022-058
+(Release 34-97019, 2023), which restates 10.3(c)(5), and from FINRA 4210 itself.
+
+A short put and a short call on the same index are margined as one: the greater
+of the two requirements plus the current market value of the other side (FINRA
+Rule 4210(f)(2)(G)(i); Cboe's strategy-based margin table for broad-based index
+straddles and strangles states the same). That is the strangle treatment this
+module already had; only the per-leg arithmetic under it changed. Two naked legs
+of the same right get no such offset and are summed.
 """
 
 from __future__ import annotations
@@ -15,8 +40,8 @@ from numpy.typing import NDArray
 
 from optspread.types import MULTIPLIER, Chain, OptionLeg
 
-NAKED_PCT = 0.20  # 20% of underlying, less OTM amount, plus premium
-NAKED_FLOOR_PCT = 0.10  # never below 10% of the strike
+NAKED_PCT = 0.15  # broad-based index: 15% of the underlying, less OTM, plus the premium
+NAKED_FLOOR_PCT = 0.10  # floor: 10% of the underlying (call) or of the strike (put)
 
 
 def expiry_payoff(legs: tuple[OptionLeg, ...], spots: NDArray[np.float64]) -> NDArray[np.float64]:
@@ -54,18 +79,22 @@ def margin_requirement(legs: tuple[OptionLeg, ...], chain: Chain) -> float:
         return 0.0
     if is_defined_risk(legs):
         return max_loss(legs)
-    # Undefined risk: each naked short leg margined on its own; a strangle carries the
-    # larger side plus the other side's premium (Reg-T style).
+    # Undefined risk: each naked short leg margined on its own; a short put and a short
+    # call together carry the greater side plus the other side's current value.
     shorts = [leg for leg in legs if leg.qty < 0]
-    reqs: list[float] = []
-    for leg in shorts:
-        if leg.right == "C":
-            otm = max(leg.strike - chain.spot, 0.0)
-        else:
-            otm = max(chain.spot - leg.strike, 0.0)
-        req = max(NAKED_PCT * chain.spot - otm, NAKED_FLOOR_PCT * leg.strike) + chain.mark(leg)
-        reqs.append(abs(leg.qty) * req * MULTIPLIER)
+    reqs = [abs(leg.qty) * naked_requirement(leg, chain) * MULTIPLIER for leg in shorts]
     if len(shorts) == 2 and shorts[0].right != shorts[1].right:
         lesser = shorts[int(np.argmin(reqs))]
         return max(reqs) + abs(lesser.qty) * chain.mark(lesser) * MULTIPLIER
     return float(sum(reqs))
+
+
+def naked_requirement(leg: OptionLeg, chain: Chain) -> float:
+    """Per-share requirement of one short uncovered leg, Cboe Rule 10.3(c)(5)(A)."""
+    if leg.right == "C":
+        otm = max(leg.strike - chain.spot, 0.0)
+        floor = NAKED_FLOOR_PCT * chain.spot
+    else:
+        otm = max(chain.spot - leg.strike, 0.0)
+        floor = NAKED_FLOOR_PCT * leg.strike
+    return max(NAKED_PCT * chain.spot - otm, floor) + chain.mark(leg)

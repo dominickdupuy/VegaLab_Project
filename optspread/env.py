@@ -3,7 +3,8 @@
 Lane: Ilan Danial (machinery).
 
 Step order (all causal):
-    1. the policy's action is executed at today's chain (close prices);
+    1. the policy's action is executed at today's chain (close prices); an open the
+       book cannot margin is refused and the book stays flat (``Book.rebalance``);
     2. the path advances one day;
     3. an expired structure is cash-settled; a margin breach forces liquidation;
     4. on the last step, a structure still live is closed and pays its exit;
@@ -129,6 +130,7 @@ class SpreadEnv(gym.Env[NDArray[np.float32], Action]):
             "pnl": pnl,
             "cost": cost,
             "n_trades": self._book.n_trades,
+            "refused_opens": self._book.refused_opens,
         }
 
     def _obs(self) -> NDArray[np.float32]:
