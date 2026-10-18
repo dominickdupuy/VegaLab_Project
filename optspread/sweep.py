@@ -158,8 +158,13 @@ class SweepRecord(BaseModel):
         return "\n".join(lines)
 
 
-def _valid_cell(cell_dir: Path, config: RunConfig) -> RunRecord | None:
-    """The run already on disk for ``config``, or None when it has to be (re)computed."""
+def valid_run(cell_dir: Path, config: RunConfig) -> RunRecord | None:
+    """The run already on disk for ``config``, or None when it has to be (re)computed.
+
+    The resume rule every orchestrator here shares (``run_sweep`` and
+    ``optspread.orchestrate``): present, readable, keyed by the expected hash and
+    run id, and the results file still the one its manifest hashed.
+    """
     if not (cell_dir / RUN_FILENAME).exists() or not (cell_dir / MANIFEST_FILENAME).exists():
         return None
     try:
@@ -185,7 +190,7 @@ def run_sweep(sweep: SweepConfig, root: Path, runner: Runner = run_episodes) -> 
         for arm in sweep.arms:
             config = cell_config(sweep, premium, arm)
             cell_dir = root / run_id(config)
-            record = _valid_cell(cell_dir, config)
+            record = valid_run(cell_dir, config)
             if record is None:
                 episodes = runner(config, None)
                 write_run(cell_dir, config, summarize(episodes), episodes)
