@@ -21,11 +21,14 @@ from scipy.stats import norm
 
 from optspread.power import (
     budget,
+    detectable_effect,
     episodes_for,
     frontier,
     power,
+    power_t,
     render_frontier,
     seeds_for,
+    t_critical,
     var_grand_mean,
     variance_budget,
     variance_components,
@@ -215,3 +218,113 @@ def test_degenerate_inputs_are_refused() -> None:
         power(1.0, tau2=-1.0, sigma2=1.0, n_seeds=3, n_episodes=3)
     with pytest.raises(ValueError, match="alpha"):
         variance_budget(1.0, alpha=0.0, target_power=TARGET)
+
+
+# -- the exact power of the confirmatory t test (week 6) --------------------- #
+
+
+def _power_by_quadrature(delta: float, se: float, S: int, alpha: float) -> float:
+    """Independent of scipy's noncentral t: condition on the chi-square in the denominator.
+
+    T = (Z + nc) / sqrt(V / df) with V ~ chi2_df, so P(T > c) = E_V[Phi(nc - c sqrt(V/df))].
+    """
+    from scipy.integrate import quad
+    from scipy.stats import chi2
+    from scipy.stats import t as student_t
+
+    df, nc = S - 1, delta / se
+    c = float(student_t.ppf(1.0 - alpha, df))
+    value, _ = quad(
+        lambda v: norm.cdf(nc - c * np.sqrt(v / df)) * chi2.pdf(v, df), 0.0, np.inf, limit=200
+    )
+    return float(value)
+
+
+def test_the_critical_value_is_student_t_and_tends_to_the_normal_one() -> None:
+    from scipy.stats import t as student_t
+
+    assert t_critical(10, ALPHA) == pytest.approx(float(student_t.ppf(0.95, 9)), rel=1e-12)
+    assert t_critical(10, ALPHA) == pytest.approx(1.8331, abs=1e-4)  # the printed table value
+    assert t_critical(2, ALPHA) > t_critical(5, ALPHA) > t_critical(50, ALPHA) > norm.ppf(0.95)
+    assert t_critical(10**6, ALPHA) == pytest.approx(float(norm.ppf(0.95)), abs=1e-5)
+    with pytest.raises(ValueError, match="2 seeds"):
+        t_critical(1)
+    with pytest.raises(ValueError, match="alpha"):
+        t_critical(10, alpha=1.0)
+
+
+@pytest.mark.parametrize(
+    ("delta", "tau2", "sigma2", "S", "N"),
+    [
+        (0.5, 4.0, 100.0, 10, 25),
+        (2.0, 4.0, 100.0, 10, 25),
+        (1.0, 0.0, 9.0, 5, 20),
+        (3.0, 1.0, 1.0, 3, 2),
+    ],
+)
+def test_exact_power_matches_the_noncentral_t_by_quadrature(
+    delta: float, tau2: float, sigma2: float, S: int, N: int
+) -> None:
+    se = float(np.sqrt(var_grand_mean(tau2, sigma2, S, N)))
+    assert power_t(delta, tau2, sigma2, S, N, ALPHA) == pytest.approx(
+        _power_by_quadrature(delta, se, S, ALPHA), abs=1e-7
+    )
+
+
+def test_exact_power_is_alpha_at_zero_and_sits_below_the_normal_approximation() -> None:
+    assert power_t(0.0, 4.0, 100.0, 10, 25, ALPHA) == ALPHA
+    # At S = 10 the t test pays for estimating its variance; the planning form does not.
+    for delta in (0.5, 1.0, 2.0, 3.0):
+        assert power_t(delta, 4.0, 100.0, 10, 25) < power(delta, 4.0, 100.0, 10, 25)
+    # With thousands of seeds the two coincide.
+    assert power_t(0.05, 1.0, 1.0, 5000, 10) == pytest.approx(
+        power(0.05, 1.0, 1.0, 5000, 10), abs=1e-3
+    )
+    assert power_t(1.0, 0.0, 0.0, 5, 5) == 1.0
+    assert power_t(0.0, 0.0, 0.0, 5, 5) == ALPHA
+
+
+def test_the_detectable_effect_is_the_effect_at_which_power_hits_the_target() -> None:
+    mde = detectable_effect(tau2=1.0, sigma2=4.0, n_seeds=8, n_episodes=10)
+    assert power(mde, 1.0, 4.0, n_seeds=8, n_episodes=10) == pytest.approx(TARGET, abs=1e-12)
+    assert variance_budget(mde) == pytest.approx(var_grand_mean(1.0, 4.0, 8, 10), rel=1e-12)
+    # tau2 = 0, one seed: the textbook Z sigma / sqrt(N) = 2.4865 * 1 / 5.
+    assert detectable_effect(0.0, 1.0, 1, 25) == pytest.approx(Z / 5.0, rel=1e-12)
+    # The floor falls as 1/sqrt(S) at fixed N (project document 4.5): 50 seeds vs 5 is sqrt(10).
+    ratio = detectable_effect(1.0, 4.0, 5, 10) / detectable_effect(1.0, 4.0, 50, 10)
+    assert ratio == pytest.approx(np.sqrt(10.0), rel=1e-12)
+
+
+def test_component_standard_errors_on_a_constructed_matrix_are_exact() -> None:
+    rows = np.array([[1.0, 2.0, 3.0], [3.0, 1.0, 2.0], [2.0, 3.0, 1.0], [1.0, 3.0, 2.0]])
+    vc = variance_components(rows)  # MS_within = 1, MS_between = 0, S = 4, N = 3
+    assert vc.se_sigma2 == pytest.approx(np.sqrt(2.0 / 8.0), rel=1e-12)  # 0.5
+    assert vc.se_tau2 == pytest.approx(0.5 / 3.0, rel=1e-12)  # sqrt(0 + 0.25) / 3
+    assert vc.seed_mean_variance == 0.0
+    assert "se 0.5000" in vc.render()
+
+
+@pytest.mark.parametrize("seed", range(6))
+def test_seed_mean_variance_is_the_sample_variance_of_seed_means_with_or_without_the_clamp(
+    seed: int,
+) -> None:
+    # tau2 = 0 engages the clamp about half the time; the identity must not care.
+    outcomes = simulate(seed, tau2=0.0, sigma2=1.0, S=5, N=4)
+    vc = variance_components(outcomes)
+    seed_means = outcomes.mean(axis=1)
+    assert vc.seed_mean_variance == pytest.approx(float(np.var(seed_means, ddof=1)), rel=1e-12)
+    if vc.clamped:
+        assert vc.seed_mean_variance / vc.n_seeds < vc.var_grand_mean
+
+
+def test_the_component_standard_errors_track_the_sampling_spread() -> None:
+    tau2, sigma2, S, N = 4.0, 9.0, 40, 25
+    estimates = [variance_components(simulate(s, tau2, sigma2, S, N)) for s in range(200)]
+    raw_tau2 = np.array([(vc.ms_between - vc.ms_within) / N for vc in estimates])
+    sigma2_hat = np.array([vc.sigma2 for vc in estimates])
+    # The plug-in se is itself an estimate; its average should land within 15% of the
+    # observed spread of 200 independent estimates (whose own sd is known to ~5%).
+    assert np.mean([vc.se_tau2 for vc in estimates]) == pytest.approx(np.std(raw_tau2), rel=0.15)
+    assert np.mean([vc.se_sigma2 for vc in estimates]) == pytest.approx(
+        np.std(sigma2_hat), rel=0.15
+    )
