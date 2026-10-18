@@ -1,0 +1,71 @@
+{
+  "milestone": "M1",
+  "report_date": "2026-09-28",
+  "verdict": "PASS",
+  "items": [
+    {
+      "name": "Wave 0 no-edge gate",
+      "owner": "Hemdutt Rao",
+      "verdict": "PASS",
+      "criterion": "flat P&L exactly 0 with and without costs; no-cost always-on |t| <= 3; with-cost always-on negative and below no-cost; random bleeds fastest",
+      "evidence": "100 episodes/arm: always-on -509 free (t=-0.44), -1,049 costed",
+      "failed_first": ""
+    },
+    {
+      "name": "Cost, fill and margin model",
+      "owner": "Hemdutt Rao",
+      "verdict": "PASS",
+      "criterion": "for every scripted seller: costed P&L equals free P&L minus what was charged, per seed; a cash settlement charges nothing; no structure leaves the book unpaid",
+      "evidence": "4 sellers, 100 episodes each; measured drag matches prediction to 0.00 dollars",
+      "failed_first": ""
+    },
+    {
+      "name": "Data adapter boundary",
+      "owner": "Hemdutt Rao",
+      "verdict": "PASS",
+      "criterion": "every available source clears the provider contract and the structural invariants; an unavailable source reports SKIPPED and never PASS",
+      "evidence": "2 sources conform (synthetic, optionmetrics_stub); 1 skipped (optionmetrics)",
+      "failed_first": ""
+    },
+    {
+      "name": "Leak detection suite",
+      "owner": "Dominick Dupuy",
+      "verdict": "PASS",
+      "criterion": "no observation field at t predicts the true return into t+1 at a Bonferroni-adjusted alpha; every field in OBS_NAMES is tested under the probe or records why not; every field has a positive control that fires",
+      "evidence": "630 pairs over 10 seeds; 13 of 14 fields tested, untested: atm_iv; all 14 controls fire and are attributed correctly",
+      "failed_first": ""
+    },
+    {
+      "name": "Leak detection floor",
+      "owner": "Dominick Dupuy",
+      "verdict": "PASS",
+      "criterion": "the smallest planted leak the detector still catches is recorded",
+      "evidence": "grid (1.0, 0.5, 0.25, 0.1, 0.05), caught (True, True, True, True, False), floor eps = 0.1",
+      "failed_first": ""
+    },
+    {
+      "name": "Run artifacts and manifests",
+      "owner": "Ilan Danial",
+      "verdict": "PASS",
+      "criterion": "every run writes a hashed manifest with config, commit, seed and package versions; a manifest missing any required field is refused, not written",
+      "evidence": "run_id adddb0b7e5f604ad-s1, git c9de9fd5, 7 versions recorded; an unknown commit is refused",
+      "failed_first": ""
+    },
+    {
+      "name": "Throughput, measured",
+      "owner": "Ilan Danial",
+      "verdict": "PASS",
+      "criterion": "the schedule uses a measured steps/s figure for the steady-state workload, not the document's unvalidated 500-3,000 estimate",
+      "evidence": "1,865 steps/s/core over 20,034 steps (always_on); 2,231 steps/s under random",
+      "failed_first": ""
+    },
+    {
+      "name": "PPO-inclusive throughput",
+      "owner": "Ilan Danial",
+      "verdict": "PASS",
+      "criterion": "the training-update arm reports a measured steps/s figure at the fixed hyperparameters of decision D3, so the sweep budget covers training",
+      "evidence": "1,016 steps/s/core over 20,000 steps; the update is 54% of wall clock against the 2,231 steps/s random arm",
+      "failed_first": ""
+    }
+  ]
+}
