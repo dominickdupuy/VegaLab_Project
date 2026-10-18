@@ -20,6 +20,10 @@ make drag                    # scripted sellers against the predicted cost drag
 make leaks                   # leak coverage across every observation field
 make bench                   # throughput by workload, measured not assumed
 make m1                      # rebuild docs/M1_GATE_REPORT.md from live runs
+make train-smoke             # a two-seed PPO pilot on two workers, then every run replayed
+make pilot ARGS="..."        # the variance-components pilot (see below)
+make sweep ARGS="..."        # the full premium x arm x seed sweep (see below)
+make replay RUN=<run dir>    # rerun from the manifest; fails unless bit-identical
 ```
 
 ## The lane map
@@ -42,6 +46,10 @@ make m1                      # rebuild docs/M1_GATE_REPORT.md from live runs
 | `env.py` | Ilan | Gymnasium env and the append-only observation schema. |
 | `harness.py` | Ilan | Episode runner and evaluator; the one path from a config to numbers. |
 | `artifacts.py` | Ilan | The run output schema: versioned `RunRecord`, hashed into the manifest. |
+| `sweep.py` | Ilan | Scripted premium sweep on paired seeds; the resume rule every orchestrator shares. |
+| `train.py` | Ilan | The PPO arm at the frozen D3 hyperparameters; training paths kept off evaluation paths. |
+| `orchestrate.py` | Ilan | The pilot and sweep grid: premium x arm x seed block, parallel and resumable. |
+| `replay.py` | Ilan | The reproducibility gate: rerun from the manifest, compare `run.json` bytes. |
 | `scripted.py` | Hemdutt | Scripted sellers and the analytic cost-drag check. |
 | `data.py` | Hemdutt | The adapter boundary and its conformance suite; the OptionMetrics stub. |
 | `gatereport.py` | Dominick | Milestone reports: criterion, evidence, what failed first. |
@@ -199,7 +207,8 @@ training is included. Both sit inside the document's unvalidated 500 to 3,000
 estimate. Re-measure on any machine that will run the sweep.
 
 The learner is the `train` extra rather than a core dependency, so `make check`
-does not pull torch: nothing in `optspread/` imports it. When it is installed,
+does not pull torch: nothing in `optspread/` imports it at module import (`train.py`
+imports it inside the calls that train). When it is installed,
 `library_versions` records torch and Stable-Baselines3 in every manifest, so the
 presence of those two fields is itself the evidence that a learner was involved.
 
@@ -216,6 +225,115 @@ git SHA, config hash, config or library versions is refused, as is one whose
 `config_hash` has drifted from its own config, and one whose git SHA is unknown.
 A run nobody can reproduce cannot reach the results folder, which is a rule the
 tooling enforces rather than one the team remembers.
+
+`make replay RUN=<run dir>` is the gate of project document 10.7. It reads the
+config from the manifest, retrains if the arm is learned, re-evaluates, and
+compares the rendered `run.json` with the file on disk byte for byte, not to a
+tolerance. A results file edited after its manifest was written fails before the
+replay starts, and a mismatch names the first episode that differs. A PPO run
+replays because torch runs one thread per process on CPU, the learner is seeded
+from the config, and evaluation takes the greedy action. Bit-identity is promised
+on the machine and library versions that produced the run; the replay reports any
+version or commit that has moved since, because those are the first suspects.
+
+## The PPO arm
+
+Decision D3 is enforced, not just recorded. `PPOHyperparameters` writes out the
+Stable-Baselines3 defaults (21 values across `PPO` and `ActorCriticPolicy`), every
+one is passed to the library explicitly so an upgrade cannot move them, and
+`TrainConfig` refuses any other set. A PPO run's `RunConfig` carries its
+`TrainConfig`, so the hyperparameters, `total_timesteps`, the training seed and the
+device are all in its config hash. `total_timesteps` is the one number D3 did not
+fix, so it has no default anywhere: every command that trains asks for it. A
+scripted run serialises exactly as before, so adding the learner re-keyed no
+existing run.
+
+One bug was caught before it shipped. Stable-Baselines3 seeds the first reset and
+then resets with no seed, and the environment reads a missing seed as path 0, so a
+plain training run would have replayed one path for its whole budget. Training
+episodes now draw from their own seed range at 2^48 and above, a separate block per
+training seed, and evaluation seeds are refused there, so no policy is scored on a
+path it trained on.
+
+## Handing the pilot and sweep to a bigger machine
+
+Each run is one command, resumable, parallel across processes, and writes to any
+root. Point `--root` at the team's shared data folder.
+
+**Install** (Linux, Python 3.12). Take the CPU build of torch: a 64x64 MLP gains
+nothing from a GPU, and the CUDA wheels are several gigabytes.
+
+```bash
+git clone https://github.com/dominickdupuy/VegaLab_Project.git && cd VegaLab_Project
+python3.12 -m venv .venv
+.venv/bin/pip install torch --index-url https://download.pytorch.org/whl/cpu
+.venv/bin/pip install -e ".[dev,train]"
+export PY=.venv/bin/python VEGALAB_DATA=/path/to/shared/folder
+make check PY=$PY            # the test ladder, including the real-PPO tests
+make train-smoke PY=$PY      # about 30 s: training, workers and replay on this box
+$PY scripts/bench.py --steps 20000 --ppo   # re-measure the rates on this machine
+```
+
+**The pilot**, then the budget it sets:
+
+```bash
+make pilot PY=$PY ARGS="--root $VEGALAB_DATA/runs/pilot --seeds 8 --episodes 200 \
+    --timesteps 1000000 --workers 16"
+$PY scripts/pilot_budget.py --delta <effect> --matrix $VEGALAB_DATA/runs/pilot/matrix.npy \
+    --train-steps 1000000 --cores 16
+```
+
+`--premium` (default 0, the null world) sets the planted level the pilot measures
+at. The pilot writes `matrix.npy` (S x N, PPO) and `matrix_oracle.npy` (the
+fixed-delta seller on the same blocks, the negative control whose seed component is
+zero by construction) and prints both sets of variance components.
+
+**The sweep**, with S and N from the pilot budget:
+
+```bash
+nohup make sweep PY=$PY ARGS="--root $VEGALAB_DATA/runs --seeds 50 --episodes 200 \
+    --timesteps 1000000 --workers 32" > $VEGALAB_DATA/runs/sweep.log 2>&1 &
+make replay PY=$PY RUN=$VEGALAB_DATA/runs ARGS="--max 4"   # spot-check afterwards
+```
+
+The default grid is 0, 0.25, 0.5, 1, 2 and 4 vol points (`--premiums`) by the
+fixed-delta seller and PPO (`--arms`). Within seed block i every arm at every
+premium runs the same evaluation paths, and block i's policy is training seed
+`--train-seed + i` at every premium. Blocks are disjoint, which is the nested
+design the pilot formula assumes. The pilot and the sweep default to different
+path and training seeds, so the pilot's data never enters the confirmatory run.
+
+**Runtime.** Add `--dry-run` to either command to print the plan before
+committing a machine: cells on disk, cells to run, core-hours at the M1 rates.
+At those rates (about 1,000 steps/s/core with the training update, about 1,800
+for evaluation) a PPO cell costs `timesteps / 1000` seconds of training plus
+`N x 63 / 1800` of evaluation, about 17 minutes at one million steps, and a
+scripted cell only the evaluation:
+
+| Run | Cells | Core-hours | Wall, 16 workers | Wall, 32 workers |
+|---|---|---|---|---|
+| pilot, S=8, N=200, 1M steps | 16 | 2.3 | 17 min | 17 min |
+| sweep, 6 levels, S=50, N=200, 1M steps | 600 | 84.6 | 5.3 h | 2.8 h |
+| sweep, the same at 2M steps | 600 | 168 | 10.6 h | 5.6 h |
+
+The wall clock is the longest-first schedule, not core-hours over workers: a cell
+cannot be split, so the pilot takes one PPO cell's time however many workers it
+has, and 300 PPO cells on 32 workers take ten rounds, not 9.4. A worker is one process on one core with torch at one
+thread, so `--workers` should be the number of physical cores. Cells run longest
+first so the PPO cells are not the tail, and the ETA on each progress line rescales
+the plan by the wall clock measured so far. One million steps is the placeholder
+`pilot_budget.py` uses, not a pre-registered number.
+
+**Outputs and resuming.** Under `--root`, every cell is an ordinary run directory
+`<config hash>-s<first seed>/` holding `manifest.json`, `run.json` and, for PPO,
+`policy.zip`, all hashed into the manifest; `grid-<hash>.json` lists the cells of
+one grid. A killed run loses only the cells in flight: rerun the same command and
+finished cells are read back, not recomputed. A failed cell is reported and the
+others keep going; the exit status is 1 until every cell is done. Changing any
+flag other than `--root`, `--workers` or `--dry-run` changes the cells' hashes, so
+it starts new cells beside the old ones rather than overwriting them. The worker
+count never changes a number: two workers write the same bytes as one. Run one
+command per root at a time.
 
 ## What comes next
 

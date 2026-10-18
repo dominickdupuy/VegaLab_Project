@@ -19,6 +19,7 @@ not know says so instead of silently misreading fields.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -95,24 +96,34 @@ class SchemaVersionError(ValueError):
     """A record written by a schema version this build cannot read."""
 
 
+def dump_run(record: RunRecord) -> str:
+    """The exact text of ``run.json``. One definition, so a replay compares like with like."""
+    return record.model_dump_json(indent=2)
+
+
 def write_run(
     run_dir: Path,
     config: RunConfig,
     summary: EvalSummary,
     episodes: tuple[EpisodeResult, ...],
+    extra: Sequence[Path] = (),
 ) -> RunManifest:
     """Write ``run.json`` then ``manifest.json`` with the results file hashed into it.
 
     Order matters: the manifest records a digest of the results, so the results
-    must exist first. The returned manifest is the one on disk.
+    must exist first. ``extra`` names further files already written inside
+    ``run_dir`` (a trained policy) to be hashed alongside. The returned manifest is
+    the one on disk.
     """
     run_dir.mkdir(parents=True, exist_ok=True)
     record = RunRecord.of(config, summary, episodes)
     target = run_dir / RUN_FILENAME
-    target.write_text(record.model_dump_json(indent=2))
+    target.write_text(dump_run(record))
 
     manifest = RunManifest.create(config)
     manifest.add_artifact(run_dir, target)
+    for path in extra:
+        manifest.add_artifact(run_dir, path)
     manifest.results = {
         "mean_pnl": summary.mean_pnl,
         "se_pnl": summary.se_pnl,
