@@ -3,9 +3,10 @@
 Lane: Ilan Danial (machinery).
 
 ``evaluate`` is the one place that turns a ``RunConfig`` into numbers, so a run
-is reproducible from its config hash and seed alone. The training loop (pending
-decision 7.4, Stable-Baselines3 versus in-repo PPO) plugs in here by supplying
-a ``Policy`` whose ``act`` reads ``obs``.
+is reproducible from its config hash and seed alone. A learned arm (decision D3,
+Stable-Baselines3 PPO; ``optspread.train``) plugs in here by supplying the trained
+``Policy``, whose ``act`` reads ``obs``: a ppo config names no policy that can be
+built from its name, so asking for one is an error rather than a silent default.
 """
 
 from __future__ import annotations
@@ -83,7 +84,12 @@ def run_episodes(config: RunConfig, policy: Policy | None = None) -> tuple[Episo
     can persist every row while the gates only need the aggregate.
     """
     env = build_env(config)
-    pol = policy if policy is not None else make_policy(config.policy, roll_dte=config.env.roll_dte)
+    if policy is not None:
+        pol = policy
+    elif config.policy == "ppo":
+        raise ValueError("a ppo run is evaluated with its trained policy; pass it in")
+    else:
+        pol = make_policy(config.policy, roll_dte=config.env.roll_dte)
     seeds = range(config.seed, config.seed + config.n_episodes)
     return tuple(run_episode(env, pol, s) for s in seeds)
 
