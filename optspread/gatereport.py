@@ -20,13 +20,34 @@ Three states, and only three:
 
 The last state exists because it is the common failure. A check whose criterion
 lives only in its author's head reads as a pass every time it runs.
+
+Every report is written twice from one build: the Markdown the slides are made
+from, and a JSON sidecar beside it (``M1_GATE_REPORT.json`` next to
+``M1_GATE_REPORT.md``) that the dashboard's gate board reads, so the board never
+parses prose. The sidecar's shape is fixed by ``to_dict``:
+
+    {"milestone": "M1", "report_date": "YYYY-MM-DD", "verdict": "PASS" | "NOT CLEARED",
+     "items": [{"name", "owner", "verdict", "criterion", "evidence", "failed_first"}]}
+
+with each item's verdict exactly as ``GateItem.verdict`` gives it and an empty
+``failed_first`` on a pass. ``from_markdown`` reads a committed report back, which
+is how a sidecar is produced for a report already on record without re-running
+(and so re-dating) it: the read is accepted only if it re-renders the file byte
+for byte.
 """
 
 from __future__ import annotations
 
+import json
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date
+from pathlib import Path
+from typing import Any
+
+_HEADER = "| Item | Owner | Verdict | Criterion | Evidence | What failed first |"
+_TITLE = " gate report"
+_DATE = "Report date: "
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,6 +69,8 @@ class GateItem:
     def __post_init__(self) -> None:
         if self.passed and self.failed_first:
             raise ValueError(f"{self.name}: a passing item cannot record a first failure")
+        if self.passed and not self.evidence.strip():
+            raise ValueError(f"{self.name}: a passing item must show its evidence")
         if not self.passed and not self.failed_first:
             raise ValueError(f"{self.name}: a failing item must record what failed first")
 
@@ -80,6 +103,73 @@ class GateReport:
     @property
     def failures(self) -> tuple[GateItem, ...]:
         return tuple(i for i in self.items if i.has_criterion and not i.passed)
+
+    @property
+    def verdict(self) -> str:
+        return "PASS" if self.passed else "NOT CLEARED"
+
+    def to_dict(self) -> dict[str, Any]:
+        """The JSON sidecar's schema. The dashboard reads it; change the two together."""
+        return {
+            "milestone": self.milestone,
+            "report_date": self.report_date.isoformat(),
+            "verdict": self.verdict,
+            "items": [
+                {
+                    "name": i.name,
+                    "owner": i.owner,
+                    "verdict": i.verdict,
+                    "criterion": i.criterion,
+                    "evidence": i.evidence,
+                    "failed_first": i.failed_first,
+                }
+                for i in self.items
+            ],
+        }
+
+    def render_json(self) -> str:
+        return json.dumps(self.to_dict(), indent=2) + "\n"
+
+    def write(self, path: Path) -> tuple[Path, Path]:
+        """The Markdown at ``path`` and the JSON sidecar beside it, from this one build."""
+        path.parent.mkdir(parents=True, exist_ok=True)
+        sidecar = path.with_suffix(".json")
+        path.write_text(self.render())
+        sidecar.write_text(self.render_json())
+        return path, sidecar
+
+    @classmethod
+    def from_markdown(cls, text: str) -> GateReport:
+        """Read back a report ``render`` wrote, refusing anything it would not reproduce."""
+        lines = text.splitlines()
+        if not lines or not lines[0].startswith("# ") or not lines[0].endswith(_TITLE):
+            raise ValueError(
+                "not a gate report: the first line must be '# <milestone> gate report'"
+            )
+        dated = [ln for ln in lines if ln.startswith(_DATE)]
+        if len(dated) != 1:
+            raise ValueError("a gate report carries exactly one 'Report date:' line")
+        if _HEADER not in lines:
+            raise ValueError("no item table in the report")
+        items: list[GateItem] = []
+        for row in lines[lines.index(_HEADER) + 2 :]:
+            if not row.startswith("| "):
+                break
+            cells = row[2:-2].split(" | ") if row.endswith(" |") else []
+            if len(cells) != 6:
+                raise ValueError(f"cannot split this row into six cells: {row!r}")
+            name, owner, _, criterion, evidence, failed = cells
+            failed_first = "" if failed == "--" else failed
+            items.append(GateItem(name, owner, criterion, evidence, not failed_first, failed_first))
+        report = cls(
+            lines[0][2 : -len(_TITLE)],
+            date.fromisoformat(dated[0].removeprefix(_DATE)),
+            tuple(items),
+        )
+        if report.render() != text:
+            # Catches a hand-edited verdict, a cell holding ' | ', or a format change.
+            raise ValueError("the report does not re-render to the same text; refusing to guess")
+        return report
 
     def render(self) -> str:
         lines = [

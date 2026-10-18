@@ -1,4 +1,4 @@
-"""Build the M1 gate report from live runs and write docs/M1_GATE_REPORT.md.
+"""Build the M1 gate report from live runs and write docs/M1_GATE_REPORT.md and .json.
 
 Lane: Dominick Dupuy (statistical spine).
 
@@ -6,10 +6,18 @@ A milestone closes on a report, not on code that happens to run. Every item belo
 states the criterion it had to meet, the evidence, and on a failure what failed
 first. The numbers come from running the gates here rather than from prose, so the
 report cannot drift away from the tests, and the Presentation 1 slides are built
-from the file this writes.
+from the file this writes. The JSON sidecar beside it is the same build, for the
+dashboard's gate board.
 
     python -m scripts.m1_gate_report
     python -m scripts.m1_gate_report --quick --out -
+    python -m scripts.m1_gate_report --sidecar-only
+
+``--sidecar-only`` writes the JSON from the Markdown already on record instead of
+re-running the gates. M1 closed on the 2026-09-28 build; re-running it now would
+re-date the report and re-measure machine-dependent throughput, so the sidecar is
+read back from that file (``GateReport.from_markdown`` refuses unless it re-renders
+the file byte for byte) rather than produced by a different build.
 """
 
 from __future__ import annotations
@@ -21,7 +29,7 @@ from pathlib import Path
 
 from optspread.config import RunConfig
 from optspread.data import conformance_suite
-from optspread.gatereport import GateItem, build_report
+from optspread.gatereport import GateItem, GateReport, build_report
 from optspread.gates import wave0_gate
 from optspread.leaks import default_env, field_coverage, leak_floor
 from optspread.manifest import IncompleteManifestError, RunManifest
@@ -216,7 +224,18 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--quick", action="store_true", help="smaller samples, for a smoke run")
     parser.add_argument("--out", default=str(DOC), help="output path, or - for stdout")
+    parser.add_argument(
+        "--sidecar-only",
+        action="store_true",
+        help="write the .json from the committed .md without re-running the gates",
+    )
     args = parser.parse_args()
+    if args.sidecar_only:
+        recorded = GateReport.from_markdown(Path(args.out).read_text())
+        sidecar = Path(args.out).with_suffix(".json")
+        sidecar.write_text(recorded.render_json())
+        print(f"wrote {sidecar} from {args.out} ({recorded.verdict}, {recorded.report_date})")
+        return 0 if recorded.passed else 1
     episodes, seeds, steps = (20, 5, 4_000) if args.quick else (100, 10, 20_000)
 
     throughput, random_rate = throughput_item(steps)
@@ -238,10 +257,8 @@ def main() -> int:
     if args.out == "-":
         print(rendered)
         return 0 if report.passed else 1
-    target = Path(args.out)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(rendered)
-    print(f"wrote {target} ({'PASS' if report.passed else 'NOT CLEARED'})")
+    target, sidecar = report.write(Path(args.out))
+    print(f"wrote {target} and {sidecar} ({report.verdict})")
     return 0 if report.passed else 1
 
 

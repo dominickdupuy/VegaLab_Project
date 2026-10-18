@@ -1,4 +1,4 @@
-.PHONY: check lint typecheck test format bench gate drag leaks m1 pilot sweep replay train-smoke
+.PHONY: check lint typecheck test format bench gate drag leaks m1 m2 pilot sweep replay train-smoke
 
 PY ?= .venv/Scripts/python
 ARGS ?=
@@ -35,6 +35,9 @@ leaks:
 
 m1:
 	$(PY) -m scripts.m1_gate_report
+
+m2:
+	$(PY) -m scripts.m2_gate_report
 
 # The M2 runs. Flags go in ARGS, e.g.
 #   make pilot ARGS="--root $$VEGALAB_DATA/runs/pilot --seeds 8 --episodes 200 --timesteps 1000000 --workers 16"
