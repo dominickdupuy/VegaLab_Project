@@ -31,8 +31,16 @@ paths the design would be crossed and carry a shared-path term the formula above
 does not; that is a pre-registration question for the lane owner, not something
 this module settles.
 
-Power uses the normal approximation, which is what a sample-size calculation at
-the planning stage does. The confirmatory test itself is the pre-registration's.
+Two power functions, kept apart on purpose. ``power`` is the normal approximation a
+sample-size calculation at the planning stage uses, and ``episodes_for``,
+``seeds_for`` and ``frontier`` are built on it. ``power_t`` is the exact detection
+probability of the confirmatory test in ``optspread.analysis``, a one-sided Student t
+on the S seed-level means: under normal seed means its statistic is noncentral t
+with S - 1 degrees of freedom, so the probability is a closed form rather than an
+approximation. At the seed counts published work uses the two differ by enough to
+matter (the normal form overstates power), which is why the section 8 gate in
+``optspread.validation`` checks the test against ``power_t`` and reports ``power``
+beside it.
 """
 
 from __future__ import annotations
@@ -40,10 +48,12 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass
+from functools import lru_cache
 
 import numpy as np
 from numpy.typing import ArrayLike
-from scipy.stats import norm
+from scipy.stats import nct, norm
+from scipy.stats import t as student_t
 
 
 def _check_variances(tau2: float, sigma2: float) -> None:
@@ -89,6 +99,33 @@ class VarianceComponents:
     def se_grand_mean(self) -> float:
         return math.sqrt(self.var_grand_mean)
 
+    @property
+    def seed_mean_variance(self) -> float:
+        """``MS_between / N``: the sample variance of the S seed means, clamp or no clamp.
+
+        ``E = tau^2 + sigma^2 / N``, so divided by S it is an unbiased estimate of the
+        pre-registered ``Var(grand mean)``. The confirmatory test uses this rather than
+        the clamped plug-in, which overstates the variance whenever the clamp engages.
+        """
+        return self.ms_between / self.n_episodes
+
+    @property
+    def se_sigma2(self) -> float:
+        """Normal-theory standard error of ``sigma^2``: ``Var(MS_within) = 2 sigma^4/(S(N-1))``."""
+        return math.sqrt(2.0 * self.ms_within**2 / (self.n_seeds * (self.n_episodes - 1)))
+
+    @property
+    def se_tau2(self) -> float:
+        """Normal-theory standard error of the unclamped ``tau^2``.
+
+        ``Var(MS_between) = 2 (sigma^2 + N tau^2)^2 / (S - 1)``; the two mean squares are
+        independent, so ``Var(tau^2) = (Var(MS_between) + Var(MS_within)) / N^2``, with
+        the observed mean squares plugged in. At pilot seed counts this is wide, and the
+        allocation built on it inherits that width (project document 7.3).
+        """
+        var_between = 2.0 * self.ms_between**2 / (self.n_seeds - 1)
+        return math.sqrt(var_between + self.se_sigma2**2) / self.n_episodes
+
     def render(self) -> str:
         clamp = (
             "  (MS_between < MS_within: floored at 0, no seed effect seen)" if self.clamped else ""
@@ -99,8 +136,8 @@ class VarianceComponents:
                 f"grand mean      {self.grand_mean:,.4f}",
                 f"MS_between      {self.ms_between:,.4f}",
                 f"MS_within       {self.ms_within:,.4f}",
-                f"tau^2           {self.tau2:,.4f}{clamp}",
-                f"sigma^2         {self.sigma2:,.4f}",
+                f"tau^2           {self.tau2:,.4f} (se {self.se_tau2:,.4f}){clamp}",
+                f"sigma^2         {self.sigma2:,.4f} (se {self.se_sigma2:,.4f})",
                 f"Var(grand mean) {self.var_grand_mean:,.6f} = tau^2/S + sigma^2/(S N)",
                 f"se(grand mean)  {self.se_grand_mean:,.4f}",
             ]
@@ -175,6 +212,52 @@ def power(
     if variance == 0.0:
         return 1.0 if delta > 0.0 else alpha
     return float(norm.sf(z_alpha - delta / math.sqrt(variance)))
+
+
+@lru_cache(maxsize=256)
+def t_critical(n_seeds: int, alpha: float = 0.05) -> float:
+    """``t_{1-alpha, S-1}``: the one-sided critical value of the test on S seed means."""
+    if n_seeds < 2:
+        raise ValueError(f"a t test on seed means needs at least 2 seeds, got {n_seeds}")
+    _z(1.0 - alpha, "alpha")  # range check only
+    return float(student_t.ppf(1.0 - alpha, n_seeds - 1))
+
+
+def power_t(
+    delta: float, tau2: float, sigma2: float, n_seeds: int, n_episodes: int, alpha: float = 0.05
+) -> float:
+    """Exact power of the one-sided t test on the S seed means at effect ``delta``.
+
+    Seed means are ``N(delta, tau^2 + sigma^2 / N)``, so the statistic is noncentral t
+    with ``S - 1`` degrees of freedom and noncentrality ``delta / se``,
+    ``se^2 = tau^2 / S + sigma^2 / (S N)``. Exactly ``alpha`` at zero effect.
+    """
+    variance = var_grand_mean(tau2, sigma2, n_seeds, n_episodes)
+    critical = t_critical(n_seeds, alpha)
+    if variance == 0.0:
+        return 1.0 if delta > 0.0 else alpha
+    if delta == 0.0:
+        return alpha
+    return float(nct.sf(critical, n_seeds - 1, delta / math.sqrt(variance)))
+
+
+def detectable_effect(
+    tau2: float,
+    sigma2: float,
+    n_seeds: int,
+    n_episodes: int,
+    alpha: float = 0.05,
+    target_power: float = 0.80,
+) -> float:
+    """The smallest effect a design detects at the target power: ``(z_{1-alpha} + z_power) se``.
+
+    The inverse of ``variance_budget``, on the same normal approximation as the rest of
+    the planning functions. It needs no effect size as input, which is why the pilot
+    reports it: the floor in outcome units at a stated design, before anyone has
+    argued for a particular delta.
+    """
+    z = _z(1.0 - alpha, "alpha") + _z(target_power, "target_power")
+    return z * math.sqrt(var_grand_mean(tau2, sigma2, n_seeds, n_episodes))
 
 
 def episodes_for(
