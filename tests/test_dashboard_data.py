@@ -200,8 +200,9 @@ def test_the_premium_curve_uses_clean_runs_only(run_root: Path) -> None:
 
 
 def test_the_committed_m1_report_parses_from_markdown() -> None:
-    board = load_gate_board(REPO_ROOT / "docs", "M1")
-    assert board is not None and not board.from_json
+    md = REPO_ROOT / "docs" / "M1_GATE_REPORT.md"
+    board = parse_gate_markdown(md.read_text(), md)
+    assert not board.from_json
     assert board.milestone == "M1" and board.report_date == "2026-09-28"
     assert board.verdict == "PASS" and len(board.items) == 8
     assert board.counts["PASS"] == 8 and board.not_passing == ()
@@ -211,6 +212,21 @@ def test_the_committed_m1_report_parses_from_markdown() -> None:
     assert wave0.failed_first == ""
     manifests = next(i for i in board.items if i.name == "Run artifacts and manifests")
     assert manifests.cited_runs == ("adddb0b7e5f604ad-s1",)
+
+
+def test_the_m1_sidecar_is_preferred_and_says_what_the_markdown_says() -> None:
+    board = load_gate_board(REPO_ROOT / "docs", "M1")
+    md = REPO_ROOT / "docs" / "M1_GATE_REPORT.md"
+    from_md = parse_gate_markdown(md.read_text(), md)
+    assert board is not None and board.from_json
+    assert (board.milestone, board.report_date, board.verdict) == (
+        from_md.milestone,
+        from_md.report_date,
+        from_md.verdict,
+    )
+    assert [(i.name, i.verdict, i.failed_first) for i in board.items] == [
+        (i.name, i.verdict, i.failed_first) for i in from_md.items
+    ]
 
 
 def test_the_json_sidecar_wins_over_the_markdown(gate_docs: Path) -> None:

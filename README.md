@@ -25,6 +25,7 @@ make train-smoke             # a two-seed PPO pilot on two workers, then every r
 make pilot ARGS="..."        # the variance-components pilot (see below)
 make sweep ARGS="..."        # the full premium x arm x seed sweep (see below)
 make replay RUN=<run dir>    # rerun from the manifest; fails unless bit-identical
+make web && make serve       # the dashboard on http://127.0.0.1:8600 (dashboard extra + npm)
 ```
 
 ## The lane map
@@ -58,6 +59,12 @@ make replay RUN=<run dir>    # rerun from the manifest; fails unless bit-identic
 | `analysis.py` | Dominick | The confirmatory decision rule: one-sided t on paired seed-mean contrasts. |
 | `validation.py` | Dominick | The section 8 gate: the pipeline against a closed-form answer. |
 | `m2gate.py` | Dominick | One evidence function per M2 deliverable. |
+| `dashboard_data.py` | Ilan | What the dashboard reads: run index, gate board, risk figures, live leak demo. |
+| `dashboard_panel.py` | Ilan | Read-side views of the SPX panel: coverage, smile, surface, term structure, VRP, seam. |
+| `jobs.py` | Ilan | Runs launched from the dashboard: knobs to `RunConfig`, a bounded process pool. |
+| `webapi.py` | Ilan | The API's typed payloads, each saying where its numbers came from. |
+| `server.py` | Ilan | FastAPI over `webapi`, serving the static site in `web/out`. |
+| `web/` | Ilan | The dashboard: Next.js static export, ECharts, two themes from the deck. |
 
 Documents: `docs/PRE_REGISTRATION.md` records the decisions closed at the
 September 14 advisor meeting with the alternatives we rejected.
@@ -396,6 +403,37 @@ flag other than `--root`, `--workers` or `--dry-run` changes the cells' hashes, 
 it starts new cells beside the old ones rather than overwriting them. The worker
 count never changes a number: two workers write the same bytes as one. Run one
 command per root at a time.
+
+## The dashboard
+
+The dashboard only shows what the harness recorded, so every number traces back to a
+run. It is a static site (`web/`, Next.js exported to `web/out`) served by
+`optspread.server` beside a JSON API, and every card names its source: a run key and
+config hash, a gate report file, a panel file, or the module that computed it.
+
+```bash
+pip install -e ".[dev,dashboard]"
+make web                     # npm ci, build web/out, typecheck
+make serve                   # http://127.0.0.1:8600; OPTSPREAD_RUNS and VEGALAB_DATA pick the roots
+make web-dev                 # hot reload on :3000 against a running `make serve`
+```
+
+| View | Reads | What it shows |
+|---|---|---|
+| Overview | everything | the project summary, gate tiles, data coverage, latest runs |
+| Runs | `runs/**/manifest.json`, `run.json` | filter by config hash, seed, arm, premium, commit; P&L distribution, equity paths when recorded, Sortino, CVaR 5%, max drawdown, turnover; digests recomputed on read; a paired compare of two runs |
+| Launch | `optspread.config` defaults | every knob, presets, live progress; the run lands in `runs/launched/` through `write_run` |
+| Gates | `docs/M*_GATE_REPORT.json`, else the `.md` table | criterion, evidence, verdict, what failed first |
+| Power lab | `optspread.power` | power against effect size, the floor against seed count with S = 5 and S = 50 marked, the frontier and its compute |
+| Real data | `$VEGALAB_DATA/panel/` | coverage with missing days and the Jul-Aug 2025 overlap, smile and surface for any date, ATM term structure, IV30 against RV21 and VRP30, the seam |
+| Leak demo | `optspread.leaks` | the detector run live on the clean env and its poisoned twin |
+| Sweep | `sweep.json` and its cells | the oracle curve; power curve and attribution wait for the sweep |
+
+A run directory that does not read cleanly is listed as INVALID or DIGEST MISMATCH
+with the reason, never dropped. The panel is read one year's partition and one date
+at a time; until the W6-3 build writes it, the real-data views say which files are
+missing. PPO appears in Launch only when `optspread.train` and its learner are
+installed.
 
 ## What comes next
 

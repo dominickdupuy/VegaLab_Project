@@ -1,0 +1,24 @@
+{
+  "name": "optspread-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The optspread dashboard: a static site that optspread.server serves beside its JSON API",
+  "scripts": {
+    "dev": "next dev --port 3000",
+    "build": "next build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "echarts": "6.0.0",
+    "echarts-for-react": "3.0.6",
+    "next": "15.5.27",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "20.19.43",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "typescript": "5.9.3"
+  }
+}
