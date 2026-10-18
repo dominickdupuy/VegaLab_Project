@@ -36,9 +36,9 @@ make replay RUN=<run dir>    # rerun from the manifest; fails unless bit-identic
 | `pricing.py` | Hemdutt | Black-Scholes prices and analytic greeks, NaN-free at the limits. |
 | `market.py` | Hemdutt | Zero-drift GBM with the chain priced off the path vol, plus a plantable premium. |
 | `costs.py` | Hemdutt | Quoted half-spread plus commission. |
-| `margin.py` | Hemdutt | Max-loss for defined risk, Reg-T style for undefined risk. |
+| `margin.py` | Hemdutt | Max-loss for defined risk; Cboe Rule 10.3(c)(5)(A), the broad-based index rule, for undefined risk. |
 | `actions.py` | Hemdutt | The locked action library: FLAT, iron condor, short strangle. |
-| `portfolio.py` | Hemdutt | Cash and position book; cash settlement at expiry. |
+| `portfolio.py` | Hemdutt | Cash and position book; margin checked before an open; cash settlement at expiry. |
 | `policies.py` | Hemdutt | Flat, always-on, random, and the fixed-delta seller (the oracle). |
 | `gates.py` | Hemdutt | The Wave 0 economic sanity gate. |
 | `config.py` | Ilan | Frozen pydantic configs and the content hash every run is keyed by. |

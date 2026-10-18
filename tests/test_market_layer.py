@@ -127,3 +127,42 @@ def test_undefined_risk_margin_exceeds_premium() -> None:
     assert margin_requirement(strangle.legs, chain) > -strangle.entry_value()
     single = (OptionLeg("P", 4800.0, chain.t + 21, -1, 30.0),)
     assert margin_requirement(single, chain) > 0
+
+
+# -- the pre-trade margin check --------------------------------------------- #
+
+
+def test_an_open_is_refused_one_dollar_under_the_line_and_made_one_dollar_over() -> None:
+    chain = make_chain()
+    pos = build_position(SHORT_STRANGLE, chain, EnvConfig())
+    assert pos is not None
+    costs = QuotedSpreadCost(CostConfig())
+    line = margin_requirement(pos.legs, chain) + trade_cost(costs, chain, pos.legs)
+
+    short = Book(line - 1.0)
+    assert short.rebalance(pos, chain, costs) == 0.0, "a refused open charges nothing"
+    assert short.position is None and short.refused_opens == 1 and short.n_trades == 0
+    assert short.cash == line - 1.0
+
+    enough = Book(line + 1.0)
+    enough.rebalance(pos, chain, costs)
+    assert enough.position is pos and enough.refused_opens == 0
+    # Opened on the line, the book sits where the env's breach check would not fire.
+    assert enough.equity(chain) >= enough.margin_used(chain)
+    assert enough.equity(chain) - enough.margin_used(chain) == pytest.approx(1.0)
+
+
+def test_switching_into_an_uncovered_structure_still_closes_what_was_held() -> None:
+    chain = make_chain()
+    condor = build_position(IRON_CONDOR, chain, EnvConfig())
+    strangle = build_position(SHORT_STRANGLE, chain, EnvConfig())
+    assert condor is not None and strangle is not None
+    costs = QuotedSpreadCost(CostConfig())
+
+    book = Book(40_000.0)  # carries the condor (25,059 max loss), not the strangle (56,466)
+    book.rebalance(condor, chain, costs)
+    assert book.position is condor
+    cost = book.rebalance(strangle, chain, costs)
+    assert cost == pytest.approx(trade_cost(costs, chain, condor.legs)), "only the exit is paid"
+    assert book.position is None, "the policy asked to leave the condor; it is left"
+    assert book.refused_opens == 1 and book.n_trades == 2
