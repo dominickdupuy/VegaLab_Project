@@ -8,3 +8,8 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 runs/
+web/node_modules
+web/.next/
+web/out/
+web/*.tsbuildinfo
+!web/app/runs/

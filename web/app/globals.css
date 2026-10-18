@@ -1,0 +1,232 @@
+/*
+ * Design tokens and element defaults.
+ *
+ * Two themes on one set of tokens, both taken from the team's slide deck. Light (the
+ * default) is the deck itself: a navy header over pale blue-grey panels, ink text, one
+ * blue accent for actions and selection, and a green kept for PASS. Dark is derived from
+ * the same navy: the page sinks to a deeper navy, the panels take the deck's header
+ * colour, and the accent and status hues are lifted until they read on it.
+ *
+ * Cards are glass with a hairline edge: a translucent surface, a one-pixel line that
+ * defines the shape, and a soft shadow underneath. Nothing glows.
+ *
+ * Contrast (WCAG, checked against the page and the panel surfaces):
+ *   Light, on #F3F5FA / #FFFFFF / #E6EEF8: --text 14.1 / 15.3 / 13.1, --muted 5.6 / 6.1 /
+ *   5.2, --accent-text 6.2 / 6.8 / 5.8, --pass-text 6.2 / 6.7 / 5.7, --fail 6.0 / 6.5 / 5.6,
+ *   --warn 5.4 / 5.9 / 5.1. White on --hero 15.7, on --accent 6.8.
+ *   Dark, on #0B1626 / #13233D / #1A2E4D: --text 15.6 / 13.5 / 11.7, --muted 8.4 / 7.2 /
+ *   6.3, --accent-text 8.5 / 7.4 / 6.4, --pass 8.3 / 7.2 / 6.3, --fail 8.2 / 7.1 / 6.1,
+ *   --warn 10.1 / 8.8 / 7.6.
+ * --pass (the mark colour) is used for fills and dots; text on a light surface uses
+ * --pass-text, which clears 4.5:1 on every light panel.
+ */
+:root {
+  /* the deck */
+  --navy: #13233d;
+  --ink: #1f2533;
+
+  /* surface */
+  --bg: #f3f5fa;
+  --hero: #13233d; /* header and hero bands */
+  --hero-text: #ffffff;
+  --hero-muted: #c9dbf1;
+  --surface: rgba(255, 255, 255, 0.86);
+  --surface-solid: #ffffff;
+  --surface-2: #e6eef8; /* wells, table heads, selected rows */
+  --surface-3: #c9dbf1; /* the strongest panel tint */
+  --line: #e3e8ef; /* hairlines */
+  --line-strong: #c7d0dc;
+  --edge: rgba(255, 255, 255, 0.9); /* the lit top edge of a card */
+
+  /* text */
+  --text: #1f2533;
+  --text-2: #3a3f4a;
+  --muted: #5a6272;
+
+  /* accent */
+  --accent: #2a5c9a;
+  --accent-2: #2563ae;
+  --accent-text: #2a5c9a;
+  --accent-ink: #ffffff; /* text on an accent fill */
+  --accent-soft: rgba(42, 92, 154, 0.1);
+
+  /* status: reserved for verdicts, never a series colour */
+  --pass: #2e7d4f;
+  --pass-text: #25683f;
+  --pass-soft: rgba(46, 125, 79, 0.12);
+  --fail: #b3261e;
+  --fail-soft: rgba(179, 38, 30, 0.1);
+  --warn: #8a5a00; /* NOT CLEARED, NO CRITERION, waiting */
+  --warn-soft: rgba(196, 132, 0, 0.14);
+
+  /* series, fixed by entity (lib/chart.ts maps names onto these) */
+  --s1: #2a5c9a; /* delta_seller, optionmetrics, implied vol */
+  --s2: #d9822b; /* ppo, databento, realised vol */
+  --s3: #1f8a84; /* always_on */
+  --s4: #6b5bb5; /* random */
+  --s5: #7a8394; /* flat, reference lines */
+  --grid: #e3e8ef;
+  --axis: #c7d0dc;
+
+  /* shadow */
+  --sh-card: 0 1px 0 var(--edge) inset, 0 0 0 1px var(--line), 0 10px 28px -18px rgba(19, 35, 61, 0.35);
+  --sh-raised: 0 1px 0 var(--edge) inset, 0 0 0 1px var(--line-strong), 0 16px 36px -20px rgba(19, 35, 61, 0.45);
+  --sh-float: 0 0 0 1px var(--line-strong), 0 24px 60px -24px rgba(19, 35, 61, 0.5);
+
+  --radius-lg: 14px;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --radius-pill: 999px;
+  --gutter: 24px;
+  --max: 1440px;
+  --t-fast: 140ms;
+  --t: 220ms;
+
+  --font: Calibri, Carlito, "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --bg: #0b1626;
+  --hero: #0e1b30;
+  --hero-text: #e8eef7;
+  --hero-muted: #a3b1c6;
+  --surface: rgba(19, 35, 61, 0.82);
+  --surface-solid: #13233d;
+  --surface-2: #1a2e4d;
+  --surface-3: #22406a;
+  --line: rgba(163, 177, 198, 0.16);
+  --line-strong: rgba(163, 177, 198, 0.3);
+  --edge: rgba(255, 255, 255, 0.05);
+
+  --text: #e8eef7;
+  --text-2: #cfd9e8;
+  --muted: #a3b1c6;
+
+  --accent: #4f86cf;
+  --accent-2: #6b9ad8;
+  --accent-text: #8db4ea;
+  --accent-ink: #0b1626;
+  --accent-soft: rgba(141, 180, 234, 0.14);
+
+  --pass: #62c28f;
+  --pass-text: #62c28f;
+  --pass-soft: rgba(98, 194, 143, 0.14);
+  --fail: #f2958c;
+  --fail-soft: rgba(242, 149, 140, 0.14);
+  --warn: #f0b85a;
+  --warn-soft: rgba(240, 184, 90, 0.14);
+
+  --s1: #6b9ad8;
+  --s2: #e8964a;
+  --s3: #3fb3ab;
+  --s4: #9a8ce0;
+  --s5: #8d98ab;
+  --grid: rgba(163, 177, 198, 0.12);
+  --axis: rgba(163, 177, 198, 0.3);
+
+  --sh-card: 0 1px 0 var(--edge) inset, 0 0 0 1px var(--line), 0 12px 30px -18px rgba(0, 0, 0, 0.7);
+  --sh-raised: 0 1px 0 var(--edge) inset, 0 0 0 1px var(--line-strong), 0 18px 40px -20px rgba(0, 0, 0, 0.8);
+  --sh-float: 0 0 0 1px var(--line-strong), 0 28px 70px -24px rgba(0, 0, 0, 0.85);
+
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums;
+  overflow-x: hidden;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--accent-text);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+code,
+kbd,
+.mono {
+  font-family: var(--mono);
+  font-size: 0.86em;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+::selection {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

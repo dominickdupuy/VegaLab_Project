@@ -1,9 +1,11 @@
-.PHONY: check lint typecheck test format bench gate drag leaks m1 m2 pilot sweep replay train-smoke
+.PHONY: check lint typecheck test format bench gate drag leaks m1 m2 pilot sweep replay train-smoke web serve web-dev
 
 PY ?= .venv/Scripts/python
 ARGS ?=
 RUN ?=
 SMOKE_ROOT ?= runs/smoke
+NPM ?= npm
+PORT ?= 8600
 
 check: lint typecheck test
 
@@ -55,3 +57,15 @@ replay:
 train-smoke:
 	$(PY) -m scripts.pilot --root $(SMOKE_ROOT) --seeds 2 --episodes 3 --timesteps 2048 --workers 2
 	$(PY) -m scripts.replay $(SMOKE_ROOT)
+
+# The dashboard: `make web` builds the static site into web/out, `make serve` serves
+# it beside the JSON API (needs the dashboard extra), `make web-dev` runs the site with
+# hot reload against a `make serve` already running on $(PORT).
+web:
+	cd web && $(NPM) ci && $(NPM) run build && $(NPM) run typecheck
+
+serve:
+	$(PY) -m optspread.server --port $(PORT)
+
+web-dev:
+	cd web && OPTSPREAD_API=http://127.0.0.1:$(PORT) $(NPM) run dev
