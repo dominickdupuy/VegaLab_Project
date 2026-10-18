@@ -22,6 +22,13 @@ dependencies = [
 train = [
     "stable-baselines3>=2.3",
 ]
+# The dashboard (W6-6): the panel reader for now, the server with it. An extra for the
+# same reason as `train`: `make check` runs without it. The loaders it serves from
+# (optspread.dashboard_data, optspread.dashboard_panel) are numpy-only apart from the
+# one parquet reader, so they are tested and covered on the plain `dev` install.
+dashboard = [
+    "pyarrow>=15",
+]
 dev = [
     "pytest>=7.4",
     "pytest-cov>=4.1",
@@ -48,7 +55,7 @@ plugins = ["pydantic.mypy"]
 warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
-module = ["scipy.*", "gymnasium.*", "stable_baselines3.*", "torch.*"]
+module = ["scipy.*", "gymnasium.*", "stable_baselines3.*", "torch.*", "pyarrow.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
