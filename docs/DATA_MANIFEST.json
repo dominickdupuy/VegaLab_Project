@@ -1,0 +1,1369 @@
+{
+ "files": {
+  "databento/inventory.csv": {
+   "bytes": 313620,
+   "sha256": "dade88647de531066e89d85abcf1b9431f6c4cdc38bfae62e476e02bebdb7194"
+  },
+  "databento/spx_close/year=2025/2025-07-01.parquet": {
+   "bytes": 254216,
+   "sha256": "4c337eeadd270ecfebedd4b2e9d00b3832f26ac89eb932814620531c82e97f6a"
+  },
+  "databento/spx_close/year=2025/2025-07-02.parquet": {
+   "bytes": 231347,
+   "sha256": "71188f0c4c27db9b818e5b33b53f5ffb0fa7df0f9eaf23705a2122ab60acf314"
+  },
+  "databento/spx_close/year=2025/2025-07-03.parquet": {
+   "bytes": 240244,
+   "sha256": "07f22ec16f60fa0089e007f347db822812e608af854bd95bb77e87358730a645"
+  },
+  "databento/spx_close/year=2025/2025-07-07.parquet": {
+   "bytes": 225402,
+   "sha256": "c3e0ae446a20fd0b2066115086cc809073829446766846e305cfc5237b6cebda"
+  },
+  "databento/spx_close/year=2025/2025-07-08.parquet": {
+   "bytes": 231262,
+   "sha256": "e41fdd7e4a560c268e1c020f1f343f46771459d50179b59ce68691996fdd25dc"
+  },
+  "databento/spx_close/year=2025/2025-07-09.parquet": {
+   "bytes": 222616,
+   "sha256": "93bc9fa35f1489a91f84c53a75046220b2bb350eccbe017b79b6157fc79b20f1"
+  },
+  "databento/spx_close/year=2025/2025-07-10.parquet": {
+   "bytes": 250222,
+   "sha256": "d0657bfc389e863274f1ca8bd8551dab26bafcbc9538ff27000a3e15c2c99b46"
+  },
+  "databento/spx_close/year=2025/2025-07-11.parquet": {
+   "bytes": 242894,
+   "sha256": "8d2256540ab34e02437d30c45951de6ddbb7dd4345f5f91100beed9083173654"
+  },
+  "databento/spx_close/year=2025/2025-07-14.parquet": {
+   "bytes": 252974,
+   "sha256": "b3a298de5aa34f9928853052205f458ef8d00cd5cecde7f29b14de15771e43fd"
+  },
+  "databento/spx_close/year=2025/2025-07-15.parquet": {
+   "bytes": 251358,
+   "sha256": "3aa3985cabfa2cdaa0e67461ec83faf3d468d3481b40d4d3646583ea7f51f44c"
+  },
+  "databento/spx_close/year=2025/2025-07-16.parquet": {
+   "bytes": 202682,
+   "sha256": "3afe75d49e2f8f011090d17714dc2a59c8d665d9b5c18eaa5443a8c10bb15b65"
+  },
+  "databento/spx_close/year=2025/2025-07-17.parquet": {
+   "bytes": 262915,
+   "sha256": "7be7390d33fec0bdbbca608ad67b486d40efc57c9ea0bcacec0974817c8a3f58"
+  },
+  "databento/spx_close/year=2025/2025-07-18.parquet": {
+   "bytes": 236252,
+   "sha256": "3e2633e92e39f28895aa782d8920fa289d9ee73717c2fd82919b50fcbbe366ec"
+  },
+  "databento/spx_close/year=2025/2025-07-21.parquet": {
+   "bytes": 229541,
+   "sha256": "d4230c91ed9bebdda46d9ab66f0074ed076ca244fa62790bb32272bfed351330"
+  },
+  "databento/spx_close/year=2025/2025-07-22.parquet": {
+   "bytes": 225553,
+   "sha256": "7c427ee1ba71f352ede5cbe4d585f3774f583b57dde0c10afb220e1ea0d8590d"
+  },
+  "databento/spx_close/year=2025/2025-07-23.parquet": {
+   "bytes": 242588,
+   "sha256": "6a8f51f1a7cbc6f09fd1ae37f2120e56cd078930e707e0c62928043156b62046"
+  },
+  "databento/spx_close/year=2025/2025-07-24.parquet": {
+   "bytes": 234127,
+   "sha256": "88a733bd1eaafda0470c1b20878ed58f3d68c522464fdca41917433a6bc2da13"
+  },
+  "databento/spx_close/year=2025/2025-07-25.parquet": {
+   "bytes": 228504,
+   "sha256": "24dee0837782b20c7e2588345c3c26133d070a4c9a1dd18e5d3c0593e73ef954"
+  },
+  "databento/spx_close/year=2025/2025-07-28.parquet": {
+   "bytes": 230791,
+   "sha256": "9021e4471fc047788577c54cecb65a7f73944b0180d6fd4e9f7d5ff38c1dffa4"
+  },
+  "databento/spx_close/year=2025/2025-07-29.parquet": {
+   "bytes": 230378,
+   "sha256": "c5cc16fb5d1e7555aa17ee0d2d40f66bf7b86b262dedb033d926a25a579bd0c5"
+  },
+  "databento/spx_close/year=2025/2025-07-30.parquet": {
+   "bytes": 239103,
+   "sha256": "765370242a24fa96044d53e14006b0cfad527aca22cd13a7e5b2113aec3576e4"
+  },
+  "databento/spx_close/year=2025/2025-07-31.parquet": {
+   "bytes": 259172,
+   "sha256": "ff9c4bc8cb586818beeceb3acbf63ec1712d84577cd7dc28e0e4c7881465a6e8"
+  },
+  "databento/spx_close/year=2025/2025-08-01.parquet": {
+   "bytes": 258415,
+   "sha256": "c8cdaeec5cacc02fd227febf1288b756161d56507ab1914c0daa6c7a90b53ba9"
+  },
+  "databento/spx_close/year=2025/2025-08-04.parquet": {
+   "bytes": 229946,
+   "sha256": "617a5b76c03c564721c9bfd7f7bd9bf4a9aa3b4436692cb4dd3db47eec068d05"
+  },
+  "databento/spx_close/year=2025/2025-08-05.parquet": {
+   "bytes": 259127,
+   "sha256": "951aff95f7157cc3a98acc027bb06361872c25f0a2a53a417157f8a46c5a936d"
+  },
+  "databento/spx_close/year=2025/2025-08-06.parquet": {
+   "bytes": 199260,
+   "sha256": "1b0021ff2cf32453efc364ab513277bfb59e48d61f9f77e8ac0eb5579d0ca5ab"
+  },
+  "databento/spx_close/year=2025/2025-08-07.parquet": {
+   "bytes": 261679,
+   "sha256": "806c30aaac1989897cdbdc2635ef85031a670397bab9cc1ac3c0c643e571a137"
+  },
+  "databento/spx_close/year=2025/2025-08-08.parquet": {
+   "bytes": 255712,
+   "sha256": "e5a3abc7d9e0ebdba6a2831c37b52807210587251797d9214422f612d1d3a962"
+  },
+  "databento/spx_close/year=2025/2025-08-11.parquet": {
+   "bytes": 264253,
+   "sha256": "962a6c6080fc39aa46ad54449ec7afc583431f771aeef75c0e9947837198e184"
+  },
+  "databento/spx_close/year=2025/2025-08-12.parquet": {
+   "bytes": 242271,
+   "sha256": "75f142c0053816f3659bfec123c32262cc419f06645274f066d5b3cb77536362"
+  },
+  "databento/spx_close/year=2025/2025-08-13.parquet": {
+   "bytes": 188480,
+   "sha256": "bf472f205fc868d0943e09cfecc3f28cf5009b85d3f35447fe3354223a2ac889"
+  },
+  "databento/spx_close/year=2025/2025-08-14.parquet": {
+   "bytes": 226428,
+   "sha256": "964d6f53ec19725df4baad4da075c7f08218dad8d001e491264a745c6ef25638"
+  },
+  "databento/spx_close/year=2025/2025-08-15.parquet": {
+   "bytes": 201692,
+   "sha256": "c995c2e58ee914e01d9a4d2d27b8bd7f49a532a09157c7e68eac0345653c0dac"
+  },
+  "databento/spx_close/year=2025/2025-08-18.parquet": {
+   "bytes": 228513,
+   "sha256": "995fffa2b8fca7be8a8b8189b92072c0601a7fc6d94325a330f4c2dff1b431f9"
+  },
+  "databento/spx_close/year=2025/2025-08-19.parquet": {
+   "bytes": 229341,
+   "sha256": "e20776a27fcb10dfff61a20e781bf74a47698cc896960876b71ba3473efbc00b"
+  },
+  "databento/spx_close/year=2025/2025-08-20.parquet": {
+   "bytes": 248896,
+   "sha256": "57ff86a45d47a6b254896c4e02e071d282364726d6fa250dea0300c3c8e35847"
+  },
+  "databento/spx_close/year=2025/2025-08-21.parquet": {
+   "bytes": 259650,
+   "sha256": "176d644f11619ddb02f1f881afd196f19128864f5ba5553a35b67a4ac619e82d"
+  },
+  "databento/spx_close/year=2025/2025-08-22.parquet": {
+   "bytes": 221962,
+   "sha256": "9febbf7a8e2ab2984c886ced07a7b225d9962af36c01c95141a537650ec5c082"
+  },
+  "databento/spx_close/year=2025/2025-08-25.parquet": {
+   "bytes": 247667,
+   "sha256": "772b10c59ee0365ad3bb1dd7e91c735fa6c2618c165680c20a2e26f59122f8fd"
+  },
+  "databento/spx_close/year=2025/2025-08-26.parquet": {
+   "bytes": 220710,
+   "sha256": "a293375423bbc019425f57be5b49b7cbcb58b92c8cfebaa71df2972c78035037"
+  },
+  "databento/spx_close/year=2025/2025-08-27.parquet": {
+   "bytes": 206058,
+   "sha256": "3331cbbfadac984f88ffcc9c284db8cccb63ceb45c3d6cc4525d2d184982d473"
+  },
+  "databento/spx_close/year=2025/2025-08-28.parquet": {
+   "bytes": 226203,
+   "sha256": "fe4602d4c256880b8d156f5db1681609083d8ca1b5a4462cebb9177e0322d406"
+  },
+  "databento/spx_close/year=2025/2025-08-29.parquet": {
+   "bytes": 229888,
+   "sha256": "32396eacfdf4c48411869c0266317500472163e9a505b8891890c6f6d1bf7676"
+  },
+  "databento/spx_close/year=2025/2025-09-02.parquet": {
+   "bytes": 219734,
+   "sha256": "c10ed0ebda17870b519d9b5bad918da98d5cdfc52d2038a79eb414e55adf18e6"
+  },
+  "databento/spx_close/year=2025/2025-09-03.parquet": {
+   "bytes": 213671,
+   "sha256": "52550686d2b8bea20c7b6ca6881381f33d0e4bf7e1143731ef3b1fbdae43cb21"
+  },
+  "databento/spx_close/year=2025/2025-09-04.parquet": {
+   "bytes": 230028,
+   "sha256": "ae4838ce2982faecdf75de191d60df28354760bf78be1227c72adc089241a798"
+  },
+  "databento/spx_close/year=2025/2025-09-05.parquet": {
+   "bytes": 247741,
+   "sha256": "896625bde3e378e27a6460928aa51a5cd1ffa293e005c1ac4af266123ac58e22"
+  },
+  "databento/spx_close/year=2025/2025-09-08.parquet": {
+   "bytes": 237738,
+   "sha256": "4355a71bf38d5a485f685a6f112005dbf613c1ecf4404a4b81879bc046a85472"
+  },
+  "databento/spx_close/year=2025/2025-09-09.parquet": {
+   "bytes": 251382,
+   "sha256": "f2b42fe0dd2a5e85099bd712d566c744afb81ef1caca2a19956985be264c0a10"
+  },
+  "databento/spx_close/year=2025/2025-09-10.parquet": {
+   "bytes": 207189,
+   "sha256": "9adb7759760961c29d4e48f704b292efb81bfce0a54a98b7d9a0eaaa2d5239f4"
+  },
+  "databento/spx_close/year=2025/2025-09-11.parquet": {
+   "bytes": 189158,
+   "sha256": "c701fbbcd2cdd0107071fde5ea05b55a0c0e72d341f213a7c82c024b30a05852"
+  },
+  "databento/spx_close/year=2025/2025-09-12.parquet": {
+   "bytes": 222564,
+   "sha256": "340d21a6802a2097fbd84923d19321a9c11b7bcefbf3e87a082db56ea6e0dee1"
+  },
+  "databento/spx_close/year=2025/2025-09-15.parquet": {
+   "bytes": 239551,
+   "sha256": "dde95f383eb91a951217e1ca1138e4be8a2a44059ab4296ac69d798b5d8b9f6d"
+  },
+  "databento/spx_close/year=2025/2025-09-16.parquet": {
+   "bytes": 258841,
+   "sha256": "951870d090ec6d4f0a9d2273a8f886bee15ac040b08b62f56ce4b8e27993b689"
+  },
+  "databento/spx_close/year=2025/2025-09-17.parquet": {
+   "bytes": 216887,
+   "sha256": "d5c04be6b8f73428a867166aec52be230fcbd3569da59042b64fcedbce737327"
+  },
+  "databento/spx_close/year=2025/2025-09-18.parquet": {
+   "bytes": 208953,
+   "sha256": "51fa06b3d3f52cf2ac9e756a2b3a222cabadbaa1ecc55801443ba48fbaac522d"
+  },
+  "databento/spx_close/year=2025/2025-09-19.parquet": {
+   "bytes": 264950,
+   "sha256": "ddfb2a33396e4cb4ba574c52740835f69d970976435179ea8c7fe22fd2b97490"
+  },
+  "databento/spx_close/year=2025/2025-09-22.parquet": {
+   "bytes": 252437,
+   "sha256": "76940eb2d79dee70dca660b4f7475cc66dbb8164547b786631e41137163d1c65"
+  },
+  "databento/spx_close/year=2025/2025-09-23.parquet": {
+   "bytes": 245403,
+   "sha256": "ace952c0624dd38c2599d061bf49d7fea75d447b45068231866db82dda4423bf"
+  },
+  "databento/spx_close/year=2025/2025-09-24.parquet": {
+   "bytes": 254536,
+   "sha256": "96498ce925ebeb6be53a27f32b6cf36d5e3f9cae36081bd8ad255370257780d8"
+  },
+  "databento/spx_close/year=2025/2025-09-25.parquet": {
+   "bytes": 253935,
+   "sha256": "3c03ec4a61a7b7760e0b66467bcd0c22922204e83089a47dcf1a727051dd08f6"
+  },
+  "databento/spx_close/year=2025/2025-09-26.parquet": {
+   "bytes": 253698,
+   "sha256": "e8194d686a039788d8d34813961d449e085c2032f0d05971802ff9f31fef6ba9"
+  },
+  "databento/spx_close/year=2025/2025-09-29.parquet": {
+   "bytes": 274318,
+   "sha256": "c99d75b00bc489f8a53277b577cc65c09815b68953e66096d3a715b392d46a22"
+  },
+  "databento/spx_close/year=2025/2025-09-30.parquet": {
+   "bytes": 247818,
+   "sha256": "8bfdc4681cab9803f2a352c391417711c6e60a6011727b19cc8c59e74e0d84c1"
+  },
+  "databento/spx_close/year=2025/2025-10-01.parquet": {
+   "bytes": 227688,
+   "sha256": "0410decace2c206abb79ac0e6aca096d38d53e8b5314887a5e70a43fe11c2057"
+  },
+  "databento/spx_close/year=2025/2025-10-02.parquet": {
+   "bytes": 241475,
+   "sha256": "3310fe4d0b7915857c0b7cec6a994b960aa43cf0187cf7a82f08e4233568c6a7"
+  },
+  "databento/spx_close/year=2025/2025-10-03.parquet": {
+   "bytes": 213820,
+   "sha256": "f3b65d806e20fa3af2b63d5f74b42859cd114cb0809c8c134a3c54a8a4153044"
+  },
+  "databento/spx_close/year=2025/2025-10-06.parquet": {
+   "bytes": 194736,
+   "sha256": "44d885856d62ebb49c2fde4c500cc49489a0fd5d321ae14d07e09e6f60d2d594"
+  },
+  "databento/spx_close/year=2025/2025-10-07.parquet": {
+   "bytes": 262911,
+   "sha256": "c6e3e0852e3b26b58c941f33135e17cbabe98aa326c2301d349cc4cc1206e23b"
+  },
+  "databento/spx_close/year=2025/2025-10-08.parquet": {
+   "bytes": 212833,
+   "sha256": "70fe615f961dddf9d57d85b78fa5bee06ba6537c485570681290b6e6a75590e7"
+  },
+  "databento/spx_close/year=2025/2025-10-09.parquet": {
+   "bytes": 253217,
+   "sha256": "42bd559f4777ab53243dd2e6413eca02f9b657bcf08d12b8e3d33e3c6dd0e053"
+  },
+  "databento/spx_close/year=2025/2025-10-10.parquet": {
+   "bytes": 254615,
+   "sha256": "71a8ba074d3befee0da0b61e95325d69e2779ce088d550fa9909cb0aeea3d255"
+  },
+  "databento/spx_close/year=2025/2025-10-13.parquet": {
+   "bytes": 234118,
+   "sha256": "3a0d377adcde34220aac6e23b68f570b8641e9edfaafe9eb0889756648d7ea16"
+  },
+  "databento/spx_close/year=2025/2025-10-14.parquet": {
+   "bytes": 276925,
+   "sha256": "f0c2aa5fd3e379bc2dcc4c576d9c156565ac37ff9862e62377570af22b6d38df"
+  },
+  "databento/spx_close/year=2025/2025-10-15.parquet": {
+   "bytes": 273054,
+   "sha256": "c1bbfdb1737a96b67b8c6a7d8c9597833d4bdd0fcbe68f700640680424e440c3"
+  },
+  "databento/spx_close/year=2025/2025-10-16.parquet": {
+   "bytes": 279588,
+   "sha256": "580db324f2f1ab9431565be43a8b6fd19e87f66dcd8f2a35a03ba27dea88e33b"
+  },
+  "databento/spx_close/year=2025/2025-10-17.parquet": {
+   "bytes": 263961,
+   "sha256": "b1341080853ee453ba77981682361487db34ee2f1b560834cddde64a1f6c98e2"
+  },
+  "databento/spx_close/year=2025/2025-10-20.parquet": {
+   "bytes": 263456,
+   "sha256": "cb5f0723eef6be947fae972492a81d5e25fdc62f324244e274cfbde2cd58acb9"
+  },
+  "databento/spx_close/year=2025/2025-10-21.parquet": {
+   "bytes": 272202,
+   "sha256": "09e49067af2806363ca2bb604504441127cee32a9f5d73df8ecd777f9af1c71d"
+  },
+  "databento/spx_close/year=2025/2025-10-22.parquet": {
+   "bytes": 268750,
+   "sha256": "eb71131c6ff342d02f9a1d9485fb2580808ab6194d1c5abc4b72fe003e299520"
+  },
+  "databento/spx_close/year=2025/2025-10-23.parquet": {
+   "bytes": 221994,
+   "sha256": "f55739e4f60d4f8d0787d7abfbab2ea697e7039d9ab648a033fb9255613ccdb8"
+  },
+  "databento/spx_close/year=2025/2025-10-24.parquet": {
+   "bytes": 256730,
+   "sha256": "91f00c8f8da2fb3601e88f6b9231fabf1691fb1ec4efa39077f1c15046a5da34"
+  },
+  "databento/spx_close/year=2025/2025-10-27.parquet": {
+   "bytes": 255480,
+   "sha256": "f084e0892721fa536646a73829376dd0cf0e1059e26eea07f51bfc7fe398c092"
+  },
+  "databento/spx_close/year=2025/2025-10-28.parquet": {
+   "bytes": 272821,
+   "sha256": "21626368b92d18beea70f97e086cb74bd2214d21ae3f7e15593e4b01928d8a37"
+  },
+  "databento/spx_close/year=2025/2025-10-29.parquet": {
+   "bytes": 278738,
+   "sha256": "5d75aa8117b48e4b3d25072f85a534f8204e252ff1590667ca21e735b4ff1133"
+  },
+  "databento/spx_close/year=2025/2025-10-30.parquet": {
+   "bytes": 279388,
+   "sha256": "3e45520177e0dafbddbc44e0cbb41bd44bc4bab09dcd0236db1e1a07e346b4f6"
+  },
+  "databento/spx_close/year=2025/2025-10-31.parquet": {
+   "bytes": 271937,
+   "sha256": "9cac496ae747ca0903cdf8e8b6a0e988bb2c1ed0e564e0d179991b1b385c502a"
+  },
+  "databento/spx_close/year=2025/2025-11-03.parquet": {
+   "bytes": 247054,
+   "sha256": "84944d3980c06291ec5b87db871345bda1d582e0af2dbc10166d376b3f45b308"
+  },
+  "databento/spx_close/year=2025/2025-11-04.parquet": {
+   "bytes": 260938,
+   "sha256": "c7941b94fec71d5eb7752e52786bdc83a28ef2e12acb27520a7da89d00cf5ae7"
+  },
+  "databento/spx_close/year=2025/2025-11-05.parquet": {
+   "bytes": 274033,
+   "sha256": "c5e1fa28f6775dad530d9be11aaeac1c826d9c2bdba53b165ee2fa6eec46bb59"
+  },
+  "databento/spx_close/year=2025/2025-11-06.parquet": {
+   "bytes": 272300,
+   "sha256": "c4156a577d9c6c96b741fd104c5f23741a5045810a0193ad83250f93609b3650"
+  },
+  "databento/spx_close/year=2025/2025-11-07.parquet": {
+   "bytes": 283719,
+   "sha256": "a0016f7e9222ecfcc14fc443228fa4aafb21ad485a68afa76fd9c0489972af8b"
+  },
+  "databento/spx_close/year=2025/2025-11-10.parquet": {
+   "bytes": 256685,
+   "sha256": "92387952790617a8307b40ce00da15028210f961c06ffc150cdedc91ec3cc713"
+  },
+  "databento/spx_close/year=2025/2025-11-11.parquet": {
+   "bytes": 278085,
+   "sha256": "b254e1ce6904f48c20e9c280e9dbbf6c68100d2f39a4e723519159dd436105df"
+  },
+  "databento/spx_close/year=2025/2025-11-12.parquet": {
+   "bytes": 272154,
+   "sha256": "3da11109d9bd0bd7b7e8d3cde10e44526c55925492042a5613261501e519dc95"
+  },
+  "databento/spx_close/year=2025/2025-11-13.parquet": {
+   "bytes": 261381,
+   "sha256": "afd736c52a53e8501653e11d57c7018691bb713f7a407c15b1a2f3148c1a6508"
+  },
+  "databento/spx_close/year=2025/2025-11-14.parquet": {
+   "bytes": 274946,
+   "sha256": "4184e4ec1ca398fac8d1d38c097e631223cebe7795069204c93abac9e4be395b"
+  },
+  "databento/spx_close/year=2025/2025-11-17.parquet": {
+   "bytes": 276125,
+   "sha256": "9f65aa00ac7ab60f692f1769e57cf32212c50b6f12c874fe08a9e59ffd4b3e82"
+  },
+  "databento/spx_close/year=2025/2025-11-18.parquet": {
+   "bytes": 282431,
+   "sha256": "db2ce2405e898e8b234933589a5f440424f6b6c7aae9ab82f0cc9d3085ef6235"
+  },
+  "databento/spx_close/year=2025/2025-11-19.parquet": {
+   "bytes": 276512,
+   "sha256": "f382ed9799fd31a2be43299d8109697a102666d463ac7a864706ada5fd0cc7a3"
+  },
+  "databento/spx_close/year=2025/2025-11-20.parquet": {
+   "bytes": 279899,
+   "sha256": "d6a1a5a423fd74a2badec0f65d687f47e8d3908771926304a7ee0e80872d5020"
+  },
+  "databento/spx_close/year=2025/2025-11-21.parquet": {
+   "bytes": 284054,
+   "sha256": "2e4bd4c33c6e4fad86263737ef9a057c3c4ca9bfa63b4b20f664d3bb66144485"
+  },
+  "databento/spx_close/year=2025/2025-11-24.parquet": {
+   "bytes": 277935,
+   "sha256": "d09078d88547b7374b226661a0bd3124e2379dfbe069d5b25cdbfd6b083dca90"
+  },
+  "databento/spx_close/year=2025/2025-11-25.parquet": {
+   "bytes": 280375,
+   "sha256": "bf3d9a9c9e6f8018e356a3f340825840d0ae42ce8576bf246e2e1ff69a4618c3"
+  },
+  "databento/spx_close/year=2025/2025-11-26.parquet": {
+   "bytes": 250881,
+   "sha256": "05b0aa78c67f9da6ab7fd864e8247223bfb8b5882d367524460080a7cb81974f"
+  },
+  "databento/spx_close/year=2025/2025-11-28.parquet": {
+   "bytes": 279118,
+   "sha256": "ecd791959aaacdc3618c1ad474d3903e17658feffae277e066c00cdd774dbbf1"
+  },
+  "databento/spx_close/year=2025/2025-12-01.parquet": {
+   "bytes": 258953,
+   "sha256": "24cc3157207d6e1f9ae457ef63ea98a99eb41bb02659bb2367ce4022282bc505"
+  },
+  "databento/spx_close/year=2025/2025-12-02.parquet": {
+   "bytes": 270342,
+   "sha256": "0860ee364d00b0751d35941a59c801009f5ea93ef0306d31f0e699058fdeb24b"
+  },
+  "databento/spx_close/year=2025/2025-12-03.parquet": {
+   "bytes": 236621,
+   "sha256": "be409b665894a2378abe097282d2546c8aa1735d7dd2a0f72fa51353d5268001"
+  },
+  "databento/spx_close/year=2025/2025-12-04.parquet": {
+   "bytes": 249781,
+   "sha256": "b54c2cbea344252252bf1cc050aeb762d1978d96f302a74fb0d878bf39acea70"
+  },
+  "databento/spx_close/year=2025/2025-12-05.parquet": {
+   "bytes": 275280,
+   "sha256": "805b4e4474894b58cc18af267f6bed6210bab129753b3273f9353b959ddfb578"
+  },
+  "databento/spx_close/year=2025/2025-12-08.parquet": {
+   "bytes": 228851,
+   "sha256": "d33c2d7a273f8644a14fcbfc73c8c607fd9433fe96f845fb9b703f8ba7184d87"
+  },
+  "databento/spx_close/year=2025/2025-12-09.parquet": {
+   "bytes": 254318,
+   "sha256": "85720267ac1c151c95fbcaed65875cf4692668301f1b4f769e5726bbd22cddaa"
+  },
+  "databento/spx_close/year=2025/2025-12-10.parquet": {
+   "bytes": 252103,
+   "sha256": "557c0443c45c073faf6c0ce67b8a273b2f9456f65280cef0052e495ca75055a0"
+  },
+  "databento/spx_close/year=2025/2025-12-11.parquet": {
+   "bytes": 268843,
+   "sha256": "d22e078474dffffeec8b446f80a5301f5a7cd343769d64c5a9e858141b37fe46"
+  },
+  "databento/spx_close/year=2025/2025-12-12.parquet": {
+   "bytes": 261921,
+   "sha256": "1a8864a9ebf42874380ee1fa7c6f173264ba5f08cc2f1822bee1c36f06b092d3"
+  },
+  "databento/spx_close/year=2025/2025-12-15.parquet": {
+   "bytes": 253791,
+   "sha256": "7cb60cdfd9f683c8c8fc3a51191b33d2da2a55e2c8bb7b77370a834eb2d5fc3e"
+  },
+  "databento/spx_close/year=2025/2025-12-16.parquet": {
+   "bytes": 274160,
+   "sha256": "fb58ff0f2d291118f2ff124f2e0fa50be278f7c387e4c0f8df9c00e228485b36"
+  },
+  "databento/spx_close/year=2025/2025-12-17.parquet": {
+   "bytes": 249079,
+   "sha256": "c4e6fa2d91770752d748f90f50164a4bd7df687f44618f06b22ddbaffea504e3"
+  },
+  "databento/spx_close/year=2025/2025-12-18.parquet": {
+   "bytes": 281089,
+   "sha256": "8f425313507b163a463473883a09b2ae0f95e58446c9dc1051f483dd68c77394"
+  },
+  "databento/spx_close/year=2025/2025-12-19.parquet": {
+   "bytes": 253644,
+   "sha256": "2c8ea8d237e3e2909d213429eee5a4493e8fee141f176cd732bf0076cfd0a5d8"
+  },
+  "databento/spx_close/year=2025/2025-12-22.parquet": {
+   "bytes": 230972,
+   "sha256": "fdfcf30381534f7e4dcfd2f4fc28abbd2086df50b8f43aa4c3ee2c0e2bbd3597"
+  },
+  "databento/spx_close/year=2025/2025-12-23.parquet": {
+   "bytes": 275769,
+   "sha256": "4af2bb0be16aee132f184482041c60c8136a759042dae56055b64ef200aa18a2"
+  },
+  "databento/spx_close/year=2025/2025-12-24.parquet": {
+   "bytes": 251994,
+   "sha256": "a1e61cfd046d8f55a853cbfa6a479af20cad230b8da09dd9ac5a076f626b9fb8"
+  },
+  "databento/spx_close/year=2025/2025-12-26.parquet": {
+   "bytes": 253065,
+   "sha256": "256ac132fb99e0f7dad237383cf40ef92034af38b1164ec23d4bda8c8b37d33a"
+  },
+  "databento/spx_close/year=2025/2025-12-29.parquet": {
+   "bytes": 262516,
+   "sha256": "40eaba9702650945ab97f8f1afe5f6124d39ba2d53e9d09937fca00f8562b73b"
+  },
+  "databento/spx_close/year=2025/2025-12-30.parquet": {
+   "bytes": 261805,
+   "sha256": "8949043e8354caf9ad81ed57169ce972174c14f0d83b1af8be948a4aab33fe7e"
+  },
+  "databento/spx_close/year=2025/2025-12-31.parquet": {
+   "bytes": 285489,
+   "sha256": "a96a96678692adab1032b5a91d7c5a1f061cf818d1b190f449e2bb7ab68e3391"
+  },
+  "databento/spx_close/year=2026/2026-01-02.parquet": {
+   "bytes": 254652,
+   "sha256": "84d7ce4a1a260d8435ad9798db9033be9fc3ea585f5488a520a9980dbfc2c0b2"
+  },
+  "databento/spx_close/year=2026/2026-01-05.parquet": {
+   "bytes": 255877,
+   "sha256": "86f820113d106136d902863b67a9910e0b99538a55867ed9326abad6de85fe1e"
+  },
+  "databento/spx_close/year=2026/2026-01-06.parquet": {
+   "bytes": 239411,
+   "sha256": "4d3ee56f725c9d4414702676ec3125aebd58934529fb7acb0823789b17bdd8b4"
+  },
+  "databento/spx_close/year=2026/2026-01-07.parquet": {
+   "bytes": 254897,
+   "sha256": "6a9bb62258b21fe2b5693b3c63af6dce093e90957b896246ff56227c88f8e1e7"
+  },
+  "databento/spx_close/year=2026/2026-01-08.parquet": {
+   "bytes": 251439,
+   "sha256": "87c3c2b6d86e89efd1a8342b059247a082d41702a1e5317b2214d03105c5ce1c"
+  },
+  "databento/spx_close/year=2026/2026-01-09.parquet": {
+   "bytes": 244462,
+   "sha256": "3bca73d8c18ea4b93baf72cc841d1d5c3a3dee7a5cd6cf1b54884192bcd68b3b"
+  },
+  "databento/spx_close/year=2026/2026-01-12.parquet": {
+   "bytes": 272218,
+   "sha256": "5e33730ba0d7fa517b8f42c4996200a0b9f5f2ddddd6565b7e6c5483b1d2ea1e"
+  },
+  "databento/spx_close/year=2026/2026-01-13.parquet": {
+   "bytes": 267985,
+   "sha256": "528e046480212944e337671dbc52fab288b9df75c25f5af44fd971dab5b02cfc"
+  },
+  "databento/spx_close/year=2026/2026-01-14.parquet": {
+   "bytes": 267718,
+   "sha256": "7066504ee26b208a67692dd60ac8e8f0b19f37801c735e0c04f88b97c0d119f5"
+  },
+  "databento/spx_close/year=2026/2026-01-15.parquet": {
+   "bytes": 262534,
+   "sha256": "707558683a15bd3677e2f32829201ef94fdd3786ed415c99508fa147fff22398"
+  },
+  "databento/spx_close/year=2026/2026-01-16.parquet": {
+   "bytes": 258225,
+   "sha256": "19282be9492812dfe322d094cb194bfed62aef6ec6218df76afeccb9f12964d9"
+  },
+  "databento/spx_close/year=2026/2026-01-20.parquet": {
+   "bytes": 279038,
+   "sha256": "e1fc3f4f327dca793c9391d78c6a225bec481d0040d51d979870014ee9928c22"
+  },
+  "databento/spx_close/year=2026/2026-01-21.parquet": {
+   "bytes": 292214,
+   "sha256": "22fb70e0a8d02cd09fcd26d14de58339b6d37af8cbe94aaf939a693cf7c55c2a"
+  },
+  "databento/spx_close/year=2026/2026-01-22.parquet": {
+   "bytes": 268647,
+   "sha256": "75a25a722e2298c69c64b97d1b6509e04af75b37f41dec84a4a81950a342974b"
+  },
+  "databento/spx_close/year=2026/2026-01-23.parquet": {
+   "bytes": 280634,
+   "sha256": "29a1340675871d5002969a47595e4e5894bb1ea7cadaab21540dae7f245ce536"
+  },
+  "databento/spx_close/year=2026/2026-01-26.parquet": {
+   "bytes": 263091,
+   "sha256": "5fa26113eae36f36ae5052f85f314be0fc8cfe5016cc78ce77b794e962b85dfb"
+  },
+  "databento/spx_close/year=2026/2026-01-27.parquet": {
+   "bytes": 268142,
+   "sha256": "bd1e6992c93764ad771d2ae8aeaac8e40fdf338a9058abf010b2eaba79e0e4eb"
+  },
+  "databento/spx_close/year=2026/2026-01-28.parquet": {
+   "bytes": 261494,
+   "sha256": "4708476874b422a1d637a821d07b74bc1dd502eac54b3888e43a429b323ed648"
+  },
+  "databento/spx_close/year=2026/2026-01-29.parquet": {
+   "bytes": 287570,
+   "sha256": "e73a901a82e676b49590feb7fe633a0b4b62675f23213d157abf3ac48f421d42"
+  },
+  "databento/spx_close/year=2026/2026-01-30.parquet": {
+   "bytes": 273240,
+   "sha256": "10bb00ebe1786b383ebbde547794e4c79b69e6a502d1e21a90b11a95ea258ef9"
+  },
+  "databento/spx_close/year=2026/2026-02-02.parquet": {
+   "bytes": 277614,
+   "sha256": "d9dd5d046ef95aafc4c47c97b952230bb68b5303ee81526c5a1939a324b388a1"
+  },
+  "databento/spx_close/year=2026/2026-02-03.parquet": {
+   "bytes": 272889,
+   "sha256": "277abe43119be0d5c002c35ff376ab53edfcac2b876f6b15700ebf44c7a1e74b"
+  },
+  "databento/spx_close/year=2026/2026-02-04.parquet": {
+   "bytes": 272706,
+   "sha256": "2620e1e9c5b096fc0df89c3944d8f56d22c427caa2e8635deff4707418903c7e"
+  },
+  "databento/spx_close/year=2026/2026-02-05.parquet": {
+   "bytes": 267276,
+   "sha256": "ac4dbaeba983e4a949d803083243c298df863d4bd8ee18857adc8da8cf6c9e9a"
+  },
+  "databento/spx_close/year=2026/2026-02-06.parquet": {
+   "bytes": 267594,
+   "sha256": "d37198baa41298363e1b5d581720201b51bdff6f323858aa765f4673bc146b97"
+  },
+  "databento/spx_close/year=2026/2026-02-09.parquet": {
+   "bytes": 286012,
+   "sha256": "0ac11809dc169e2ddf825d0bc6faa0599c236eb97cf812ca9925a87069dd9116"
+  },
+  "databento/spx_close/year=2026/2026-02-10.parquet": {
+   "bytes": 281915,
+   "sha256": "d4a2e6425ce7379a30895bbe6573080c50c61397cda8615c2c8c8204b894cfaa"
+  },
+  "databento/spx_close/year=2026/2026-02-11.parquet": {
+   "bytes": 268827,
+   "sha256": "ce36f1493cd147c396d2b707fc18bdd4f93bafcd36a66fef51a29a472a364313"
+  },
+  "databento/spx_close/year=2026/2026-02-12.parquet": {
+   "bytes": 248351,
+   "sha256": "e8955a3c7eb2abf5b886f7765717ce41610eff6d464961632e353102a9c8c02d"
+  },
+  "databento/spx_close/year=2026/2026-02-13.parquet": {
+   "bytes": 280435,
+   "sha256": "30fc83d374a3f46d630596572de6e12194693d0761c2885b13d2b9d04a25feeb"
+  },
+  "databento/spx_close/year=2026/2026-02-17.parquet": {
+   "bytes": 277147,
+   "sha256": "ec54ff868a77300a2b9d87c4cb3a91a8ef4f192dcd622fbf7d958476c95339a2"
+  },
+  "databento/spx_close/year=2026/2026-02-18.parquet": {
+   "bytes": 278318,
+   "sha256": "cd4ca4a8d9c0f4debf62ce8b5539b166af66b9644785950298cf5bf885a7b578"
+  },
+  "databento/spx_close/year=2026/2026-02-19.parquet": {
+   "bytes": 277526,
+   "sha256": "05ff6ebbce78fa2d1d9e36f38f4a0421c66a9bc3d2c528d644ef2ffb370fa5e9"
+  },
+  "databento/spx_close/year=2026/2026-02-20.parquet": {
+   "bytes": 276774,
+   "sha256": "6758c7c02f71896d96ac22b9be1bca759633f145b73666e4e0854a0c15519cc7"
+  },
+  "databento/spx_close/year=2026/2026-02-23.parquet": {
+   "bytes": 275980,
+   "sha256": "e7787786bdc2cc11c796d7be2e6a90980661b7e9cca0ebd4bf9e847f648e65c6"
+  },
+  "databento/spx_close/year=2026/2026-02-24.parquet": {
+   "bytes": 263429,
+   "sha256": "539104848d64454f69c3a7d5bc4152e5f378d82c189150a09bdee643d16721a3"
+  },
+  "databento/spx_close/year=2026/2026-02-25.parquet": {
+   "bytes": 274719,
+   "sha256": "d970790d1355632786f9385bf5ab80a55b1ce56228ecef13849bf1e0aab3d447"
+  },
+  "databento/spx_close/year=2026/2026-02-26.parquet": {
+   "bytes": 276136,
+   "sha256": "c59e33f7852d24d7323f06c5cb98920ad7dc4b477ce3b7b639ef6b3261f8e3fd"
+  },
+  "databento/spx_close/year=2026/2026-02-27.parquet": {
+   "bytes": 271171,
+   "sha256": "5ba0fce006ab6b46f88d98947e2a187bc9a149d360a9245ca2d5a6f4e768f54e"
+  },
+  "databento/spx_close/year=2026/2026-03-02.parquet": {
+   "bytes": 266779,
+   "sha256": "7e7ad63bb8156f8d6a9cda21fa77404489bffacde95e2811bd5b5f2ce8e19187"
+  },
+  "databento/spx_close/year=2026/2026-03-03.parquet": {
+   "bytes": 266491,
+   "sha256": "b0151f296f2cf331733b56a550488f9b9fe969f3b731d333ea80d26e6fbb28d4"
+  },
+  "databento/spx_close/year=2026/2026-03-04.parquet": {
+   "bytes": 260206,
+   "sha256": "af2ac0393ab8132cb3cdf71d8eab745182691ea58c2b9b9d0542d810305165fa"
+  },
+  "databento/spx_close/year=2026/2026-03-05.parquet": {
+   "bytes": 269399,
+   "sha256": "462d9449c2f72181e7fae360b5c472b8554a1f2c15d90bd8db88001de3ac9c16"
+  },
+  "databento/spx_close/year=2026/2026-03-06.parquet": {
+   "bytes": 275024,
+   "sha256": "b0f1e5cc3d2041e70851c799746b9519843eb5abd12bf5964c51d92536d9a7da"
+  },
+  "databento/spx_close/year=2026/2026-03-09.parquet": {
+   "bytes": 279183,
+   "sha256": "a6a90d1ee5103ac1344c1793b6ba184528ab371b8d9c4fe0b8264f4a9ae03300"
+  },
+  "databento/spx_close/year=2026/2026-03-10.parquet": {
+   "bytes": 280568,
+   "sha256": "d8371fd850ec306269de6f89ab360e6d2b9a37bc1001dabe58fb8fc07c5a16e2"
+  },
+  "databento/spx_close/year=2026/2026-03-11.parquet": {
+   "bytes": 260753,
+   "sha256": "5cf2a4f2020a8af5da369b6bbaf96d599164a60426e991dc0d65ef358c0e91f3"
+  },
+  "databento/spx_close/year=2026/2026-03-12.parquet": {
+   "bytes": 269378,
+   "sha256": "f869e033150e8ca4db21fd892ef4291beaefe3a9cc753b328ffdeab9648032c8"
+  },
+  "databento/spx_close/year=2026/2026-03-13.parquet": {
+   "bytes": 280430,
+   "sha256": "eb4f3b6c76b1efb1b16bc9e9d8059edc7082ffde757546fa302ad6083eeb62c4"
+  },
+  "databento/spx_close/year=2026/2026-03-16.parquet": {
+   "bytes": 252087,
+   "sha256": "7d8671bceafe8148b1dc9127149e33878539f82b464ace2b2d434ebdc305d8fe"
+  },
+  "databento/spx_close/year=2026/2026-03-17.parquet": {
+   "bytes": 261857,
+   "sha256": "82a6c26832e53b9457f1f3d6284567a6c7fae641274f53f4d4ee6c79eb99b5c3"
+  },
+  "databento/spx_close/year=2026/2026-03-18.parquet": {
+   "bytes": 283522,
+   "sha256": "cefcdaa6493a9ed8cb215e0339bd0260c63026b4c175855ba22ef6fcb092bf3f"
+  },
+  "databento/spx_close/year=2026/2026-03-19.parquet": {
+   "bytes": 284790,
+   "sha256": "08a80ef82d78bd76895a6b8607c83b23096c72d3a0b664cc1e12d9126df1b423"
+  },
+  "databento/spx_close/year=2026/2026-03-20.parquet": {
+   "bytes": 282586,
+   "sha256": "2a2787c5b83a8f3c3edb34b19a37d0535744778bbb4497d95c5313b8dae63cef"
+  },
+  "databento/spx_close/year=2026/2026-03-23.parquet": {
+   "bytes": 290018,
+   "sha256": "7d121d2e3d0315220005086f5f8b0008c8fb1a23159e5b721c60d4de1c8ae080"
+  },
+  "databento/spx_close/year=2026/2026-03-24.parquet": {
+   "bytes": 282707,
+   "sha256": "00a88efee28375f6b986cafcb39230dd7d614beb30c92d7739e0de18aaec7784"
+  },
+  "databento/spx_close/year=2026/2026-03-25.parquet": {
+   "bytes": 278383,
+   "sha256": "1a8d8ffabe2ffb063dbcf8c6b84bb61fd37a84ab7a66cc6c6a65ce6d06eeb065"
+  },
+  "databento/spx_close/year=2026/2026-03-26.parquet": {
+   "bytes": 285437,
+   "sha256": "2a8deb67b522723266c1e159e6a42fc3ab7bdd5cdce7af92e4560d4e1b6fb65e"
+  },
+  "databento/spx_close/year=2026/2026-03-27.parquet": {
+   "bytes": 284706,
+   "sha256": "33b2c5e2f7dc4998a20a9f222b87985dfdc9b1c2665b25ceec19af7a68ea7cb9"
+  },
+  "databento/spx_close/year=2026/2026-03-30.parquet": {
+   "bytes": 302224,
+   "sha256": "2efbd4e8122d5a45fd4ae649c5bc1b66e6e8adf4ee0ac9da394114f5df17242a"
+  },
+  "databento/spx_close/year=2026/2026-03-31.parquet": {
+   "bytes": 303908,
+   "sha256": "67d0d774bf14629d6fd34143ebdad411d155c9ab2d24c1bc2e792bd9a64a3429"
+  },
+  "databento/spx_close/year=2026/2026-04-01.parquet": {
+   "bytes": 295863,
+   "sha256": "98eae26d9e298b7379d697df2dbc904dd9a5d49afab5cb0cdcb62addcb8b724b"
+  },
+  "databento/spx_close/year=2026/2026-04-02.parquet": {
+   "bytes": 290075,
+   "sha256": "b25c2b55279de1ac1ed4c0eb1e91791234a222e4c60eaead0dbeae9898fde5eb"
+  },
+  "databento/spx_close/year=2026/2026-04-06.parquet": {
+   "bytes": 296189,
+   "sha256": "9d686d9bbc401427186f1ed7cefbf3044ad0401c52b05052f7a1d199918980ae"
+  },
+  "databento/spx_close/year=2026/2026-04-07.parquet": {
+   "bytes": 284431,
+   "sha256": "7c3db5d41a3b1c28c12f40e88a2f318d00b7884468f2df51d96f09660e94083b"
+  },
+  "databento/spx_close/year=2026/2026-04-08.parquet": {
+   "bytes": 284902,
+   "sha256": "b3835b333b9eb0b67be0e82f793db39007bffd8edea91926731f0ba8af02e15d"
+  },
+  "databento/spx_close/year=2026/2026-04-09.parquet": {
+   "bytes": 280850,
+   "sha256": "7def09c8dc7024b4fbcc848cfa9f130aec69105c0e058dc2ee7c87c24080f82a"
+  },
+  "databento/spx_close/year=2026/2026-04-10.parquet": {
+   "bytes": 303180,
+   "sha256": "42772756b6c2a60108b3451e7362bf8c0c6ebe083d7cb40c1bfa11b3ac4d0a8e"
+  },
+  "databento/spx_close/year=2026/2026-04-13.parquet": {
+   "bytes": 298916,
+   "sha256": "7936608da9fc7646cb291758ea34a768d524a4bb526cf42d46043c4bd824b6f8"
+  },
+  "databento/spx_close/year=2026/2026-04-14.parquet": {
+   "bytes": 302536,
+   "sha256": "11b2c8119fd73a140a3e30d6a876ea233ba01b51341d7d197ed23aa36af64311"
+  },
+  "databento/spx_close/year=2026/2026-04-15.parquet": {
+   "bytes": 299854,
+   "sha256": "a7660329768d373345ac52c4ced8a605ecc6b42d186cee4ae5c14c172904f5c6"
+  },
+  "databento/spx_close/year=2026/2026-04-16.parquet": {
+   "bytes": 306788,
+   "sha256": "2a302cc24b4ee9303920593df0de30ff3e70ba72b8a8a5f6b59eecd061b71e24"
+  },
+  "databento/spx_close/year=2026/2026-04-17.parquet": {
+   "bytes": 298182,
+   "sha256": "f06c7acd1410e560f8a3ae830856ef8b4c881c1b95e4a4f9e63b65c2d6b250ef"
+  },
+  "databento/spx_close/year=2026/2026-04-20.parquet": {
+   "bytes": 321972,
+   "sha256": "74a016155120f6e1f63948c661c0d9eaace77dd6f807cd52b059a565e44fe434"
+  },
+  "databento/spx_close/year=2026/2026-04-21.parquet": {
+   "bytes": 318152,
+   "sha256": "7ef979e4408a157518aa2bb664ae37a7a76126c6a9f5b28c81e8c88684d5b7af"
+  },
+  "databento/spx_close/year=2026/2026-04-22.parquet": {
+   "bytes": 304115,
+   "sha256": "b5eb8471e973988866d32d15ee8db5abfb0646a07048bc5dbc9435c668fe5aa5"
+  },
+  "databento/spx_close/year=2026/2026-04-23.parquet": {
+   "bytes": 319204,
+   "sha256": "ac9a15cb71e26808e0329aeba95ddb558a314831957ce45af7bab4ed43ddd724"
+  },
+  "databento/spx_close/year=2026/2026-04-24.parquet": {
+   "bytes": 296974,
+   "sha256": "2f56cae59f01b9307da6012cc5aa5075349826defe59163d75e966754ff64426"
+  },
+  "databento/spx_close/year=2026/2026-04-27.parquet": {
+   "bytes": 297873,
+   "sha256": "4e21ee5d1f53d80a69c6fdc1703b73042bef67873e86f35f20b9bcbb1a800102"
+  },
+  "databento/spx_close/year=2026/2026-04-28.parquet": {
+   "bytes": 300255,
+   "sha256": "5b8ba96f3a41644aa10776a830a9fcb1b73e5cb00eb2a5e44696d1fe2e8ef666"
+  },
+  "databento/spx_close/year=2026/2026-04-29.parquet": {
+   "bytes": 313395,
+   "sha256": "aca7fb0e93f7576d0fcc030d1c575db9a4797dfdae49a4c182e443dc81874570"
+  },
+  "databento/spx_close/year=2026/2026-04-30.parquet": {
+   "bytes": 308319,
+   "sha256": "36e973f852426134104085bc0fb1cd22044ddb7c04aa7c1e7b4f7a90ee6d6455"
+  },
+  "databento/spx_close/year=2026/2026-05-01.parquet": {
+   "bytes": 306977,
+   "sha256": "859f2ecad284c4778c5ca36f3ce19a82b2c56c00a04c12c8dcfecddca0c51821"
+  },
+  "databento/spx_close/year=2026/2026-05-04.parquet": {
+   "bytes": 318624,
+   "sha256": "3040343c47515438924ef869ba524ac2b9407d378663486e79122224166d4e93"
+  },
+  "databento/spx_close/year=2026/2026-05-05.parquet": {
+   "bytes": 307128,
+   "sha256": "c5f19a9890bb70f5c704cea0989c35fdb0c8098e4b12b9b67b336d5db1b0d26e"
+  },
+  "databento/spx_close/year=2026/2026-05-06.parquet": {
+   "bytes": 309254,
+   "sha256": "1274bd309ee4c9d802b58b953971c0d6311e4cd9a99e4c58bfaad7f2063e2f65"
+  },
+  "databento/spx_close/year=2026/2026-05-07.parquet": {
+   "bytes": 316504,
+   "sha256": "11c8bb93a0ed7a0313ee294d52c07eb1752e30687db72e294c2929c07366257a"
+  },
+  "databento/spx_close/year=2026/2026-05-08.parquet": {
+   "bytes": 328043,
+   "sha256": "cba0d66fb94b616ddc190dc36d5a2fce5d73c418347ab95d183a4054e89a0fa4"
+  },
+  "databento/spx_close/year=2026/2026-05-11.parquet": {
+   "bytes": 316746,
+   "sha256": "d79cc61dbc23cbf17c1ed326cb4057060dcaaca59ffd4465d6ff08640c8bf798"
+  },
+  "databento/spx_close/year=2026/2026-05-12.parquet": {
+   "bytes": 313244,
+   "sha256": "09bbbbdc76b37be6f245709263a4e4fe236046a2844c4d1cf558594aeb601999"
+  },
+  "databento/spx_close/year=2026/2026-05-13.parquet": {
+   "bytes": 322818,
+   "sha256": "7daff8db5cccaad61c513c452d48fa331d430aa31e499490437a5f63272ac220"
+  },
+  "databento/spx_close/year=2026/2026-05-14.parquet": {
+   "bytes": 330321,
+   "sha256": "a4d749fb98fd3469a530245734fdb0f1c5d8f5aea51e67e2a2e000888c314636"
+  },
+  "databento/spx_close/year=2026/2026-05-15.parquet": {
+   "bytes": 329870,
+   "sha256": "21361fc1922c4f192b64fc0cafac47baf2bbb7ac70a532011b8c21c631efc036"
+  },
+  "databento/spx_close/year=2026/2026-05-18.parquet": {
+   "bytes": 323550,
+   "sha256": "44f9225ccdbf995cbcc5f2163c9b00c452079b05d1ac6d56803b5247bdcd5102"
+  },
+  "databento/spx_close/year=2026/2026-05-19.parquet": {
+   "bytes": 321941,
+   "sha256": "e1680b497765ae58f3f2517f41f82ea0185226ce0c877b26061dd4c087602e2b"
+  },
+  "databento/spx_close/year=2026/2026-05-20.parquet": {
+   "bytes": 323060,
+   "sha256": "396a10376269f2ecf884b2186f9e67e92a5dcea3403de780974fc20657bd11e7"
+  },
+  "databento/spx_close/year=2026/2026-05-21.parquet": {
+   "bytes": 312045,
+   "sha256": "2414f79e9097e3889972b6c512b7c49e84dd441b976b27c0cc1173e9a838c871"
+  },
+  "databento/spx_close/year=2026/2026-05-22.parquet": {
+   "bytes": 315166,
+   "sha256": "e8f250d130c08ac9e5da6273e095315be7a4f509bc1753ae2bd9c876b9f3f2c9"
+  },
+  "databento/spx_close/year=2026/2026-05-26.parquet": {
+   "bytes": 322046,
+   "sha256": "89cbb5d5693417e77c693816dc83f0bc67c8801d87ee0e8f1db0ecabe31ca662"
+  },
+  "databento/spx_close/year=2026/2026-05-27.parquet": {
+   "bytes": 301712,
+   "sha256": "01343a725f7a63492898417ea5828007f6d52fad2a0839c526c4c79122d48e9d"
+  },
+  "databento/spx_close/year=2026/2026-05-28.parquet": {
+   "bytes": 296504,
+   "sha256": "5685f122a8b32a6ae86927c51d1dd1fa6ca036737c4451523ac7ff3a4d8aea4e"
+  },
+  "databento/spx_close/year=2026/2026-05-29.parquet": {
+   "bytes": 318776,
+   "sha256": "1434ce2c2a2e9741714454bd9cd8f0dccd2730e4a2ee3334a1334f8365f3a74a"
+  },
+  "databento/spx_close/year=2026/2026-06-01.parquet": {
+   "bytes": 299224,
+   "sha256": "ad01768aac0ae472d91c7586c775d3cf4e81ec89c5a8ffc44ce0d97bf096769c"
+  },
+  "databento/spx_close/year=2026/2026-06-02.parquet": {
+   "bytes": 303139,
+   "sha256": "ecac49d8e872cecb227df5d023c190b673ebc44bf671aef40865fea1e96af446"
+  },
+  "databento/spx_close/year=2026/2026-06-03.parquet": {
+   "bytes": 321841,
+   "sha256": "c88786890829cde49a122e4a6b3fdab95b817bf1fcd62d30266800fda75228a2"
+  },
+  "databento/spx_close/year=2026/2026-06-04.parquet": {
+   "bytes": 323464,
+   "sha256": "c9997b81bdbf4545bda0a607f3c0411815cb2318263678b538d0ccf943f9c841"
+  },
+  "databento/spx_close/year=2026/2026-06-05.parquet": {
+   "bytes": 322993,
+   "sha256": "2f2d6d91d8903e6a2d0007bca71bc1506daf74da120c94c6147c34f6ec1d5888"
+  },
+  "databento/spx_close/year=2026/2026-06-08.parquet": {
+   "bytes": 332808,
+   "sha256": "62f84c235baf6545fa946a1ae57311e1fa98bc0fcc4cdfbe05b73c4ff7b769fc"
+  },
+  "databento/spx_close/year=2026/2026-06-09.parquet": {
+   "bytes": 324089,
+   "sha256": "6a9860b2f6fb1e61ac97497870a1a05bafa86801ac3cb5f761a6b7e2acab1aee"
+  },
+  "databento/spx_close/year=2026/2026-06-10.parquet": {
+   "bytes": 326719,
+   "sha256": "61fa2ac886ed950c4475ac807463b4a6e14a46751d1440676d22c2478a518741"
+  },
+  "databento/spx_close/year=2026/2026-06-11.parquet": {
+   "bytes": 327680,
+   "sha256": "cb034bb16478cdc744d04bed393b712e9f481517876e35d345a8921fd9dfce11"
+  },
+  "databento/spx_close/year=2026/2026-06-12.parquet": {
+   "bytes": 329898,
+   "sha256": "67b4a37f5f48081ce85d2b588e2970db40d465f141545346eed4d949ca931f19"
+  },
+  "databento/spx_close/year=2026/2026-06-15.parquet": {
+   "bytes": 326949,
+   "sha256": "3528726f28de0df51dbdd405a4589c827087d7b9ac5dc083f260fbb338c9b4aa"
+  },
+  "databento/spx_close/year=2026/2026-06-16.parquet": {
+   "bytes": 316559,
+   "sha256": "134058766a24d336938f72814d625f2cbf870cc4cb618d91910774b220b0ee9f"
+  },
+  "databento/spx_close/year=2026/2026-06-17.parquet": {
+   "bytes": 329334,
+   "sha256": "d7cc3e1f5fc35a6077c00dc192388f2d3663a7cb99e622db39fd52483696c2f0"
+  },
+  "databento/spx_close/year=2026/2026-06-18.parquet": {
+   "bytes": 304317,
+   "sha256": "c064c11d32932227496bc5af3328f37fb054b3a4134aee170b7468673c3c1e72"
+  },
+  "databento/spx_close/year=2026/2026-06-22.parquet": {
+   "bytes": 285034,
+   "sha256": "8f225d052d662e45e4d708328201501580420c3bf1f8c90f2fae877e0452aa99"
+  },
+  "databento/spx_close/year=2026/2026-06-23.parquet": {
+   "bytes": 304908,
+   "sha256": "b15e1b2d30973eedadc64513ba115995e365f468391a8f59c3fda1593640b16c"
+  },
+  "databento/spx_close/year=2026/2026-06-24.parquet": {
+   "bytes": 256014,
+   "sha256": "459a2255c2611981065e778dd14f44e9f6e71a45e62b4b3c9806eadb9dcbdd39"
+  },
+  "databento/spx_close/year=2026/2026-06-25.parquet": {
+   "bytes": 314930,
+   "sha256": "adf2d4baa04e815d0accc6d23a214b500ae05bf593c6f48cc63b2494df6bf1c2"
+  },
+  "databento/spx_close/year=2026/2026-06-26.parquet": {
+   "bytes": 317227,
+   "sha256": "58f98e84895798bb9efb6cc2e425a99bd19de50efd16878ce6c0e070ba826aa9"
+  },
+  "databento/spx_close/year=2026/2026-06-29.parquet": {
+   "bytes": 317111,
+   "sha256": "cd4faf439e39e6b353fe846f38d4bc4d18c89cf5881c002c4d7d631faab814c3"
+  },
+  "databento/spx_close/year=2026/2026-06-30.parquet": {
+   "bytes": 323687,
+   "sha256": "95817e0ec337c18ea74a72a96572b1d32f64c6b393d778ea2be89cf6e1119415"
+  },
+  "databento/spx_close/year=2026/2026-07-01.parquet": {
+   "bytes": 312812,
+   "sha256": "cbd403f565c5470b79bb136e717e91699499784d3ea44e0b40be37629caa7207"
+  },
+  "databento/spx_close/year=2026/2026-07-02.parquet": {
+   "bytes": 310422,
+   "sha256": "30a16aa550f06f5ff59452f927755e77eda7a2d6d3358dbaae3d8acf98d6e6ea"
+  },
+  "databento/spx_close/year=2026/2026-07-06.parquet": {
+   "bytes": 304410,
+   "sha256": "e5cbf332defc9d49abc47718a04bc4ee6df0d09727f30f52d0db6dc6d3b8e705"
+  },
+  "databento/spx_close/year=2026/2026-07-07.parquet": {
+   "bytes": 309255,
+   "sha256": "abaa87ead27f8efbda3595dd545df47010316c1a7ace9c1700e1d1934bc6c648"
+  },
+  "databento/spx_close/year=2026/2026-07-08.parquet": {
+   "bytes": 306568,
+   "sha256": "9945d8f8713444148297187fc7ebe151bb5038d831e20cbc4628d2623a80c5da"
+  },
+  "databento/spx_close/year=2026/2026-07-09.parquet": {
+   "bytes": 265502,
+   "sha256": "fef31719134576780eea568ff6f74382d80392be0d2a410c46fe68ed6bc482f7"
+  },
+  "databento/spx_close/year=2026/2026-07-10.parquet": {
+   "bytes": 307176,
+   "sha256": "a460989cbba7f40d6ba9b0a4ce4a62218dd7d33a2ced8ca4b772c4973443bfc9"
+  },
+  "databento/spx_close/year=2026/2026-07-13.parquet": {
+   "bytes": 301924,
+   "sha256": "11284117e3afb33d06b9d9ab00b0a7ad6e3275eb6abb4ba93d06de7fa93aebea"
+  },
+  "databento/spx_close/year=2026/2026-07-14.parquet": {
+   "bytes": 299775,
+   "sha256": "c07163f4c291cf1e6348ba2f4c782a7907de8a1f3aeeb9b70e7146b3e2c1a0b2"
+  },
+  "databento/spx_close/year=2026/2026-07-15.parquet": {
+   "bytes": 310014,
+   "sha256": "86c3f497566c225b9cba646d91a8c6e7128d1c69b677e2fbe2518f1a8118ea91"
+  },
+  "databento/spx_close/year=2026/2026-07-16.parquet": {
+   "bytes": 301987,
+   "sha256": "59570ce53c04b4307faf2d96156907f6cfd23ed9e4a723818fd423bf0e158aa0"
+  },
+  "databento/spx_close/year=2026/2026-07-17.parquet": {
+   "bytes": 301859,
+   "sha256": "748962b64fa20594b0f92b86f515542428c4365d8271eb69056f742304834f3b"
+  },
+  "databento/spx_close/year=2026/2026-07-20.parquet": {
+   "bytes": 303469,
+   "sha256": "3cd43675295eaa6d174e0a86e2b98c022654849a068876f9c4fcdbe319e54d4b"
+  },
+  "databento/spx_close/year=2026/2026-07-21.parquet": {
+   "bytes": 289135,
+   "sha256": "32e9217ea220cbbb334b57afd511d10508d5abab9980be948a5b6d2603528e2d"
+  },
+  "databento/spx_close/year=2026/2026-07-22.parquet": {
+   "bytes": 305873,
+   "sha256": "4156889a61cdf4ef4ac4e091611b41d0617d0062a98d28703e5eb2a79c6864ec"
+  },
+  "databento/spx_close/year=2026/2026-07-23.parquet": {
+   "bytes": 314030,
+   "sha256": "796cab53c1fb116173c9b5601c8099ca4c7d3ba67d3e6cf5264c17327ebd7f0d"
+  },
+  "databento/spx_close/year=2026/2026-07-24.parquet": {
+   "bytes": 301468,
+   "sha256": "80416debda202a377c1182227d3f7960dc3b0432836dd510b4801b3dc6f37c09"
+  },
+  "databento/spx_close/year=2026/2026-07-27.parquet": {
+   "bytes": 307072,
+   "sha256": "300d24185dcbd36d4c136458402f392a951b10ade4d118f616104ffb77be73ce"
+  },
+  "databento/spx_close/year=2026/2026-07-28.parquet": {
+   "bytes": 265878,
+   "sha256": "2c58622411bdecd347bfffd87a58411aa7c2cb4455abebd1f966f9c248954a27"
+  },
+  "databento/spx_close/year=2026/2026-07-29.parquet": {
+   "bytes": 300405,
+   "sha256": "16372d96f8006eeb00f71b7a30929d65e3d9400de6617bb431f62a82fccd2975"
+  },
+  "databento/spx_close/year=2026/2026-07-30.parquet": {
+   "bytes": 308567,
+   "sha256": "af28c7657183d7c404297616a40d2581d132e2142dca965543eac52c58cf8669"
+  },
+  "databento/spx_close/year=2026/2026-07-31.parquet": {
+   "bytes": 306166,
+   "sha256": "7b52fac993ee3ed0a1c15863e645503b042b885696515f5070b79eaeb7f744c6"
+  },
+  "databento/spx_close/year=2026/2026-08-03.parquet": {
+   "bytes": 272318,
+   "sha256": "2cd86fd53e2ad2cfd93c1be485086036c4374fdabb5faa89ca12e2c7b04689c2"
+  },
+  "databento/spx_close/year=2026/2026-08-04.parquet": {
+   "bytes": 305120,
+   "sha256": "4683e8cf8b046e1e414c23864fe2e378eba314bc9be73bcc3272133704b0301c"
+  },
+  "databento/spx_close/year=2026/2026-08-05.parquet": {
+   "bytes": 325543,
+   "sha256": "b7f405691693a6ec8506f2f0a49e660e82e7162262bd60c66021f641b53120c8"
+  },
+  "databento/spx_close/year=2026/2026-08-06.parquet": {
+   "bytes": 302092,
+   "sha256": "afb3dff8def2b32a05b3010c5a093336b8483a249218a0fa8609b589c10955fd"
+  },
+  "databento/spx_close/year=2026/2026-08-07.parquet": {
+   "bytes": 333398,
+   "sha256": "c65f85ae9ae8a1a9df11ab0d069d2a3e6def41fd475e86f4fbac888fcdee157e"
+  },
+  "databento/spx_close/year=2026/2026-08-10.parquet": {
+   "bytes": 291221,
+   "sha256": "02c9fb378be4e8f4eaa7e098063d8c3ce79e2498eafc419e26900238f1c16943"
+  },
+  "databento/spx_close/year=2026/2026-08-11.parquet": {
+   "bytes": 319067,
+   "sha256": "872410d23aa74a6da37c07de5e22f1e29362633cbd391f1a8c86f02c423e6a14"
+  },
+  "databento/spx_close/year=2026/2026-08-12.parquet": {
+   "bytes": 319627,
+   "sha256": "263f73068c81faf09c3421a2eb225892211a5018e3dbcd00e3753855711a02d2"
+  },
+  "databento/spx_close/year=2026/2026-08-13.parquet": {
+   "bytes": 255516,
+   "sha256": "abaad189ffad859b5c7cc6fb6d0e3886181795aea84e5b9c40cf3cde57d87571"
+  },
+  "databento/spx_close/year=2026/2026-08-14.parquet": {
+   "bytes": 251758,
+   "sha256": "55599d814c295c82b414a73f54e77c048d5b90a1b2bc640f276569a26b2aed76"
+  },
+  "databento/spx_close/year=2026/2026-08-17.parquet": {
+   "bytes": 309525,
+   "sha256": "7ccc4a1498a8a822acd41359b0d4595edafa6d67d06248c08bc983545a884002"
+  },
+  "databento/spx_close/year=2026/2026-08-18.parquet": {
+   "bytes": 313861,
+   "sha256": "be6fd29209542b7c896fe29f80074d055561416d6e1bce50f2d0d6a1dc064175"
+  },
+  "databento/spx_close/year=2026/2026-08-19.parquet": {
+   "bytes": 311300,
+   "sha256": "4d1b0f9faacfb0a7d2cee504fe164dc9d1fc8bb8a393dc9296a2dff2db25b9fb"
+  },
+  "databento/spx_close/year=2026/2026-08-20.parquet": {
+   "bytes": 314150,
+   "sha256": "6aecfc81091e4f889e82338fd7b795d4da91cfbae822c45d5f0852457cc4ddec"
+  },
+  "databento/spx_close/year=2026/2026-08-21.parquet": {
+   "bytes": 309404,
+   "sha256": "7d65f0c01ed2e79eb540e639434220b570ce0414d87d920a330a49f055eb7d17"
+  },
+  "databento/spx_close/year=2026/2026-08-24.parquet": {
+   "bytes": 274047,
+   "sha256": "e8c8c2d050d02630499cbe7ac73412d80f6c5d9537ac96bd3cfb3c9af62446e7"
+  },
+  "databento/spx_close/year=2026/2026-08-25.parquet": {
+   "bytes": 306305,
+   "sha256": "1e1efc1b613d4ca6d0755968d9a505b1e812cf1d5d120d94a44571f4095e56ed"
+  },
+  "databento/spx_close/year=2026/2026-08-26.parquet": {
+   "bytes": 312189,
+   "sha256": "7942e7b1d8988a38a2c4fdb600f9ae07f2434166a48f6df300c22c87a652252b"
+  },
+  "databento/spx_close/year=2026/2026-08-27.parquet": {
+   "bytes": 305380,
+   "sha256": "23e9478574e4866e9754e76e18cd601b2d841a82b52a99b3d7dea96e833aff2a"
+  },
+  "databento/spx_close/year=2026/2026-08-28.parquet": {
+   "bytes": 309271,
+   "sha256": "99a74629d29a0ee7079b0d72da2b9d6ed826282fcc87aa62c025818f1e14c374"
+  },
+  "databento/spx_close/year=2026/2026-08-31.parquet": {
+   "bytes": 279343,
+   "sha256": "caed394199cc66ca241dec5901b9ce847147c02620c8f55ec0d865b7ebb46916"
+  },
+  "databento/spx_close/year=2026/2026-09-01.parquet": {
+   "bytes": 304867,
+   "sha256": "806185b5d0d274126efc91c2b8588128f2c69258eae41d3bb1a1333377bd60ed"
+  },
+  "databento/spx_close/year=2026/2026-09-02.parquet": {
+   "bytes": 242754,
+   "sha256": "beab24eb679446e76fa690e25505b18d2febc4f0c18e0eb7d756e49da50bf54e"
+  },
+  "databento/spx_close/year=2026/2026-09-03.parquet": {
+   "bytes": 274998,
+   "sha256": "8cec12ec583aac1a7c85e2544f3d0af08e57c4d0dcac08fb57870e996a5c5242"
+  },
+  "databento/spx_close/year=2026/2026-09-04.parquet": {
+   "bytes": 302314,
+   "sha256": "b2a488cdad30a640ab2deda9c7b9c9d11be3d0905220470e593a9850aca62c56"
+  },
+  "databento/spx_close/year=2026/2026-09-08.parquet": {
+   "bytes": 302831,
+   "sha256": "6b7f28a87590a55bcb6dc9aab0dca40fefada242c5e7a3cf1d2b7ad954dfab7a"
+  },
+  "databento/spx_close/year=2026/2026-09-09.parquet": {
+   "bytes": 277402,
+   "sha256": "eb6c94edd068b52adc2c3133aef34121c51c1731a10a15c362fcebca36a21bc8"
+  },
+  "databento/spx_close/year=2026/2026-09-10.parquet": {
+   "bytes": 273653,
+   "sha256": "7b03a38153ef1cb092f535f95c79f61457ec80773aefa123fd3c6d1254a8f6e1"
+  },
+  "databento/spx_close/year=2026/2026-09-11.parquet": {
+   "bytes": 294659,
+   "sha256": "c0df6625315b11821333ab0b7155c0a4dc2190fe08cb9f4a30a217398af13e20"
+  },
+  "databento/spx_close/year=2026/2026-09-14.parquet": {
+   "bytes": 302956,
+   "sha256": "bd3390de59f2ac2a3fb1c6d9f87d7d8a4f7f3df484137ae0aca43d600909f592"
+  },
+  "databento/spx_close/year=2026/2026-09-15.parquet": {
+   "bytes": 307983,
+   "sha256": "cc978debdacbb1fc9e7fb8efa2997dcc9ab3f07de73cd283e72e88a5ced1fe44"
+  },
+  "databento/spx_close/year=2026/2026-09-16.parquet": {
+   "bytes": 301782,
+   "sha256": "c73a756a52d8f3f92f73296f6b2d59888da16227f5523cd76465342055615463"
+  },
+  "databento/spx_close/year=2026/2026-09-17.parquet": {
+   "bytes": 285025,
+   "sha256": "1e8d16013754c2a2453e7e404122ed883dbde22e986fd059d3223ae521b33799"
+  },
+  "databento/spx_close/year=2026/2026-09-18.parquet": {
+   "bytes": 308070,
+   "sha256": "51cb71fc62d23562783a0c38dcf76b74724c560bee02f64b8a22de38f7c60e21"
+  },
+  "databento/spx_close/year=2026/2026-09-21.parquet": {
+   "bytes": 289196,
+   "sha256": "c9f7cc0e7b8a80b24976ca374fd0be7b9655079a6fc3cb42c96dd041e7ad2cec"
+  },
+  "databento/spx_close/year=2026/2026-09-22.parquet": {
+   "bytes": 320493,
+   "sha256": "88117d85c9101efbf611064f31a30b752692f72090aefff44b2053821d15aa62"
+  },
+  "databento/spx_close/year=2026/2026-09-23.parquet": {
+   "bytes": 273228,
+   "sha256": "9bcbd35eee1a0c4588ca4686ee6cb66ab2c5488d87274f7855c548de3f5defb9"
+  },
+  "databento/spx_close/year=2026/2026-09-24.parquet": {
+   "bytes": 306009,
+   "sha256": "3bb67c771f5c8e51088e98e2c638c7d87281cb624d3c94fb7802c9de93bf316e"
+  },
+  "databento/spx_close/year=2026/2026-09-25.parquet": {
+   "bytes": 296302,
+   "sha256": "dda17b9577bfbbe9ef02620d7c72f134c9f52f0336c38905788efcabdcaf1dac"
+  },
+  "databento/spx_close/year=2026/2026-09-28.parquet": {
+   "bytes": 312561,
+   "sha256": "c42175ed23cd41c8150a66cd1ef13d879a25a20c143e238e91693e281623dfaf"
+  },
+  "databento/spx_close/year=2026/2026-09-29.parquet": {
+   "bytes": 309667,
+   "sha256": "ac85d3c9dc20ca125c126b0961f6a8cc1ab9301af34fd4c9bc3eda4c41b22c4b"
+  },
+  "databento/spx_close/year=2026/2026-09-30.parquet": {
+   "bytes": 312120,
+   "sha256": "1bd8b589e623f82ec8c54e02262bab80b3a6882328a4a0e6615e05e200d81854"
+  },
+  "databento/spx_close/year=2026/2026-10-01.parquet": {
+   "bytes": 303895,
+   "sha256": "2e63e5f295264b72646abd00289b288b1b7746f4b37b67c98885b0e8c7a323d3"
+  },
+  "databento/spx_close/year=2026/2026-10-02.parquet": {
+   "bytes": 269249,
+   "sha256": "dd074acde1488d9fbd52ccff95b1388e00e963ea2f92fe2274172bc71b6d765d"
+  },
+  "panel/atm_term.parquet": {
+   "bytes": 4596037,
+   "sha256": "b9f99cd0442f97597fba43feb8b21523f32bd0e43bfb9c5c2cb622d7edd23e22"
+  },
+  "panel/coverage.parquet": {
+   "bytes": 61466,
+   "sha256": "157d38b18d01a8f3b3bc113bbf02f0fc53fa5d728c1028f5882f9dcf3c94f2e1"
+  },
+  "panel/fred_check.parquet": {
+   "bytes": 4006,
+   "sha256": "6bbfaf93eead729657fe6fb96e829cbb777a106602b8c8b6c628e27090a50216"
+  },
+  "panel/seam_overlap.parquet": {
+   "bytes": 6367,
+   "sha256": "95fbcea250c8f724fc836f9755c7f1057d83fd1113a2346baa156e800f6d887a"
+  },
+  "panel/spx/year=2010/part.parquet": {
+   "bytes": 19386084,
+   "sha256": "3f7c78c024e4ff709cc37fde8c65f280c7ffeb54ca576bdb80e27b1c12f8d6a4"
+  },
+  "panel/spx/year=2011/part.parquet": {
+   "bytes": 21632187,
+   "sha256": "0d1a87cbbf95e6b6d0a75dbc29ad5abfe76e89397f6c7201483745106751d21f"
+  },
+  "panel/spx/year=2012/part.parquet": {
+   "bytes": 26535275,
+   "sha256": "1afd9b6b5e180fc5d818541ec0ce8a65b3ef3eddec21efb0d67d8754d8748325"
+  },
+  "panel/spx/year=2013/part.parquet": {
+   "bytes": 33789864,
+   "sha256": "06912dd988f8ccfc18014e8148239b8d99e955c9ea1f18c4a8fcea13e29e0d15"
+  },
+  "panel/spx/year=2014/part.parquet": {
+   "bytes": 54424145,
+   "sha256": "441a037cce83b044d02e27499df84789968d4cfc13703cb9525d7ca9851005be"
+  },
+  "panel/spx/year=2015/part.parquet": {
+   "bytes": 85207352,
+   "sha256": "ffc425b3502126e80e2a52c87e66eb1363c3f8aa9eeb1ab61bf3cfa26db63ca7"
+  },
+  "panel/spx/year=2016/part.parquet": {
+   "bytes": 80473113,
+   "sha256": "b6c1c488ad279a898afcad8bfd7e08234386ee3c974d4fe580cf26f23ab9857c"
+  },
+  "panel/spx/year=2017/part.parquet": {
+   "bytes": 102644464,
+   "sha256": "da82297a0d06f5d27f5c7ee45b62fff1cd71c7e73507a3d4e693db0c723fc845"
+  },
+  "panel/spx/year=2018/part.parquet": {
+   "bytes": 151565006,
+   "sha256": "16850b7a5fda62fee879b767c51bbee9ab61d1a64424bd71864553600fbd6230"
+  },
+  "panel/spx/year=2019/part.parquet": {
+   "bytes": 160534928,
+   "sha256": "46bd6b87f51d63ae1f70bc14bfe0d4fefbec0cba8bcde6e2002643e7993e0fc1"
+  },
+  "panel/spx/year=2020/part.parquet": {
+   "bytes": 199011913,
+   "sha256": "b959bd6e43088094685fc0032d122b17f5ee4a28fb19fce54ad7db0e2ba47e1c"
+  },
+  "panel/spx/year=2021/part.parquet": {
+   "bytes": 237289150,
+   "sha256": "2d0fbca9afb7b233fc54287074a447cbf87a83a36cb9dd33cb0304f2c89dddf2"
+  },
+  "panel/spx/year=2022/part.parquet": {
+   "bytes": 234170647,
+   "sha256": "1f7bb9186d9bc33471eb8b967e93786157c804ce7d984b11f4b128301f91d44a"
+  },
+  "panel/spx/year=2023/part.parquet": {
+   "bytes": 223749571,
+   "sha256": "d8e9dcf5bd90ec8afe4c09c32186d7a34a727a74193875526db64d7da2e5cd2c"
+  },
+  "panel/spx/year=2024/part.parquet": {
+   "bytes": 276743193,
+   "sha256": "1a0e3a7acb29df14a931742677820db7a433f966e39163ac0745f1653c80ec82"
+  },
+  "panel/spx/year=2025/part.parquet": {
+   "bytes": 288935829,
+   "sha256": "ae16d2f6130c3152f6d2e02475b82090c045d9db0e4a987e7646c24825fdfcd3"
+  },
+  "panel/spx/year=2026/part.parquet": {
+   "bytes": 243187862,
+   "sha256": "8e08cd69c08a970c148dca7298786c799d45cd7d11f4d5f1cf15da9436f7abdc"
+  },
+  "panel/spx_daily.parquet": {
+   "bytes": 362345,
+   "sha256": "972d3c927a11399ddd03c5f48645cf1e30696361d6abb7e33eb4da0adc0e6d3f"
+  },
+  "panel/surface_grid.parquet": {
+   "bytes": 9808580,
+   "sha256": "ab3c2790fb826413de4240f6ee79650836170ffaab6d555dfe20b594e3c17bbb"
+  }
+ },
+ "panel_version": 2
+}

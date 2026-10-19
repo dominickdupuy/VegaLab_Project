@@ -98,7 +98,7 @@ Both vendors go through the same code (`optspread.realdata.surface`).
 
 | Column | Meaning |
 |---|---|
-| date, root, expiry, dte, tau | trading date, SPX or SPXW, expiry, calendar days, years (AM-adjusted) |
+| date, root, expiry, dte, tau | trading date, the vendor's root (SPX and SPXW from the OSI migration on; before it, and for the old SPXPM and SPXQ series to 2014, the vendor's other roots), expiry (an AM Saturday listing moved to its Friday), calendar days, years (AM-adjusted) |
 | cp, strike | right, strike in index points |
 | bid, ask, mid | closing quote; mid only for a two-sided market |
 | volume, open_interest | OptionMetrics only (NaN from Databento) |
@@ -120,3 +120,36 @@ Summaries in `panel/`:
 
 `vrp30` is the 30-day ATM implied volatility less the realised volatility over the
 following 21 trading days, in volatility units: the market's premium, measured.
+
+## Results of the build
+
+Built 2026-10-19 from the shared folder; `docs/DATA_MANIFEST.json` records the
+sha256 and size of every file the build wrote.
+
+- **Coverage.** 4,213 trading days, 2010-01-04 to 2026-10-02, none missing: 3,939
+  from OptionMetrics (to its 2025-08-29 ceiling) and 274 from Databento after it.
+  The Databento inventory found 317 daily closing snapshots (2025-07-01 to
+  2026-10-02). The band (`|ln(K/F)| <= 0.7`, 800 days) dropped 5.8M quotes, counted
+  per day in `coverage.parquet`.
+- **Our IV against the vendor's.** On OptionMetrics' own quotes, out of the money
+  and beyond 7 days, ours sits within a few hundredths of a vol point of the
+  vendor's at the median (daily medians between -0.16 and +0.15 vol points over the
+  overlap).
+- **The seam.** Over the 43 overlap days (July and August 2025), about 7,250
+  contracts a day are quoted by both vendors. Priced the same way, their IVs differ
+  by 0.003 vol points at the 95th percentile on the average day (0.013 on the
+  worst), and their forwards by at most 0.1 basis points: both carry the OPRA
+  consolidated closing quote, so the cut-over at 2025-08-29 introduces no step.
+- **Against FRED.** After the cut-over the spot is the parity prepaid forward; its
+  median gap to the S&P 500 close is 0.1 to 0.6 basis points a year. The
+  parity-implied 30-day rate sits above the 3-month bill and SOFR in most years,
+  the known premium of SPX box rates over Treasuries: by 25 to 70 basis points
+  against bills from 2010 to 2022 (116 against SOFR in 2022, while rates rose
+  fastest), narrowing to between -2 and +8 in 2024. `panel/fred_check.parquet`
+  has every year.
+- **The variance risk premium.** 30-day ATM implied volatility averages 15.5%
+  against 14.7% realised over the following 21 days; the premium (`vrp30`) has a
+  median of +1.75 vol points (mean +0.78, pulled down by 2020) and is positive on
+  67% of days. Three days have no 30-day IV (2010-02-17, 2010-04-12, 2010-04-13):
+  no expiry was listed on one side of 30 days, and nothing is extrapolated. This is the series the VRP mapping (#15) starts from.
+- **Costs.** `docs/COSTS.md` fits the cost model's two parameters to these quotes.
