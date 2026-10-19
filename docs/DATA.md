@@ -33,6 +33,31 @@ symbols and dates. Jobs above 15 MB (definitions and statistics for whole symbol
 groups) are listed by size and not opened; the panel needs only the closing
 snapshots.
 
+## Extraction
+
+The OptionMetrics files are pulled from WRDS by `scripts/wrds_extract.py`, which
+needs a WRDS account with OptionMetrics access and the `wrds` extra:
+
+```bash
+pip install -e ".[dev,data,wrds]"
+export WRDS_USERNAME=<your WRDS user>    # default: dominickdupuy
+python -m scripts.wrds_extract "$VEGALAB_DATA" 2010 2025 scripts/wrds_secids.json
+```
+
+The arguments are the output folder, the first and last year (inclusive; one
+`opprcd<year>` and `secprd<year>` table each), and the ticker list. The list,
+`scripts/wrds_secids.json`, maps each ticker to its OptionMetrics `secid`s (SPX is
+108105; a ticker with two secids, such as XSP, is pulled under both) and is the
+default when the last argument is left out. The `wrds` client asks for the password
+or reads it from `~/.pgpass`.
+
+Every query is capped at `date <= 2025-08-29`, the vendor ceiling at extraction
+(`END_DATE` in the script), so a later pull does not silently extend the
+OptionMetrics side past the seam. Each (table, ticker, year) is written to a `.part`
+file and renamed when complete, a year with no rows leaves an `.empty` marker, and a
+rerun skips both, so a dropped connection resumes where it stopped. Progress and
+retries go to `download.log` in the output folder.
+
 ## Build
 
 ```bash

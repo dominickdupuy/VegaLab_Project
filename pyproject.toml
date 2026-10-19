@@ -41,6 +41,9 @@ data = [
     "pyarrow>=15",
     "databento>=0.40",
 ]
+# The WRDS OptionMetrics pull (scripts/wrds_extract.py, docs/DATA.md, Extraction). Only
+# the person holding the WRDS account runs it; nothing in optspread/ imports either.
+wrds = ["wrds>=3.1", "sqlalchemy>=2.0"]
 dev = [
     "pandas>=2.2",
     "pyarrow>=15",
