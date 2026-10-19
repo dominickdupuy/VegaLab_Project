@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import os
 import sys
 import time
 from concurrent.futures import ProcessPoolExecutor
@@ -152,7 +153,7 @@ def _databento_year(root: Path, year: int) -> pd.DataFrame:
     files = sorted((root / "databento" / "spx_close" / f"year={year}").glob("*.parquet"))
     if not files:
         return pd.DataFrame()
-    q = pd.concat([pd.read_parquet(f) for f in files], ignore_index=True)
+    q = pd.concat([_read(f) for f in files], ignore_index=True)
     q["am_settled"] = q["root"] == "SPX"  # the SPX root is AM-settled, SPXW is PM
     return q
 
@@ -165,7 +166,7 @@ def build_year(year: int) -> dict[str, pd.DataFrame]:
     names = ("term", "counts", "spot_parity", "seam", "surface")
     if dest.exists() and all((cache / f"{n}.parquet").exists() for n in names):
         _log(f"panel {year}: cached")
-        return {n: pd.read_parquet(cache / f"{n}.parquet") for n in names}
+        return {n: _read(cache / f"{n}.parquet") for n in names}
     frames: list[pd.DataFrame] = []
     dropped: list[pd.Series] = []
     om_overlap = pd.DataFrame()
@@ -215,6 +216,38 @@ def build_year(year: int) -> dict[str, pd.DataFrame]:
     return summary
 
 
+def _read(path: Path, attempts: int = 6) -> pd.DataFrame:
+    """Read a parquet from the shared folder, riding out the sync client's timeouts."""
+    for attempt in range(1, attempts + 1):
+        try:
+            return pd.read_parquet(path)
+        except (TimeoutError, OSError) as exc:
+            if attempt == attempts:
+                raise
+            _log(f"read {path.name} attempt {attempt}: {exc!r}")
+            time.sleep(15 * attempt)
+    raise AssertionError("unreachable")
+
+
+def _write(frame: pd.DataFrame, dest: Path, attempts: int = 5) -> None:
+    """Write beside ``dest`` under a fresh name, then rename over it.
+
+    Opening a synced OneDrive file to overwrite it can time out while the sync
+    client holds it; a new file never does, and the rename is atomic. Retried with
+    a growing pause before giving up loudly.
+    """
+    for attempt in range(1, attempts + 1):
+        part = dest.with_name(f"{dest.name}.{os.getpid()}.{attempt}.part")
+        try:
+            frame.to_parquet(part, index=False)
+            part.replace(dest)
+            return
+        except (TimeoutError, OSError) as exc:
+            _log(f"write {dest.name} attempt {attempt}: {exc!r}")
+            time.sleep(10 * attempt)
+    raise TimeoutError(f"could not write {dest} after {attempts} attempts")
+
+
 def _cat(frames: list[pd.DataFrame]) -> pd.DataFrame:
     kept = [f for f in frames if not f.empty]
     return pd.concat(kept, ignore_index=True) if kept else pd.DataFrame()
@@ -237,7 +270,7 @@ def build_panel(years: range, workers: int) -> None:
     daily = daily_table(
         term, closes, sp.set_index("date")["spot_parity"], per_day["source"], per_day["n"]
     )
-    daily.to_parquet(out / "spx_daily.parquet", index=False)
+    _write(daily, out / "spx_daily.parquet")
     calendar = trading_calendar(pd.Index(closes.index), max(counts["date"]))
     cov = coverage(
         calendar,
@@ -247,10 +280,10 @@ def build_panel(years: range, workers: int) -> None:
             n_dropped=("n_dropped", "sum"),
         ),
     )
-    cov.to_parquet(out / "coverage.parquet", index=False)
-    seam.to_parquet(out / "seam_overlap.parquet", index=False)
-    term.to_parquet(out / "atm_term.parquet", index=False)
-    _cat([r["surface"] for r in results]).to_parquet(out / "surface_grid.parquet", index=False)
+    _write(cov, out / "coverage.parquet")
+    _write(seam, out / "seam_overlap.parquet")
+    _write(term, out / "atm_term.parquet")
+    _write(_cat([r["surface"] for r in results]), out / "surface_grid.parquet")
     missing = cov[cov["missing"]]
     _log(
         f"panel: {len(cov)} trading days {cov['date'].min()}..{cov['date'].max()}, "
@@ -286,7 +319,7 @@ def fred_check() -> pd.DataFrame:
         f["date"] = pd.to_datetime(f["date"]).dt.date
         frames.append(f.set_index("date"))
     fred = pd.concat(frames, axis=1)
-    daily = pd.read_parquet(root / "panel" / "spx_daily.parquet").set_index("date")
+    daily = _read(root / "panel" / "spx_daily.parquet").set_index("date")
     j = daily[["spot", "rate30", "source"]].join(fred, how="left")
     j["year"] = [d.year for d in j.index]
     j["rate_minus_bill_bp"] = (j["rate30"] - j["DGS3MO"] / 100) * 1e4
@@ -295,9 +328,28 @@ def fred_check() -> pd.DataFrame:
     summary = j.groupby(["year", "source"])[
         ["rate_minus_bill_bp", "rate_minus_sofr_bp", "spot_vs_sp500_bp"]
     ].median()
-    summary.reset_index().to_parquet(root / "panel" / "fred_check.parquet", index=False)
+    _write(summary.reset_index(), root / "panel" / "fred_check.parquet")
     _log("fred check (medians, basis points):\n" + summary.round(1).to_string())
     return summary
+
+
+def _sha256(path: Path, attempts: int = 6) -> str:
+    """The file's sha256, retrying the sync client's read timeouts from the start."""
+    import hashlib
+
+    for attempt in range(1, attempts + 1):
+        h = hashlib.sha256()
+        try:
+            with path.open("rb") as fh:
+                for block in iter(lambda: fh.read(1 << 20), b""):
+                    h.update(block)
+            return h.hexdigest()
+        except (TimeoutError, OSError) as exc:
+            if attempt == attempts:
+                raise
+            _log(f"hash {path.name} attempt {attempt}: {exc!r}")
+            time.sleep(15 * attempt)
+    raise AssertionError("unreachable")
 
 
 def data_manifest(repo_copy: Path) -> dict[str, dict[str, object]]:
@@ -308,7 +360,6 @@ def data_manifest(repo_copy: Path) -> dict[str, dict[str, object]]:
     ``repo_copy``, so a teammate can check that their copy of the data is the one
     the code was built and tested against.
     """
-    import hashlib
     import json
 
     root = data_root()
@@ -320,13 +371,10 @@ def data_manifest(repo_copy: Path) -> dict[str, dict[str, object]]:
     out: dict[str, dict[str, object]] = {}
     total = 0
     for f in files:
-        h = hashlib.sha256()
-        with f.open("rb") as fh:
-            for block in iter(lambda: fh.read(1 << 20), b""):
-                h.update(block)
+        h = _sha256(f)
         size = f.stat().st_size
         total += size
-        out[f.relative_to(root).as_posix()] = {"sha256": h.hexdigest(), "bytes": size}
+        out[f.relative_to(root).as_posix()] = {"sha256": h, "bytes": size}
     text = json.dumps({"panel_version": PANEL_VERSION, "files": out}, indent=1, sort_keys=True)
     (root / "MANIFEST.json").write_text(text + "\n")
     repo_copy.write_text(text + "\n")
