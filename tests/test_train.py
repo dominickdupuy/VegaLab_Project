@@ -96,6 +96,16 @@ def test_the_hyperparameters_are_frozen_by_d3() -> None:
         TrainConfig(total_timesteps=1, hyperparameters=PPOHyperparameters(n_steps=128, n_epochs=4))
 
 
+def test_a_copy_that_skips_validation_cannot_train_off_the_frozen_set() -> None:
+    tuned = TrainConfig(total_timesteps=1).model_copy(
+        update={"hyperparameters": PPOHyperparameters(learning_rate=1e-2)}
+    )
+    config = PPO_RUN.model_copy(update={"train": tuned})  # model_copy does not validate
+    assert config.train is not None and config.train.hyperparameters != FROZEN_PPO
+    with pytest.raises(ValueError, match=r"frozen by decision D3; learning_rate differ"):
+        train_ppo(config)  # refused before the learner is imported, so no torch needed
+
+
 def test_a_ppo_config_is_never_evaluated_with_a_scripted_stand_in() -> None:
     with pytest.raises(ValueError, match="trained policy"):
         run_episodes(PPO_RUN)

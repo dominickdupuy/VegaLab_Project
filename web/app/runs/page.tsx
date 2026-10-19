@@ -10,7 +10,7 @@ import { RunTable } from "@/components/RunTable";
 import { Empty, ErrorBox, Loading } from "@/components/States";
 import ui from "@/components/ui.module.css";
 import { api, type Compare, type RunDetail, type RunFilters, type RunRow } from "@/lib/api";
-import { ARM_LABEL, armColor, axis, base, histBars, type Tokens, useTokens } from "@/lib/chart";
+import { ARM_LABEL, armColor, axis, base, histBars, type PremiumPoint, premiumChart, type Tokens, useTokens } from "@/lib/chart";
 import { num, pct, short, usd, when } from "@/lib/format";
 import { useFetch } from "@/lib/useFetch";
 
@@ -71,31 +71,13 @@ function FilterSelect<T extends string | number>({
   );
 }
 
-function premiumChart(t: Tokens, rows: RunRow[]): EChartsOption {
-  const arms = [...new Set(rows.map((r) => r.policy))];
-  return {
-    ...base(t),
-    tooltip: {
-      ...base(t).tooltip,
-      trigger: "item",
-      formatter: (p: unknown) => {
-        const d = (p as { data: { row: RunRow } }).data.row;
-        return `<b>${ARM_LABEL[d.policy] ?? d.policy}</b> at ${num(d.premium, 1)} vol pts<br/>mean ${usd(d.mean_pnl)} (se ${usd(d.se_pnl)})<br/><span style="opacity:.7">${short(d.config_hash, 10)}-s${d.seed}</span>`;
-      },
-    },
-    xAxis: { type: "value", name: "Planted premium (vol pts)", nameLocation: "middle", ...axis(t) },
-    yAxis: { type: "value", name: "Mean P&L per episode ($)", nameLocation: "middle", ...axis(t), nameGap: 44 },
-    grid: { ...base(t).grid, left: 64 },
-    series: arms.map((arm) => ({
-      name: ARM_LABEL[arm] ?? arm,
-      type: "scatter",
-      symbolSize: 10,
-      itemStyle: { color: armColor(t, arm), borderColor: t.surface, borderWidth: 2 },
-      data: rows
-        .filter((r) => r.policy === arm && r.premium !== null && r.mean_pnl !== null)
-        .map((r) => ({ value: [r.premium as number, r.mean_pnl as number], row: r })),
-    })),
-  };
+function runCurves(rows: RunRow[]): Record<string, PremiumPoint[]> {
+  const out: Record<string, PremiumPoint[]> = {};
+  for (const r of rows) {
+    if (r.premium === null || r.mean_pnl === null) continue;
+    (out[r.policy] ??= []).push({ premium: r.premium, mean: r.mean_pnl, se: r.se_pnl, label: `${short(r.config_hash, 10)}-s${r.seed ?? ""}` });
+  }
+  return out;
 }
 
 function ListView({ initialQuery }: { initialQuery: string }) {
@@ -133,7 +115,6 @@ function ListView({ initialQuery }: { initialQuery: string }) {
       <PageHead
         eyebrow="Run browser"
         title="Runs"
-        lede="Every directory under the runs root that holds a manifest, newest first. A run that does not read cleanly is listed with what is wrong, never dropped."
         right={
           <button
             type="button"
@@ -169,18 +150,18 @@ function ListView({ initialQuery }: { initialQuery: string }) {
         <>
           <div className={ui.grid4}>
             <Tile label="Shown" value={num(data.n_shown)} note={`of ${num(data.trials.n_runs)} runs indexed`} accent />
-            <Tile label="Read cleanly" value={num(data.trials.n_ok)} note={`${num(data.trials.n_runs - data.trials.n_ok)} flagged: invalid or digest mismatch`} />
-            <Tile label="Distinct configs" value={num(data.trials.n_configs)} note="every config is one trial; all are disclosed" />
-            <Tile label="Distinct seeds" value={num(data.trials.n_seeds)} note="first episode seed of each run" />
+            <Tile label="OK" value={num(data.trials.n_ok)} note={`${num(data.trials.n_runs - data.trials.n_ok)} flagged`} />
+            <Tile label="Distinct configs" value={num(data.trials.n_configs)} />
+            <Tile label="Distinct seeds" value={num(data.trials.n_seeds)} />
           </div>
 
           {data.rows.length ? (
             <Card
               title="Runs"
-              sub="Click a run to open its record; tick two to compare them on their shared seeds."
+              sub="Tick two to compare."
               source={
                 <>
-                  <code>{data.root}</code> · manifest.json and run.json per directory, digests recomputed on read
+                  <code>{data.root}</code>
                 </>
               }
             >
@@ -189,15 +170,15 @@ function ListView({ initialQuery }: { initialQuery: string }) {
           ) : (
             <Empty title="No runs match">
               <p>
-                {data.trials.n_runs ? "Clear a filter to see more." : "Nothing under the runs root yet. Launch one, or run a sweep: "}
+                {data.trials.n_runs ? "Clear a filter." : "No runs yet: "}
                 {data.trials.n_runs ? null : <code>python scripts/oracle_sweep.py --episodes 50</code>}
               </p>
             </Empty>
           )}
 
           {charted.length > 1 ? (
-            <Card title="Mean P&L against the planted premium" sub="Runs shown above that read cleanly, one dot per run, coloured by arm. Hover for the run id." source="run.json of each run">
-              <Chart option={premiumChart(t, charted)} height={320} label="Mean P&L per episode against the planted premium, by arm" />
+            <Card title="Mean P&L against planted premium" sub="OK runs shown above, per arm, ±1 se." source="run.json of each run">
+              <Chart option={premiumChart(t, runCurves(charted))} height={320} label="Mean P&L per episode against the planted premium, by arm" />
             </Card>
           ) : null}
         </>
@@ -291,12 +272,12 @@ function RiskTiles({ d }: { d: RunDetail }) {
   return (
     <div className={ui.grid4}>
       <Tile accent label="Mean P&L / episode" value={usd(r.mean)} note={`se ${usd(r.se)} · t ${num(d.row.t_stat, 2)}`} />
-      <Tile label="Sortino" value={num(r.sortino, 2)} note="mean over downside deviation, per episode" />
-      <Tile label="CVaR 5%" value={usd(r.cvar5)} note="mean of the worst 5% of episodes" />
-      <Tile label="Max drawdown" value={usd(r.max_drawdown)} note="cumulative P&L over episodes in seed order" />
-      <Tile label="Hit rate" value={pct(r.hit_rate)} note="episodes with positive P&L" />
-      <Tile label="Turnover" value={num(r.turnover, 1)} note="trades per episode" />
-      <Tile label="Cost / episode" value={usd(d.row.mean_cost)} note="spread plus commission" />
+      <Tile label="Sortino" value={num(r.sortino, 2)} />
+      <Tile label="CVaR 5%" value={usd(r.cvar5)} />
+      <Tile label="Max drawdown" value={usd(r.max_drawdown)} note="episodes in seed order" />
+      <Tile label="Hit rate" value={pct(r.hit_rate)} />
+      <Tile label="Turnover" value={num(r.turnover, 1)} note="trades / episode" />
+      <Tile label="Cost / episode" value={usd(d.row.mean_cost)} />
       <Tile label="Episodes" value={num(r.n)} note={d.episodes.length ? `seeds ${d.episodes[0]?.seed}…${d.episodes[d.episodes.length - 1]?.seed}` : "none recorded"} />
     </div>
   );
@@ -315,7 +296,7 @@ function ManifestCard({ d }: { d: RunDetail }) {
   flatten("", m.config, config);
   return (
     <div className={ui.grid2}>
-      <Card title="Manifest" sub="Provenance: what produced this run." source={<code>{d.provenance.manifest}</code>}>
+      <Card title="Manifest" source={<code>{d.provenance.manifest}</code>}>
         <dl className={ui.kv}>
           <dt>Run id</dt>
           <dd className="mono">{d.row.run_id}</dd>
@@ -379,7 +360,7 @@ function ManifestCard({ d }: { d: RunDetail }) {
           </table>
         </div>
       </Card>
-      <Card title="Config" sub="Every field; with the seed it fully determines the numbers." source={<code>manifest.json → config</code>}>
+      <Card title="Config" source={<code>manifest.json → config</code>}>
         <div className={ui.tableWrap} style={{ maxHeight: 460, overflow: "auto" }}>
           <table className={ui.table}>
             <tbody>
@@ -443,20 +424,18 @@ function DetailView({ runKey }: { runKey: string }) {
         </Card>
         <Card
           title="Equity paths"
-          sub={d.equity ? `${d.equity.paths.length} of ${d.equity.n_recorded} recorded paths, and their mean` : "Per-step equity, when the run recorded it"}
+          sub={d.equity ? `${d.equity.paths.length} of ${d.equity.n_recorded} paths, and the mean` : undefined}
           source={d.equity ? <code>{d.equity.file}</code> : "run schema v1 records per-episode results only"}
         >
           {d.equity ? (
             <Chart option={equityOption(t, d)} height={300} label="Cumulative P&L paths per episode" />
           ) : (
-            <Empty title="Not recorded for this run">
-              <p>Runs launched from the dashboard record each episode&apos;s equity path; sweep cells and command-line runs record per-episode totals.</p>
-            </Empty>
+            <Empty title="Not recorded for this run" />
           )}
         </Card>
       </div>
       {d.episodes.length ? (
-        <Card title="P&L by episode seed" sub="Each bar is one episode; seeds are the paths, so two runs on the same seeds are paired." source={<code>{d.provenance.results}</code>}>
+        <Card title="P&L by episode seed" source={<code>{d.provenance.results}</code>}>
           <Chart option={bySeedOption(t, d)} height={240} label="Per-episode P&L by seed" />
         </Card>
       ) : null}
@@ -521,8 +500,7 @@ function CompareView({ a, b }: { a: string; b: string }) {
     <>
       <PageHead
         eyebrow="Compare"
-        title="Two runs, paired on their shared seeds"
-        lede="Runs on the same seeds saw the same paths, so B minus A per seed is a paired difference, and its standard error is the honest one."
+        title="Paired on shared seeds"
         right={
           <Link href="/runs/" className={`${ui.btn} ${ui.btnSmall}`}>
             ← All runs
@@ -531,19 +509,19 @@ function CompareView({ a, b }: { a: string; b: string }) {
       />
       <div className={ui.grid4}>
         <Tile accent label="Mean of B − A" value={usd(c.diff_mean)} note={`se ${usd(c.diff_se)}`} />
-        <Tile label="Paired t" value={num(c.diff_t, 2)} note="one-sample t on per-seed differences" />
+        <Tile label="Paired t" value={num(c.diff_t, 2)} />
         <Tile label="Shared seeds" value={num(c.shared_seeds)} note={`A has ${c.a.episodes.length}, B has ${c.b.episodes.length}`} />
-        <Tile label="Config fields that differ" value={num(c.config_diff.length)} note="everything else is identical" />
+        <Tile label="Config fields that differ" value={num(c.config_diff.length)} />
       </div>
       <div className={ui.grid2}>
         {side("A", c.a)}
         {side("B", c.b)}
       </div>
       <div className={ui.grid2}>
-        <Card title="P&L by seed" sub="Both runs on the shared seed axis.">
+        <Card title="P&L by seed">
           <Chart option={option} height={300} label="Per-seed P&L of both runs" />
         </Card>
-        <Card title="Paired differences" sub="Distribution of B − A per shared seed.">
+        <Card title="Paired differences" sub="B − A per shared seed.">
           {c.diff_histogram.counts.length ? (
             <Chart option={histOption(t, c.diff_histogram.edges, c.diff_histogram.counts, t.s4, "differences", "B − A per seed ($)")} height={300} label="Histogram of paired differences" />
           ) : (
@@ -551,7 +529,7 @@ function CompareView({ a, b }: { a: string; b: string }) {
           )}
         </Card>
       </div>
-      <Card title="What differs" sub="Config fields whose values differ between the two runs.">
+      <Card title="What differs">
         {c.config_diff.length ? (
           <div className={ui.tableWrap}>
             <table className={ui.table}>
@@ -574,9 +552,7 @@ function CompareView({ a, b }: { a: string; b: string }) {
             </table>
           </div>
         ) : (
-          <Empty title="Identical configs">
-            <p>Same config hash: these are replicas, and the difference should be zero seed for seed.</p>
-          </Empty>
+          <Empty title="Identical configs" />
         )}
       </Card>
     </>

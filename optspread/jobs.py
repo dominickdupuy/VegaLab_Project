@@ -124,6 +124,11 @@ class JobSpec(BaseModel):
             raise ValueError("roll_dte must be shorter than the tenor new structures open at")
         if (self.policy == "ppo") != (self.total_timesteps is not None):
             raise ValueError("total_timesteps is set exactly when the arm is ppo")
+        if self.sigma + self.iv_premium_vol_pts / 100.0 <= 0.0:
+            raise ValueError(
+                f"the implied vol, sigma {self.sigma} plus the premium "
+                f"{self.iv_premium_vol_pts} vol points, must be above zero"
+            )
         return self
 
     @property

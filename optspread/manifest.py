@@ -68,9 +68,9 @@ def library_versions() -> dict[str, str]:
 
     The learner is optional (the ``train`` extra), so torch and stable-baselines3
     are recorded when present and simply absent otherwise. They are not in
-    REQUIRED_VERSIONS: a scripted-policy run is reproducible without them, and a
-    training run cannot be produced at all without them, so their presence in a
-    manifest is itself the evidence that a learner was involved.
+    REQUIRED_VERSIONS: a scripted-policy run is reproducible without them. Their
+    presence says only that they were installed, not that the run trained anything;
+    the config (``policy == "ppo"`` with ``train`` set) is what marks a training run.
     """
     versions = {
         "python": platform.python_version(),

@@ -38,6 +38,11 @@ export function hours(x: number | null | undefined): string {
   return `${(x / 24).toFixed(1)} d`;
 }
 
+/** Text for an ECharts tooltip, which renders HTML: anything read from a run is escaped. */
+export function esc(text: string | number | null | undefined): string {
+  return String(text ?? "").replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+}
+
 export function short(hash: string, n = 8): string {
   return hash.length > n ? hash.slice(0, n) : hash;
 }

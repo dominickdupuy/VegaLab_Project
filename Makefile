@@ -1,6 +1,7 @@
 .PHONY: check lint typecheck test format bench gate drag leaks m1 m2 pilot sweep replay train-smoke web serve web-dev
 
-PY ?= .venv/Scripts/python
+# The venv's interpreter: Scripts/ on Windows, bin/ everywhere else.
+PY ?= $(if $(wildcard .venv/Scripts/python .venv/Scripts/python.exe),.venv/Scripts/python,.venv/bin/python)
 ARGS ?=
 RUN ?=
 SMOKE_ROOT ?= runs/smoke
@@ -39,7 +40,7 @@ m1:
 	$(PY) -m scripts.m1_gate_report
 
 m2:
-	$(PY) -m scripts.m2_gate_report
+	$(PY) -m scripts.m2_gate_report $(ARGS)
 
 # The M2 runs. Flags go in ARGS, e.g.
 #   make pilot ARGS="--root $$VEGALAB_DATA/runs/pilot --seeds 8 --episodes 200 --timesteps 1000000 --workers 16"

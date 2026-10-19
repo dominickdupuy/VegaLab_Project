@@ -8,7 +8,8 @@ Lane: Ilan Danial (machinery). The reproducibility gate of project document 10.7
 Each argument is a run directory, or a folder of run directories to replay in turn
 (at most ``--max`` of them per folder when given). A PPO run is retrained from its
 recorded config, so it needs the ``train`` extra and costs one training run. Exit
-status 0 only when every replayed run is identical.
+status 0 only when at least one run was replayed and every replayed run is
+identical: a path that does not exist, or nothing replayed, is evidence of nothing.
 """
 
 from __future__ import annotations
@@ -26,9 +27,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("paths", type=Path, nargs="+", help="run directories or their folder")
     parser.add_argument("--max", type=int, help="replay at most this many runs per folder")
     args = parser.parse_args(argv)
+    if args.max is not None and args.max < 1:
+        parser.error(f"--max must be at least 1, got {args.max}")
 
     outcomes = []
     for path in args.paths:
+        if not Path(path).is_dir():
+            print(f"no such run directory or folder: {path}", file=sys.stderr)
+            return 1
         runs = find_runs(Path(path))
         if not runs:
             print(f"no run directories at {path}", file=sys.stderr)

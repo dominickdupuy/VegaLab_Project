@@ -42,8 +42,10 @@ from optspread.dashboard_data import (
     run_leak_demo,
     runs_root,
     scan_runs,
+    unreadable_gate_reports,
 )
 from optspread.leaks import PASS_CRITERION
+from optspread.manifest import file_sha256
 from optspread.sweep import SweepConfig
 
 # -- where things are read from ------------------------------------------------ #
@@ -104,6 +106,28 @@ def test_a_results_file_edited_after_its_manifest_is_caught(run_root: Path) -> N
     assert [a.ok for a in detail.artifacts] == [False]
 
 
+@pytest.mark.parametrize("artifacts", [{}, {"policy.zip": "0" * 64}])
+def test_a_run_whose_manifest_does_not_hash_its_results_is_unverified(
+    run_root: Path, tmp_path: Path, artifacts: dict[str, str]
+) -> None:
+    clean = next(r for r in scan_runs(run_root) if r.status == "OK")
+    forged = tmp_path / clean.path.name
+    forged.mkdir()
+    manifest = json.loads((clean.path / "manifest.json").read_text())
+    manifest["artifacts"] = artifacts
+    (forged / "manifest.json").write_text(json.dumps(manifest))
+    record = json.loads((clean.path / "run.json").read_text())
+    record["mean_pnl"] = 1e9
+    (forged / "run.json").write_text(json.dumps(record))
+    if artifacts:  # a recorded file that does match still does not vouch for run.json
+        (forged / "policy.zip").write_bytes(b"")
+        manifest["artifacts"] = {"policy.zip": file_sha256(forged / "policy.zip")}
+        (forged / "manifest.json").write_text(json.dumps(manifest))
+    row = load_run_row(forged)
+    assert row.problems == () and row.status == "UNVERIFIED"
+    assert premium_curve([row]) == {}
+
+
 def test_unreadable_files_become_problems_not_exceptions(tmp_path: Path) -> None:
     run = tmp_path / "bad"
     run.mkdir()
@@ -116,6 +140,23 @@ def test_unreadable_files_become_problems_not_exceptions(tmp_path: Path) -> None
     assert row.run_id == "bad"
     detail = load_run_detail(run)
     assert detail.manifest == {} and detail.record is None and detail.pnl.size == 0
+
+
+def test_the_pilot_matrix_manifest_is_not_listed_as_a_run(run_root: Path, tmp_path: Path) -> None:
+    clean = next(r for r in scan_runs(run_root) if r.status == "OK")
+    manifest = json.loads((clean.path / "manifest.json").read_text())
+    pilot = tmp_path / "pilot"
+    pilot.mkdir()
+    np.save(pilot / "matrix.npy", np.zeros((2, 3)))
+    manifest["artifacts"] = {"matrix.npy": file_sha256(pilot / "matrix.npy")}
+    (pilot / "manifest.json").write_text(json.dumps(manifest))
+    (pilot / clean.path.name).mkdir()
+    for name in ("manifest.json", "run.json"):
+        (pilot / clean.path.name / name).write_bytes((clean.path / name).read_bytes())
+    assert [r.path for r in scan_runs(pilot)] == [pilot / clean.path.name]
+    # a broken run directory with no artifacts at all is still listed
+    (pilot / "manifest.json").write_text(json.dumps({"run_id": "x", "artifacts": {}}))
+    assert {r.status for r in scan_runs(pilot)} == {"OK", "INVALID"}
 
 
 def test_a_missing_root_lists_nothing(tmp_path: Path) -> None:
@@ -275,6 +316,61 @@ def test_a_failing_markdown_report_records_what_failed_first(tmp_path: Path) -> 
     assert board.counts == {"PASS": 0, "FAIL": 1, "NO CRITERION": 1, "NOT CLEARED": 0}
 
 
+def _item(verdict: str, criterion: str = "a rule", evidence: str = "observed") -> dict[str, str]:
+    return {
+        "name": "Item",
+        "owner": "Ilan Danial",
+        "verdict": verdict,
+        "criterion": criterion,
+        "evidence": evidence,
+        "failed_first": "",
+    }
+
+
+@pytest.mark.parametrize(
+    "items",
+    [
+        [],
+        [_item("FAIL", criterion="", evidence="")],
+        [_item("PASS", criterion="")],
+        [_item("PASS", evidence=" ")],
+        [_item("PASS"), _item("NO CRITERION")],
+    ],
+)
+def test_a_stated_pass_the_items_do_not_support_is_not_cleared(
+    items: list[dict[str, str]], tmp_path: Path
+) -> None:
+    text = json.dumps({"milestone": "M2", "verdict": "PASS", "items": items})
+    board = parse_gate_json(text, tmp_path / "M2_GATE_REPORT.json")
+    assert board.stated_verdict == "PASS"
+    assert board.verdict == "NOT CLEARED" and board.verdict_mismatch
+
+
+def test_a_hand_edited_markdown_verdict_is_flagged(tmp_path: Path) -> None:
+    text = "\n".join(
+        [
+            "# M2 gate report",
+            "",
+            "**Verdict: PASS** (1 items, 1 failed, 0 without a stated criterion)",
+            "",
+            "| Item | Owner | Verdict | Criterion | Evidence | What failed first |",
+            "| --- | --- | --- | --- | --- | --- |",
+            "| Pilot | Ilan Danial | FAIL |  |  | the pilot did not finish |",
+        ]
+    )
+    board = parse_gate_markdown(text, tmp_path / "M2_GATE_REPORT.md")
+    assert (board.stated_verdict, board.verdict, board.verdict_mismatch) == (
+        "PASS",
+        "NOT CLEARED",
+        True,
+    )
+    clean = parse_gate_json(
+        json.dumps({"milestone": "M1", "verdict": "PASS", "items": [_item("PASS")]}),
+        tmp_path / "M1_GATE_REPORT.json",
+    )
+    assert clean.verdict == "PASS" and not clean.verdict_mismatch
+
+
 @pytest.mark.parametrize(
     "text",
     [
@@ -321,3 +417,14 @@ def test_the_summary_is_the_readme_opening_without_self_references(tmp_path: Pat
     readme.write_text("# x\n\nOne line.\nSame paragraph.\n\nSee the README. Kept.")
     assert readme_summary(readme) == ("One line. Same paragraph.", "Kept.")
     assert readme_summary(tmp_path / "absent.md") == ()
+
+
+def test_one_unreadable_sidecar_does_not_take_the_boards_down(tmp_path: Path) -> None:
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    md = REPO_ROOT / "docs" / "M1_GATE_REPORT.md"
+    (docs / "M1_GATE_REPORT.md").write_text(md.read_text())
+    (docs / "M3_GATE_REPORT.json").write_text("{not json")
+    boards = load_gate_boards(docs)
+    assert [b.milestone for b in boards] == ["M1"]
+    assert unreadable_gate_reports(docs) == ("M3",)

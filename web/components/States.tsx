@@ -57,17 +57,12 @@ export function ErrorBox({ what, error, onRetry }: { what: string; error: ApiErr
 /** The SPX panel is not built yet: a state with a reason, not an error. */
 export function PanelNotBuilt({ missing, root }: { missing: string[]; root?: string }) {
   return (
-    <Pending title="Panel not built yet">
-      <p>
-        The real-data views read the stitched SPX panel the W6-3 build writes into the team&apos;s shared folder
-        {root ? (
-          <>
-            {" "}
-            (<code>{root}</code>)
-          </>
-        ) : null}
-        . These files are not there yet:
-      </p>
+    <Pending title="Panel not built">
+      {root ? (
+        <p>
+          <code>{root}</code>
+        </p>
+      ) : null}
       <ul>
         {missing.map((m) => (
           <li key={m}>
@@ -75,9 +70,6 @@ export function PanelNotBuilt({ missing, root }: { missing: string[]; root?: str
           </li>
         ))}
       </ul>
-      <p>
-        Point the server at another copy with <code>VEGALAB_DATA</code> or <code>--data</code>.
-      </p>
     </Pending>
   );
 }

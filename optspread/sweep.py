@@ -158,12 +158,28 @@ class SweepRecord(BaseModel):
         return "\n".join(lines)
 
 
+def changed_artifacts(run_dir: Path, manifest: RunManifest) -> tuple[str, ...]:
+    """Recorded artifacts that are missing or no longer match their digest, in order.
+
+    ``run.json`` counts as changed when the manifest does not record it at all: a
+    manifest that hashes the policy but not the results vouches for nothing shown.
+    """
+    recorded = dict(manifest.artifacts)
+    recorded.setdefault(RUN_FILENAME, "")
+    return tuple(
+        rel
+        for rel, digest in sorted(recorded.items())
+        if not (run_dir / rel).is_file() or file_sha256(run_dir / rel) != digest
+    )
+
+
 def valid_run(cell_dir: Path, config: RunConfig) -> RunRecord | None:
     """The run already on disk for ``config``, or None when it has to be (re)computed.
 
     The resume rule every orchestrator here shares (``run_sweep`` and
     ``optspread.orchestrate``): present, readable, keyed by the expected hash and
-    run id, and the results file still the one its manifest hashed.
+    run id, and every file its manifest hashed (the results, and the policy of a
+    learned run) still the one it hashed.
     """
     if not (cell_dir / RUN_FILENAME).exists() or not (cell_dir / MANIFEST_FILENAME).exists():
         return None
@@ -177,8 +193,8 @@ def valid_run(cell_dir: Path, config: RunConfig) -> RunRecord | None:
         return None
     if record.run_id != run_id(config) or manifest.run_id != run_id(config):
         return None
-    if manifest.artifacts.get(RUN_FILENAME) != file_sha256(cell_dir / RUN_FILENAME):
-        return None  # the results file changed under its manifest
+    if changed_artifacts(cell_dir, manifest):
+        return None  # a recorded file changed under its manifest
     return record
 
 

@@ -4,8 +4,8 @@ import { Shell } from "@/components/Shell";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: { default: "optspread", template: "%s · optspread" },
-  description: "Runs, gates, power and the real SPX panel for the optspread detection-floor harness (Vega Lab).",
+  title: { default: "optspread platform", template: "%s · optspread" },
+  description: "Runs, power and the real SPX panel for optspread (Vega Lab).",
   applicationName: "optspread",
 };
 

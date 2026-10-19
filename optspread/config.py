@@ -107,6 +107,17 @@ class PPOHyperparameters(BaseModel):
 FROZEN_PPO = PPOHyperparameters()
 
 
+def require_frozen(value: PPOHyperparameters) -> PPOHyperparameters:
+    """``value`` if it is the D3 set, else a ValueError naming what differs."""
+    if value != FROZEN_PPO:
+        frozen = FROZEN_PPO.model_dump()
+        changed = sorted(k for k, v in value.model_dump().items() if v != frozen[k])
+        raise ValueError(
+            f"PPO hyperparameters are frozen by decision D3; {', '.join(changed)} differ"
+        )
+    return value
+
+
 class TrainConfig(BaseModel):
     """How a learned arm was trained. Part of the run's identity, so part of its hash.
 
@@ -128,14 +139,7 @@ class TrainConfig(BaseModel):
     @field_validator("hyperparameters")
     @classmethod
     def _frozen(cls, value: PPOHyperparameters) -> PPOHyperparameters:
-        if value != FROZEN_PPO:
-            changed = sorted(
-                k for k, v in value.model_dump().items() if v != FROZEN_PPO.model_dump()[k]
-            )
-            raise ValueError(
-                f"PPO hyperparameters are frozen by decision D3; {', '.join(changed)} differ"
-            )
-        return value
+        return require_frozen(value)
 
 
 class RunConfig(BaseModel):

@@ -27,7 +27,7 @@ export interface RunRow {
   mean_cost: number | null;
   mean_trades: number | null;
   sweep: string;
-  status: "OK" | "INVALID" | "DIGEST MISMATCH" | string;
+  status: "OK" | "UNVERIFIED" | "INVALID" | "DIGEST MISMATCH" | string;
   digests_ok: boolean | null;
   problems: string[];
 }
@@ -84,33 +84,6 @@ export interface Compare {
   diff_se: number | null;
   diff_t: number | null;
   diff_histogram: Histogram;
-}
-
-// ---------- gates ----------
-
-export interface GateItem {
-  name: string;
-  owner: string;
-  verdict: string;
-  criterion: string;
-  evidence: string;
-  failed_first: string;
-  cited_runs: string[];
-}
-
-export interface GateBoard {
-  milestone: string;
-  report_date: string;
-  verdict: string;
-  counts: Record<string, number>;
-  items: GateItem[];
-  source: string;
-  from_json: boolean;
-}
-
-export interface Gates {
-  docs: string;
-  boards: GateBoard[];
 }
 
 // ---------- jobs ----------
@@ -283,7 +256,7 @@ export interface ChainIndex {
   date: string;
   sources: string[];
   roots: string[];
-  expiries: { expiry: string; dte: number; n_quotes: number; forward: number | null; carry_fit: number | null }[];
+  expiries: { expiry: string; dte: number; n_quotes: number; forward: number | null; carry_fit: string }[];
   default_expiry: string | null;
   source: string;
 }
@@ -361,8 +334,6 @@ export interface Seam {
 // ---------- overview ----------
 
 export interface Overview {
-  summary: string[];
-  gates: { milestone: string; verdict: string; report_date: string; n_items: number; n_pass: number; source: string }[];
   data: DataStatus;
   coverage: Span[];
   overlap: [string, string, number] | null;
@@ -473,7 +444,6 @@ export const api = {
   runs: (f: RunFilters, s?: AbortSignal) => get<RunList>("/api/runs", f as Params, s),
   run: (key: string, s?: AbortSignal) => get<RunDetail>("/api/runs/detail", { key }, s),
   compare: (a: string, b: string, s?: AbortSignal) => get<Compare>("/api/runs/compare", { a, b }, s),
-  gates: (s?: AbortSignal) => get<Gates>("/api/gates", undefined, s),
   jobOptions: (s?: AbortSignal) => get<JobOptions>("/api/jobs/options", undefined, s),
   jobs: (s?: AbortSignal) => get<Job[]>("/api/jobs", undefined, s),
   job: (id: string, s?: AbortSignal) => get<Job>(`/api/jobs/${encodeURIComponent(id)}`, undefined, s),

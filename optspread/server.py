@@ -29,6 +29,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from optspread import __version__
 from optspread import webapi as w
@@ -48,6 +49,7 @@ class Settings:
     web: Path
     readme: Path
     workers: int = 2
+    host: str = "127.0.0.1"  # the address served on; its name is an allowed Host header
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -68,6 +70,21 @@ def _day(value: str, name: str = "date") -> date:
         raise HTTPException(422, f"{name} must be YYYY-MM-DD, got {value!r}") from exc
 
 
+LOCAL_HOSTS = ("localhost", "127.0.0.1", "[::1]", "::1")
+
+
+def allowed_hosts(host: str) -> list[str]:
+    """Host headers the server answers: loopback and the address it was started on.
+
+    Anything else is refused, which is what stops DNS rebinding: a page on another
+    site that resolves its own name to 127.0.0.1 still sends its own name as Host.
+    """
+    names = [*LOCAL_HOSTS, host]
+    if ":" in host and not host.startswith("["):  # an IPv6 literal is bracketed in Host
+        names.append(f"[{host}]")
+    return list(dict.fromkeys(names))
+
+
 def create_app(settings: Settings | None = None, manager: JobManager | None = None) -> FastAPI:
     cfg = settings if settings is not None else Settings.from_env()
     reader = w.PanelReader(cfg.data)
@@ -80,6 +97,7 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
         jobs["manager"].shutdown()
 
     app = FastAPI(title="optspread dashboard", version=__version__, lifespan=lifespan)
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts(cfg.host))
 
     def queue() -> JobManager:
         return jobs["manager"]
@@ -219,7 +237,10 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
             )
         except ValidationError as exc:
             raise HTTPException(422, [e["msg"] for e in exc.errors()]) from exc
-        return w.power_lab(params)
+        try:
+            return w.power_lab(params)
+        except (ArithmeticError, ValueError) as exc:  # a design the floats cannot hold
+            raise HTTPException(422, f"this design cannot be computed: {exc}") from exc
 
     @app.post("/api/leaks/demo")
     def leaks(params: w.LeakDemoParams) -> w.LeakDemoOut:
@@ -278,7 +299,10 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
         min_dte: int = 1,
         max_dte: int = 365,
     ) -> w.SurfaceOut:
-        return reader.surface_out(_day(date), source, roots, min_dte, max_dte)
+        try:
+            return reader.surface_out(_day(date), source, roots, min_dte, max_dte)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
 
     @app.get("/api/data/term")
     def term(
@@ -331,6 +355,7 @@ def main() -> int:  # pragma: no cover - exercised by `make serve`, not by the t
         web=(args.web or base.web).resolve(),
         readme=base.readme,
         workers=int(args.workers),
+        host=str(args.host),
     )
     print(f"runs {settings.runs}\ndocs {settings.docs}\ndata {settings.data}\nweb  {settings.web}")
     uvicorn.run(create_app(settings), host=args.host, port=int(args.port))

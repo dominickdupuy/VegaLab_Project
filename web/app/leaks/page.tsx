@@ -46,7 +46,7 @@ function Side({ title, side, expectFlag }: { title: string; side: LeakSide; expe
     <Card title={title} right={<Verdict value={right ? "PASS" : "FAIL"} />}>
       <div className={ui.grid2}>
         <Tile label="Statistical detector" value={side.flagged ? "LEAK DETECTED" : "quiet"} note={side.flagged ? `worst field ${side.worst_feature}, p = ${sci(side.p_value)}` : `worst p = ${sci(side.p_value)}, threshold ${sci(side.threshold)}`} />
-        <Tile label="Perturbation property" value={side.past_unchanged ? "past unchanged" : "past moved"} note="resample every stream after t: the chain at t must not move" />
+        <Tile label="Perturbation property" value={side.past_unchanged ? "past unchanged" : "past moved"}  />
       </div>
       <p className={ui.dim} style={{ marginTop: 10, fontSize: 13 }}>
         {num(side.n_pairs)} (observation, next return) pairs; {side.n_tested} of {side.features.length} fields tested
@@ -75,9 +75,8 @@ export default function LeaksPage() {
   return (
     <>
       <PageHead
-        eyebrow="Poisoned-environment demo"
-        title="Plant a leak live and watch the tests catch it"
-        lede="The poisoned provider shows at day t a spot carrying eps times the return into t+1: one-step look-ahead. Both detectors run now, on the clean world and on its poisoned twin, on the same seeds."
+        eyebrow="Leak demo"
+        title="Clean vs poisoned"
       />
       <Card>
         <div className={ui.filterBar}>
@@ -107,7 +106,7 @@ export default function LeaksPage() {
       {d ? (
         <>
           <div className={ui.grid4}>
-            <Tile accent label="Demo verdict" value={<Verdict value={d.caught ? "PASS" : "FAIL"} />} note={d.caught ? "clean passes, poisoned caught by both detectors" : "the poisoned env was not caught at this size"} />
+            <Tile accent label="Demo verdict" value={<Verdict value={d.caught ? "PASS" : "FAIL"} />} note={d.caught ? "poisoned caught" : "poisoned missed"} />
             <Tile label="Clean env" value={d.clean.flagged ? "flagged" : "quiet"} note={`worst p ${sci(d.clean.p_value)}`} />
             <Tile label="Poisoned env" value={d.poisoned.flagged ? "caught" : "missed"} note={d.poisoned.flagged ? `on ${d.poisoned.worst_feature}, t = ${num(d.poisoned.worst_t, 1)}` : `worst p ${sci(d.poisoned.p_value)}`} />
             <Tile label="Ran in" value={`${d.seconds.toFixed(2)} s`} note={`seeds ${d.seeds[0]}…${d.seeds[d.seeds.length - 1]}`} />
@@ -116,7 +115,7 @@ export default function LeaksPage() {
             <Side title="Clean environment" side={d.clean} expectFlag={false} />
             <Side title={`Poisoned environment, eps = ${d.eps}`} side={d.poisoned} expectFlag={true} />
           </div>
-          <Card title="Every observation field, both environments" sub="How strongly each field at t predicts the true return into t+1. Bars past the line are flagged." source={d.source}>
+          <Card title="Every observation field" sub="Past the line: flagged." source={d.source}>
             <Chart option={strengthOption(t, d)} height={480} label="Per-field detection strength, clean against poisoned" />
           </Card>
           <Card title="The stated criterion" source="optspread.leaks.PASS_CRITERION">
@@ -125,7 +124,7 @@ export default function LeaksPage() {
         </>
       ) : state.busy ? null : (
         <Card>
-          <p className={ui.dim}>Press the button: the clean world should read quiet, the poisoned one should be caught, and the chart shows which field gave it away.</p>
+          <p className={ui.dim}>Run the demo.</p>
         </Card>
       )}
     </>
