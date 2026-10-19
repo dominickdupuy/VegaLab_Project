@@ -28,18 +28,27 @@ is the "amendments are appended, never edited in place" rule made checkable.
 from __future__ import annotations
 
 import importlib
-import inspect
 import subprocess
-from collections.abc import Mapping, Sized
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 
+from optspread.analysis import paired_contrast
+from optspread.artifacts import RUN_FILENAME
 from optspread.data import conformance_suite
 from optspread.gatereport import GateItem
 from optspread.manifest import MANIFEST_FILENAME, IncompleteManifestError, RunManifest, file_sha256
-from optspread.power import detectable_effect, frontier, variance_components
+from optspread.orchestrate import PILOT_MATRIX, PILOT_ORACLE_MATRIX, read_grid
+from optspread.power import (
+    VarianceComponents,
+    detectable_effect_t,
+    frontier,
+    variance_components,
+)
+from optspread.sweep import changed_artifacts
 from optspread.validation import (
     DEFAULT_CASE,
     DEFAULT_DELTAS,
@@ -52,17 +61,19 @@ from optspread.validation import (
 
 TRAIN_MODULE = "optspread.train"
 TRAIN_FUNCTION = "train_ppo"
-HYPERPARAMETERS = "frozen_hyperparameters"  # () -> record whose .values maps PPO kwargs (D3)
+# () -> record with .values, .hash, .library_version, .matches_library, .differences (D3)
+HYPERPARAMETERS = "frozen_hyperparameters"
 REPLAY_MODULE = "optspread.replay"
 REPLAY_FUNCTION = "replay_matches"  # (run_dir: Path) -> (matches, reason)
 DASHBOARD_MODULE = "optspread.dashboard_data"
-RUNS_FUNCTION = "list_runs"  # (runs_root: Path) -> Sized, one entry per run
-GATES_FUNCTION = "list_gate_reports"  # (docs_dir: Path) -> Sized, one entry per sidecar
+RUNS_FUNCTION = "scan_runs"  # (runs_root: Path) -> rows with .path, one per manifest.json
+GATES_FUNCTION = "load_gate_boards"  # (docs_dir: Path) -> boards with .source, one per report
 
-PILOT_MATRIX = "matrix.npy"
+# The pilot's floor on its own size: below these the components are too noisy to plan on.
+PILOT_MIN_SEEDS = 5
+PILOT_MIN_EPISODES = 20
 PREREG_PATH = "docs/PRE_REGISTRATION.md"
 PREREG_TAG_PATTERN = "prereg-*"
-LEARNER_VERSIONS = ("torch", "stable_baselines3")
 
 DOMINICK, ILAN, HEMDUTT = "Dominick Dupuy", "Ilan Danial", "Hemdutt Rao"
 
@@ -102,13 +113,37 @@ def run_manifests(runs_root: Path) -> tuple[list[tuple[Path, RunManifest]], int]
     return valid, refused
 
 
+def results_runs(runs_root: Path) -> list[tuple[Path, RunManifest]]:
+    """The valid manifests of runs proper: those recording a ``run.json``.
+
+    A pilot's matrices carry a manifest of their own (``orchestrate.write_pilot_matrices``)
+    keyed by a PPO config, but that directory holds matrices, not a run; it is neither a
+    training run nor something a replay can reproduce. A run whose files no longer
+    match their recorded digests is not evidence either, so it is left out too.
+    """
+    return [
+        (d, m)
+        for d, m in run_manifests(runs_root)[0]
+        if RUN_FILENAME in m.artifacts and not changed_artifacts(d, m)
+    ]
+
+
+def is_trained(manifest: RunManifest) -> bool:
+    """A PPO run: the config names the learned arm and carries its training config.
+
+    Library versions are no evidence: ``library_versions`` records torch and
+    Stable-Baselines3 in every manifest written where they are installed.
+    """
+    return manifest.config.policy == "ppo" and manifest.config.train is not None
+
+
 # -- Ilan Danial: harness, replay, dashboard --------------------------------- #
 
 PPO_CRITERION = (
     f"{TRAIN_MODULE} exposes a {TRAIN_FUNCTION} entry point and one pinned "
-    f"{HYPERPARAMETERS} mapping (D3); every pinned key is a Stable-Baselines3 PPO "
-    "argument; and at least one run under the runs root has a valid manifest recording "
-    "the learner's library versions"
+    f"{HYPERPARAMETERS} record (D3) whose values equal the installed Stable-Baselines3 "
+    "defaults (its matches_library is True; not installed is not a pass); and at least one "
+    "PPO run (policy ppo with a training config) under the runs root has a valid manifest"
 )
 
 
@@ -118,56 +153,47 @@ def ppo_harness_item(runs_root: Path) -> GateItem:
     if train is None or not callable(train):
         why = why or f"{TRAIN_MODULE}.{TRAIN_FUNCTION} is not callable"
         return _not_cleared(name, ILAN, PPO_CRITERION, "no training entry point", why)
-    record, why = _load(TRAIN_MODULE, HYPERPARAMETERS)
-    pinned = getattr(record(), "values", None) if callable(record) else record
+    loaded, why = _load(TRAIN_MODULE, HYPERPARAMETERS)
+    record = loaded() if callable(loaded) else loaded
+    pinned = getattr(record, "values", None)
     if not isinstance(pinned, Mapping) or not pinned:
         why = why or f"{HYPERPARAMETERS} is not a non-empty mapping"
         return _not_cleared(name, ILAN, PPO_CRITERION, "the hyperparameters are not pinned", why)
-    ppo, why = _load("stable_baselines3", "PPO")
-    if ppo is None:
-        return _not_cleared(name, ILAN, PPO_CRITERION, f"{len(pinned)} pinned keys", why)
-    parameters = inspect.signature(ppo.__init__).parameters
-    unknown = sorted(str(k) for k in pinned if k not in parameters)
-    if unknown:
-        return _not_cleared(
-            name,
-            ILAN,
-            PPO_CRITERION,
-            f"{len(pinned)} pinned keys",
-            f"not PPO arguments: {', '.join(unknown)}",
-        )
-    changed = sorted(str(k) for k, v in pinned.items() if parameters[str(k)].default != v)
-    trained = [
-        m for _, m in run_manifests(runs_root)[0] if all(v in m.versions for v in LEARNER_VERSIONS)
-    ]
+    version = getattr(record, "library_version", None)
+    pinned_text = f"{len(pinned)} pinned values, hash {getattr(record, 'hash', '?')}"
+    matches = getattr(record, "matches_library", None)
+    if matches is None:
+        why = "stable-baselines3 is not installed, so the pinned set was not compared"
+        return _not_cleared(name, ILAN, PPO_CRITERION, pinned_text, why)
+    if not matches:
+        differences = ", ".join(str(d) for d in getattr(record, "differences", ())) or "?"
+        why = f"the pinned set differs from the stable-baselines3 {version} defaults: {differences}"
+        return _not_cleared(name, ILAN, PPO_CRITERION, pinned_text, why)
+    trained = [m for _, m in results_runs(runs_root) if is_trained(m)]
     evidence = (
-        f"{len(pinned)} pinned PPO arguments, {len(changed)} off the library default"
-        f"{' (' + ', '.join(changed) + ')' if changed else ''}; {len(trained)} training "
-        f"run(s) under {runs_root}"
+        f"{pinned_text}, equal to the stable-baselines3 {version} defaults; {len(trained)} "
+        f"PPO run(s) under {runs_root}"
     )
     if not trained:
-        return _not_cleared(
-            name,
-            ILAN,
-            PPO_CRITERION,
-            evidence,
-            f"no training run with a valid manifest under {runs_root}",
-        )
+        why = f"no PPO run with a valid manifest under {runs_root}"
+        return _not_cleared(name, ILAN, PPO_CRITERION, evidence, why)
     return GateItem(name, ILAN, PPO_CRITERION, evidence, passed=True)
 
 
 REPLAY_CRITERION = (
     f"{REPLAY_MODULE}.{REPLAY_FUNCTION} re-runs a recorded run from its manifest (config "
-    "hash and seed) and reproduces every artifact digest the manifest records"
+    "hash and seed) and reproduces every artifact digest the manifest records; one PPO run "
+    "and one scripted run are replayed when both kinds are under the runs root, at least "
+    "one run in any case"
 )
 
 
-def replay_item(runs_root: Path, limit: int = 1) -> GateItem:
+def replay_item(runs_root: Path) -> GateItem:
     name = "Deterministic replay from hash"
     replay, why = _load(REPLAY_MODULE, REPLAY_FUNCTION)
     if replay is None:
         return _not_cleared(name, ILAN, REPLAY_CRITERION, "no replay entry point", why)
-    runs, _ = run_manifests(runs_root)
+    runs = results_runs(runs_root)
     if not runs:
         return _not_cleared(
             name,
@@ -176,8 +202,15 @@ def replay_item(runs_root: Path, limit: int = 1) -> GateItem:
             "nothing to replay",
             f"no valid run manifest under {runs_root}",
         )
+    kinds = {
+        "PPO": [r for r in runs if is_trained(r[1])],
+        "scripted": [r for r in runs if not is_trained(r[1])],
+    }
     replayed: list[str] = []
-    for run_dir, manifest in runs[:limit]:
+    for kind, of_kind in kinds.items():
+        if not of_kind:
+            continue
+        run_dir, manifest = of_kind[0]
         try:
             result = replay(run_dir)
         except Exception as exc:
@@ -201,48 +234,57 @@ def replay_item(runs_root: Path, limit: int = 1) -> GateItem:
                 f"replaying {manifest.run_id}",
                 f"{manifest.run_id}: {reason}",
             )
-        replayed.append(f"{manifest.run_id} ({len(manifest.artifacts)} artifacts)")
+        replayed.append(f"{manifest.run_id} ({kind}, {len(manifest.artifacts)} artifacts)")
+    counts = ", ".join(f"{len(v)} {k}" for k, v in kinds.items())
     evidence = (
-        f"replayed {', '.join(replayed)} of {len(runs)} runs under {runs_root}; digests match"
+        f"replayed {' and '.join(replayed)} of {len(runs)} runs ({counts}) under {runs_root}; "
+        "digests match"
     )
+    absent = [k for k, v in kinds.items() if not v]
+    if absent:
+        evidence += f"; no {absent[0]} run under {runs_root} to replay"
     return GateItem(name, ILAN, REPLAY_CRITERION, evidence, passed=True)
 
 
 DASHBOARD_CRITERION = (
-    f"the dashboard's data layer ({DASHBOARD_MODULE}) lists every run directory under the "
-    "runs root that has a valid manifest, of which there is at least one, and every gate "
-    "report JSON sidecar under docs/"
+    f"the dashboard's data layer ({DASHBOARD_MODULE}.{RUNS_FUNCTION} and {GATES_FUNCTION}) "
+    "lists every run directory under the runs root that has a valid manifest recording "
+    "its run.json, of which there is at least one, and reads every gate report JSON "
+    "sidecar under docs/"
 )
 
 
 def dashboard_item(runs_root: Path, docs_dir: Path) -> GateItem:
     name = "Dashboard run browser and gate board"
-    list_runs, why = _load(DASHBOARD_MODULE, RUNS_FUNCTION)
-    list_gates, why_gates = _load(DASHBOARD_MODULE, GATES_FUNCTION)
-    if list_runs is None or list_gates is None:
+    scan, why = _load(DASHBOARD_MODULE, RUNS_FUNCTION)
+    load_boards, why_gates = _load(DASHBOARD_MODULE, GATES_FUNCTION)
+    if scan is None or load_boards is None:
         return _not_cleared(
             name, ILAN, DASHBOARD_CRITERION, "no dashboard data layer", why or why_gates
         )
-    runs, _ = run_manifests(runs_root)
+    # Runs proper only: a pilot's matrix manifest is not a run, and the browser skips it.
+    runs = results_runs(runs_root)
     sidecars = sorted(docs_dir.glob("*_GATE_REPORT.json"))
     try:
-        listed: Sized = list_runs(runs_root)
-        boards: Sized = list_gates(docs_dir)
-        n_listed, n_boards = len(listed), len(boards)
+        listed = {Path(row.path).resolve() for row in scan(runs_root)}
+        read = {Path(board.source).resolve() for board in load_boards(docs_dir)}
     except Exception as exc:
         return _not_cleared(
             name, ILAN, DASHBOARD_CRITERION, "the data layer was called", f"it raised {exc!r}"
         )
+    unlisted = [m.run_id for d, m in runs if d.resolve() not in listed]
+    unread = [s.name for s in sidecars if s.resolve() not in read]
     evidence = (
-        f"run browser lists {n_listed} of {len(runs)} manifests under {runs_root}; gate "
-        f"board reads {n_boards} of {len(sidecars)} sidecars"
+        f"run browser lists {len(runs) - len(unlisted)} of {len(runs)} valid manifests under "
+        f"{runs_root} ({len(listed)} rows in all); gate board reads "
+        f"{len(sidecars) - len(unread)} of {len(sidecars)} sidecars"
     )
     if not runs:
         why = f"no valid run manifest under {runs_root}: nothing real to browse"
-    elif n_listed != len(runs):
-        why = f"the run browser lists {n_listed} runs, {len(runs)} have valid manifests"
-    elif n_boards != len(sidecars):
-        why = f"the gate board reads {n_boards} reports, {len(sidecars)} sidecars exist"
+    elif unlisted:
+        why = f"the run browser does not list {len(unlisted)} valid run(s): {', '.join(unlisted)}"
+    elif unread:
+        why = f"the gate board does not read {', '.join(unread)}"
     else:
         return GateItem(name, ILAN, DASHBOARD_CRITERION, evidence, passed=True)
     return _not_cleared(name, ILAN, DASHBOARD_CRITERION, evidence, why)
@@ -277,10 +319,35 @@ def adapter_item() -> GateItem:
 # -- Dominick Dupuy: pilot, analysis validation, pre-registration ------------ #
 
 PILOT_CRITERION = (
-    f"an S x N pilot matrix ({PILOT_MATRIX}, S >= 2, N >= 2, finite) sits beside a valid "
-    "manifest that records its digest; tau^2 and sigma^2 are reported with standard errors "
-    "and turned into the detection floor at one-sided alpha = 0.05 and 80% power"
+    f"the pilot's S x N matrices ({PILOT_MATRIX}, the PPO arm, and {PILOT_ORACLE_MATRIX}, "
+    "the fixed-delta seller on the same paths) sit beside a valid manifest that records "
+    "both digests and whose config is the PPO arm with its training config; "
+    f"S >= {PILOT_MIN_SEEDS}, N >= {PILOT_MIN_EPISODES}, every entry finite, N equal to the "
+    "manifest's n_episodes and S to the grid's seed count where the grid record is present; "
+    "tau^2 and sigma^2 of the paired contrast PPO minus oracle (what the pre-registered test "
+    "tests) are reported with standard errors beside each arm's, and turned into the exact "
+    "noncentral-t detection floor at one-sided alpha = 0.05 and 80% power"
 )
+
+
+def _components(label: str, vc: VarianceComponents) -> str:
+    return (
+        f"{label} tau^2 = {vc.tau2:,.4g} (se {vc.se_tau2:,.4g})"
+        f"{' clamped at 0' if vc.clamped else ''}, sigma^2 = {vc.sigma2:,.4g} "
+        f"(se {vc.se_sigma2:,.4g})"
+    )
+
+
+def _grid_seeds(pilot_root: Path, run_id: str) -> int | None:
+    """The seed count of the grid record under ``pilot_root`` holding ``run_id``, if any."""
+    for path in sorted(pilot_root.glob("grid-*.json")):
+        try:
+            grid = read_grid(path)
+        except (OSError, ValueError):  # SchemaVersionError and pydantic's are ValueErrors
+            continue
+        if any(c.run_id == run_id for c in grid.cells):
+            return grid.grid.n_seeds
+    return None
 
 
 def pilot_item(
@@ -293,41 +360,71 @@ def pilot_item(
 ) -> GateItem:
     """Rates default to the M1-measured planning figures; the training budget is a placeholder."""
     name = "Variance-components pilot"
+
+    def fail(evidence: str, why: str) -> GateItem:
+        return _not_cleared(name, DOMINICK, PILOT_CRITERION, evidence, why)
+
     matrix_path = pilot_root / PILOT_MATRIX
     if not matrix_path.exists():
-        return _not_cleared(name, DOMINICK, PILOT_CRITERION, f"no {matrix_path}", "pilot not run")
+        return fail(f"no {matrix_path}", "pilot not run")
     try:
         manifest = RunManifest.read(pilot_root)
     except FileNotFoundError:
         why = f"{matrix_path} has no {MANIFEST_FILENAME} beside it, so it is not reproducible"
-        return _not_cleared(name, DOMINICK, PILOT_CRITERION, f"{matrix_path} found", why)
+        return fail(f"{matrix_path} found", why)
     except (IncompleteManifestError, ValueError) as exc:
-        return _not_cleared(
-            name, DOMINICK, PILOT_CRITERION, f"{matrix_path} found", f"manifest refused: {exc}"
-        )
-    recorded = manifest.artifacts.get(PILOT_MATRIX)
-    if recorded != file_sha256(matrix_path):
+        return fail(f"{matrix_path} found", f"manifest refused: {exc}")
+    at = f"run {manifest.run_id}"
+    config = manifest.config
+    if config.policy != "ppo" or config.train is None:
+        why = f"the manifest's config is the {config.policy} arm, not PPO with a training config"
+        return fail(at, why)
+    arms: list[NDArray[np.float64]] = []
+    for filename in (PILOT_MATRIX, PILOT_ORACLE_MATRIX):
+        path = pilot_root / filename
+        recorded = manifest.artifacts.get(filename)
+        if recorded is None:
+            return fail(at, f"the manifest does not record {filename}")
+        if not path.exists():
+            return fail(at, f"{filename} is recorded but missing")
+        if recorded != file_sha256(path):
+            return fail(at, f"{filename} changed under its manifest")
+        arms.append(np.asarray(np.load(path), dtype=np.float64))
+    ppo, oracle = arms
+    shape = "x".join(str(d) for d in ppo.shape)
+    if ppo.shape != oracle.shape:
+        other = "x".join(str(d) for d in oracle.shape)
+        return fail(at, f"{PILOT_MATRIX} is {shape} and {PILOT_ORACLE_MATRIX} {other}: not paired")
+    if (
+        ppo.ndim != 2
+        or ppo.shape[0] < PILOT_MIN_SEEDS
+        or ppo.shape[1] < PILOT_MIN_EPISODES
+        or not (np.isfinite(ppo).all() and np.isfinite(oracle).all())
+    ):
         why = (
-            f"the manifest does not record {PILOT_MATRIX}"
-            if recorded is None
-            else f"{PILOT_MATRIX} changed under its manifest"
+            f"the matrix is {shape}, not S x N with S >= {PILOT_MIN_SEEDS}, "
+            f"N >= {PILOT_MIN_EPISODES} and every entry finite"
         )
-        return _not_cleared(name, DOMINICK, PILOT_CRITERION, f"run {manifest.run_id}", why)
-    outcomes = np.load(matrix_path)
-    shape = "x".join(str(d) for d in outcomes.shape)
-    if outcomes.ndim != 2 or min(outcomes.shape) < 2 or not np.isfinite(outcomes).all():
-        why = f"the matrix is {shape}, not S x N with S, N >= 2 and every entry finite"
-        return _not_cleared(name, DOMINICK, PILOT_CRITERION, f"run {manifest.run_id}", why)
-    vc = variance_components(outcomes)
-    S, N = vc.n_seeds, vc.n_episodes
+        return fail(at, why)
+    S, N = int(ppo.shape[0]), int(ppo.shape[1])
+    if config.n_episodes != N:
+        return fail(
+            at, f"the matrix has N = {N} episodes, the manifest's config {config.n_episodes}"
+        )
+    seeds = _grid_seeds(pilot_root, manifest.run_id)
+    if seeds is not None and seeds != S:
+        return fail(at, f"the matrix has S = {S} seeds, the grid record {seeds}")
+    vc = variance_components(paired_contrast(ppo, oracle))
     floors = ", ".join(
-        f"{detectable_effect(vc.tau2, vc.sigma2, s, N):,.4g} at S = {s}" for s in (5, 50)
+        f"{detectable_effect_t(vc.tau2, vc.sigma2, s, N):,.4g} at S = {s}" for s in (5, 50)
     )
     evidence = (
-        f"{S} x {N} pilot ({manifest.config.policy}, run {manifest.run_id}): tau^2 = "
-        f"{vc.tau2:,.4g} (se {vc.se_tau2:,.4g}){' clamped at 0' if vc.clamped else ''}, "
-        f"sigma^2 = {vc.sigma2:,.4g} (se {vc.se_sigma2:,.4g}); detection floor at N = {N}: "
-        f"{floors}"
+        f"{S} x {N} pilot ({at}, {config.train.total_timesteps:,} training steps per seed, "
+        f"{'grid of ' + str(seeds) + ' seeds' if seeds is not None else 'no grid record'}): "
+        f"{_components('contrast ppo - delta_seller', vc)}; "
+        f"{_components('ppo', variance_components(ppo))}; "
+        f"{_components('delta_seller', variance_components(oracle))}; exact-t detection "
+        f"floor of the contrast at N = {N}: {floors}"
     )
     if delta is not None:
         designs = frontier(
@@ -336,7 +433,7 @@ def pilot_item(
             vc.sigma2,
             seeds=(2, 4, 8, 16, 32, 64),
             train_steps_per_seed=train_steps_per_seed,
-            episode_days=manifest.config.env.episode_days,
+            episode_days=config.env.episode_days,
             train_rate=train_rate,
             eval_rate=eval_rate,
         )
@@ -346,10 +443,10 @@ def pilot_item(
             if d.budget is not None and d.power is not None
         ]
         if costed:
-            hours, seeds, episodes, power = min(costed)
+            hours, n_seeds, episodes, power = min(costed)
             evidence += (
-                f"; for delta = {delta:,.4g} the cheapest design is {seeds} seeds x {episodes} "
-                f"episodes (power {power:.3f}, {hours:,.1f} core-hours at "
+                f"; for delta = {delta:,.4g} the cheapest design is {n_seeds} seeds x {episodes} "
+                f"episodes (normal-approximation power {power:.3f}, {hours:,.1f} core-hours at "
                 f"{train_steps_per_seed:,} training steps per seed, a placeholder)"
             )
         else:

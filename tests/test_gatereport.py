@@ -130,6 +130,16 @@ def test_a_rendered_report_reads_back_to_itself(items: list[GateItem]) -> None:
     assert GateReport.from_markdown(report.render()) == report
 
 
+def test_context_lines_sit_under_the_date_and_read_back() -> None:
+    context = ("Runs root: /data/runs", "Pilot root: /data/runs/pilot")
+    report = build_report("M2", [PASSING], date(2026, 10, 29), context)
+    lines = report.render().splitlines()
+    assert lines[2:7] == ["Report date: 2026-10-29", "", context[0], "", context[1]]
+    assert lines[8].startswith("**Verdict: PASS**")
+    assert GateReport.from_markdown(report.render()) == report
+    assert report.to_dict() == build_report("M2", [PASSING], date(2026, 10, 29)).to_dict()
+
+
 @pytest.mark.parametrize("md", sorted(DOCS.glob("*_GATE_REPORT.md")), ids=lambda p: p.name)
 def test_every_committed_report_has_a_sidecar_from_the_same_build(md: Path) -> None:
     recorded = GateReport.from_markdown(md.read_text())

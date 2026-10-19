@@ -260,6 +260,37 @@ def detectable_effect(
     return z * math.sqrt(var_grand_mean(tau2, sigma2, n_seeds, n_episodes))
 
 
+def detectable_effect_t(
+    tau2: float,
+    sigma2: float,
+    n_seeds: int,
+    n_episodes: int,
+    alpha: float = 0.05,
+    target_power: float = 0.80,
+) -> float:
+    """The smallest effect the exact t test detects at the target power: ``power_t`` inverted.
+
+    ``power_t`` rises with the effect, so bisection between zero and a doubled
+    upper bracket finds it. Above ``detectable_effect`` at every S, by most at the
+    small seed counts where the normal form overstates power; the two meet as S grows.
+    """
+    _z(alpha, "alpha"), _z(target_power, "target_power")  # range checks only
+    if target_power <= alpha:
+        raise ValueError(f"target_power must exceed alpha, got {target_power} <= {alpha}")
+    if var_grand_mean(tau2, sigma2, n_seeds, n_episodes) == 0.0:
+        return 0.0
+    lo, hi = 0.0, detectable_effect(tau2, sigma2, n_seeds, n_episodes, alpha, target_power)
+    while power_t(hi, tau2, sigma2, n_seeds, n_episodes, alpha) < target_power:
+        lo, hi = hi, 2.0 * hi
+    while hi - lo > 1e-12 * hi:
+        mid = 0.5 * (lo + hi)
+        if power_t(mid, tau2, sigma2, n_seeds, n_episodes, alpha) < target_power:
+            lo = mid
+        else:
+            hi = mid
+    return hi
+
+
 def episodes_for(
     delta: float,
     tau2: float,

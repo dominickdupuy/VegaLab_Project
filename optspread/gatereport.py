@@ -87,9 +87,13 @@ class GateItem:
 
 @dataclass(frozen=True, slots=True)
 class GateReport:
+    """The items, and ``context``: lines under the date saying what the evidence was read
+    from (the roots a report scanned, say). Context is in the Markdown, not the sidecar."""
+
     milestone: str
     report_date: date
     items: tuple[GateItem, ...]
+    context: tuple[str, ...] = ()
 
     @property
     def passed(self) -> bool:
@@ -151,6 +155,9 @@ class GateReport:
             raise ValueError("a gate report carries exactly one 'Report date:' line")
         if _HEADER not in lines:
             raise ValueError("no item table in the report")
+        at = lines.index(dated[0]) + 1
+        verdict_at = next((i for i, ln in enumerate(lines) if ln.startswith("**Verdict: ")), at)
+        context = tuple(ln for ln in lines[at:verdict_at] if ln)
         items: list[GateItem] = []
         for row in lines[lines.index(_HEADER) + 2 :]:
             if not row.startswith("| "):
@@ -165,6 +172,7 @@ class GateReport:
             lines[0][2 : -len(_TITLE)],
             date.fromisoformat(dated[0].removeprefix(_DATE)),
             tuple(items),
+            context,
         )
         if report.render() != text:
             # Catches a hand-edited verdict, a cell holding ' | ', or a format change.
@@ -177,6 +185,7 @@ class GateReport:
             "",
             f"Report date: {self.report_date.isoformat()}",
             "",
+            *(line for c in self.context for line in (c, "")),
             f"**Verdict: {'PASS' if self.passed else 'NOT CLEARED'}** "
             f"({len(self.items)} items, {len(self.failures)} failed, "
             f"{len(self.without_criterion)} without a stated criterion)",
@@ -205,5 +214,10 @@ class GateReport:
         return "\n".join(lines) + "\n"
 
 
-def build_report(milestone: str, items: Sequence[GateItem], on: date | None = None) -> GateReport:
-    return GateReport(milestone, on or date.today(), tuple(items))
+def build_report(
+    milestone: str,
+    items: Sequence[GateItem],
+    on: date | None = None,
+    context: Sequence[str] = (),
+) -> GateReport:
+    return GateReport(milestone, on or date.today(), tuple(items), tuple(context))

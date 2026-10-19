@@ -22,6 +22,7 @@ from scipy.stats import norm
 from optspread.power import (
     budget,
     detectable_effect,
+    detectable_effect_t,
     episodes_for,
     frontier,
     power,
@@ -293,6 +294,20 @@ def test_the_detectable_effect_is_the_effect_at_which_power_hits_the_target() ->
     # The floor falls as 1/sqrt(S) at fixed N (project document 4.5): 50 seeds vs 5 is sqrt(10).
     ratio = detectable_effect(1.0, 4.0, 5, 10) / detectable_effect(1.0, 4.0, 50, 10)
     assert ratio == pytest.approx(np.sqrt(10.0), rel=1e-12)
+
+
+def test_the_exact_t_floor_inverts_power_t_and_sits_above_the_normal_one() -> None:
+    for S in (2, 5, 50):
+        floor = detectable_effect_t(1.0, 4.0, S, 10)
+        assert power_t(floor, 1.0, 4.0, S, 10) == pytest.approx(TARGET, abs=1e-9)
+        assert floor > detectable_effect(1.0, 4.0, S, 10)
+    # At five seeds the normal form understates the floor by more than a tenth.
+    assert detectable_effect_t(1.0, 4.0, 5, 10) > 1.1 * detectable_effect(1.0, 4.0, 5, 10)
+    big = detectable_effect_t(1.0, 4.0, 5000, 10) / detectable_effect(1.0, 4.0, 5000, 10)
+    assert big == pytest.approx(1.0, abs=1e-3)
+    assert detectable_effect_t(0.0, 0.0, 5, 10) == 0.0
+    with pytest.raises(ValueError, match="must exceed alpha"):
+        detectable_effect_t(1.0, 4.0, 5, 10, alpha=0.05, target_power=0.04)
 
 
 def test_component_standard_errors_on_a_constructed_matrix_are_exact() -> None:
