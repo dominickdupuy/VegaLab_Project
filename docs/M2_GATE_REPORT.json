@@ -1,30 +1,30 @@
 {
   "milestone": "M2",
-  "report_date": "2026-10-18",
+  "report_date": "2026-10-19",
   "verdict": "NOT CLEARED",
   "items": [
     {
       "name": "PPO harness at fixed D3 hyperparameters",
       "owner": "Ilan Danial",
       "verdict": "FAIL",
-      "criterion": "optspread.train exposes a train entry point and one pinned PPO_HYPERPARAMETERS mapping (D3); every pinned key is a Stable-Baselines3 PPO argument; and at least one run under the runs root has a valid manifest recording the learner's library versions",
-      "evidence": "no training entry point",
-      "failed_first": "optspread.train does not exist yet"
+      "criterion": "optspread.train exposes a train_ppo entry point and one pinned frozen_hyperparameters record (D3) whose values equal the installed Stable-Baselines3 defaults (its matches_library is True; not installed is not a pass); and at least one PPO run (policy ppo with a training config) under the runs root has a valid manifest",
+      "evidence": "21 pinned values, hash 628d9ce46772fd0e",
+      "failed_first": "stable-baselines3 is not installed, so the pinned set was not compared"
     },
     {
       "name": "Deterministic replay from hash",
       "owner": "Ilan Danial",
       "verdict": "FAIL",
-      "criterion": "optspread.replay.replay_matches re-runs a recorded run from its manifest (config hash and seed) and reproduces every artifact digest the manifest records",
-      "evidence": "no replay entry point",
-      "failed_first": "optspread.replay does not exist yet"
+      "criterion": "optspread.replay.replay_matches re-runs a recorded run from its manifest (config hash and seed) and reproduces every artifact digest the manifest records; one PPO run and one scripted run are replayed when both kinds are under the runs root, at least one run in any case",
+      "evidence": "nothing to replay",
+      "failed_first": "no valid run manifest under $VEGALAB_DATA/runs"
     },
     {
       "name": "Variance-components pilot",
       "owner": "Dominick Dupuy",
       "verdict": "FAIL",
-      "criterion": "an S x N pilot matrix (matrix.npy, S >= 2, N >= 2, finite) sits beside a valid manifest that records its digest; tau^2 and sigma^2 are reported with standard errors and turned into the detection floor at one-sided alpha = 0.05 and 80% power",
-      "evidence": "no runs/pilot/matrix.npy",
+      "criterion": "the pilot's S x N matrices (matrix.npy, the PPO arm, and matrix_oracle.npy, the fixed-delta seller on the same paths) sit beside a valid manifest that records both digests and whose config is the PPO arm with its training config; S >= 5, N >= 20, every entry finite, N equal to the manifest's n_episodes and S to the grid's seed count where the grid record is present; tau^2 and sigma^2 of the paired contrast PPO minus oracle (what the pre-registered test tests) are reported with standard errors beside each arm's, and turned into the exact noncentral-t detection floor at one-sided alpha = 0.05 and 80% power",
+      "evidence": "no $VEGALAB_DATA/runs/pilot/matrix.npy",
       "failed_first": "pilot not run"
     },
     {
@@ -40,24 +40,24 @@
       "owner": "Dominick Dupuy",
       "verdict": "FAIL",
       "criterion": "docs/PRE_REGISTRATION.md is tracked with no uncommitted changes; the earliest prereg-* tag points at a commit on this history that contains it; and the file at HEAD begins with the tagged text byte for byte (amendments appended, never edited in place)",
-      "evidence": "committed at a9881ca5",
+      "evidence": "committed at 2b56a6fa",
       "failed_first": "no prereg-* tag: committed, not tagged"
     },
     {
       "name": "Dashboard run browser and gate board",
       "owner": "Ilan Danial",
       "verdict": "FAIL",
-      "criterion": "the dashboard's data layer (optspread.dashboard_data) lists every run directory under the runs root that has a valid manifest, of which there is at least one, and every gate report JSON sidecar under docs/",
-      "evidence": "no dashboard data layer",
-      "failed_first": "optspread.dashboard_data does not exist yet"
+      "criterion": "the dashboard's data layer (optspread.dashboard_data.scan_runs and load_gate_boards) lists every run directory under the runs root that has a valid manifest recording its run.json, of which there is at least one, and reads every gate report JSON sidecar under docs/",
+      "evidence": "run browser lists 0 of 0 valid manifests under $VEGALAB_DATA/runs (0 rows in all); gate board reads 2 of 2 sidecars",
+      "failed_first": "no valid run manifest under $VEGALAB_DATA/runs: nothing real to browse"
     },
     {
       "name": "Real data adapter conformance",
       "owner": "Hemdutt Rao",
-      "verdict": "FAIL",
+      "verdict": "PASS",
       "criterion": "the real optionmetrics source is available (its SPX panel is present) and clears conformance_report, the provider contract and structural invariants every source meets; SKIPPED is not a pass",
-      "evidence": "synthetic PASS (64 chains); optionmetrics_stub PASS (64 chains); optionmetrics SKIPPED",
-      "failed_first": "optionmetrics is unavailable (SKIPPED): no SPX panel for the adapter to serve"
+      "evidence": "synthetic PASS (64 chains); optionmetrics_stub PASS (64 chains); optionmetrics PASS (64 chains)",
+      "failed_first": ""
     }
   ]
 }
