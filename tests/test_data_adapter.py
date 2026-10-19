@@ -6,6 +6,8 @@ so each check here has a deliberately broken source as its positive control.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from optspread.config import MarketConfig
@@ -36,7 +38,10 @@ def test_every_available_source_conforms() -> None:
     assert by_name["optionmetrics_stub"].passed
 
 
-def test_the_pending_real_source_is_skipped_not_passed() -> None:
+def test_the_real_source_without_data_is_skipped_not_passed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("VEGALAB_DATA", str(tmp_path))
     report = conformance_suite(SHORT)[-1]
     assert report.source == "optionmetrics"
     assert not report.checked
@@ -44,9 +49,11 @@ def test_the_pending_real_source_is_skipped_not_passed() -> None:
     assert "SKIPPED" in report.render()
 
 
-def test_the_real_source_refuses_loudly() -> None:
-    with pytest.raises(DataUnavailableError, match="WRDS"):
-        OptionMetricsSource().provider()
+def test_the_real_source_without_data_refuses_loudly(tmp_path: Path) -> None:
+    source = OptionMetricsSource(SHORT, root=tmp_path)
+    assert not source.available
+    with pytest.raises(DataUnavailableError, match="VEGALAB_DATA"):
+        source.provider()
 
 
 def test_make_source_returns_the_named_source() -> None:

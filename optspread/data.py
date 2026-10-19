@@ -3,16 +3,17 @@
 Lane: Hemdutt Rao (market layer).
 
 Everything downstream of this file consumes a ``ChainProvider`` and cannot tell
-whether the chains were generated or loaded. That is the point. The WRDS request
-for OptionMetrics is submitted and may not clear in time, so real data has to be
-an upgrade rather than a dependency: if access arrives, a new ``ChainSource``
-lands here and nothing else in the package changes.
+whether the chains were generated or loaded. That is the point. Real data was
+designed in as an upgrade rather than a dependency, and it has now arrived: the
+``optionmetrics`` source serves historical SPX chains from the stitched panel
+(``optspread.realdata``), and nothing else in the package changed to take it.
 
-Three sources today:
+Three sources:
 
     synthetic            the fair-IV generator (``optspread.market``)
     optionmetrics_stub   the real-data adapter's shape, served by the generator
-    optionmetrics        the real loader; raises ``DataUnavailableError`` until access
+    optionmetrics        real SPX chains: OptionMetrics to 2025-08-29, OPRA after;
+                         unavailable (and says why) when the shared data folder is absent
 
 The stub is what makes the boundary testable before the data exists. It sits at
 the same interface the real adapter will occupy, so ``conformance_report`` proves
@@ -95,8 +96,14 @@ class OptionMetricsStubSource:
 
 @dataclass(frozen=True, slots=True)
 class OptionMetricsSource:
-    """The real loader. Pending WRDS access, so it serves nothing and says why."""
+    """Real SPX chains from the stitched panel in the shared data folder.
 
+    ``root`` defaults to ``optspread.realdata.data_root()``. Available exactly when
+    the panel's surface grid and daily series are present; pandas is imported only
+    when a provider is built, so the core package does not need it.
+    """
+
+    config: MarketConfig = field(default_factory=MarketConfig)
     root: Path | None = None
 
     @property
@@ -104,14 +111,28 @@ class OptionMetricsSource:
         return "optionmetrics"
 
     @property
+    def panel_dir(self) -> Path:
+        from optspread.realdata import data_root
+
+        return (self.root if self.root is not None else data_root()) / "panel"
+
+    @property
     def available(self) -> bool:
-        return False
+        return all((self.panel_dir / f).exists() for f in PANEL_FILES)
 
     def provider(self) -> ChainProvider:
-        raise DataUnavailableError(
-            "OptionMetrics access is pending (WRDS request submitted). Use "
-            "'optionmetrics_stub' to exercise this boundary, or 'synthetic' to run."
-        )
+        if not self.available:
+            raise DataUnavailableError(
+                f"no SPX panel under {self.panel_dir} (set VEGALAB_DATA to the shared "
+                "folder, or build it with scripts/build_spx_panel.py). Use "
+                "'optionmetrics_stub' to exercise this boundary, or 'synthetic' to run."
+            )
+        from optspread.realdata.provider import HistoricalChainProvider, load_store
+
+        return HistoricalChainProvider(self.config, load_store(self.panel_dir))
+
+
+PANEL_FILES = ("surface_grid.parquet", "spx_daily.parquet")
 
 
 def make_source(name: SourceName, config: MarketConfig | None = None) -> ChainSource:
@@ -120,7 +141,7 @@ def make_source(name: SourceName, config: MarketConfig | None = None) -> ChainSo
         return SyntheticSource(cfg)
     if name == "optionmetrics_stub":
         return OptionMetricsStubSource(cfg)
-    return OptionMetricsSource()
+    return OptionMetricsSource(cfg)
 
 
 # -- conformance: what any source must satisfy to sit at this boundary ------- #
