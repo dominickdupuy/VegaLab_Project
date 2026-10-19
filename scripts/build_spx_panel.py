@@ -100,7 +100,9 @@ def _write_inventory(out: Path, rows: list[dict[str, str]]) -> None:
     tmp.replace(out)
 
 
-def extract_opra(databento: Path, inventory_csv: Path, out_dir: Path) -> int:
+def extract_opra(
+    databento: Path, inventory_csv: Path, out_dir: Path, shard: tuple[int, int] = (0, 1)
+) -> int:
     with inventory_csv.open(newline="") as fh:
         rows = [r for r in csv.DictReader(fh) if r["inspected"] == "yes"]
     jobs = [
@@ -110,9 +112,12 @@ def extract_opra(databento: Path, inventory_csv: Path, out_dir: Path) -> int:
         and r["schema"] == "cbbo-1m"
         and any(s.split(".")[0] in ("SPX", "SPXW") for s in r["symbols"].split(","))
     ]
-    _log(f"extract-opra: {len(jobs)} closing-snapshot jobs")
+    jobs = sorted(jobs, key=lambda r: r["start"])
+    k, n = shard  # shard k of n takes every n-th day, so n processes split the work
+    jobs = jobs[k::n]
+    _log(f"extract-opra: {len(jobs)} closing-snapshot jobs (shard {k} of {n})")
     written = 0
-    for i, r in enumerate(sorted(jobs, key=lambda r: r["start"]), 1):
+    for i, r in enumerate(jobs, 1):
         day = r["start"]  # each closing job covers one trading day
         dest = out_dir / f"year={day[:4]}" / f"{day}.parquet"
         if dest.exists():
@@ -130,6 +135,9 @@ def extract_opra(databento: Path, inventory_csv: Path, out_dir: Path) -> int:
 
 
 OM_END = date.fromisoformat(OPTIONMETRICS_END)
+# Bump when a change to optspread.realdata alters what a year builds to: the cached
+# summaries of the old version are then ignored and every year is rebuilt.
+PANEL_VERSION = 2
 
 
 def _priced_by_month(quotes: pd.DataFrame) -> pd.DataFrame:
@@ -153,26 +161,28 @@ def build_year(year: int) -> dict[str, pd.DataFrame]:
     """One year of the panel, written to its partition; returns the small summaries."""
     root = data_root()
     dest = root / "panel" / "spx" / f"year={year}" / "part.parquet"
-    cache = root / "panel" / "_summaries" / f"year={year}"
+    cache = root / "panel" / "_summaries" / f"v{PANEL_VERSION}" / f"year={year}"
     names = ("term", "counts", "spot_parity", "seam", "surface")
     if dest.exists() and all((cache / f"{n}.parquet").exists() for n in names):
         _log(f"panel {year}: cached")
         return {n: pd.read_parquet(cache / f"{n}.parquet") for n in names}
     frames: list[pd.DataFrame] = []
-    dropped: dict[tuple[date, str], int] = {}
+    dropped: list[pd.Series] = []
     om_overlap = pd.DataFrame()
     db_overlap = pd.DataFrame()
 
     if year <= OM_END.year:
         om = read_opprcd(root, year)
         priced = _priced_by_month(om[om["date"] <= OM_END])
-        panel, _ = finalise(priced, "optionmetrics")
+        panel, lost = finalise(priced, "optionmetrics")
         frames.append(panel)
+        dropped.append(lost)
         om_overlap = panel[pd.to_datetime(panel["date"]) >= pd.Timestamp("2025-07-01")]
     db = _databento_year(root, year)
     if not db.empty:
         priced = _priced_by_month(db)
-        panel, _ = finalise(priced, "databento")
+        panel, lost = finalise(priced, "databento")
+        dropped.append(lost[[d > OM_END for d in lost.index]])
         after = panel[panel["date"] > OM_END]
         frames.append(after)
         db_overlap = panel[panel["date"] <= OM_END]
@@ -184,9 +194,12 @@ def build_year(year: int) -> dict[str, pd.DataFrame]:
         full.to_parquet(part, index=False, compression="zstd")
         part.replace(dest)
     counts = full.groupby(["date", "source"]).size().rename("n_contracts").reset_index()
+    if dropped:
+        lost_by_day = pd.concat(dropped).groupby(level=0).sum().rename("n_dropped")
+        counts = counts.merge(lost_by_day, left_on="date", right_index=True, how="left")
+        counts["n_dropped"] = counts["n_dropped"].fillna(0).astype("int64")
     seam = seam_frame(om_overlap, db_overlap) if not db_overlap.empty else pd.DataFrame()
     _log(f"panel {year}: {len(full):,} rows, {full['date'].nunique() if len(full) else 0} days")
-    del dropped
     summary = {
         "term": atm_term(full) if not full.empty else pd.DataFrame(),
         "counts": counts,
@@ -229,7 +242,9 @@ def build_panel(years: range, workers: int) -> None:
     cov = coverage(
         calendar,
         counts.groupby("date", as_index=False).agg(
-            source=("source", "first"), n_contracts=("n_contracts", "sum")
+            source=("source", "first"),
+            n_contracts=("n_contracts", "sum"),
+            n_dropped=("n_dropped", "sum"),
         ),
     )
     cov.to_parquet(out / "coverage.parquet", index=False)
@@ -285,6 +300,40 @@ def fred_check() -> pd.DataFrame:
     return summary
 
 
+def data_manifest(repo_copy: Path) -> dict[str, dict[str, object]]:
+    """sha256 and size of every built file in the shared folder: what the repo can verify.
+
+    Covers the inventory, the extracted closing quotes and the panel (not the
+    per-year cache). The same JSON is written to the shared folder and to
+    ``repo_copy``, so a teammate can check that their copy of the data is the one
+    the code was built and tested against.
+    """
+    import hashlib
+    import json
+
+    root = data_root()
+    files = sorted(
+        [root / "databento" / "inventory.csv"]
+        + list((root / "databento" / "spx_close").rglob("*.parquet"))
+        + [f for f in (root / "panel").rglob("*.parquet") if "_summaries" not in f.parts]
+    )
+    out: dict[str, dict[str, object]] = {}
+    total = 0
+    for f in files:
+        h = hashlib.sha256()
+        with f.open("rb") as fh:
+            for block in iter(lambda: fh.read(1 << 20), b""):
+                h.update(block)
+        size = f.stat().st_size
+        total += size
+        out[f.relative_to(root).as_posix()] = {"sha256": h.hexdigest(), "bytes": size}
+    text = json.dumps({"panel_version": PANEL_VERSION, "files": out}, indent=1, sort_keys=True)
+    (root / "MANIFEST.json").write_text(text + "\n")
+    repo_copy.write_text(text + "\n")
+    _log(f"manifest: {len(out)} files, {total / 1e9:.2f} GB")
+    return out
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     sub = ap.add_subparsers(dest="stage", required=True)
@@ -293,10 +342,13 @@ def main(argv: list[str] | None = None) -> int:
     inv.add_argument("--max-mb", type=float, default=15.0)
     ext = sub.add_parser("extract-opra")
     ext.add_argument("--databento", type=Path, default=DEFAULT_DATABENTO)
+    ext.add_argument("--shard", type=int, nargs=2, default=(0, 1), metavar=("K", "N"))
     pan = sub.add_parser("panel")
     pan.add_argument("--years", type=int, nargs=2, default=(2010, 2026))
     pan.add_argument("--workers", type=int, default=3)
     sub.add_parser("fred")
+    man = sub.add_parser("manifest")
+    man.add_argument("--repo-copy", type=Path, default=Path("docs/DATA_MANIFEST.json"))
     args = ap.parse_args(argv)
 
     root = data_root()
@@ -304,12 +356,16 @@ def main(argv: list[str] | None = None) -> int:
     if args.stage == "inventory":
         inventory(args.databento, inventory_csv, args.max_mb)
     elif args.stage == "extract-opra":
-        n = extract_opra(args.databento, inventory_csv, root / "databento" / "spx_close")
+        n = extract_opra(
+            args.databento, inventory_csv, root / "databento" / "spx_close", tuple(args.shard)
+        )
         _log(f"extract-opra: {n} new days written")
     elif args.stage == "panel":
         build_panel(range(args.years[0], args.years[1] + 1), args.workers)
     elif args.stage == "fred":
         fred_check()
+    elif args.stage == "manifest":
+        data_manifest(args.repo_copy)
     return 0
 
 

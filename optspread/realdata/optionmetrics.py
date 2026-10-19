@@ -50,6 +50,11 @@ def normalise_opprcd(raw: pd.DataFrame) -> pd.DataFrame:
     old exchange code (``SPX.AT``, ``SPZ.MJ``), one code per contract, which says
     nothing about the root. Those rows take their root from settlement instead:
     AM-settled is the SPX root, PM-settled the SPXW family.
+
+    Until February 2015 the vendor dates an AM-settled monthly on the Saturday after
+    its last trading day. It settles at Friday's open, so those expiries move to the
+    Friday: left on the Saturday, every tau is a day long (about 2% low on a 30-day
+    IV, 7% on a 7-day one).
     """
     sym = raw["symbol"].astype("string")
     osi = sym.str.contains(" ", regex=False).fillna(False).to_numpy(dtype=bool)
@@ -61,7 +66,7 @@ def normalise_opprcd(raw: pd.DataFrame) -> pd.DataFrame:
         {
             "date": pd.to_datetime(raw["date"]).dt.date,
             "root": root,
-            "expiry": pd.to_datetime(raw["exdate"]).dt.date,
+            "expiry": _settlement_day(pd.to_datetime(raw["exdate"]), am).dt.date,
             "cp": raw["cp_flag"].to_numpy(),
             "strike": raw["strike_price"].to_numpy(dtype=np.float64) / 1000.0,
             "bid": np.where(bid > 0.0, bid, np.nan),
@@ -74,6 +79,12 @@ def normalise_opprcd(raw: pd.DataFrame) -> pd.DataFrame:
             "am_settled": am,
         }
     )
+
+
+def _settlement_day(expiry: pd.Series, am: np.ndarray) -> pd.Series:
+    """A Saturday AM expiry settles at the open of the Friday before it."""
+    saturday = (expiry.dt.weekday == 5).to_numpy() & am
+    return expiry - pd.to_timedelta(np.where(saturday, 1, 0), unit="D")
 
 
 def read_opprcd(root: Path, year: int, ticker: str = "SPX") -> pd.DataFrame:  # pragma: no cover
