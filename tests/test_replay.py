@@ -19,9 +19,11 @@ from fake_learner import FakeLearned, fake_trainer
 
 from optspread.artifacts import RUN_FILENAME, RunRecord, dump_run
 from optspread.config import CostConfig, EnvConfig, MarketConfig, RunConfig, TrainConfig
-from optspread.manifest import MANIFEST_FILENAME, file_sha256
+from optspread.manifest import MANIFEST_FILENAME, RunManifest, file_sha256
 from optspread.orchestrate import execute_run
 from optspread.replay import find_runs, replay_matches, replay_run
+from optspread.sweep import changed_artifacts, valid_run
+from optspread.train import POLICY_FILENAME
 
 SCRIPTED = RunConfig(
     policy="delta_seller",
@@ -147,3 +149,40 @@ def test_the_replay_command_takes_runs_or_folders_of_runs(
     assert "2/3" in capsys.readouterr().out
     (tmp_path / "empty").mkdir()
     assert replay.main([str(tmp_path / "empty")]) == 1
+
+
+def test_the_replay_command_refuses_to_replay_nothing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from scripts import replay
+
+    execute_run(SCRIPTED, tmp_path / "r0")
+    for bad in ("0", "-1"):
+        with pytest.raises(SystemExit) as exit_:
+            replay.main([str(tmp_path), "--max", bad])
+        assert exit_.value.code == 2
+        assert "--max must be at least 1" in capsys.readouterr().err
+    assert replay.main([str(tmp_path / "absent")]) == 1
+    assert "no such run directory" in capsys.readouterr().err
+    assert replay.main([str(tmp_path / "r0" / RUN_FILENAME)]) == 1  # a file, not a run
+
+
+def test_a_swapped_policy_fails_the_replay_and_the_resume(tmp_path: Path) -> None:
+    execute_run(LEARNED, tmp_path, fake_trainer)
+    assert valid_run(tmp_path, LEARNED) is not None
+    (tmp_path / POLICY_FILENAME).write_text("a different policy\n")
+    matches, reason = replay_matches(tmp_path, fake_trainer)
+    assert not matches and reason == f"{POLICY_FILENAME} no longer match the manifest's digests"
+    assert valid_run(tmp_path, LEARNED) is None  # the resume recomputes it
+    (tmp_path / POLICY_FILENAME).unlink()
+    assert not replay_matches(tmp_path, fake_trainer)[0]
+
+
+def test_a_manifest_that_does_not_record_the_results_is_not_replayed(tmp_path: Path) -> None:
+    execute_run(SCRIPTED, tmp_path)
+    manifest = json.loads((tmp_path / MANIFEST_FILENAME).read_text())
+    manifest["artifacts"] = {}
+    (tmp_path / MANIFEST_FILENAME).write_text(json.dumps(manifest))
+    assert changed_artifacts(tmp_path, RunManifest.read(tmp_path)) == (RUN_FILENAME,)
+    assert not replay_matches(tmp_path)[0]
+    assert valid_run(tmp_path, SCRIPTED) is None

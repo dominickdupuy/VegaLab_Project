@@ -154,13 +154,8 @@ export default function PowerPage() {
     <>
       <PageHead
         eyebrow="Power lab"
-        title="How small an effect can this design detect?"
-        lede={
-          <>
-            <code>Var(grand mean) = τ²/S + σ²/(S·N)</code>, tested one-sided at α (pre-registration D1). The detection floor falls as 1/√S once the seed term dominates, which
-            is why five seeds and fifty seeds are not the same instrument. The defaults are illustrative until the variance-components pilot reports.
-          </>
-        }
+        title="Detection floor"
+        lede={<code>Var(grand mean) = τ²/S + σ²/(S·N)</code>}
         right={
           <button type="button" className={`${ui.btn} ${ui.btnSmall}`} onClick={() => setP(DEFAULTS)}>
             Reset
@@ -169,7 +164,7 @@ export default function PowerPage() {
       />
       <div className={ui.split}>
         <div className={`${ui.stack} ${ui.sticky}`}>
-          <Card title="Design" sub="Outcome units: dollars of mean P&L per episode.">
+          <Card title="Design" sub="$ of mean P&L per episode.">
             <div className={ui.stack}>
               <LogSlider label="τ², between-seed variance" value={p.tau2} min={1e2} max={1e9} unit="$²" onChange={set("tau2")} />
               <LogSlider label="σ², within-seed variance" value={p.sigma2} min={1e4} max={1e10} unit="$²" onChange={set("sigma2")} />
@@ -196,19 +191,19 @@ export default function PowerPage() {
                 <Tile accent label="Detection floor" value={usd(d.floor)} note={`smallest δ at ${pct(d.params.target_power)} power`} />
                 <Tile label="SE of the grand mean" value={usd(d.se)} note={`budget ${usd(Math.sqrt(d.variance_budget))} at δ`} />
                 <Tile label="Floor, S = 5 vs S = 50" value={`${num(d.floor_vs_seeds.ratio, 2)}×`} note={`${usd(d.floor_vs_seeds.floor_s5)} vs ${usd(d.floor_vs_seeds.floor_s50)}`} />
-                <Tile label="Episodes needed at this S" value={d.episodes_needed === null ? "infeasible" : num(d.episodes_needed)} note={d.episodes_needed === null ? "τ²/S alone exceeds the budget" : "to reach the target power"} />
-                <Tile label="Seeds needed at this N" value={num(d.seeds_needed)} note="always feasible with enough seeds" />
+                <Tile label="Episodes needed at this S" value={d.episodes_needed === null ? "infeasible" : num(d.episodes_needed)} note={d.episodes_needed === null ? "τ²/S exceeds the budget" : undefined} />
+                <Tile label="Seeds needed at this N" value={num(d.seeds_needed)} />
                 <Tile label="Compute, this design" value={hours(d.design.total_hours)} note={`train ${hours(d.design.train_hours)} · eval ${hours(d.design.eval_hours)}`} />
-                <Tile label="Variance budget" value={num(d.variance_budget)} note="largest Var(grand mean) that still has the power" />
+                <Tile label="Variance budget" value={num(d.variance_budget)} />
               </div>
-              <Card title="Power against effect size" sub="The probability the pre-registered one-sided test fires, at this design and at S = 5 and S = 50 with the same N." source={d.source}>
+              <Card title="Power against effect size" sub="This design, S = 5 and S = 50." source={d.source}>
                 <Chart option={powerOption(t, d)} height={340} label="Detection probability against effect size for three seed counts" />
               </Card>
               <div className={ui.grid2}>
-                <Card title="Detection floor against seed count" sub="The smallest effect reaching the target power, as S grows at this N." source={d.source}>
+                <Card title="Detection floor against seed count" source={d.source}>
                   <Chart option={floorOption(t, d)} height={300} label="Detection floor against the number of seeds" />
                 </Card>
-                <Card title="Sample-size frontier" sub="For each seed count, the fewest episodes that reach the target power at δ, and what that costs." source="optspread.power.frontier and budget">
+                <Card title="Sample-size frontier" sub="Fewest episodes per seed count at δ." source="optspread.power.frontier and budget">
                   <div className={ui.tableWrap}>
                     <table className={ui.table}>
                       <thead>

@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart, HeatmapChart, LineChart, ScatterChart } from "echarts/charts";
+import { BarChart, CustomChart, HeatmapChart, LineChart, ScatterChart } from "echarts/charts";
 import {
   DataZoomComponent,
   GridComponent,
@@ -21,6 +21,7 @@ echarts.use([
   BarChart,
   ScatterChart,
   HeatmapChart,
+  CustomChart,
   GridComponent,
   LegendComponent,
   TooltipComponent,

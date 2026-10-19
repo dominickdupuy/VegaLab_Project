@@ -99,6 +99,7 @@ disallow_untyped_decorators = false
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+pythonpath = ["."]
 
 [tool.coverage.report]
 exclude_lines = ["pragma: no cover", "raise NotImplementedError", "if TYPE_CHECKING:"]

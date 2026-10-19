@@ -13,7 +13,8 @@ argument; this README covers what is in the repository today.
 ## Quick start
 
 ```bash
-python -m venv .venv && .venv/Scripts/pip install -e ".[dev,train]"
+python -m venv .venv && .venv/Scripts/pip install -e ".[dev,train]"   # Windows
+python3 -m venv .venv && .venv/bin/pip install -e ".[dev,train]"      # macOS / Linux
 make check                   # ruff + mypy --strict + pytest with a coverage floor
 make gate                    # the Wave 0 economic sanity table
 make drag                    # scripted sellers against the predicted cost drag

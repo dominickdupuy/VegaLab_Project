@@ -191,7 +191,7 @@ function Form({ options }: { options: JobOptions }) {
   return (
     <div className={ui.split}>
       <div className={`${ui.stack} ${ui.sticky}`}>
-        <Card title="Presets" sub="Start from a named configuration, then adjust.">
+        <Card title="Presets">
           <div className={ui.stack}>
             {options.presets.map((p) => (
               <button
@@ -234,7 +234,7 @@ function Form({ options }: { options: JobOptions }) {
         ) : null}
       </div>
       <div className={ui.stack}>
-        <Card title="Knobs" sub={`Defaults are optspread.config's. ${options.ppo_available ? "PPO is available." : "PPO is hidden: optspread.train or its learner is not installed here."}`}>
+        <Card title="Knobs" sub={options.ppo_available ? undefined : "PPO not installed."}>
           <div className={ui.stack}>
             {groups.map(({ g, ks }) => (
               <div key={g}>
@@ -248,9 +248,9 @@ function Form({ options }: { options: JobOptions }) {
             ))}
           </div>
         </Card>
-        <Card title="Jobs this session" sub="Newest first. Jobs run in a bounded process pool; the server never blocks on one.">
+        <Card title="Jobs this session">
           {jobs.error ? <ErrorBox what="jobs" error={jobs.error} onRetry={jobs.reload} /> : null}
-          {jobs.data && jobs.data.length === 0 ? <Empty title="No jobs yet">Launch a run and its progress appears here.</Empty> : null}
+          {jobs.data && jobs.data.length === 0 ? <Empty title="No jobs yet" /> : null}
           <div className={ui.stack}>
             {(jobs.data ?? []).map((j) => (
               <div key={j.job_id} className={ui.card} style={{ boxShadow: "none", border: "1px solid var(--line)" }}>
@@ -274,12 +274,6 @@ export default function LaunchPage() {
       <PageHead
         eyebrow="Launch"
         title="Start a run"
-        lede={
-          <>
-            Every knob maps onto a <code>RunConfig</code> field. The result is an ordinary run: hashed, keyed by its config and seed, and listed in{" "}
-            <Link href="/runs/">Runs</Link> like any other. Mean P&L is net of costs, in dollars per episode.
-          </>
-        }
       />
       {options.error ? <ErrorBox what="the launch options" error={options.error} onRetry={options.reload} /> : null}
       {options.loading ? <Loading what="the knobs" /> : null}

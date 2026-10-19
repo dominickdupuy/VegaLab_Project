@@ -11,11 +11,12 @@ Bytes, not a tolerance: a run that reproduces to the ninth decimal has still not
 reproduced, and the difference would be the first sign of a nondeterminism nobody
 has found yet.
 
-Before replaying, the saved file is checked against the digest its manifest
-recorded, so a results file edited after the fact reads as a failure of the run,
-not of the replay. A mismatch reports the first episode that differs; the git SHA
-and library versions recorded against those now running are reported either way,
-because they are the first suspects when a replay fails.
+Before replaying, every file the manifest hashed (``run.json``, and the saved
+policy of a learned run) is checked against its recorded digest, so a file edited
+or swapped after the fact reads as a failure of the run, not of the replay. A
+mismatch reports the first episode that differs; the git SHA and library versions
+recorded against those now running are reported either way, because they are the
+first suspects when a replay fails.
 
 The replay never writes into the run directory it checks.
 """
@@ -29,7 +30,7 @@ from pathlib import Path
 from optspread.artifacts import RUN_FILENAME, RunRecord, dump_run
 from optspread.harness import run_episodes, summarize
 from optspread.manifest import RunManifest, file_sha256, git_sha, library_versions
-from optspread.sweep import run_id
+from optspread.sweep import changed_artifacts, run_id
 from optspread.train import Trainer, check_disjoint, train_ppo
 
 
@@ -90,8 +91,11 @@ def replay_run(run_dir: Path, trainer: Trainer = train_ppo) -> ReplayResult:
     except (OSError, ValueError) as exc:
         return result(run_dir.name, False, f"not a readable run: {exc}")
     rid = manifest.run_id
-    if manifest.artifacts.get(RUN_FILENAME) != file_sha256(run_dir / RUN_FILENAME):
+    changed = changed_artifacts(run_dir, manifest)
+    if RUN_FILENAME in changed:
         return result(rid, False, "run.json no longer matches the digest in its manifest")
+    if changed:
+        return result(rid, False, f"{', '.join(changed)} no longer match the manifest's digests")
     config = manifest.config
     if run_id(config) != rid or saved.run_id != rid:
         return result(rid, False, f"run id {rid} does not belong to the recorded config")

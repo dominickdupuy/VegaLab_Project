@@ -44,7 +44,13 @@ import gymnasium as gym
 import numpy as np
 from numpy.typing import NDArray
 
-from optspread.config import FROZEN_PPO, PPOHyperparameters, RunConfig, config_hash
+from optspread.config import (
+    FROZEN_PPO,
+    PPOHyperparameters,
+    RunConfig,
+    config_hash,
+    require_frozen,
+)
 from optspread.env import Action
 from optspread.harness import build_env
 from optspread.policies import Info, Observation, Policy
@@ -154,9 +160,14 @@ def sb3_kwargs(hp: PPOHyperparameters) -> dict[str, Any]:
 
 
 def train_ppo(config: RunConfig) -> SB3Policy:
-    """Train the PPO arm of ``config`` and return it. Needs the ``train`` extra."""
+    """Train the PPO arm of ``config`` and return it. Needs the ``train`` extra.
+
+    The D3 check is made again here, not left to ``TrainConfig``: pydantic's
+    ``model_copy(update=...)`` skips validation, so a config can carry another set.
+    """
     if config.train is None:
         raise ValueError(f"policy {config.policy!r} has no training config")
+    require_frozen(config.train.hyperparameters)
     import torch
     from stable_baselines3 import PPO
 

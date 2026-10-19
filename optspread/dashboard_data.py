@@ -8,8 +8,9 @@ loader here reads a file the harness or a gate report wrote, and nothing here
 computes a result that is not already on disk, with one deliberate exception, the
 leak demo, which runs the detector live because watching it fire is the point.
 
-Nothing here needs streamlit, pandas or plotly, so it is tested and covered on the
-plain ``dev`` install the CI runs. The pages in ``dashboard/`` are thin over it.
+Nothing here needs the web stack, so it is tested and covered on the plain ``dev``
+install the CI runs. The API (``webapi``, ``server``) and the site in ``web/`` are
+thin over it.
 
 A run directory that does not read cleanly is listed with what is wrong rather
 than dropped. A browser that silently skipped broken runs would make the results
@@ -73,7 +74,10 @@ class RunRow:
     """One run directory as the browser lists it: provenance, headline, and health.
 
     ``problems`` is empty for a run that reads cleanly. A row with problems is still
-    listed, so a broken run is visible rather than missing.
+    listed, so a broken run is visible rather than missing. A run is OK only when the
+    manifest records ``run.json`` among its artifacts and every recorded digest
+    matches; one that records nothing, or not the results file, is UNVERIFIED, since
+    nothing ties the numbers shown to the numbers the manifest was written over.
     """
 
     run_id: str
@@ -93,6 +97,7 @@ class RunRow:
     mean_trades: float | None
     sweep: str = ""  # the parent sweep's directory name, when the run is a sweep cell
     digests_ok: bool | None = None  # None: the manifest records no artifacts
+    recorded: tuple[str, ...] = ()  # the artifact paths the manifest records
     problems: tuple[str, ...] = ()
 
     @property
@@ -105,6 +110,8 @@ class RunRow:
             return "INVALID"
         if self.digests_ok is False:
             return "DIGEST MISMATCH"
+        if not self.digests_ok or RUN_FILENAME not in self.recorded:
+            return "UNVERIFIED"
         return "OK"
 
 
@@ -207,15 +214,39 @@ def load_run_row(run_dir: Path) -> RunRow:
         mean_trades=record.mean_trades if record else _as_float(_get(results, "mean_trades")),
         sweep=run_dir.parent.name if (run_dir.parent / SWEEP_FILENAME).exists() else "",
         digests_ok=all(c.ok for c in checks) if checks else None,
+        recorded=tuple(c.path for c in checks),
         problems=tuple(problems),
     )
 
 
+def is_matrix_manifest(run_dir: Path) -> bool:
+    """The pilot's own manifest: at the pilot root, hashing ``.npy`` matrices, no ``run.json``.
+
+    ``orchestrate.write_pilot_matrices`` writes it so the matrices can be checked; it
+    describes no run, so the run index leaves it out rather than listing it INVALID.
+    """
+    if (run_dir / RUN_FILENAME).exists():
+        return False
+    try:
+        artifacts: Any = json.loads((run_dir / MANIFEST_FILENAME).read_text()).get("artifacts")
+    except (OSError, ValueError, AttributeError):
+        return False
+    return (
+        isinstance(artifacts, dict)
+        and bool(artifacts)
+        and all(str(rel).endswith(".npy") for rel in artifacts)
+    )
+
+
 def scan_runs(root: Path) -> tuple[RunRow, ...]:
-    """Every directory under ``root`` holding a ``manifest.json``, newest first."""
+    """Every run directory under ``root`` holding a ``manifest.json``, newest first.
+
+    The pilot's matrix manifest is not a run and is skipped (``is_matrix_manifest``).
+    """
     if not root.is_dir():
         return ()
-    rows = [load_run_row(m.parent) for m in root.rglob(MANIFEST_FILENAME) if m.is_file()]
+    found = (m.parent for m in root.rglob(MANIFEST_FILENAME) if m.is_file())
+    rows = [load_run_row(d) for d in found if not is_matrix_manifest(d)]
     return tuple(sorted(rows, key=lambda r: (r.created_at, r.run_id), reverse=True))
 
 
@@ -468,12 +499,32 @@ class GateRow:
 
 @dataclass(frozen=True, slots=True)
 class GateBoard:
+    """One gate report as the board shows it, with its verdict re-derived from its items.
+
+    ``stated_verdict`` is whatever the file says. ``verdict`` is what the items support:
+    PASS only when there are items and every one is a PASS with a criterion and
+    evidence written down, NOT CLEARED otherwise, which is ``GateReport.passed`` read
+    back. The board shows the derived one, so a hand-edited verdict line or an empty
+    item list cannot put a PASS on the page; ``verdict_mismatch`` says the two differ.
+    """
+
     milestone: str
     report_date: str
-    verdict: str
+    stated_verdict: str
     items: tuple[GateRow, ...]
     source: Path
     from_json: bool
+
+    @property
+    def verdict(self) -> str:
+        cleared = bool(self.items) and all(
+            i.verdict == "PASS" and i.criterion.strip() and i.evidence.strip() for i in self.items
+        )
+        return "PASS" if cleared else "NOT CLEARED"
+
+    @property
+    def verdict_mismatch(self) -> bool:
+        return self.stated_verdict != self.verdict
 
     @property
     def counts(self) -> dict[str, int]:
@@ -522,7 +573,7 @@ def parse_gate_json(text: str, source: Path) -> GateBoard:
         return GateBoard(
             milestone=str(raw["milestone"]),
             report_date=str(raw.get("report_date", "")),
-            verdict=str(raw["verdict"]),
+            stated_verdict=str(raw["verdict"]),
             items=items,
             source=source,
             from_json=True,
@@ -588,8 +639,31 @@ def load_gate_board(docs: Path, milestone: str) -> GateBoard | None:
 
 
 def load_gate_boards(docs: Path) -> tuple[GateBoard, ...]:
-    boards = (load_gate_board(docs, m) for m in gate_milestones(docs))
-    return tuple(b for b in boards if b is not None)
+    """Every board that reads; an unreadable one is named by ``unreadable_gate_reports``.
+
+    One malformed sidecar must not take down every page that shows a board, so it
+    is left out here and reported there, rather than raised through the API.
+    """
+    boards: list[GateBoard] = []
+    for m in gate_milestones(docs):
+        try:
+            board = load_gate_board(docs, m)
+        except (GateReportFormatError, ValueError):
+            continue
+        if board is not None:
+            boards.append(board)
+    return tuple(boards)
+
+
+def unreadable_gate_reports(docs: Path) -> tuple[str, ...]:
+    """The milestones whose report exists but does not parse."""
+    bad: list[str] = []
+    for m in gate_milestones(docs):
+        try:
+            load_gate_board(docs, m)
+        except (GateReportFormatError, ValueError):
+            bad.append(m)
+    return tuple(bad)
 
 
 # -- the poisoned-environment demo ------------------------------------------ #

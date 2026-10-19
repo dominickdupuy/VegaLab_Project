@@ -23,12 +23,12 @@ from fastapi.testclient import TestClient
 
 from optspread.dashboard_data import REPO_ROOT
 from optspread.jobs import JobManager
-from optspread.server import Settings, create_app
+from optspread.server import WEB_DIR, Settings, allowed_hosts, create_app
 
 
 def _client(settings: Settings, runs: Path) -> Iterator[TestClient]:
     manager = JobManager(runs, executor=ThreadPoolExecutor(1))
-    with TestClient(create_app(settings, manager)) as client:
+    with TestClient(create_app(settings, manager), base_url="http://127.0.0.1") as client:
         yield client
 
 
@@ -59,6 +59,18 @@ def test_health_and_the_site(client: TestClient) -> None:
     assert health["ok"] and health["version"]
     assert "optspread" in client.get("/").text
     assert "runs" in client.get("/runs/").text
+
+
+PAGES = ("/", "/runs/", "/launch/", "/power/", "/data/", "/leaks/", "/sweep/")
+
+
+@pytest.mark.skipif(not (WEB_DIR / "index.html").is_file(), reason="needs `make web` first")
+def test_every_page_of_the_built_site_is_served(tmp_path: Path, gate_docs: Path) -> None:
+    settings = Settings(tmp_path / "runs", gate_docs, tmp_path, WEB_DIR, REPO_ROOT / "README.md")
+    for client in _client(settings, tmp_path / "runs"):
+        for page in PAGES:
+            assert client.get(page).status_code == 200, page
+        assert client.get("/gates/").status_code == 404  # the gate board is API-only
 
 
 def test_without_a_built_site_the_root_says_how_to_build_it(bare: TestClient) -> None:
@@ -180,3 +192,37 @@ def test_an_unbuilt_panel_is_a_404_that_names_the_missing_files(bare: TestClient
     assert bare.get("/api/data/smile", params={"date": "2025-07-01"}).status_code == 404
     assert not bare.get("/api/data/status").json()["built"]
     assert bare.get("/api/overview").json()["coverage"] == []
+
+
+@pytest.mark.parametrize(
+    ("path", "params"),
+    [
+        ("/api/power", {"delta": 1e200}),
+        ("/api/power", {"delta": 1e-300}),
+        ("/api/power", {"tau2": "inf"}),
+        ("/api/power", {"sigma2": "nan"}),
+        ("/api/runs/detail", {"key": "\x00"}),
+        ("/api/runs/compare", {"a": "\x00", "b": "x"}),
+        ("/api/sweeps/detail", {"key": "\x00"}),
+        ("/api/data/surface", {"date": "2025-07-01", "min_dte": 90, "max_dte": 30}),
+    ],
+)
+def test_bad_input_is_a_4xx_with_a_reason_never_a_500(
+    client: TestClient, path: str, params: dict[str, object]
+) -> None:
+    response = client.get(path, params=params)
+    assert 400 <= response.status_code < 500 and response.json()["detail"]
+
+
+def test_a_job_whose_implied_vol_is_not_positive_is_refused(client: TestClient) -> None:
+    response = client.post("/api/jobs", json={"sigma": 0.01, "iv_premium_vol_pts": -10.0})
+    assert response.status_code == 422 and "implied vol" in str(response.json()["detail"])
+
+
+def test_a_foreign_host_header_is_refused(client: TestClient) -> None:
+    rebound = client.get("/api/health", headers={"host": "attacker.example"})
+    assert rebound.status_code == 400
+    for host in ("localhost:8600", "127.0.0.1:8600", "[::1]:8600"):
+        assert client.get("/api/health", headers={"host": host}).status_code == 200
+    assert allowed_hosts("192.168.1.5")[-1] == "192.168.1.5"
+    assert allowed_hosts("fe80::1")[-2:] == ["fe80::1", "[fe80::1]"]

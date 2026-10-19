@@ -201,7 +201,9 @@ def test_expiries_and_the_nearest_to_thirty_days(chain: dict[str, np.ndarray]) -
     assert tuple(e.dte for e in exps) == CHAIN_DTES
     near = nearest_expiry(om)
     assert near is not None and near.dte == 30
-    assert near.carry_fit == pytest.approx(0.9999) and near.forward > 6200.0
+    assert near.carry_fit == "near+r_ref" and near.forward > 6200.0  # the builder's label
+    assert [e.carry_fit for e in exps][2:] == ["near", "near"]  # 60 days and out fit the rate
+    assert expiries({k: v for k, v in om.items() if k != "carry_fit"})[0].carry_fit == ""
     assert nearest_expiry(om, target_dte=100).dte == 120  # type: ignore[union-attr]
     assert nearest_expiry(om, min_quotes=10_000) is None
     assert expiries({}) == ()
@@ -327,3 +329,9 @@ def test_the_panel_reads_back_one_partition_and_one_day(panel_root: Path) -> Non
     report = seam_report(read_seam_overlap(layout))
     assert report is not None and report.n_days == 2
     assert read_seam_overlap(PanelLayout(panel_root / "absent")) == {}
+    # the files and columns the views do not use are there, as in a real build, and harmless
+    assert (layout.panel / "surface_grid.parquet").is_file()
+    assert (layout.panel / "atm_term.parquet").is_file()
+    assert {"carry30", "rate30", "spot_parity"} <= set(read_daily(layout))
+    assert chain["carry_fit"].dtype.kind == "U" and chain["tau"].dtype == np.float64
+    assert nearest_expiry(select(chain, "optionmetrics")) is not None

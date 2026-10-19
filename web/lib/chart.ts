@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { CustomSeriesRenderItemAPI, CustomSeriesRenderItemReturn, EChartsOption, SeriesOption } from "echarts";
+import { esc, num, usd } from "./format";
 import { useTheme } from "./theme";
 
 /**
@@ -159,4 +161,84 @@ export function axis(t: Tokens, extra: Record<string, unknown> = {}) {
 /** A histogram's bars as [x0, x1, count] for a custom-width bar series. */
 export function histBars(edges: number[], counts: number[]): { value: [number, number] }[] {
   return counts.map((c, i) => ({ value: [((edges[i] ?? 0) + (edges[i + 1] ?? 0)) / 2, c] as [number, number] }));
+}
+
+/** One point of a P&L-against-premium curve: a run's mean and its standard error. */
+export interface PremiumPoint {
+  premium: number;
+  mean: number;
+  se: number | null;
+  label: string; // the run it came from, shown in the tooltip
+}
+
+function errorBar(color: string) {
+  return (_: unknown, api: CustomSeriesRenderItemAPI): CustomSeriesRenderItemReturn => {
+    const x = Number(api.value(0));
+    const lo = api.coord([x, Number(api.value(1))]);
+    const hi = api.coord([x, Number(api.value(2))]);
+    const [x0, y0, y1] = [lo[0] ?? 0, lo[1] ?? 0, hi[1] ?? 0];
+    const style = { stroke: color, lineWidth: 1.5 };
+    return {
+      type: "group",
+      children: [
+        { type: "line", shape: { x1: x0, y1: y0, x2: x0, y2: y1 }, style },
+        { type: "line", shape: { x1: x0 - 4, y1: y0, x2: x0 + 4, y2: y0 }, style },
+        { type: "line", shape: { x1: x0 - 4, y1: y1, x2: x0 + 4, y2: y1 }, style },
+      ],
+    };
+  };
+}
+
+/**
+ * Mean P&L against the planted premium for one arm: a line with markers in premium
+ * order, and a +-1 se error bar on every point. Both series carry the arm's name, so
+ * its legend entry toggles the two together.
+ */
+export function premiumCurve(t: Tokens, arm: string, points: PremiumPoint[]): SeriesOption[] {
+  const name = ARM_LABEL[arm] ?? arm;
+  const color = armColor(t, arm);
+  const pts = [...points].sort((a, b) => a.premium - b.premium);
+  return [
+    {
+      name,
+      type: "line",
+      data: pts.map((p) => ({ value: [p.premium, p.mean], point: p })),
+      showSymbol: true,
+      symbol: "circle",
+      symbolSize: 8,
+      lineStyle: { width: 2, color },
+      itemStyle: { color, borderColor: t.surface, borderWidth: 2 },
+      tooltip: {
+        formatter: (q: unknown) => {
+          const p = (q as { data: { point: PremiumPoint } }).data.point;
+          return `<b>${esc(name)}</b> at ${num(p.premium, 2)} vol pts<br/>mean ${usd(p.mean)} ± ${usd(p.se)}<br/><span style="opacity:.7">${esc(p.label)}</span>`;
+        },
+      },
+      z: 3,
+    },
+    {
+      name,
+      type: "custom",
+      data: pts.filter((p) => p.se !== null).map((p) => [p.premium, p.mean - (p.se ?? 0), p.mean + (p.se ?? 0)]),
+      encode: { x: 0, y: [1, 2] },
+      renderItem: errorBar(color),
+      silent: true,
+      tooltip: { show: false },
+      z: 2,
+    },
+  ];
+}
+
+/** The chart around a set of premium curves: value axes, an item tooltip, a legend. */
+export function premiumChart(t: Tokens, curves: Record<string, PremiumPoint[]>): EChartsOption {
+  const arms = Object.keys(curves);
+  return {
+    ...base(t),
+    tooltip: { ...base(t).tooltip, trigger: "item" },
+    legend: { ...base(t).legend, data: arms.map((a) => ARM_LABEL[a] ?? a) },
+    xAxis: { type: "value", name: "Planted premium (vol pts)", nameLocation: "middle", ...axis(t) },
+    yAxis: { type: "value", name: "Mean P&L per episode ($)", nameLocation: "middle", scale: true, ...axis(t), nameGap: 50 },
+    grid: { ...base(t).grid, left: 70 },
+    series: arms.flatMap((arm) => premiumCurve(t, arm, curves[arm] ?? [])),
+  };
 }

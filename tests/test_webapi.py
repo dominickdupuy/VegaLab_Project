@@ -306,7 +306,7 @@ def test_the_chain_payloads_for_one_date(reader: w.PanelReader) -> None:
     assert index.sources == ["databento", "optionmetrics"] and index.roots == ["SPX", "SPXW"]
     assert [e.dte for e in index.expiries] == [7, 30, 60, 120]
     assert index.default_expiry == (day + timedelta(days=30)).isoformat()
-    assert index.expiries[1].carry_fit == pytest.approx(0.9999)
+    assert index.expiries[1].carry_fit == "near+r_ref"
 
     smile = reader.smile_out(day, None, "optionmetrics", [])
     assert smile.dte == 30 and smile.has_vendor and smile.data_source == "optionmetrics"

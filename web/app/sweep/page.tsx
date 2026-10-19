@@ -2,53 +2,19 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import type { EChartsOption } from "echarts";
 import { Card, PageHead, Tile } from "@/components/Bits";
 import { Chart } from "@/components/Chart";
 import { Empty, ErrorBox, Loading, Pending } from "@/components/States";
 import ui from "@/components/ui.module.css";
 import { api, type Sweep } from "@/lib/api";
-import { ARM_LABEL, armColor, axis, base, type Tokens, useTokens } from "@/lib/chart";
+import { ARM_LABEL, type PremiumPoint, premiumChart, useTokens } from "@/lib/chart";
 import { num, short, usd } from "@/lib/format";
 import { useFetch } from "@/lib/useFetch";
 
-function oracleOption(t: Tokens, s: Sweep): EChartsOption {
-  return {
-    ...base(t),
-    tooltip: { ...base(t).tooltip, valueFormatter: (v: unknown) => usd(v as number) },
-    xAxis: { type: "value", name: "Planted premium (vol pts)", nameLocation: "middle", ...axis(t) },
-    yAxis: { type: "value", name: "Mean P&L per episode ($)", nameLocation: "middle", ...axis(t), nameGap: 50 },
-    grid: { ...base(t).grid, left: 70 },
-    series: Object.entries(s.oracle).flatMap(([arm, pts]) => [
-      {
-        name: ARM_LABEL[arm] ?? arm,
-        type: "line" as const,
-        data: pts.map((p) => [p.premium, p.mean_pnl]),
-        symbolSize: 8,
-        lineStyle: { width: 2, color: armColor(t, arm) },
-        itemStyle: { color: armColor(t, arm), borderColor: t.surface, borderWidth: 2 },
-      },
-      {
-        name: `${ARM_LABEL[arm] ?? arm} ± 2 se`,
-        type: "line" as const,
-        data: pts.map((p) => [p.premium, p.mean_pnl + 2 * p.se_pnl]),
-        showSymbol: false,
-        silent: true,
-        lineStyle: { width: 1, color: armColor(t, arm), opacity: 0.35 },
-        tooltip: { show: false },
-      },
-      {
-        name: `${ARM_LABEL[arm] ?? arm} ± 2 se`,
-        type: "line" as const,
-        data: pts.map((p) => [p.premium, p.mean_pnl - 2 * p.se_pnl]),
-        showSymbol: false,
-        silent: true,
-        lineStyle: { width: 1, color: armColor(t, arm), opacity: 0.35 },
-        tooltip: { show: false },
-      },
-    ]),
-    legend: { ...base(t).legend, data: Object.keys(s.oracle).map((a) => ARM_LABEL[a] ?? a) },
-  };
+function oracleCurves(s: Sweep): Record<string, PremiumPoint[]> {
+  return Object.fromEntries(
+    Object.entries(s.oracle).map(([arm, pts]) => [arm, pts.map((p) => ({ premium: p.premium, mean: p.mean_pnl, se: p.se_pnl, label: p.run_id }))]),
+  );
 }
 
 function SweepView({ sweepKey }: { sweepKey: string }) {
@@ -61,14 +27,14 @@ function SweepView({ sweepKey }: { sweepKey: string }) {
     <>
       <div className={ui.grid4}>
         <Tile accent label="Cells" value={num(s.summary.n_cells)} note={`${s.summary.premiums.length} premiums × ${s.summary.arms.length} arms`} />
-        <Tile label="Paired seeds" value={`${s.summary.seed}…${s.summary.seed + s.summary.n_episodes - 1}`} note="every arm at every premium on the same paths" />
-        <Tile label="Premiums (vol pts)" value={s.summary.premiums.join(", ")} note="the D2 effect-size axis" />
-        <Tile label="Sweep hash" value={<span className="mono" style={{ fontSize: 18 }}>{short(s.summary.sweep_hash, 12)}</span>} note="config hash of the sweep" />
+        <Tile label="Paired seeds" value={`${s.summary.seed}…${s.summary.seed + s.summary.n_episodes - 1}`} />
+        <Tile label="Premiums (vol pts)" value={s.summary.premiums.join(", ")} />
+        <Tile label="Sweep hash" value={<span className="mono" style={{ fontSize: 18 }}>{short(s.summary.sweep_hash, 12)}</span>} />
       </div>
-      <Card title="The oracle curve" sub="Mean P&L along the planted premium per arm, with ±2 se. Scripted arms have no training variance, so this is what the PPO curve is read against." source={<code>{s.source}</code>}>
-        <Chart option={oracleOption(t, s)} height={340} label="Mean P&L against planted premium, by arm" />
+      <Card title="Mean P&L against planted premium" sub="Per arm, ±1 se." source={<code>{s.source}</code>}>
+        <Chart option={premiumChart(t, oracleCurves(s))} height={340} label="Mean P&L against planted premium, by arm" />
       </Card>
-      <Card title="Cells" sub="Lift is against the first premium for the same arm: a paired difference, since the arms share seeds.">
+      <Card title="Cells" sub="Lift: against the first premium, same arm.">
         <div className={ui.tableWrap}>
           <table className={ui.table}>
             <thead>
@@ -103,10 +69,10 @@ function SweepView({ sweepKey }: { sweepKey: string }) {
         </div>
       </Card>
       <div className={ui.grid2}>
-        <Card title="Power curve" sub="Detection probability against planted effect size, scripted and PPO overlaid.">
+        <Card title="Power curve">
           <Pending title={s.power_curve.status}>{s.power_curve.waiting_for}.</Pending>
         </Card>
-        <Card title="Attribution" sub="P&L split by greek, with the residual shown explicitly.">
+        <Card title="Attribution">
           <Pending title={s.attribution.status}>{s.attribution.waiting_for}.</Pending>
         </Card>
       </div>
@@ -124,8 +90,7 @@ export default function SweepPage() {
     <>
       <PageHead
         eyebrow="Sweep"
-        title="The sweep, read from its cells"
-        lede="A sweep is a grid of ordinary run directories, one per premium and arm, on paired seeds. The power curve and attribution views read the confirmatory sweep when it lands (M3, M4); until then they say what they are waiting for."
+        title="Sweep"
         right={
           sweeps.length > 1 ? (
             <label className={ui.field}>
@@ -145,9 +110,9 @@ export default function SweepPage() {
       {list.loading ? <Loading what="sweeps" /> : null}
       {list.data && !sweeps.length ? (
         <>
-          <Empty title="No sweep under the runs root yet">
+          <Empty title="No sweep yet">
             <p>
-              <code>python scripts/oracle_sweep.py --episodes 50 --root runs/sweeps</code> writes one; it appears here with its oracle curve.
+              <code>python scripts/oracle_sweep.py --episodes 50 --root runs/sweeps</code>
             </p>
           </Empty>
           <div className={ui.grid2}>

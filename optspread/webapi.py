@@ -213,10 +213,19 @@ def run_list(rows: Sequence[RunRow], root: Path, filters: RunFilters) -> RunList
 
 def resolve_run(root: Path, key: str) -> Path:
     """The run directory for ``key``, refusing anything outside the runs root."""
-    target = (root / key).resolve()
-    if not target.is_relative_to(root.resolve()) or not (target / MANIFEST_FILENAME).is_file():
+    target = _inside(root, key)
+    if target is None or not (target / MANIFEST_FILENAME).is_file():
         raise KeyError(key)
     return target
+
+
+def _inside(root: Path, key: str) -> Path | None:
+    """``root / key`` resolved, or None when it leaves the root or is not a path at all."""
+    try:
+        target = (root / key).resolve()
+        return target if target.is_relative_to(root.resolve()) else None
+    except (OSError, ValueError):  # a NUL byte, or a name the filesystem refuses
+        return None
 
 
 class RiskOut(Out):
@@ -402,7 +411,9 @@ class GateItemOut(Out):
 class GateBoardOut(Out):
     milestone: str
     report_date: str
-    verdict: str
+    verdict: str  # derived from the items, never taken from the file
+    stated_verdict: str  # what the file says
+    verdict_mismatch: bool
     counts: dict[str, int]
     items: list[GateItemOut]
     source: str
@@ -419,6 +430,8 @@ def board_out(board: GateBoard) -> GateBoardOut:
         milestone=board.milestone,
         report_date=board.report_date,
         verdict=board.verdict,
+        stated_verdict=board.stated_verdict,
+        verdict_mismatch=board.verdict_mismatch,
         counts=board.counts,
         items=[
             GateItemOut(
@@ -598,6 +611,8 @@ FRONTIER_SEEDS = (2, 3, 5, 8, 10, 16, 20, 32, 50, 64)
 
 
 class PowerParams(Out):
+    model_config = ConfigDict(frozen=True, allow_inf_nan=False)
+
     tau2: float = Field(default=POWER_DEFAULTS["tau2"], ge=0.0)
     sigma2: float = Field(default=POWER_DEFAULTS["sigma2"], ge=0.0)
     n_seeds: int = Field(default=10, ge=1, le=10_000)
@@ -860,11 +875,11 @@ class SweepListOut(Out):
 
 POWER_PENDING = PendingOut(
     status="waiting for sweep",
-    waiting_for="the confirmatory sweep's PPO cells (M3) and the M4 power-curve analysis",
+    waiting_for="the confirmatory sweep's PPO cells and the power-curve analysis",
 )
 ATTRIBUTION_PENDING = PendingOut(
     status="waiting for sweep",
-    waiting_for="P&L attribution output (spec 10.9, M4): P&L by greek plus the residual",
+    waiting_for="P&L attribution output: P&L by greek plus the residual",
 )
 
 
@@ -896,8 +911,8 @@ def sweeps(root: Path) -> SweepListOut:
 
 
 def sweep_detail(root: Path, key: str) -> SweepOut:
-    target = (root / key).resolve()
-    if not target.is_relative_to(root.resolve()) or not (target / SWEEP_FILENAME).is_file():
+    target = _inside(root, key)
+    if target is None or not (target / SWEEP_FILENAME).is_file():
         raise KeyError(key)
     rec = read_sweep(target)
     oracle: dict[str, list[OraclePointOut]] = {}
@@ -976,7 +991,7 @@ class ExpiryOut(Out):
     dte: int
     n_quotes: int
     forward: float | None
-    carry_fit: float | None
+    carry_fit: str  # the build's carry-fit label, e.g. "near+r_ref"; empty when absent
 
 
 class ChainIndexOut(Out):
@@ -1210,7 +1225,7 @@ class PanelReader:
                     dte=e.dte,
                     n_quotes=e.n_quotes,
                     forward=_f(e.forward),
-                    carry_fit=_f(e.carry_fit),
+                    carry_fit=e.carry_fit,
                 )
                 for e in panel.expiries(rows)
             ],
@@ -1256,6 +1271,8 @@ class PanelReader:
         min_dte: int = 1,
         max_dte: int = 365,
     ) -> SurfaceOut:
+        if min_dte > max_dte:
+            raise ValueError(f"min_dte {min_dte} is above max_dte {max_dte}")
         rows = self._selected(day, data_source, roots)
         surf = panel.iv_surface(rows, min_dte=min_dte, max_dte=max_dte)
         return SurfaceOut(
@@ -1336,6 +1353,7 @@ class PanelReader:
 class GateTileOut(Out):
     milestone: str
     verdict: str
+    verdict_mismatch: bool
     report_date: str
     n_items: int
     n_pass: int
@@ -1370,6 +1388,7 @@ def overview(
             GateTileOut(
                 milestone=b.milestone,
                 verdict=b.verdict,
+                verdict_mismatch=b.verdict_mismatch,
                 report_date=b.report_date,
                 n_items=len(b.items),
                 n_pass=b.counts.get("PASS", 0),

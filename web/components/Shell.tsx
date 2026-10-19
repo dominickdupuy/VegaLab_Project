@@ -14,7 +14,6 @@ const TABS: { href: string; label: string }[] = [
   { href: "/", label: "Overview" },
   { href: "/runs/", label: "Runs" },
   { href: "/launch/", label: "Launch" },
-  { href: "/gates/", label: "Gates" },
   { href: "/power/", label: "Power lab" },
   { href: "/data/", label: "Real data" },
   { href: "/leaks/", label: "Leak demo" },
@@ -72,8 +71,8 @@ export function Shell({ children }: { children: ReactNode }) {
     <div className={ui.shell}>
       <header className={ui.header}>
         <div className={ui.headerInner}>
-          <Link href="/" className={ui.brand} aria-label="optspread, Vega Lab">
-            <span className={ui.brandName}>optspread</span>
+          <Link href="/" className={ui.brand} aria-label="optspread platform, Vega Lab">
+            <span className={ui.brandName}>optspread platform</span>
             <span className={ui.brandLab}>VEGA LAB</span>
           </Link>
           <nav className={ui.nav} aria-label="Views">
@@ -96,7 +95,6 @@ export function Shell({ children }: { children: ReactNode }) {
       </header>
       <main className={ui.main}>{children}</main>
       <footer className={ui.footer}>
-        <span>The dashboard only shows what the harness recorded, so every number traces back to a run.</span>
         <span>Vega Lab · CIS 4914 · University of Florida</span>
       </footer>
     </div>

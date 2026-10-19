@@ -326,7 +326,10 @@ class Expiry:
     dte: int
     n_quotes: int
     forward: float  # the parity-implied forward the moneyness is measured against
-    carry_fit: float  # the build's parity-fit diagnostic for this expiry; NaN when absent
+    # How the build fitted the carry: "near", "wide", either with "+r_ref" when the
+    # day's reference rate was borrowed, or "none". Labels joined when roots differ;
+    # empty when the panel does not carry the column.
+    carry_fit: str
 
 
 def expiries(chain: Columns) -> tuple[Expiry, ...]:
@@ -337,16 +340,14 @@ def expiries(chain: Columns) -> tuple[Expiry, ...]:
     out = []
     for exp in np.unique(otm["expiry"]):
         mine = otm["expiry"] == exp
-        fit = otm["carry_fit"][mine].astype(np.float64) if "carry_fit" in otm else None
+        fit = otm["carry_fit"][mine].astype(str) if "carry_fit" in otm else ()
         out.append(
             Expiry(
                 expiry=_day(exp),
                 dte=int(otm["dte"][mine][0]),
                 n_quotes=int(mine.sum()),
                 forward=float(np.median(otm["forward"][mine].astype(np.float64))),
-                carry_fit=float(np.nanmedian(fit))
-                if fit is not None and np.isfinite(fit).any()
-                else float("nan"),
+                carry_fit=", ".join(sorted({str(f) for f in fit if f})),
             )
         )
     return tuple(sorted(out, key=lambda e: e.dte))

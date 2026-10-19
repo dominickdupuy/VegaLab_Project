@@ -8,7 +8,7 @@ import { Empty, ErrorBox, Loading, PanelNotBuilt } from "@/components/States";
 import ui from "@/components/ui.module.css";
 import { api, type ApiError, type Coverage, type Daily, type Seam, type Smile, type Surface, type Term } from "@/lib/api";
 import { SOURCE_LABEL, axis, base, sourceColor, type Tokens, useTokens } from "@/lib/chart";
-import { num, pct, volPts } from "@/lib/format";
+import { esc, num, pct, volPts } from "@/lib/format";
 import { useFetch } from "@/lib/useFetch";
 
 const ROOTS = [
@@ -60,7 +60,7 @@ function coverageOption(t: Tokens, c: Coverage): EChartsOption {
         symbolSize: 9,
         itemStyle: { color: t.fail },
         data: c.missing.map(([d]) => [d, 0]),
-        tooltip: { trigger: "item" as const, formatter: (p: unknown) => `missing: ${String((p as { value: [string] }).value[0])}` },
+        tooltip: { trigger: "item" as const, formatter: (p: unknown) => `missing: ${esc((p as { value: [string] }).value[0])}` },
       },
     ],
   };
@@ -84,14 +84,14 @@ function CoverageSection({ c }: { c: Coverage }) {
             }
           />
         ))}
-        <Tile label="Overlap" value={c.overlap ? `${c.overlap[2]} days` : "none"} note={c.overlap ? `${c.overlap[0]} → ${c.overlap[1]}, both sources` : "no shared trading days"} />
-        <Tile label="Missing days" value={num(c.missing.length)} note="listed, never interpolated" />
+        <Tile label="Overlap" value={c.overlap ? `${c.overlap[2]} days` : "none"} note={c.overlap ? `${c.overlap[0]} → ${c.overlap[1]}` : "no shared days"} />
+        <Tile label="Missing days" value={num(c.missing.length)} />
       </div>
       <div className={ui.grid2}>
-        <Card title="Coverage by source" sub="Contracts quoted per trading day. The shaded band is the Jul–Aug 2025 overlap where the seam is validated; triangles mark missing days." source={<code>{c.source}</code>}>
+        <Card title="Coverage by source" sub="Contracts per day; band = overlap, triangles = missing." source={<code>{c.source}</code>}>
           <Chart option={coverageOption(t, c)} height={300} label="Contracts quoted per trading day by source" />
         </Card>
-        <Card title="Missing trading days" sub="Days the build could not fill. Listed as they are: nothing is smoothed over." source={<code>{c.source}</code>}>
+        <Card title="Missing trading days" sub="Not interpolated." source={<code>{c.source}</code>}>
           {c.missing.length ? (
             <div className={ui.tableWrap} style={{ maxHeight: 300, overflow: "auto" }}>
               <table className={ui.table}>
@@ -196,7 +196,7 @@ function termOption(t: Tokens, ts: Term): EChartsOption {
   return {
     ...base(t),
     legend: { show: false },
-    tooltip: { ...base(t).tooltip, formatter: (p: unknown) => { const q = (p as { value: [number, number]; dataIndex: number }[])[0]; return q ? `${q.value[0]} DTE · ${ts.expiry[q.dataIndex]}<br/>ATM IV <b>${q.value[1].toFixed(2)}</b>` : ""; } },
+    tooltip: { ...base(t).tooltip, formatter: (p: unknown) => { const q = (p as { value: [number, number]; dataIndex: number }[])[0]; return q ? `${q.value[0]} DTE · ${esc(ts.expiry[q.dataIndex])}<br/>ATM IV <b>${q.value[1].toFixed(2)}</b>` : ""; } },
     xAxis: { type: "value", name: "Days to expiry", nameLocation: "middle", ...axis(t) },
     yAxis: { type: "value", name: "ATM implied vol (vol pts)", nameLocation: "middle", scale: true, ...axis(t), nameGap: 40 },
     series: [{ type: "line", data: ts.dte.map((d, i) => [d, vp(ts.atm_iv[i] ?? null)]), symbolSize: 7, lineStyle: { width: 2, color: t.s1 }, itemStyle: { color: t.s1, borderColor: t.surface, borderWidth: 2 } }],
@@ -240,7 +240,7 @@ function DateSection({ dates, root }: { dates: string[]; root: string }) {
   const err = (e: ApiError | undefined, what: string) => (e ? <ErrorBox what={what} error={e} /> : null);
   return (
     <>
-      <Card title="One trading day" sub="Smile, surface and term structure for a date. Only that year's partition is read, and only that date's rows.">
+      <Card title="One trading day">
         <div className={ui.filterBar}>
           <label className={ui.field}>
             <span className={ui.fieldLabel}>Date</span>
@@ -289,14 +289,14 @@ function DateSection({ dates, root }: { dates: string[]; root: string }) {
       <div className={ui.grid2}>
         <Card
           title={smile.data ? `Smile · ${smile.data.expiry} (${smile.data.dte} DTE)` : "Smile"}
-          sub={smile.data ? `OTM quotes, ${smile.data.data_source}; forward ${num(smile.data.forward, 1)} from put-call parity` : "Out-of-the-money quotes against K / F"}
+          sub={smile.data ? `OTM quotes · ${smile.data.data_source} · F ${num(smile.data.forward, 1)}` : "OTM quotes against K / F"}
           source={smile.data ? <code>{smile.data.source}</code> : undefined}
         >
           {err(smile.error, "the smile")}
           {smile.loading && !smile.data ? <Loading what="the smile" /> : null}
           {smile.data ? <Chart option={smileOption(t, smile.data)} height={320} label="Implied volatility smile against moneyness" /> : null}
         </Card>
-        <Card title="ATM term structure" sub={term.data ? `ATM IV per expiry, interpolated at K / F = 1; ${term.data.data_source}` : "ATM IV per expiry"} source={term.data ? <code>{term.data.source}</code> : undefined}>
+        <Card title="ATM term structure" sub={term.data ? `ATM IV per expiry · ${term.data.data_source}` : "ATM IV per expiry"} source={term.data ? <code>{term.data.source}</code> : undefined}>
           {err(term.error, "the term structure")}
           {term.loading && !term.data ? <Loading what="the term structure" /> : null}
           {term.data ? term.data.dte.length ? <Chart option={termOption(t, term.data)} height={320} label="ATM implied volatility against days to expiry" /> : <Empty title="No expiry straddles the forward" /> : null}
@@ -304,7 +304,7 @@ function DateSection({ dates, root }: { dates: string[]; root: string }) {
       </div>
       <Card
         title="IV surface"
-        sub="Moneyness × days to expiry. Interpolated along strike within each expiry only; blank where nothing was quoted, never extrapolated."
+        sub="Moneyness × DTE; blank where not quoted."
         source={surface.data ? <code>{surface.data.source}</code> : <code>{root}</code>}
       >
         {err(surface.error, "the surface")}
@@ -411,15 +411,11 @@ function VrpSection({ d }: { d: Daily }) {
         ))}
       </div>
       <Card
-        title="IV30 against realised vol, and the variance risk premium"
-        sub="Top: 30-day ATM implied vol against trailing and forward 21-day realised vol. Bottom: VRP30, implied minus the realised vol that followed. Drag the brush to zoom."
+        title="IV30, realised vol and VRP30"
+        sub="VRP30 = IV30 − forward RV21."
         source={<code>{d.source}</code>}
       >
         {s.date.length ? <Chart option={vrpOption(t, s, cut)} height={460} label="IV30 and realised volatility over time, with the variance risk premium below" /> : <Empty title="No daily rows" />}
-        <p className={ui.callout} style={{ marginTop: 12 }}>
-          This is the external anchor of spec 4.5 and 5.5: the premium the market actually paid, in vol points, beside the premium the sweep plants (0, 1, 2 and 4 vol points).
-          The mapping between the two is an argument with stated assumptions, made in M4, not this subtraction.
-        </p>
       </Card>
     </>
   );
@@ -452,8 +448,8 @@ function SeamSection({ s }: { s: Seam }) {
   const t = useTokens();
   return (
     <Card
-      title="The seam: OptionMetrics against Databento"
-      sub="Same contracts, same days, both sources, over the overlap. The cut-over is only as good as this agreement."
+      title="Seam: OptionMetrics vs Databento"
+      sub="Same contracts, overlap days."
       source={
         <>
           <code>{s.source}</code>
@@ -465,7 +461,7 @@ function SeamSection({ s }: { s: Seam }) {
         <div className={ui.stack}>
           <div className={ui.grid3}>
             {Object.entries(s.medians).map(([k, v]) => (
-              <Tile key={k} label={SEAM_LABEL[k] ?? k} value={k === "n_matched" ? num(v) : k === "mid_diff_median_rel" ? pct(v, 2) : num(v, 3)} note={`median over ${s.date.length} days`} />
+              <Tile key={k} label={SEAM_LABEL[k] ?? k} value={k === "n_matched" ? num(v) : k === "mid_diff_median_rel" ? pct(v, 2) : num(v, 3)} note={`median, ${s.date.length} days`} />
             ))}
           </div>
           <Chart option={seamOption(t, s)} height={260} label="Per-day seam statistics over the overlap" />
@@ -477,9 +473,9 @@ function SeamSection({ s }: { s: Seam }) {
           ) : null}
         </div>
       ) : (
-        <Empty title="Seam report not written yet">
+        <Empty title="No seam report">
           <p>
-            The build writes <code>panel/seam_overlap.parquet</code> once both sources cover the overlap.
+            <code>panel/seam_overlap.parquet</code>
           </p>
         </Empty>
       )}
@@ -507,9 +503,8 @@ export default function DataPage() {
   return (
     <>
       <PageHead
-        eyebrow="Real SPX data"
-        title="The stitched SPX panel"
-        lede="WRDS OptionMetrics from 2010 to its August 2025 ceiling, Databento OPRA end-of-day quotes from July 2025 on, on one schema: forwards from put-call parity, IV and greeks recomputed with optspread.pricing on both halves, the vendor IV kept beside ours."
+        eyebrow="Real data"
+        title="SPX panel"
       />
       {status.error ? <ErrorBox what="the panel status" error={status.error} onRetry={status.reload} /> : null}
       {status.loading ? <Loading what="the panel status" /> : null}
