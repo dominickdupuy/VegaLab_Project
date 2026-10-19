@@ -90,3 +90,15 @@ def gate_docs(tmp_path: Path) -> Path:
 @pytest.fixture(scope="session")
 def panel_root(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return write_panel(tmp_path_factory.mktemp("vegalab"))
+
+
+@pytest.fixture(autouse=True)
+def _no_shared_data_folder(
+    tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """No test reads the team's shared data folder: VEGALAB_DATA points at an empty dir.
+
+    A test that wants data builds it under its own tmp_path and sets VEGALAB_DATA
+    itself; the default (the synced OneDrive folder) is never reached from the suite.
+    """
+    monkeypatch.setenv("VEGALAB_DATA", str(tmp_path_factory.mktemp("no_shared_data")))

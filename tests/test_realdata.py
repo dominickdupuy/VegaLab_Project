@@ -208,6 +208,29 @@ def test_pre_osi_vendor_symbols_take_their_root_from_settlement() -> None:
     assert q["am_settled"].tolist() == [True, False, False]
 
 
+def test_saturday_am_expiries_settle_on_the_friday() -> None:
+    raw = pd.DataFrame(
+        {
+            "date": [date(2012, 3, 1)] * 3,
+            "symbol": ["SPX 120317C1400000", "SPXW 120316C1400000", "SPX 120316C1400000"],
+            "exdate": [date(2012, 3, 17), date(2012, 3, 17), date(2012, 3, 16)],
+            "cp_flag": ["C"] * 3,
+            "strike_price": [1_400_000.0] * 3,
+            "best_bid": [10.0] * 3,
+            "best_offer": [11.0] * 3,
+            "volume": [0.0] * 3,
+            "open_interest": [0.0] * 3,
+            "impl_volatility": [0.2] * 3,
+            "delta": [0.5] * 3,
+            "am_settlement": [1.0, 0.0, 1.0],
+            "forward_price": [np.nan] * 3,
+        }
+    )
+    q = normalise_opprcd(raw)
+    # AM on a Saturday moves to Friday; a PM row, or an AM row already on a Friday, stays.
+    assert q["expiry"].tolist() == [date(2012, 3, 16), date(2012, 3, 17), date(2012, 3, 16)]
+
+
 # -- the panel and its series ------------------------------------------------- #
 
 
@@ -225,7 +248,8 @@ def _panel(n_days: int = 80) -> tuple[pd.DataFrame, pd.Series]:
         d += timedelta(days=1)
     priced = price_surface(pd.concat(frames, ignore_index=True))
     panel, dropped = finalise(priced, "optionmetrics")
-    assert dropped > 0, "the far wings fall outside the band"
+    assert (dropped > 0).all(), "the far wings fall outside the band, every day"
+    assert set(dropped.index) == set(panel["date"]), "dropped is counted per date"
     return panel, pd.Series(spots, index=days)
 
 
@@ -296,6 +320,14 @@ def test_the_surface_grid_is_flat_inside_the_quoted_range(
     assert grid[grid["tenor_days"] == 7]["iv"].isna().all(), "nothing before the first expiry"
     at_30 = grid[(grid["tenor_days"] == 30) & (grid["k"].abs() <= 0.15)]
     assert at_30["iv"].notna().all(), "a tenor on a listed expiry reads that expiry alone"
+
+
+def test_the_calendar_refuses_a_date_past_its_holiday_list() -> None:
+    vendor = pd.Index([date(2025, 8, 29)])
+    cal = trading_calendar(vendor, date(2027, 7, 9))
+    assert date(2027, 7, 5) not in cal, "Independence Day observed"
+    with pytest.raises(ValueError, match="NYSE_HOLIDAYS"):
+        trading_calendar(vendor, date(2028, 1, 3))
 
 
 def test_coverage_lists_every_missing_day() -> None:
@@ -375,6 +407,26 @@ def test_the_historical_provider_conforms(
         HistoricalChainProvider(cfg, store).step()
     with pytest.raises(ValueError, match="episode needs"):
         HistoricalChainProvider(MarketConfig(n_days=500), store)
+
+
+def test_the_provider_interpolates_total_variance_across_tenors() -> None:
+    n_days = 30
+    grid_t = np.asarray(TENOR_GRID, dtype=np.float64)
+    vols = np.interp(grid_t, [7, 365], [0.10, 0.30])  # a steep term structure, flat in k
+    cube = np.repeat(vols[None, :, None], n_days, axis=0) * np.ones((1, 1, len(K_GRID)))
+    store = SurfaceStore(
+        dates=tuple(str(DAY0 + timedelta(days=i)) for i in range(n_days)),
+        spot=np.full(n_days, SPOT),
+        carry=np.zeros(n_days),
+        ivs=cube,
+    )
+    cfg = MarketConfig(n_days=10, tenor_days=(31,))  # 31 trading days = 44.9 calendar days
+    chain = HistoricalChainProvider(cfg, store).reset(SeededStepRNG(0))
+    cal = 31 * 365 / 252
+    j = int(np.searchsorted(grid_t, cal))
+    t1, t2, v1, v2 = grid_t[j - 1], grid_t[j], vols[j - 1], vols[j]
+    w = v1**2 * t1 + (cal - t1) / (t2 - t1) * (v2**2 * t2 - v1**2 * t1)
+    np.testing.assert_allclose(chain.ivs[0], np.sqrt(w / cal), rtol=1e-9)
 
 
 def test_the_source_is_available_once_the_panel_files_exist(tmp_path: Path) -> None:

@@ -12,11 +12,11 @@ the no-look-ahead contract holds by construction.
 Each chain is laid on the same strike and tenor grid the synthetic provider
 uses (``MarketConfig``), so the environment, the action library and the leak
 suite see the same shapes. IVs come from the compact surface grid
-(``panel/surface_grid.parquet``): interpolated in tenor (calendar days, from the
-grid's trading days at 365/252) and in log-moneyness against the engine's own
-forward, flat beyond the last quoted point. ``r`` is the day's 30-day carry, rate
-less dividends, because the engine prices without a dividend yield; that puts its
-forward where the market's was.
+(``panel/surface_grid.parquet``): interpolated in tenor as total variance (calendar
+days, from the grid's trading days at 365/252) and in log-moneyness against the
+engine's own forward, flat beyond the last quoted point. ``r`` is the day's 30-day
+carry, rate less dividends, because the engine prices without a dividend yield;
+that puts its forward where the market's was.
 
 The planted premium (``iv_premium_vol_pts``) is not applied: a real surface
 carries whatever premium the market priced, which is the point of using it.
@@ -158,7 +158,12 @@ class HistoricalChainProvider:
         cal = trading_days * 365.0 / self.config.trading_days_per_year
         grid_t = np.asarray(TENOR_GRID, dtype=np.float64)
         cube = self.store.ivs[i]
-        per_k = np.array([np.interp(cal, grid_t, cube[:, j]) for j in range(len(K_GRID))])
+        # Total variance is what interpolates linearly in time without creating
+        # calendar arbitrage; outside the grid the vol is held flat.
+        t_c = min(max(cal, grid_t[0]), grid_t[-1])
+        w = cube * cube * grid_t[:, None]
+        w_at = np.array([np.interp(t_c, grid_t, w[:, j]) for j in range(len(K_GRID))])
+        per_k = np.sqrt(np.maximum(w_at, 0.0) / t_c)
         T = trading_days / self.config.trading_days_per_year
         k = np.log(strikes / (spot * np.exp(r * T)))
         return np.asarray(np.clip(np.interp(k, K_GRID, per_k), IV_FLOOR, IV_CAP), dtype=np.float64)

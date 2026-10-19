@@ -78,12 +78,23 @@ NYSE_HOLIDAYS = tuple(
         "2026-09-07",
         "2026-11-26",
         "2026-12-25",
+        "2027-01-01",
+        "2027-01-18",
+        "2027-02-15",
+        "2027-03-26",
+        "2027-05-31",
+        "2027-06-18",
+        "2027-07-05",
+        "2027-09-06",
+        "2027-11-25",
+        "2027-12-24",
     )
 )
+HOLIDAYS_THROUGH = date(2027, 12, 31)
 
 
-def finalise(priced: pd.DataFrame, source: str) -> tuple[pd.DataFrame, int]:
-    """Panel rows from priced quotes, and how many were dropped by the band."""
+def finalise(priced: pd.DataFrame, source: str) -> tuple[pd.DataFrame, pd.Series]:
+    """Panel rows from priced quotes, and per date how many the band dropped."""
     q = priced
     with np.errstate(divide="ignore", invalid="ignore"):
         k = np.log(q["strike"].to_numpy(dtype=np.float64) / q["forward"].to_numpy(dtype=np.float64))
@@ -99,7 +110,8 @@ def finalise(priced: pd.DataFrame, source: str) -> tuple[pd.DataFrame, int]:
     for col in ("volume", "open_interest", "iv_vendor"):
         if col not in out:
             out[col] = np.nan
-    return out[PANEL_COLUMNS].reset_index(drop=True), int((~keep).sum())
+    dropped = pd.Series(~keep, index=q.index).groupby(q["date"].to_numpy()).sum().astype(np.int64)
+    return out[PANEL_COLUMNS].reset_index(drop=True), dropped.rename("n_dropped")
 
 
 def atm_term(panel: pd.DataFrame) -> pd.DataFrame:
@@ -235,7 +247,13 @@ def carry30(term: pd.DataFrame, spot: pd.Series) -> pd.DataFrame:
 
 
 def trading_calendar(vendor_days: pd.Index, through: date) -> list[date]:
-    """Vendor trading days up to its ceiling, then NYSE business days to ``through``."""
+    """Vendor trading days up to its ceiling, then NYSE business days to ``through``.
+
+    Refuses a date past the end of the holiday list rather than counting a closure
+    as a missing day.
+    """
+    if through > HOLIDAYS_THROUGH:
+        raise ValueError(f"NYSE_HOLIDAYS ends {HOLIDAYS_THROUGH}; extend it to reach {through}")
     last = max(vendor_days)
     after = pd.bdate_range(pd.Timestamp(last) + pd.Timedelta(days=1), pd.Timestamp(through))
     extra = [d.date() for d in after if d.date() not in NYSE_HOLIDAYS]
@@ -243,10 +261,12 @@ def trading_calendar(vendor_days: pd.Index, through: date) -> list[date]:
 
 
 def coverage(calendar: list[date], counts: pd.DataFrame) -> pd.DataFrame:
-    """One row per expected trading day: which source served it and how much."""
+    """One row per expected trading day: which source served it, how much, how much dropped."""
     cal = pd.DataFrame({"date": calendar})
     out = cal.merge(counts, on="date", how="left")
     out["n_contracts"] = out["n_contracts"].fillna(0).astype(np.int64)
+    if "n_dropped" in out:
+        out["n_dropped"] = out["n_dropped"].fillna(0).astype(np.int64)
     out["missing"] = out["n_contracts"] == 0
     out["source"] = out["source"].fillna("none")
     return out
