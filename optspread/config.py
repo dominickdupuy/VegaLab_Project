@@ -52,8 +52,8 @@ class CostConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     enabled: bool = True
-    min_half_spread: float = 0.05  # per share, in index points
-    half_spread_frac: float = 0.02  # fraction of mid
+    min_half_spread: float = 0.15  # per share, in index points; fitted, docs/COSTS.md
+    half_spread_frac: float = 0.0075  # fraction of mid; fitted, docs/COSTS.md
     commission_per_contract: float = 0.65
 
 

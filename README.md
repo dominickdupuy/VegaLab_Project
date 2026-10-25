@@ -87,9 +87,9 @@ arm           costs       mean P&L        se  trades
 flat          False              0         0     0.0
 flat          True               0         0     0.0
 always_on     False           -509     1,157     3.0
-always_on     True          -1,049     1,170     3.0
+always_on     True            -786     1,162     3.0
 random        False           -333       370    70.7
-random        True          -9,843       375    70.7
+random        True          -4,583       371    70.7
 ```
 
 Three orderings are asserted: flat sits at exactly zero either way, always-on
@@ -106,10 +106,10 @@ be predicted by hand and compared.
 
 ```
 seller           structure               free   costed     drag  predicted      gap
-hold_condor      IRON_CONDOR             -515     -999      484        484        0
-hold_put_spread  PUT_CREDIT_SPREAD     -2,058   -2,300      242        242        0
-roll_condor      IRON_CONDOR            1,716    1,113      603        603        0
-roll_put_spread  PUT_CREDIT_SPREAD       -817   -1,187      370        370        0
+hold_condor      IRON_CONDOR             -515     -772      257        257        0
+hold_put_spread  PUT_CREDIT_SPREAD     -2,058   -2,186      128        128        0
+roll_condor      IRON_CONDOR            1,716    1,366      350        350        0
+roll_put_spread  PUT_CREDIT_SPREAD       -817   -1,014      197        197        0
 ```
 
 Three checks: costs change the accounting and nothing else (`pnl_costed` equals

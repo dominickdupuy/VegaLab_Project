@@ -48,9 +48,12 @@ PPO_RUN = RunConfig(policy="ppo", train=TrainConfig(total_timesteps=10_000, seed
 
 
 def test_adding_the_learner_re_keyed_no_existing_run() -> None:
-    assert config_hash(RunConfig()) == "3d40b6cf91209442"
-    assert config_hash(RunConfig(policy="delta_seller", seed=1)) == "f5d4a29be7ea4f97"
-    assert config_hash(SweepConfig()) == "9296d0819b009612"
+    # Re-pinned once, on purpose: adopting the fitted cost parameters for the Nov 1
+    # freeze (#8, docs/COSTS.md) re-keys every costed config. Adding the learner
+    # did not.
+    assert config_hash(RunConfig()) == "17c15aa74ce473a9"
+    assert config_hash(RunConfig(policy="delta_seller", seed=1)) == "377f82c6d51a937e"
+    assert config_hash(SweepConfig()) == "1c7a87a7c73c3636"
     assert "train" not in canonical_json(RunConfig())
 
 

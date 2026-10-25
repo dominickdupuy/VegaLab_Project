@@ -22,9 +22,16 @@ Median half-spread per share by tenor and delta, observed against each model:
 
 ## Effect on the gates
 
-Both tables were run with the fitted parameters set temporarily and then reverted;
-`CostConfig` itself is unchanged. Whether to adopt the fit is the Nov 1 freeze
-decision (#8). Every gate holds either way.
+Both tables were first run with the fitted parameters set temporarily and then
+reverted. Every gate holds either way.
+
+**Adopted 2026-10-25 for the Nov 1 freeze (#8).** `CostConfig` now defaults to
+the fitted `min_half_spread = 0.15` and `half_spread_frac = 0.0075`; the
+functional form, `max(min_half_spread, half_spread_frac * mid)` per share plus
+the commission, is unchanged. `make gate` and `make drag` on the adopted values
+reproduce the fitted column below to the dollar, and the README tables are
+those runs. Size slippage is not modelled and does not apply: every leg is one
+contract.
 
 Wave 0 (`make gate`), mean net P&L per 63-day episode, 100 episodes per arm:
 
