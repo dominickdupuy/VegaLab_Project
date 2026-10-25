@@ -138,8 +138,8 @@ class GateReport:
         """The Markdown at ``path`` and the JSON sidecar beside it, from this one build."""
         path.parent.mkdir(parents=True, exist_ok=True)
         sidecar = path.with_suffix(".json")
-        path.write_text(self.render())
-        sidecar.write_text(self.render_json())
+        path.write_text(self.render(), newline="\n")
+        sidecar.write_text(self.render_json(), newline="\n")
         return path, sidecar
 
     @classmethod

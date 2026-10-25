@@ -220,7 +220,7 @@ def run_sweep(sweep: SweepConfig, root: Path, runner: Runner = run_episodes) -> 
         arms=sweep.arms,
         cells=tuple(cells),
     )
-    (root / SWEEP_FILENAME).write_text(result.model_dump_json(indent=2))
+    (root / SWEEP_FILENAME).write_text(result.model_dump_json(indent=2), newline="\n")
     return result
 
 

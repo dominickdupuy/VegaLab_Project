@@ -27,8 +27,9 @@ from __future__ import annotations
 import argparse
 import dataclasses
 import os
+import re
 import sys
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from datetime import date
 from pathlib import Path
 
@@ -55,11 +56,28 @@ def default_roots(env: Mapping[str, str] | None = None) -> tuple[Path, Path]:
 
 
 def portable(text: str) -> str:
-    """A committed report names roots as $VEGALAB_DATA or ~, never one machine's home."""
+    """A committed report names roots as $VEGALAB_DATA or ~, never one machine's home.
+
+    The path after the placeholder is written with forward slashes, so a report
+    written on Windows reads the same as one written anywhere else."""
     data = os.environ.get("VEGALAB_DATA")
-    if data:
-        text = text.replace(str(Path(data).expanduser()), "$VEGALAB_DATA")
-    return text.replace(str(Path.home()), "~")
+    named = [(Path(data).expanduser(), "$VEGALAB_DATA")] if data else []
+    # Native and forward-slash spellings of each root; on POSIX the two are one string.
+    roots = {
+        (form, name)
+        for path, name in [*named, (Path.home(), "~")]
+        for form in (str(path), path.as_posix())
+    }
+    for root, name in sorted(roots, key=lambda r: (r[1] == "~", -len(r[0]))):
+        text = re.sub(re.escape(root) + r"[^\s`;,()]*", _renamer(root, name), text)
+    return text
+
+
+def _renamer(root: str, name: str) -> Callable[[re.Match[str]], str]:
+    def rename(match: re.Match[str]) -> str:
+        return name + match[0][len(root) :].replace("\\", "/")
+
+    return rename
 
 
 def portable_items(items: Sequence[GateItem]) -> list[GateItem]:

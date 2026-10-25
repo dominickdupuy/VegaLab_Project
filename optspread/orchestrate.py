@@ -452,7 +452,7 @@ def run_grid(
     """Run the grid under ``root`` and write ``grid-<hash>.json`` beside its cells."""
     run_cells(grid_cells(grid), root, workers=workers, trainer=trainer, report=report)
     record = grid_record(grid, root)
-    (root / grid_filename(grid)).write_text(record.model_dump_json(indent=2))
+    (root / grid_filename(grid)).write_text(record.model_dump_json(indent=2), newline="\n")
     return record
 
 

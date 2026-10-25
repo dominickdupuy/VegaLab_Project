@@ -323,7 +323,8 @@ def execute_job(job_id: str, spec_json: str, runs_root: str) -> str:
     manifest = write_run(run_dir, config, summary, episodes)
     equity = run_dir / EQUITY_FILENAME
     equity.write_text(
-        json.dumps({"seeds": [r.seed for r in results[: len(paths)]], "paths": paths})
+        json.dumps({"seeds": [r.seed for r in results[: len(paths)]], "paths": paths}),
+        newline="\n",
     )
     manifest.add_artifact(run_dir, equity)
     manifest.write(run_dir)

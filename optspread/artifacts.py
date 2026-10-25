@@ -118,7 +118,7 @@ def write_run(
     run_dir.mkdir(parents=True, exist_ok=True)
     record = RunRecord.of(config, summary, episodes)
     target = run_dir / RUN_FILENAME
-    target.write_text(dump_run(record))
+    target.write_text(dump_run(record), newline="\n")
 
     manifest = RunManifest.create(config)
     manifest.add_artifact(run_dir, target)

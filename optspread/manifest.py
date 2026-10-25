@@ -143,7 +143,9 @@ class RunManifest(BaseModel):
         self.validate_complete()
         run_dir.mkdir(parents=True, exist_ok=True)
         target = run_dir / MANIFEST_FILENAME
-        target.write_text(json.dumps(self.model_dump(mode="json"), indent=2, sort_keys=True))
+        target.write_text(
+            json.dumps(self.model_dump(mode="json"), indent=2, sort_keys=True), newline="\n"
+        )
         return target
 
     @classmethod
