@@ -110,10 +110,10 @@ class PanelLayout:
     def missing(self) -> tuple[str, ...]:
         """Panel files a view needs that are not there yet, as paths relative to the root."""
         out = [p for p in (self.daily, self.coverage) if not p.is_file()]
-        names = [str(p.relative_to(self.root)) for p in out]
+        names = [p.relative_to(self.root).as_posix() for p in out]
         if not self.years():
             names.append(
-                str((self.chain_dir / "year=YYYY" / "part.parquet").relative_to(self.root))
+                (self.chain_dir / "year=YYYY" / "part.parquet").relative_to(self.root).as_posix()
             )
         return tuple(names)
 
