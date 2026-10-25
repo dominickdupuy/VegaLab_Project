@@ -91,3 +91,100 @@ These follow from D1 to D3 and are recorded here so they are not renegotiated:
 - The variance components themselves. They are *measured* at M2, not decided.
   The pilot's job is to supply `tau^2` and `sigma^2`; nothing about the analysis
   depends on their values.
+
+---
+
+## Amendments
+
+Appended, never edited in place. Each names its date, what it changes and why.
+
+### A1. 2026-10-25: the detection event is each arm against itself at zero premium (#26)
+
+**Changes** the *Primary contrast* above. The scripted fixed-delta seller against the
+trained policy at the same premium detects an effect in the null world: at zero
+premium the seller pays its cost drag, a learner that learns to stay flat does not, and
+the flat learner "beats" the seller with nothing planted (the audit reproduced it at
+S = 24, N = 40: t = 2.03 against 1.714). A test that fires when the answer is no is not
+a test of the premium.
+
+**The event.** For each arm a (the fixed-delta seller and PPO) and each planted premium
+p > 0, the paired contrast is a at p minus a at zero, on the same evaluation paths
+(seed block i, path j) and, for PPO, the same training seed (block i trains with seed
+`train_seed + i` at every premium). The cost drag and the path variance cancel
+together, the paired design of D1 is kept, and each arm has its own power curve: the
+oracle-to-PPO gap is the horizontal distance between the two. In code,
+`optspread.analysis.decide_premium`, contrasts read by `GridRecord.contrast`.
+
+At p = 0 the contrast is identically zero (one arm against itself on the same paths),
+so the sweep's leftmost point is degenerate rather than a draw at alpha. The size of the
+test is established instead by the null-world case of the section 8 gate
+(`optspread.validation.validate_null_world`): a flat learner, a control paying a cost
+drag of five standard errors, nothing planted. The event fires there at about 0.05;
+the event it replaces fires at about 0.99 and is kept as the gate's negative control. The M2
+analysis item requires both.
+
+**Sidedness.** One-sided, as D1 closed it. Project document section 5.2 says two-sided;
+D1 supersedes it and rejected two-sided at 0.01 explicitly. The alternative is
+directional by construction: a planted premium is an edge for a seller, and the
+question is whether the instrument detects it, not whether it detects a loss.
+
+### A2. 2026-10-25: the test (#7)
+
+A one-sided Student t on the S seed-level means of the paired contrast of A1, df =
+S - 1, alpha = 0.05, as implemented by `optspread.analysis.decide`. The standard error
+is `se^2 = MS_between / (S N)`, the sample variance of the seed means over S, not the
+clamped plug-in `VarianceComponents.var_grand_mean`. The verdict is reported with the
+estimate and its one-sided 95% lower bound, which is positive exactly when the test
+rejects.
+
+### A3. 2026-10-25: the power calculation (#7, #20)
+
+Power and the detection floor are computed with the exact noncentral t
+(`optspread.power.power_t`, `detectable_effect_t`): seed means `N(delta, tau^2 +
+sigma^2 / N)`, noncentrality `delta / se`. The planning functions on the normal
+approximation (`episodes_for`, `seeds_for`, `frontier`, `scripts/pilot_budget.py`)
+overstate power at small S and are for orientation only; no design is committed on them.
+
+### A4. 2026-10-25: the training budget (#4)
+
+`total_timesteps = 1,000,000` per seed, for every PPO cell of the pilot and the sweep.
+From the learning-curve check (`docs/LEARNING_CURVE.md`, `.json`): PPO at 4 vol points,
+3 training seeds (2000 to 2002, outside the pilot's and the sweep's), evaluated every
+250,000 steps to 2,000,000 on the same 200 paths. The rule, stated in
+`scripts/learning_curve.py` before the run: a checkpoint has levelled off when every
+later gain, averaged over seeds, is at most two standard errors (the larger of the
+between-seed and the paired within-seed one); the budget is 1,000,000 if the curve has
+levelled by then, else 2,000,000. Result: levelled by 1,000,000. The 1,001,472-step checkpoint (where a 1,000,000
+budget stops, whole rollouts) gains at most 418 dollars to any later checkpoint
+against standard errors of 260 to 360; the mean over seeds is 5,122 there and 5,438 at
+2,000,896. The rule's own first levelled point, 251,904, is an artefact of one
+lagging seed widening the between-seed error, and the budget is the same either way.
+
+### A5. 2026-10-25: the pilot design (#5, #6)
+
+S = 8 training seeds (0 to 7) by N = 200 episodes per seed (path seeds 4,000 on), both
+arms at zero and at 1 vol point, at the budget of A4 and the costs frozen for Nov 1
+(#8, `docs/COSTS.md`). Under A1 the contrast needs both worlds, so 0 and 1 vol point
+is the design that measures what is tested, and #5's recommendation stands with a
+sharper reason: the pilot's tau^2 and sigma^2 are those of the PPO contrast at 1 vol
+point (`matrix.npy`), with the seller's (`matrix_oracle.npy`, tau^2 = 0 by
+construction) as the negative control. Whether tau^2 moves with the premium is the M4
+homogeneity question (#13), tested on the sweep itself. The pilot's seeds are disjoint
+from the sweep's (training 1,000 on, paths 100,000 on), so no pilot number enters the
+confirmatory data.
+
+### A6. 2026-10-25: how the pilot sets S and N (#6), fixed before the pilot runs
+
+- **The effect to detect**, delta: the fixed-delta seller's own contrast at 1 vol point,
+  the grand mean of `matrix_oracle.npy`. It is what a learner earns by finding the
+  oracle's trade at that premium, and it is a property of the scripted arm, so choosing
+  it reads nothing of PPO's outcome.
+- **The variances:** tau^2 and sigma^2 of the PPO contrast (`matrix.npy`), the
+  point estimates of `optspread.power.variance_components`.
+- **The design:** of N in {200, 500, 1000} and S >= 5, the (S, N) with the fewest
+  core-hours for the whole sweep (6 premiums by 2 arms, at the A4 budget and the rates
+  measured on the machine that runs it) whose exact power `power_t(delta, tau^2,
+  sigma^2, S, N)` is at least 0.80. If no S up to 100 reaches it, S = 100 and N = 1000,
+  and the floor at that design is reported as the finding it is.
+- If delta is not positive, the seller has no edge at 1 vol point to find, and the
+  design is S = 50, N = 200, with the floor reported.
