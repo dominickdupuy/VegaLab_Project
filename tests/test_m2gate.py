@@ -27,7 +27,7 @@ from optspread.gatereport import GateItem, build_report
 from optspread.manifest import RunManifest
 from optspread.orchestrate import pilot_grid, run_grid, write_pilot_matrices
 from optspread.power import detectable_effect_t, variance_components
-from optspread.validation import POISONED_PIPELINES
+from optspread.validation import POISONED_PIPELINES, PREREGISTERED_EVENT, REJECTED_EVENTS
 
 
 def blocked(item: GateItem, contains: str) -> None:
@@ -332,9 +332,10 @@ def test_the_adapter_clears_only_on_a_real_conforming_source(
 
 
 def pilot_config(N: int = 40, policy: str = "ppo") -> RunConfig:
+    market = MarketConfig(iv_premium_vol_pts=1.0)  # the pilot premium the contrast is at
     if policy == "ppo":
-        return RunConfig(policy="ppo", seed=0, n_episodes=N, train=TRAIN)
-    return RunConfig(policy="delta_seller", seed=0, n_episodes=N)
+        return RunConfig(policy="ppo", market=market, seed=0, n_episodes=N, train=TRAIN)
+    return RunConfig(policy="delta_seller", market=market, seed=0, n_episodes=N)
 
 
 def write_pilot(
@@ -409,20 +410,21 @@ def test_the_pilot_item_refuses_a_throwaway_or_mislabelled_matrix(tmp_path: Path
     )
 
 
-def test_the_pilot_item_reports_the_contrast_and_both_arms(tmp_path: Path) -> None:
+def test_the_pilot_item_reports_the_contrast_and_the_control(tmp_path: Path) -> None:
     ppo, oracle = pilot_matrix(), pilot_matrix(seed=1) * 0.1
     write_pilot(tmp_path, ppo, oracle)
     item = m2gate.pilot_item(tmp_path)
     passes(item)
     assert "8 x 40 pilot (run " in item.evidence and "2,048 training steps" in item.evidence
-    for label in ("contrast ppo - delta_seller tau^2 = ", "; ppo tau^2 = ", "delta_seller tau^2"):
+    for label in ("contrast ppo at 1 - ppo at 0 tau^2 = ", "; delta_seller at 1 - at 0 tau^2"):
         assert label in item.evidence
-    # The floor is the exact t one, on the contrast rather than on the PPO arm alone.
-    vc = variance_components(ppo - oracle)
+    # The matrices are already the event's contrasts (#26): the floor is the exact t one on
+    # the PPO matrix as written, not on PPO minus the seller.
+    vc = variance_components(ppo)
     exact = f"{detectable_effect_t(vc.tau2, vc.sigma2, 5, 40):,.4g} at S = 5"
     assert exact in item.evidence and "at S = 50" in item.evidence
-    alone = variance_components(ppo)
-    assert f"{detectable_effect_t(alone.tau2, alone.sigma2, 5, 40):,.4g} at S" not in item.evidence
+    old = variance_components(ppo - oracle)
+    assert f"{detectable_effect_t(old.tau2, old.sigma2, 5, 40):,.4g} at S" not in item.evidence
 
     planned = m2gate.pilot_item(tmp_path, delta=200.0)
     passes(planned)
@@ -441,7 +443,7 @@ def test_the_pilot_item_on_a_real_pilot_checks_the_grid(tmp_path: Path) -> None:
         env=EnvConfig(episode_days=21),
         cost=CostConfig(enabled=True),
     )
-    grid = pilot_grid(base, n_seeds=5, n_episodes=20, premium=0.0, train=TRAIN)
+    grid = pilot_grid(base, n_seeds=5, n_episodes=20, premium=1.0, train=TRAIN)
     write_pilot_matrices(run_grid(grid, tmp_path, trainer=fake_trainer), tmp_path)
     item = m2gate.pilot_item(tmp_path)
     passes(item)
@@ -462,6 +464,26 @@ def test_the_analysis_item_passes_live_and_names_its_numbers() -> None:
     assert "3 of 3 wrong rules refused" in item.evidence
     assert "normal approximation reads" in item.evidence
     assert "noncentral-t" in item.criterion
+    assert "null world: each arm against itself at zero premium fires at 0.0" in item.evidence
+    assert "the learner against the fixed-delta seller at one premium at 0.99" in item.evidence
+    assert "cost drag" in item.criterion
+
+
+def test_the_analysis_item_fails_when_the_event_fires_in_the_null_world(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # #26: the contrast PPO minus the seller detects a flat learner beating a seller that
+    # pays its costs. Pre-registering that event must not clear the gate.
+    rejected = next(iter(REJECTED_EVENTS.values()))
+    monkeypatch.setattr(m2gate, "PREREGISTERED_EVENT", ("against the seller", rejected))
+    blocked(m2gate.analysis_item(replications=2_000), "fires at 0.99")
+
+
+def test_the_analysis_item_fails_when_the_null_world_accepts_a_replaced_event(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(m2gate, "REJECTED_EVENTS", {"not actually wrong": PREREGISTERED_EVENT[1]})
+    blocked(m2gate.analysis_item(replications=2_000), "did not refuse a replaced event")
 
 
 def test_the_analysis_item_fails_when_the_gate_would_accept_a_wrong_rule(

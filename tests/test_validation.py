@@ -15,15 +15,21 @@ import dataclasses
 import numpy as np
 import pytest
 
-from optspread.analysis import ALPHA, Decision, decide
+from optspread.analysis import ALPHA, Decision, decide, decide_premium
+from optspread.power import variance_components
 from optspread.validation import (
     DEFAULT_CASE,
     DEFAULT_DELTAS,
+    NULL_WORLD_DRAG,
     POISONED_PIPELINES,
+    PREREGISTERED_EVENT,
+    REJECTED_EVENTS,
     AnalyticCase,
     Check,
     bootstrap_detection,
     simulate_arms,
+    simulate_null_world,
+    validate_null_world,
     validate_pipeline,
 )
 
@@ -147,3 +153,44 @@ def test_the_bootstrap_refuses_what_it_cannot_resample() -> None:
         bootstrap_detection(np.array([1.0]))
     with pytest.raises(ValueError, match="n_boot"):
         bootstrap_detection(np.array([1.0, 2.0]), n_boot=0)
+
+
+# -- the null world (#26) ---------------------------------------------------- #
+
+
+def test_the_null_world_has_the_case_components_and_the_drag() -> None:
+    arms = simulate_null_world(DEFAULT_CASE, NULL_WORLD_DRAG, np.random.default_rng(0))
+    assert set(arms) == {(a, w) for a in ("learner", "control") for w in ("premium", "null")}
+    assert all(m.shape == (DEFAULT_CASE.n_seeds, DEFAULT_CASE.n_episodes) for m in arms.values())
+    # The paths are shared by every arm and world, so the self-contrast is free of them.
+    big = dataclasses.replace(DEFAULT_CASE, n_seeds=400, n_episodes=50)
+    many = simulate_null_world(big, NULL_WORLD_DRAG, np.random.default_rng(1))
+    vc = variance_components(many[("learner", "premium")] - many[("learner", "null")])
+    assert vc.grand_mean == pytest.approx(0.0, abs=0.5)
+    assert vc.sigma2 == pytest.approx(DEFAULT_CASE.sigma2, rel=0.05)
+    assert vc.tau2 == pytest.approx(DEFAULT_CASE.tau2, rel=0.3)
+    gap = many[("learner", "premium")] - many[("control", "premium")]
+    assert float(gap.mean()) == pytest.approx(NULL_WORLD_DRAG, abs=0.5)
+
+
+def test_the_preregistered_event_fires_at_alpha_with_nothing_planted() -> None:
+    check = validate_null_world(replications=R, event=PREREGISTERED_EVENT[1])
+    assert check.expected == ALPHA and check.within(), check
+
+
+@pytest.mark.parametrize("label", list(REJECTED_EVENTS))
+def test_the_event_it_replaced_detects_the_cost_drag(label: str) -> None:
+    check = validate_null_world(replications=R, event=REJECTED_EVENTS[label])
+    assert check.observed > 0.9 and not check.within(), check
+
+
+def test_the_null_world_needs_replications() -> None:
+    with pytest.raises(ValueError, match="at least 2 replications"):
+        validate_null_world(replications=1)
+
+
+def test_decide_premium_is_the_paired_rule_on_one_arm_in_two_worlds() -> None:
+    arms = simulate_null_world(DEFAULT_CASE, NULL_WORLD_DRAG, np.random.default_rng(2))
+    at_p, at_0 = arms[("learner", "premium")], arms[("learner", "null")]
+    assert decide_premium(at_p, at_0) == decide(at_p, at_0)
+    assert not decide_premium(at_0, at_0).rejected  # zero against itself never fires

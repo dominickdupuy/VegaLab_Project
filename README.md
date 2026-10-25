@@ -241,6 +241,19 @@ standard errors at delta = 1. The other two miss by more than 200. The controls 
 guard the replication count: below about 2,000 per effect the gate is too blunt to
 see the first mistake, and the item then fails on the control instead of passing.
 
+**The null world.** A rule can pass all of that and still be the wrong test. The
+first pre-registered contrast, PPO against the fixed-delta seller at one premium,
+fires with nothing planted: the seller pays its cost drag, a learner that stays
+flat does not, and the flat learner "beats" it (#26). The detection event is
+therefore each arm against itself at zero premium, on the same paths and, for PPO,
+the same training seed (`analysis.decide_premium`), so the drag and the path
+variance cancel together. `validation.validate_null_world` is the check: a flat
+learner, a control paying a drag of five standard errors, nothing planted. The
+pre-registered event fires at 0.050; the event it replaced fires at 0.995 and is
+the gate's negative control. At zero itself the event is identically zero (an arm
+against itself on the same paths), so the sweep's leftmost point is degenerate
+and the size of the test is this check's to show, not the sweep's.
+
 The last column is the finding. The planning functions (`episodes_for`,
 `seeds_for`, `frontier`) use the normal approximation, which at ten seeds reads
 0.72 where the test's real power is 0.66. A sample size from them is optimistic at
@@ -353,10 +366,12 @@ $PY scripts/pilot_budget.py --delta <effect> --matrix $VEGALAB_DATA/runs/pilot/m
     --train-steps 1000000 --cores 16
 ```
 
-`--premium` (default 0, the null world) sets the planted level the pilot measures
-at. The pilot writes `matrix.npy` (S x N, PPO) and `matrix_oracle.npy` (the
-fixed-delta seller on the same blocks, the negative control whose seed component is
-zero by construction) and prints both sets of variance components.
+The pilot runs both arms at zero and at `--premium` (default 1 vol point, #5),
+because the detection event is each arm against itself at zero (#26). It writes
+`matrix.npy` (S x N, PPO at the premium minus PPO at zero, what the test tests) and
+`matrix_oracle.npy` (the fixed-delta seller's same contrast, the negative control
+whose seed component is zero by construction), each arm's raw matrices beside them,
+and prints both sets of variance components.
 
 **The sweep**, with S and N from the pilot budget:
 

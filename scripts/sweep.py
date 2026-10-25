@@ -7,12 +7,13 @@ Lane: Ilan Danial (machinery).
     python -m scripts.sweep --premiums 0 1 --arms delta_seller --seeds 4 --episodes 50
 
 The grid is decision D2's axis (default 0, 0.25, 0.5, 1, 2 and 4 vol points) by
-the primary contrast of D1 (the fixed-delta seller and PPO) by S seed blocks of N
-episodes. Within a block every arm at every premium runs the same paths, and
-block i's policy is training seed ``--train-seed + i`` at every premium. Every
-cell is a run directory under ``--root``; ``grid-<hash>.json`` lists them. A
-second run with the same arguments reads finished cells back, so a killed sweep
-resumes where it stopped. One progress line per cell, with an ETA.
+the arms of the primary analysis (the fixed-delta seller and PPO, each tested
+against itself at zero premium, #26) by S seed blocks of N episodes. Within a block
+every arm at every premium runs the same paths, and block i's policy is training
+seed ``--train-seed + i`` at every premium. Every cell is a run directory under
+``--root``; ``grid-<hash>.json`` lists them. A second run with the same arguments
+reads finished cells back, so a killed sweep resumes where it stopped. One progress
+line per cell, with an ETA.
 
 ``--timesteps`` has no default and is required whenever the ppo arm is in the
 grid. Costs are on. Every number is synthetic (D2: the null world by design).

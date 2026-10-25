@@ -36,7 +36,6 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from optspread.analysis import paired_contrast
 from optspread.artifacts import RUN_FILENAME
 from optspread.data import conformance_suite
 from optspread.gatereport import GateItem
@@ -52,8 +51,12 @@ from optspread.sweep import changed_artifacts
 from optspread.validation import (
     DEFAULT_CASE,
     DEFAULT_DELTAS,
+    NULL_WORLD_DRAG,
     PASS_CRITERION,
     POISONED_PIPELINES,
+    PREREGISTERED_EVENT,
+    REJECTED_EVENTS,
+    validate_null_world,
     validate_pipeline,
 )
 
@@ -319,14 +322,15 @@ def adapter_item() -> GateItem:
 # -- Dominick Dupuy: pilot, analysis validation, pre-registration ------------ #
 
 PILOT_CRITERION = (
-    f"the pilot's S x N matrices ({PILOT_MATRIX}, the PPO arm, and {PILOT_ORACLE_MATRIX}, "
-    "the fixed-delta seller on the same paths) sit beside a valid manifest that records "
-    "both digests and whose config is the PPO arm with its training config; "
+    f"the pilot's S x N contrast matrices ({PILOT_MATRIX}, PPO at the pilot premium minus "
+    f"PPO at zero, and {PILOT_ORACLE_MATRIX}, the fixed-delta seller's same contrast; the "
+    "pre-registered detection event of #26) sit beside a valid manifest that records both "
+    "digests and whose config is the PPO arm with its training config; "
     f"S >= {PILOT_MIN_SEEDS}, N >= {PILOT_MIN_EPISODES}, every entry finite, N equal to the "
     "manifest's n_episodes and S to the grid's seed count where the grid record is present; "
-    "tau^2 and sigma^2 of the paired contrast PPO minus oracle (what the pre-registered test "
-    "tests) are reported with standard errors beside each arm's, and turned into the exact "
-    "noncentral-t detection floor at one-sided alpha = 0.05 and 80% power"
+    "tau^2 and sigma^2 of the PPO contrast (what the pre-registered test tests) are reported "
+    "with standard errors beside the seller's, and turned into the exact noncentral-t "
+    "detection floor at one-sided alpha = 0.05 and 80% power"
 )
 
 
@@ -412,19 +416,19 @@ def pilot_item(
             at, f"the matrix has N = {N} episodes, the manifest's config {config.n_episodes}"
         )
     seeds = _grid_seeds(pilot_root, manifest.run_id)
+    premium = f"{config.market.iv_premium_vol_pts:g}"
     if seeds is not None and seeds != S:
         return fail(at, f"the matrix has S = {S} seeds, the grid record {seeds}")
-    vc = variance_components(paired_contrast(ppo, oracle))
+    vc = variance_components(ppo)  # already the contrast the event tests
     floors = ", ".join(
         f"{detectable_effect_t(vc.tau2, vc.sigma2, s, N):,.4g} at S = {s}" for s in (5, 50)
     )
     evidence = (
         f"{S} x {N} pilot ({at}, {config.train.total_timesteps:,} training steps per seed, "
         f"{'grid of ' + str(seeds) + ' seeds' if seeds is not None else 'no grid record'}): "
-        f"{_components('contrast ppo - delta_seller', vc)}; "
-        f"{_components('ppo', variance_components(ppo))}; "
-        f"{_components('delta_seller', variance_components(oracle))}; exact-t detection "
-        f"floor of the contrast at N = {N}: {floors}"
+        f"{_components(f'contrast ppo at {premium} - ppo at 0', vc)}; "
+        f"{_components(f'delta_seller at {premium} - at 0', variance_components(oracle))}; "
+        f"exact-t detection floor of the PPO contrast at N = {N}: {floors}"
     )
     if delta is not None:
         designs = frontier(
@@ -458,7 +462,12 @@ ANALYSIS_CRITERION = (
     PASS_CRITERION
     + "; and each deliberately wrong rule ("
     + ", ".join(POISONED_PIPELINES)
-    + ") fails the same check"
+    + ") fails the same check; and in the null world (a flat learner, a control paying "
+    + f"a cost drag of {NULL_WORLD_DRAG:g}, nothing planted) the pre-registered event, "
+    + PREREGISTERED_EVENT[0]
+    + ", fires within the same tolerance of alpha while the event it replaced ("
+    + ", ".join(REJECTED_EVENTS)
+    + ") does not"
 )
 
 
@@ -478,12 +487,20 @@ def analysis_item(replications: int = 10_000, seed: int = 0) -> GateItem:
     ]
     rates = ", ".join(f"{p.empirical:.3f}/{p.analytic:.3f} at {p.delta:g}" for p in result.points)
     at = max(result.points, key=lambda p: p.normal - p.analytic)
+    null = validate_null_world(replications=replications, event=PREREGISTERED_EVENT[1])
+    replaced = {
+        label: validate_null_world(replications=replications, event=event)
+        for label, event in REJECTED_EVENTS.items()
+    }
+    kept = [label for label, check in replaced.items() if check.within()]
     evidence = (
         f"{DEFAULT_CASE.describe()}; R = {replications:,} per effect; rejection rate/closed "
         f"form: {rates}; largest deviation {result.worst.z:+.2f} MC se ({result.worst.name}); "
         f"{len(POISONED_PIPELINES) - len(accepted)} of {len(POISONED_PIPELINES)} wrong rules "
         f"refused; the normal approximation reads {at.normal:.3f} against {at.analytic:.3f} "
-        f"at delta = {at.delta:g}"
+        f"at delta = {at.delta:g}; null world: {PREREGISTERED_EVENT[0]} fires at "
+        f"{null.observed:.3f} against alpha = {null.expected:g} ({null.z:+.2f} MC se), "
+        + ", ".join(f"{label} at {c.observed:.3f}" for label, c in replaced.items())
     )
     if not result.passed:
         c = result.failures[0]
@@ -491,6 +508,15 @@ def analysis_item(replications: int = 10_000, seed: int = 0) -> GateItem:
         return _not_cleared(name, DOMINICK, ANALYSIS_CRITERION, evidence, why)
     if accepted:
         why = f"the gate accepted a wrong rule: {', '.join(accepted)}"
+        return _not_cleared(name, DOMINICK, ANALYSIS_CRITERION, evidence, why)
+    if not null.within():
+        why = (
+            f"the pre-registered event fires at {null.observed:.4f} in the null world, "
+            f"against alpha = {null.expected:g} (z = {null.z:.2f})"
+        )
+        return _not_cleared(name, DOMINICK, ANALYSIS_CRITERION, evidence, why)
+    if kept:
+        why = f"the null world did not refuse a replaced event: {', '.join(kept)}"
         return _not_cleared(name, DOMINICK, ANALYSIS_CRITERION, evidence, why)
     return GateItem(name, DOMINICK, ANALYSIS_CRITERION, evidence, passed=True)
 

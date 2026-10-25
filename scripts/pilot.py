@@ -7,12 +7,15 @@ Lane: Ilan Danial (machinery).
     python scripts/pilot_budget.py --delta 1500 --matrix runs/pilot/matrix.npy
 
 S policies trained at the frozen D3 hyperparameters, seed i on its own training
-paths, each evaluated over N episodes on its own block of path seeds; the
-fixed-delta seller runs the same blocks as the negative control, whose
+paths, each evaluated over N episodes on its own block of path seeds, at zero
+premium and at ``--premium`` (default 1 vol point, #5): the detection event
+compares each arm with itself at zero (#26), so the pilot measures that contrast.
+The fixed-delta seller runs the same blocks as the negative control, whose
 between-seed component is zero by construction. Every cell is a run directory
-under ``--root``; ``matrix.npy`` (the learner) and ``matrix_oracle.npy`` (the
-control) land beside them. A second run with the same arguments reads finished
-cells back, so a killed pilot resumes where it stopped.
+under ``--root``; ``matrix.npy`` (the learner's contrast) and ``matrix_oracle.npy``
+(the control's) land beside them with each arm's raw matrices. A second run with
+the same arguments reads finished cells back, so a killed pilot resumes where it
+stopped.
 
 ``--timesteps`` has no default: D3 fixes the hyperparameters, not the training
 budget, and the pilot does not get to pick one silently. Costs are on. Every
@@ -47,7 +50,9 @@ def main(argv: Sequence[str] | None = None, trainer: Trainer = train_ppo) -> int
     parser.add_argument(
         "--timesteps", type=int, required=True, help="PPO steps per seed (not pre-registered)"
     )
-    parser.add_argument("--premium", type=float, default=0.0, help="planted premium, vol points")
+    parser.add_argument(
+        "--premium", type=float, default=1.0, help="planted premium against zero, vol points"
+    )
     parser.add_argument("--seed", type=int, default=4000, help="first evaluation path seed")
     parser.add_argument("--train-seed", type=int, default=0, help="training seed of block 0")
     parser.add_argument("--device", default="cpu")
@@ -86,7 +91,7 @@ def main(argv: Sequence[str] | None = None, trainer: Trainer = train_ppo) -> int
         print()
         print(f"{arm}: {path}")
         if grid.n_seeds >= 2 and grid.base.n_episodes >= 2:
-            print(variance_components(record.matrix(root, grid.premiums[0], arm)).render())
+            print(variance_components(record.contrast(root, grid.premiums[1], arm)).render())
     print()
     print(f"next: python scripts/pilot_budget.py --delta <effect> --matrix {paths['ppo']}")
     return 0

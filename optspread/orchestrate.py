@@ -14,8 +14,10 @@ sweep use:
 So every arm at every premium sees the same paths in block i (paired, as D1 and
 the pre-registration require), the blocks are disjoint (nested, as the formula in
 ``optspread.power`` requires), and block i's policy is the same training seed at
-every premium. The pilot is this grid at one premium; ``GridRecord.matrix`` reads
-its S x N outcomes back for ``scripts/pilot_budget.py``.
+every premium. That last is what the detection event (#26) needs: each arm at
+premium p against itself at zero, block by block, which ``GridRecord.contrast``
+reads back. The pilot is this grid at zero and one premium; its S x N contrast
+matrices are what ``scripts/pilot_budget.py`` reads.
 
 Every cell is an ordinary run directory under ``root``, named by its run id and
 written by ``write_run``, so a cell is the same object whichever command produced
@@ -42,6 +44,7 @@ import numpy as np
 from numpy.typing import NDArray
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from optspread.analysis import NULL_PREMIUM, paired_contrast
 from optspread.artifacts import SchemaVersionError, read_run, write_run
 from optspread.config import ArmName, CostConfig, RunConfig, TrainConfig, config_hash
 from optspread.harness import run_episodes, summarize
@@ -53,7 +56,9 @@ SCHEMA_VERSION = 1
 
 # Decision D2's axis in vol points, the 4.3 levels plus the null world.
 SWEEP_PREMIUMS: tuple[float, ...] = (0.0, 0.25, 0.5, 1.0, 2.0, 4.0)
-# D1's primary contrast: the fixed-delta seller (the oracle) against the trained policy.
+# The arms of the primary analysis: the fixed-delta seller (the oracle) and the trained
+# policy. Each is tested against itself at zero premium (#26), so each has its own power
+# curve and the oracle-to-PPO gap is the horizontal distance between them.
 PRIMARY_ARMS: tuple[ArmName, ...] = ("delta_seller", "ppo")
 
 # M1-measured rates, steps/s/core (README, Throughput). Only their ratio enters the ETA,
@@ -392,6 +397,15 @@ class GridRecord(BaseModel):
             rows.append([e.pnl for e in record.episodes])
         return np.asarray(rows, dtype=np.float64)
 
+    def contrast(self, root: Path, premium: float, arm: ArmName) -> NDArray[np.float64]:
+        """The detection event's ``(S, N)`` matrix: ``arm`` at ``premium`` minus ``arm`` at
+        zero, block by block on the same paths (#26). Identically zero at zero itself."""
+        if NULL_PREMIUM not in self.grid.premiums:
+            raise KeyError(f"the grid has no {NULL_PREMIUM:g} premium to contrast against")
+        return paired_contrast(
+            self.matrix(root, premium, arm), self.matrix(root, NULL_PREMIUM, arm)
+        )
+
     def render(self) -> str:
         """Per premium and arm: the grand mean over blocks and the se of the block means."""
         lines = [
@@ -467,6 +481,7 @@ def read_grid(path: Path) -> GridRecord:
 
 # -- the pilot ------------------------------------------------------------------ #
 
+# The detection event's contrasts at the pilot premium (each arm at p minus itself at 0).
 PILOT_MATRIX = "matrix.npy"  # the learner: what scripts/pilot_budget.py --matrix reads
 PILOT_ORACLE_MATRIX = "matrix_oracle.npy"  # the negative control, tau^2 = 0 by construction
 
@@ -478,10 +493,16 @@ def pilot_grid(
     premium: float,
     train: TrainConfig,
 ) -> GridConfig:
-    """The variance-components pilot: one premium, the learner and its scripted control."""
+    """The variance-components pilot: the learner and its scripted control, each at zero
+    and at ``premium``, which is what the detection event's contrast needs (#26)."""
+    if premium == NULL_PREMIUM:
+        raise ValueError(
+            "the pilot measures the contrast against zero premium, so its premium must "
+            f"differ from {NULL_PREMIUM:g}"
+        )
     return GridConfig(
         base=base.model_copy(update={"n_episodes": n_episodes}),
-        premiums=(premium,),
+        premiums=(NULL_PREMIUM, premium),
         arms=("ppo", "delta_seller"),
         n_seeds=n_seeds,
         train=train,
@@ -489,22 +510,29 @@ def pilot_grid(
 
 
 def write_pilot_matrices(record: GridRecord, root: Path) -> dict[ArmName, Path]:
-    """Save each arm's ``(S, N)`` matrix at the pilot's premium beside its cells.
+    """Save each arm's ``(S, N)`` contrast at the pilot's premium beside its cells.
 
-    The matrices get a manifest of their own at ``root``, keyed by the learned arm's
-    first block config and recording every matrix's digest, so the M2 report can
-    refuse a matrix that changed after it was written.
+    The contrast is the detection event's: the arm at the pilot premium minus the arm
+    at zero (``GridRecord.contrast``). Each arm's raw matrix in each world is saved
+    too, as ``matrix_<arm>_p<premium>.npy``. The matrices get a manifest of their own
+    at ``root``, keyed by the learned arm's first block config at the pilot premium and
+    recording every matrix's digest, so the M2 report can refuse a matrix that
+    changed after it was written.
     """
-    premium = record.grid.premiums[0]
+    premium = next(p for p in record.grid.premiums if p != NULL_PREMIUM)
     names: dict[ArmName, str] = {"ppo": PILOT_MATRIX, "delta_seller": PILOT_ORACLE_MATRIX}
     paths: dict[ArmName, Path] = {}
+    raw: list[Path] = []
     for arm in record.grid.arms:
         path = root / names.get(arm, f"matrix_{arm}.npy")
-        np.save(path, record.matrix(root, premium, arm))
+        np.save(path, record.contrast(root, premium, arm))
         paths[arm] = path
+        for p in record.grid.premiums:
+            raw.append(root / f"matrix_{arm}_p{p:g}.npy")
+            np.save(raw[-1], record.matrix(root, p, arm))
     lead: ArmName = "ppo" if "ppo" in record.grid.arms else record.grid.arms[0]
     manifest = RunManifest.create(block_config(record.grid, premium, lead, 0))
-    for path in paths.values():
+    for path in [*paths.values(), *raw]:
         manifest.add_artifact(root, path)
     manifest.write(root)
     return paths

@@ -12,17 +12,19 @@ produces a plot, so the plot is not evidence.
 The synthetic world is the pre-registered design (D1) with every ingredient set by
 hand. For seed block i and episode path j,
 
-    control_ij = p_ij + c_ij                    the scripted seller: no seed term
-    treated_ij = delta + a_i + p_ij + e_ij      the learner: seed term a_i
+    control_ij = p_ij + c_ij                    the arm at zero premium
+    treated_ij = delta + a_i + p_ij + e_ij      the same arm at p: seed term a_i
 
     p_ij ~ N(0, path_sigma2)   the path, shared by both arms (paired seeds)
     a_i  ~ N(0, tau2)          between-seed variance of the contrast
     e_ij, c_ij ~ N(0, sigma2 / 2) each, so the contrast's episode variance is sigma2
 
 so the contrast has exactly the components ``tau2`` and ``sigma2``, the path term
-cancels if and only if the pipeline pairs, and the detection probability of the
-one-sided t test on seed means is ``optspread.power.power_t`` at the truth: a
-noncentral t, exact rather than approximate.
+cancels if and only if the pipeline pairs (a seed level common to both worlds cancels
+the same way, so the case leaves it out; the null-world case below keeps it), and the
+detection probability of the one-sided t test on seed means is
+``optspread.power.power_t`` at the truth: a noncentral t, exact rather than
+approximate.
 
 ``validate_pipeline`` draws ``replications`` such experiments at each effect on a
 grid that includes zero, runs the pipeline on each, and compares the rejection rate
@@ -30,6 +32,11 @@ with the closed form. ``PASS_CRITERION`` states the rule. The pipeline is an
 argument, so the negative controls in the tests hand it deliberately wrong rules
 (normal critical values, unpaired arms, episodes treated as independent) and
 require the gate to refuse each one.
+
+``validate_null_world`` is the null-world case (#26): the learner flat, the scripted
+control paying a cost drag, nothing planted. The pre-registered event (each arm
+against itself at zero premium) must fire at alpha there; the event it replaced (the
+learner against the control) fires at nearly 1 and is the gate's negative control.
 
 ``bootstrap_detection`` is the section 5.3 check (an M4 item, cheap enough to land
 with the rule): resample the S seed means with replacement, apply the same test,
@@ -310,6 +317,101 @@ def validate_pipeline(
             sd_var / math.sqrt(total),
         ),
         k=k,
+    )
+
+
+# -- the null world: the detection event must not fire with nothing planted -- #
+
+# The arms of one null-world experiment, keyed by (arm, world): the learner and the
+# control, each at the premium under test and at zero. Nothing is planted, so each
+# arm's two worlds have the same mean; the control's is minus its cost drag.
+NullArms = dict[tuple[str, str], NDArray[np.float64]]
+# Which two matrices an event tests, treated first: the pairing is what is under test.
+Event = Callable[[NullArms], tuple[NDArray[np.float64], NDArray[np.float64]]]
+
+# The section 8 case's units: Var(grand mean) of the contrast is 0.8, so a drag of 5 is
+# more than five standard errors and the rejected event fires almost every time.
+NULL_WORLD_DRAG = 5.0
+
+
+def simulate_null_world(case: AnalyticCase, drag: float, rng: np.random.Generator) -> NullArms:
+    """One null-world experiment on the design of ``case``; no effect is planted.
+
+    For seed block i and path j, with the path p_ij shared by every arm and world:
+
+        learner at p      a_i + b_i + p_ij + e_ij     a_i the training seed's own level,
+        learner at zero   a_i       + p_ij + e'_ij    b_i ~ N(0, tau2) its change across
+        control at p      -drag     + p_ij + c_ij     the two worlds; e, e', c, c' each
+        control at zero   -drag     + p_ij + c'_ij    N(0, sigma2 / 2)
+
+    so the learner's self-contrast has exactly the case's tau2 and sigma2 and mean 0,
+    and the learner against the control has mean ``drag``: the flat learner beating a
+    seller that pays its costs, which is what #26 found the old contrast detecting.
+    """
+    shape = (case.n_seeds, case.n_episodes)
+    path = rng.normal(0.0, math.sqrt(case.path_sigma2), size=shape)
+    level = rng.normal(0.0, math.sqrt(case.tau2), size=(case.n_seeds, 1))
+    change = rng.normal(0.0, math.sqrt(case.tau2), size=(case.n_seeds, 1))
+    half = math.sqrt(case.sigma2 / 2.0)
+
+    def noise() -> NDArray[np.float64]:
+        return rng.normal(0.0, half, size=shape)
+
+    arms = {
+        ("learner", "premium"): level + change + path + noise(),
+        ("learner", "null"): level + path + noise(),
+        ("control", "premium"): -drag + path + noise(),
+        ("control", "null"): -drag + path + noise(),
+    }
+    return {k: np.asarray(v, dtype=np.float64) for k, v in arms.items()}
+
+
+def _against_itself(arms: NullArms) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    return arms[("learner", "premium")], arms[("learner", "null")]
+
+
+def _against_the_control(arms: NullArms) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    return arms[("learner", "premium")], arms[("control", "premium")]
+
+
+# The pre-registered event (#26), and the one it replaced, which the gate must refuse.
+PREREGISTERED_EVENT: tuple[str, Event] = (
+    "each arm against itself at zero premium",
+    _against_itself,
+)
+REJECTED_EVENTS: dict[str, Event] = {
+    "the learner against the fixed-delta seller at one premium": _against_the_control,
+}
+
+
+def validate_null_world(
+    case: AnalyticCase = DEFAULT_CASE,
+    drag: float = NULL_WORLD_DRAG,
+    replications: int = 10_000,
+    seed: int = 1,
+    event: Event = _against_itself,
+    k: float = K_SE,
+) -> Check:
+    """The event's rejection rate with nothing planted, against alpha.
+
+    ``Check.within`` is the pass: a correct event fires at alpha (the learner's
+    self-contrast is an exact t case with mean 0), a wrong one at its power against
+    the drag. The rate is compared with alpha whichever event is passed, so the gate
+    reads the same number for the event it accepts and the ones it refuses.
+    """
+    if replications < 2:
+        raise ValueError(f"need at least 2 replications, got {replications}")
+    rng = np.random.default_rng(seed)
+    rejections = sum(
+        decide(*event(simulate_null_world(case, drag, rng)), case.alpha).rejected
+        for _ in range(replications)
+    )
+    p = case.alpha
+    return Check(
+        f"null-world rejection rate (drag {drag:g})",
+        rejections / replications,
+        p,
+        math.sqrt(p * (1.0 - p) / replications),
     )
 
 

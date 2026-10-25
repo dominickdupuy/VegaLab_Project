@@ -250,10 +250,11 @@ def test_workers_must_be_positive(tmp_path: Path) -> None:
 # -- the pilot ------------------------------------------------------------------- #
 
 
-def test_the_pilot_writes_the_matrix_the_budget_reads_and_its_control(tmp_path: Path) -> None:
+def test_the_pilot_writes_the_contrast_the_budget_reads_and_its_control(tmp_path: Path) -> None:
     S, N = 3, 4
     grid = pilot_grid(SHORT, n_seeds=S, n_episodes=N, premium=1.0, train=TRAIN)
-    assert grid.premiums == (1.0,) and set(grid.arms) == {"ppo", "delta_seller"}
+    # The detection event is each arm against itself at zero (#26), so both worlds run.
+    assert grid.premiums == (0.0, 1.0) and set(grid.arms) == {"ppo", "delta_seller"}
     record = run_grid(grid, tmp_path, trainer=fake_trainer)
     paths = write_pilot_matrices(record, tmp_path)
     assert paths == {"ppo": tmp_path / PILOT_MATRIX, "delta_seller": tmp_path / PILOT_ORACLE_MATRIX}
@@ -261,22 +262,47 @@ def test_the_pilot_writes_the_matrix_the_budget_reads_and_its_control(tmp_path: 
     learner = np.load(tmp_path / PILOT_MATRIX)
     control = np.load(tmp_path / PILOT_ORACLE_MATRIX)
     assert learner.shape == control.shape == (S, N)
-    # The control is the nested design sweep.pilot_matrix describes, value for value.
-    base = SHORT.model_copy(
-        update={"market": SHORT.market.model_copy(update={"iv_premium_vol_pts": 1.0})}
-    )
-    expected = pilot_matrix(base, S, N, lambda _: DeltaSellerPolicy(roll_dte=SHORT.env.roll_dte))
-    assert np.array_equal(control, expected)
-    learned = pilot_matrix(base, S, N, lambda i: FakeLearned(TRAIN.seed + i))
-    assert np.array_equal(learner, learned)
+
+    # Each matrix is the arm at 1 vol point minus the same arm at 0, block by block on
+    # the nested design sweep.pilot_matrix describes, value for value.
+    def world(premium: float) -> RunConfig:
+        market = SHORT.market.model_copy(update={"iv_premium_vol_pts": premium})
+        return SHORT.model_copy(update={"market": market})
+
+    def seller(_: int) -> DeltaSellerPolicy:
+        return DeltaSellerPolicy(roll_dte=SHORT.env.roll_dte)
+
+    def learned(i: int) -> FakeLearned:
+        return FakeLearned(TRAIN.seed + i)
+
+    for matrix, make in ((control, seller), (learner, learned)):
+        at_p, at_0 = (pilot_matrix(world(p), S, N, make) for p in (1.0, 0.0))
+        assert np.array_equal(matrix, at_p - at_0)
+    raw = np.load(tmp_path / "matrix_delta_seller_p1.npy")
+    assert np.array_equal(raw, pilot_matrix(world(1.0), S, N, seller))
+    assert control.any()  # the premium moves the seller, so the control is not trivially zero
 
     # The matrices carry their own manifest, so the M2 report can tell if one changed.
     manifest = RunManifest.read(tmp_path)
+    raw = [f"matrix_{a}_p{p:g}.npy" for a in ("ppo", "delta_seller") for p in (0.0, 1.0)]
     assert manifest.artifacts == {
-        PILOT_MATRIX: file_sha256(tmp_path / PILOT_MATRIX),
-        PILOT_ORACLE_MATRIX: file_sha256(tmp_path / PILOT_ORACLE_MATRIX),
+        name: file_sha256(tmp_path / name) for name in (PILOT_MATRIX, PILOT_ORACLE_MATRIX, *raw)
     }
-    assert manifest.config.policy == "ppo"
+    assert manifest.config.policy == "ppo" and manifest.config.market.iv_premium_vol_pts == 1.0
+
+
+def test_the_pilot_refuses_to_contrast_zero_with_itself() -> None:
+    with pytest.raises(ValueError, match="must differ from 0"):
+        pilot_grid(SHORT, n_seeds=3, n_episodes=4, premium=0.0, train=TRAIN)
+
+
+def test_a_grid_contrast_is_zero_at_zero_and_needs_the_null_world(tmp_path: Path) -> None:
+    grid = pilot_grid(SHORT, n_seeds=2, n_episodes=3, premium=0.5, train=TRAIN)
+    record = run_grid(grid, tmp_path, trainer=fake_trainer)
+    assert not record.contrast(tmp_path, 0.0, "ppo").any()  # the same policy on the same paths
+    without = record.model_copy(update={"grid": grid.model_copy(update={"premiums": (0.5,)})})
+    with pytest.raises(KeyError, match="no 0 premium"):
+        without.contrast(tmp_path, 0.5, "ppo")
 
 
 # -- the commands ------------------------------------------------------------------ #
@@ -289,13 +315,13 @@ def test_the_pilot_command_runs_resumes_and_writes_the_matrix(
 
     args = ["--root", str(tmp_path), "--seeds", "2", "--episodes", "2", "--timesteps", "64"]
     assert pilot.main([*args, "--dry-run"], trainer=fake_trainer) == 0
-    assert "4 cells: 0 on disk, 4 to run" in capsys.readouterr().out
+    assert "8 cells: 0 on disk, 8 to run" in capsys.readouterr().out
     assert pilot.main(args, trainer=fake_trainer) == 0
     out = capsys.readouterr().out
     assert "tau^2" in out and "pilot_budget.py" in out
     assert np.load(tmp_path / PILOT_MATRIX).shape == (2, 2)
     assert pilot.main(args, trainer=fake_trainer) == 0
-    assert capsys.readouterr().out.count("reused") == 4
+    assert capsys.readouterr().out.count("reused") == 8
     assert pilot.main(args, trainer=failing_trainer) == 0  # nothing left to train
     fresh = ["--root", str(tmp_path / "f"), "--seeds", "2", "--episodes", "1", "--timesteps", "1"]
     assert pilot.main(fresh, trainer=failing_trainer) == 1

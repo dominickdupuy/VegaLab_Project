@@ -2,15 +2,23 @@
 
 Lane: Dominick Dupuy (statistical spine).
 
-Pre-registration D1 fixes the rule's shape: the primary contrast (the trained policy
-against the scripted fixed-delta seller, on the same seeds) is tested once,
+Pre-registration D1 fixes the rule's shape: the primary contrast is tested once,
 one-sided at alpha = 0.05, and the result is reported as the estimate with its
 interval. This module is that rule as code, so the real analysis and the section 8
 validation in ``optspread.validation`` run the same function rather than two
 descriptions of it.
 
+The detection event (amended 2026-10-25, #26) compares each arm with itself: the arm
+at planted premium p against the same arm at zero premium (``NULL_PREMIUM``), on the
+same evaluation paths and, for PPO, the same training seed. Comparing PPO with the
+fixed-delta seller instead detects an effect in the null world, because the seller
+pays its cost drag there and a learner that stays flat does not; the null-world case
+of the section 8 gate is the check that this rule does not. ``decide_premium`` is the
+event; ``decide`` is the paired test it runs.
+
     treated, control   (S, N) outcome matrices; row i of both arms is seed block i,
-                       column j the same episode path in both
+                       column j the same episode path in both. For the event,
+                       treated is an arm at p and control the same arm at zero
     contrast           treated - control, cell by cell. The two arms share paths, so
                        the path term cancels here and only the arms' own noise is left
     components         ``optspread.power.variance_components`` on the contrast
@@ -42,6 +50,7 @@ from numpy.typing import ArrayLike, NDArray
 from optspread.power import VarianceComponents, t_critical, variance_components
 
 ALPHA = 0.05  # D1: one-sided
+NULL_PREMIUM = 0.0  # the reference every arm is compared with (#26)
 
 
 @dataclass(frozen=True, slots=True)
@@ -110,3 +119,13 @@ def decide_contrast(contrast: ArrayLike, alpha: float = ALPHA) -> Decision:
 def decide(treated: ArrayLike, control: ArrayLike, alpha: float = ALPHA) -> Decision:
     """The pre-registered rule on the two arms: pair, estimate the components, test."""
     return decide_contrast(paired_contrast(treated, control), alpha)
+
+
+def decide_premium(at_premium: ArrayLike, at_null: ArrayLike, alpha: float = ALPHA) -> Decision:
+    """The detection event: one arm at premium p against itself at ``NULL_PREMIUM``.
+
+    Both matrices are the same arm on the same seed blocks and paths, so the arm's own
+    cost drag and the path variance cancel together, and the remaining seed term is
+    the change in the arm between the two worlds.
+    """
+    return decide(at_premium, at_null, alpha)
