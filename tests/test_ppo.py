@@ -88,3 +88,22 @@ def test_a_ppo_run_replays_bit_for_bit(tmp_path: Path) -> None:
     assert (tmp_path / "policy.zip").stat().st_size > 0
     matches, reason = replay_matches(tmp_path)
     assert matches, reason
+
+
+def test_a_checkpoint_is_the_policy_a_run_of_that_budget_trains() -> None:
+    # The learning-curve check (#4) reads its curve from one training run per seed;
+    # that is only the curve of the budget question if each checkpoint is the policy a
+    # run trained to that many steps would have returned.
+    seen: dict[int, tuple[float, ...]] = {}
+
+    def record(steps: int, policy: object) -> None:
+        seen[steps] = tuple(e.pnl for e in run_episodes(RUN, policy))  # type: ignore[arg-type]
+
+    assert RUN.train is not None
+    longer = RUN.model_copy(
+        update={"train": RUN.train.model_copy(update={"total_timesteps": 4096})}
+    )
+    train_ppo(longer, every=2048, on_checkpoint=record)
+    assert sorted(seen) == [2048, 4096]
+    assert seen[2048] == tuple(e.pnl for e in run_episodes(RUN, train_ppo(RUN)))
+    assert seen[4096] == tuple(e.pnl for e in run_episodes(longer, train_ppo(longer)))

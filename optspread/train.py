@@ -159,11 +159,21 @@ def sb3_kwargs(hp: PPOHyperparameters) -> dict[str, Any]:
     }
 
 
-def train_ppo(config: RunConfig) -> SB3Policy:
+def train_ppo(
+    config: RunConfig,
+    every: int | None = None,
+    on_checkpoint: Callable[[int, SB3Policy], None] | None = None,
+) -> SB3Policy:
     """Train the PPO arm of ``config`` and return it. Needs the ``train`` extra.
 
     The D3 check is made again here, not left to ``TrainConfig``: pydantic's
     ``model_copy(update=...)`` skips validation, so a config can carry another set.
+
+    With ``on_checkpoint``, it is called with ``(steps, policy)`` after the first
+    update at or past each multiple of ``every`` steps, between rollouts: the policy
+    then is the one a run with ``total_timesteps = steps`` returns, because every
+    schedule in the D3 set is constant and evaluation draws on no learner state. The
+    learning-curve check (#4) reads its curve this way from one training run.
     """
     if config.train is None:
         raise ValueError(f"policy {config.policy!r} has no training config")
@@ -182,8 +192,33 @@ def train_ppo(config: RunConfig) -> SB3Policy:
         verbose=0,
         **sb3_kwargs(train.hyperparameters),
     )
-    model.learn(total_timesteps=train.total_timesteps)
-    return SB3Policy(model)
+    if on_checkpoint is None:
+        model.learn(total_timesteps=train.total_timesteps)
+        return SB3Policy(model)
+    if every is None or every < 1:
+        raise ValueError(f"a checkpoint callback needs a positive interval, got {every!r}")
+    from stable_baselines3.common.callbacks import BaseCallback
+
+    policy, interval, report = SB3Policy(model), every, on_checkpoint
+
+    class Checkpoints(BaseCallback):
+        def __init__(self) -> None:
+            super().__init__()
+            self.next = interval
+
+        def _on_rollout_start(self) -> None:
+            # Called before each rollout, so after the update on the previous one.
+            if self.num_timesteps >= self.next:
+                report(self.num_timesteps, policy)
+                self.next = (self.num_timesteps // interval + 1) * interval
+
+        def _on_step(self) -> bool:
+            return True
+
+    callback = Checkpoints()
+    model.learn(total_timesteps=train.total_timesteps, callback=callback)
+    on_checkpoint(model.num_timesteps, policy)
+    return policy
 
 
 # -- what the M2 gate report states about D3 -------------------------------- #
