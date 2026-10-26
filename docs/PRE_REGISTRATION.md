@@ -188,3 +188,39 @@ confirmatory data.
   and the floor at that design is reported as the finding it is.
 - If delta is not positive, the seller has no edge at 1 vol point to find, and the
   design is S = 50, N = 200, with the floor reported.
+
+### A7. 2026-10-26: the confirmatory S and N, by the rule of A6 (#6)
+
+The pilot of A5 ran as designed (grid `acc8d0d33b3ba4ac`: 8 seeds by 200 episodes, both
+arms at 0 and 1 vol point, 1,000,000 training steps, costs on). The arm means:
+
+| premium | arm | grand mean | se |
+|---|---|---|---|
+| 0 | ppo | -132 | 242 |
+| 0 | delta_seller | -397 | 182 |
+| 1 | ppo | 1,320 | 363 |
+| 1 | delta_seller | 428 | 176 |
+
+The contrasts of A1, by `optspread.power.variance_components`:
+
+- **PPO** (`matrix.npy`): grand mean 1,452 (se 270), tau^2 = 51,838 (se 311,564),
+  sigma^2 = 105,996,836.
+- **The fixed-delta seller** (`matrix_oracle.npy`): grand mean 824.3 (se 25.4),
+  tau^2 = 1,026 (se 2,767, consistent with zero), sigma^2 = 828,609.
+
+`python -m scripts.confirmatory_design --timesteps 1000000 --train-rate 804 --eval-rate
+1538` (the rates measured on the pilot machine) applies A6 with delta = 824.3. The
+cheapest design at 80% power for each N:
+
+| N | S | exact power | sweep core-hours |
+|---|---|---|---|
+| 200 | 7 | 0.809 | 14.7 |
+| 500 | 5 | 0.898 | 10.7 |
+| 1000 | 5 | 0.981 | 11.0 |
+
+**The confirmatory design is S = 5, N = 500.** Exact power is 0.898 at delta = 824.3,
+the exact-t detection floor is 698.3, and the sweep costs 10.7 core-hours at these rates.
+S = 5 is the minimum A6 allows, so the rule is bound there, not by power. The sweep runs
+`python -m scripts.sweep --seeds 5 --episodes 500 --timesteps 1000000` (training seeds from
+1,000, paths from 100,000), disjoint from the pilot. PPO's pilot contrast is not used
+here except through its variances.
