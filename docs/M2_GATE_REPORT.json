@@ -1,7 +1,7 @@
 {
   "milestone": "M2",
   "report_date": "2026-10-26",
-  "verdict": "NOT CLEARED",
+  "verdict": "PASS",
   "items": [
     {
       "name": "PPO harness at fixed D3 hyperparameters",
@@ -54,10 +54,10 @@
     {
       "name": "Real data adapter conformance",
       "owner": "Hemdutt Rao",
-      "verdict": "FAIL",
+      "verdict": "PASS",
       "criterion": "the real optionmetrics source is available (its SPX panel is present) and clears conformance_report, the provider contract and structural invariants every source meets; SKIPPED is not a pass",
-      "evidence": "synthetic PASS (64 chains); optionmetrics_stub PASS (64 chains); optionmetrics SKIPPED",
-      "failed_first": "optionmetrics is unavailable (SKIPPED): no SPX panel for the adapter to serve"
+      "evidence": "synthetic PASS (64 chains); optionmetrics_stub PASS (64 chains); optionmetrics PASS (64 chains)",
+      "failed_first": ""
     }
   ]
 }
