@@ -71,6 +71,21 @@ python scripts/build_spx_panel.py fred           # the FRED sanity check
 Every stage resumes: a rerun skips what is already written. The tars are read
 where they sit and decoded in memory, one at a time.
 
+**Without the shared folder.** The vegalab repo's own extraction
+(`vegalab/data/EXTRACTION.md`) holds the same `opprcd` rows for every development date
+through 2022-08-24 and the `secprd` closes. `scripts/import_vegalab_extract.py` stages
+them as the per-year files above, unchanged, and the `panel` stage builds from them:
+
+```bash
+python -m scripts.import_vegalab_extract --source ../vegalab/data   # 2010..2022
+python scripts/build_spx_panel.py panel --years 2010 2022 --workers 1
+```
+
+That panel is OptionMetrics only and ends at 2022-08-24, so it has no Databento side and
+no seam. Built on 2026-10-26 (approved by Hemdutt Rao), it has 3,272 trading days, 2010-01-04
+to 2022-12-30, of which 106 are missing: 2020-07-27 to 2020-08-18, which the vegalab extract
+lacks, and every day after 2022-08-24, which is the holdout and is not in the extract.
+
 ## Method
 
 Both vendors go through the same code (`optspread.realdata.surface`).
