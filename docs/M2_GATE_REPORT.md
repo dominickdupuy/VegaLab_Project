@@ -4,7 +4,7 @@ Report date: 2026-10-26
 
 Runs root: `$VEGALAB_DATA/runs/pilot`; pilot root: `$VEGALAB_DATA/runs/pilot`
 
-**Verdict: PASS** (7 items, 0 failed, 0 without a stated criterion)
+**Verdict: NOT CLEARED** (7 items, 1 failed, 0 without a stated criterion)
 
 | Item | Owner | Verdict | Criterion | Evidence | What failed first |
 | --- | --- | --- | --- | --- | --- |
@@ -14,4 +14,8 @@ Runs root: `$VEGALAB_DATA/runs/pilot`; pilot root: `$VEGALAB_DATA/runs/pilot`
 | Analysis pipeline validated against a known analytic case | Dominick Dupuy | PASS | at every effect on the grid, including delta = 0 where the answer is alpha, the decision rule's rejection rate over R paired synthetic replications lies within 4 Monte Carlo standard errors, sqrt(p (1 - p) / R), of the closed-form noncentral-t power at the hand-specified tau^2, sigma^2 and delta; and the mean estimated sigma^2 and Var(grand mean) lie within 4 standard errors of their true values; and each deliberately wrong rule (normal critical values, unpaired arms, episodes as independent) fails the same check; and in the null world (a flat learner, a control paying a cost drag of 5, nothing planted) the pre-registered event, each arm against itself at zero premium, fires within the same tolerance of alpha while the event it replaced (the learner against the fixed-delta seller at one premium) does not | tau^2 = 4, sigma^2 = 100, shared path variance 400, S = 10 x N = 25, one-sided alpha = 0.05; R = 10,000 per effect; rejection rate/closed form: 0.047/0.050 at 0, 0.127/0.130 at 0.5, 0.275/0.271 at 1, 0.662/0.662 at 2, 0.927/0.925 at 3; largest deviation -1.47 MC se (rejection rate at delta = 0); 3 of 3 wrong rules refused; the normal approximation reads 0.723 against 0.662 at delta = 2; null world: each arm against itself at zero premium fires at 0.050 against alpha = 0.05 (+0.05 MC se), the learner against the fixed-delta seller at one premium at 0.995 | -- |
 | Pre-registration committed and tagged | Dominick Dupuy | PASS | docs/PRE_REGISTRATION.md is tracked with no uncommitted changes; the earliest prereg-* tag points at a commit on this history that contains it; and the file at HEAD begins with the tagged text byte for byte (amendments appended, never edited in place) | prereg-m2 at 34872b2f (2026-10-26); unchanged | -- |
 | Dashboard run browser and gate board | Ilan Danial | PASS | the dashboard's data layer (optspread.dashboard_data.scan_runs and load_gate_boards) lists every run directory under the runs root that has a valid manifest recording its run.json, of which there is at least one, and reads every gate report JSON sidecar under docs/ | run browser lists 32 of 32 valid manifests under $VEGALAB_DATA/runs/pilot (32 rows in all); gate board reads 2 of 2 sidecars | -- |
-| Real data adapter conformance | Hemdutt Rao | PASS | the real optionmetrics source is available (its SPX panel is present) and clears conformance_report, the provider contract and structural invariants every source meets; SKIPPED is not a pass | synthetic PASS (64 chains); optionmetrics_stub PASS (64 chains); optionmetrics PASS (64 chains) | -- |
+| Real data adapter conformance | Hemdutt Rao | FAIL | the real optionmetrics source is available (its SPX panel is present) and clears conformance_report, the provider contract and structural invariants every source meets; SKIPPED is not a pass | synthetic PASS (64 chains); optionmetrics_stub PASS (64 chains); optionmetrics SKIPPED | optionmetrics is unavailable (SKIPPED): no SPX panel for the adapter to serve |
+
+## What failed first
+
+- **Real data adapter conformance**: optionmetrics is unavailable (SKIPPED): no SPX panel for the adapter to serve
