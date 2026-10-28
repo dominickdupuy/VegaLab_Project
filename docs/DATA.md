@@ -58,6 +58,21 @@ file and renamed when complete, a year with no rows leaves an `.empty` marker, a
 rerun skips both, so a dropped connection resumes where it stopped. Progress and
 retries go to `download.log` in the output folder.
 
+**The Hugging Face mirror.** The same extraction is mirrored, private and gated, as
+`Algogators/options_data` (32 underlyings; access needs your own WRDS OptionMetrics
+entitlement, per its README). The SPX files are all the panel needs:
+
+```bash
+hf download Algogators/options_data --repo-type=dataset --local-dir "$VEGALAB_DATA"     --include "opprcd/*/SPX.parquet" --include "secprd/*/SPX.parquet"
+python scripts/build_spx_panel.py panel --years 2010 2025 --workers 1
+```
+
+The mirror's `strike_price` is already in index points (its `fix_strikes.py`
+divided out the vendor's x 1000). `optionmetrics.read_opprcd` reads the unit from
+the data (`strike_divisor`: the median strike against the year's median close)
+rather than assuming it, so either copy builds the same panel. The mirror has no
+Databento side, so a panel built from it ends at 2025-08-29.
+
 ## Build
 
 ```bash
@@ -70,6 +85,28 @@ python scripts/build_spx_panel.py fred           # the FRED sanity check
 
 Every stage resumes: a rerun skips what is already written. The tars are read
 where they sit and decoded in memory, one at a time.
+
+## Dates a strategy run may read (#28)
+
+A real-data provider serves one split, never all dates:
+
+| Split | Dates | Trading days |
+|---|---|---|
+| `train` | 2010-01-04 to 2018-12-31 | 2,264 |
+| `eval` | 2019-01-02 to 2022-08-24 | 919 |
+| none | 2022-08-25 on | 756 to 2025-08-29, plus every Databento day |
+
+`optspread.realdata.SPLITS` names the two ranges, and there is no split for the
+dates after the evaluation range, so they can't be reached through
+`OptionMetricsSource` (default `train`) or `HistoricalChainProvider` at all. The store
+is cut to its split before anything is read from it. A window starts only where its
+`n_days + 1` days are consecutive on the trading calendar, so an episode never runs
+across a day dropped as unusable, and a surface with no whole window is refused. A
+policy trained on `train` and scored on `eval` never sees the same day twice; the seed
+check in `train.check_disjoint` covers the synthetic world.
+
+Market measurement is not a strategy run: the VRP series and the dashboard's data
+views read every date and report the split.
 
 ## Method
 
@@ -153,3 +190,7 @@ sha256 and size of every file the build wrote.
   67% of days. Three days have no 30-day IV (2010-02-17, 2010-04-12, 2010-04-13):
   no expiry was listed on one side of 30 days, and nothing is extrapolated. This is the series the VRP mapping (#15) starts from.
 - **Costs.** `docs/COSTS.md` fits the cost model's two parameters to these quotes.
+
+Rebuilt 2026-10-28 from the Hugging Face mirror (OptionMetrics only): 3,939 trading
+days, 2010-01-04 to 2025-08-29, none missing, the same as the OptionMetrics side
+above; `vrp30` median +1.74 vol points, positive on 67% of days.
