@@ -373,10 +373,10 @@ because the detection event is each arm against itself at zero (#26). It writes
 whose seed component is zero by construction), each arm's raw matrices beside them,
 and prints both sets of variance components.
 
-**The sweep**, with S and N from the pilot budget:
+**The sweep**, at the S = 5 and N = 500 the pilot set (pre-registration A7):
 
 ```bash
-nohup make sweep PY=$PY ARGS="--root $VEGALAB_DATA/runs --seeds 50 --episodes 200 \
+nohup make sweep PY=$PY ARGS="--root $VEGALAB_DATA/runs --seeds 5 --episodes 500 \
     --timesteps 1000000 --workers 32" > $VEGALAB_DATA/runs/sweep.log 2>&1 &
 make replay PY=$PY RUN=$VEGALAB_DATA/runs ARGS="--max 4"   # spot-check afterwards
 ```
@@ -466,6 +466,8 @@ hardening, sweep orchestration and the dashboard follow the M1 to M5 schedule. T
 action library closes at the November 1 cutoff with whatever is verified; it holds
 FLAT, the iron condor, the short strangle and the put credit spread today.
 
-OptionMetrics access is still pending. The adapter boundary keeps that path a
-conformance-passing stub until it arrives, so real data is an upgrade rather than a
-dependency.
+Real SPX data is in: the OptionMetrics panel (3,939 trading days, 2010-01-04 to
+2025-08-29) clears the adapter's conformance suite, and `docs/DATA.md` says how to
+build it. A strategy run on real chains reads one fixed date range: training to
+2018-12-31, evaluation 2019-01-01 to 2022-08-24, and nothing after that
+(pre-registration A8, #28).

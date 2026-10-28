@@ -32,11 +32,11 @@ DEFAULT_ROOT = (
 ROOTS = ("SPX", "SPXW")
 OPTIONMETRICS_END = "2025-08-29"  # vendor ceiling at extraction, see docs/DATA.md
 
-# The dates a strategy run may read (#28). Training and evaluation are disjoint
-# ranges, so a policy is never scored on a day it trained on, and nothing after
-# HOLDOUT_START - 1 is reachable through a provider at all: there is no split
-# for it to ask for. Market measurement (the VRP series) is not a strategy run
-# and reads every date.
+# The dates a strategy run may read (#28, pre-registration A8). Training and
+# evaluation are disjoint ranges, so a policy is never scored on a day it trained
+# on, and nothing from HOLDOUT_START on is reachable through a provider at all:
+# there is no split for it to ask for. Market measurement (the VRP series) is not
+# a strategy run and reads every date.
 Split = Literal["train", "eval"]
 SPLITS: dict[Split, tuple[date, date]] = {
     "train": (date(2010, 1, 1), date(2018, 12, 31)),

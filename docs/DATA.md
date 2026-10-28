@@ -88,13 +88,13 @@ where they sit and decoded in memory, one at a time.
 
 ## Dates a strategy run may read (#28)
 
-A real-data provider serves one split, never all dates:
+A real-data provider serves one split, never all dates (pre-registration A8):
 
 | Split | Dates | Trading days |
 |---|---|---|
 | `train` | 2010-01-04 to 2018-12-31 | 2,264 |
 | `eval` | 2019-01-02 to 2022-08-24 | 919 |
-| none | 2022-08-25 on | 756 to 2025-08-29, plus every Databento day |
+| holdout (no split) | 2022-08-25 on | 756 to 2025-08-29, plus every Databento day |
 
 `optspread.realdata.SPLITS` names the two ranges, and there is no split for the
 dates after the evaluation range, so they can't be reached through

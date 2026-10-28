@@ -224,3 +224,40 @@ S = 5 is the minimum A6 allows, so the rule is bound there, not by power. The sw
 `python -m scripts.sweep --seeds 5 --episodes 500 --timesteps 1000000` (training seeds from
 1,000, paths from 100,000), disjoint from the pilot. PPO's pilot contrast is not used
 here except through its variances.
+
+### A8. 2026-10-28: the dates a strategy run on real chains may read (#28, #36)
+
+**Changes** nothing in the confirmatory sweep, which stays on the synthetic null world
+(D2) and has run (A7). It fixes, before any policy is trained or scored on real SPX
+chains, which dates such a run may read.
+
+| Range | Dates | Trading days | Who reads it |
+|---|---|---|---|
+| train | 2010-01-04 to 2018-12-31 | 2,264 | training a policy on real chains |
+| eval | 2019-01-02 to 2022-08-24 | 919 | scoring a policy on real chains |
+| holdout | 2022-08-25 on | 756 to 2025-08-29 | no strategy run |
+
+- **Train and eval are disjoint.** A policy is never scored on a day it trained on.
+  The seed check (`train.check_disjoint`) covers the synthetic world; the date ranges
+  cover real chains, which a seed check cannot see.
+- **The holdout is not read by any strategy run.** It can be opened only by a later
+  amendment, made before it is read, that names the single analysis it is used for.
+- **A window never spans a gap.** An episode starts only where its days are
+  consecutive on the trading calendar, so a day dropped as unusable can't be
+  stepped over silently.
+- **Market measurement is not a strategy run.** The VRP mapping (#15) and the
+  dashboard's data views read every date and report the split; they decide nothing
+  about a policy.
+
+In code: `optspread.realdata.SPLITS` names train and eval and has no entry for the
+holdout. `SurfaceStore.from_frames` cuts the panel to its split before reading it,
+`OptionMetricsSource` defaults to `train`, and `HistoricalChainProvider` draws starts
+only from whole windows and refuses a surface that has none. The panel is the one in
+`docs/DATA.md`, built from the team's OptionMetrics extraction (Hugging Face mirror
+`Algogators/options_data`): 3,939 trading days, 2010-01-04 to 2025-08-29, none
+missing.
+
+2022-08-24 first appeared as the end of the development set in an older extract
+(the vegalab repo's). A panel built from that extract was withdrawn; the boundary
+is adopted here on purpose, as #36 recommends. The amendment planned in #37 (the
+exact planner, the M4 definitions, the bootstrap rule) follows as A9.
