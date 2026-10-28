@@ -8,6 +8,11 @@ them into the panel's quote schema: strikes in index points rather than
 thousandths, the root read from the OSI symbol (``SPX`` or ``SPXW``), and the
 vendor's IV, greeks and forward kept under ``*_vendor`` names so they are never
 mistaken for ours.
+
+The vendor stores ``strike_price`` as strike x 1000, but a copy may already have
+divided it out (the team's Hugging Face mirror, ``Algogators/options_data``, did).
+The unit is read from the data rather than assumed: ``strike_divisor`` compares
+the median strike with the year's median close.
 """
 
 from __future__ import annotations
@@ -43,7 +48,24 @@ def secprd_path(root: Path, year: int, ticker: str = "SPX") -> Path:
     return root / "secprd" / f"year={year}" / f"{ticker}.parquet"
 
 
-def normalise_opprcd(raw: pd.DataFrame) -> pd.DataFrame:
+def strike_divisor(strike: pd.Series, close: pd.Series) -> float:
+    """1000 for the vendor's strike x 1000, 1 for strikes already in index points.
+
+    Listed strikes sit within a few multiples of the underlying, so the ratio of the
+    medians is near 1 in index points and near 1000 in the vendor's unit. Anything
+    else is neither, and is refused rather than guessed.
+    """
+    ratio = float(np.nanmedian(strike.to_numpy(dtype=np.float64))) / float(
+        np.nanmedian(close.to_numpy(dtype=np.float64))
+    )
+    if 1 / 5 < ratio < 5:
+        return 1.0
+    if 200 < ratio < 5000:
+        return 1000.0
+    raise ValueError(f"median strike is {ratio:.4g}x the median close: neither unit")
+
+
+def normalise_opprcd(raw: pd.DataFrame, divisor: float = 1000.0) -> pd.DataFrame:
     """Vendor rows in the panel's quote schema (see module docstring).
 
     Before the OSI migration (completed 2010-02-12) the vendor's ``symbol`` is the
@@ -68,7 +90,7 @@ def normalise_opprcd(raw: pd.DataFrame) -> pd.DataFrame:
             "root": root,
             "expiry": _settlement_day(pd.to_datetime(raw["exdate"]), am).dt.date,
             "cp": raw["cp_flag"].to_numpy(),
-            "strike": raw["strike_price"].to_numpy(dtype=np.float64) / 1000.0,
+            "strike": raw["strike_price"].to_numpy(dtype=np.float64) / divisor,
             "bid": np.where(bid > 0.0, bid, np.nan),
             "ask": np.where(ask > 0.0, ask, np.nan),
             "volume": raw["volume"].to_numpy(dtype=np.float64),
@@ -88,8 +110,9 @@ def _settlement_day(expiry: pd.Series, am: np.ndarray) -> pd.Series:
 
 
 def read_opprcd(root: Path, year: int, ticker: str = "SPX") -> pd.DataFrame:  # pragma: no cover
-    table = pq.read_table(opprcd_path(root, year, ticker), columns=OPPRCD_COLUMNS)
-    return normalise_opprcd(table.to_pandas())
+    raw = pq.read_table(opprcd_path(root, year, ticker), columns=OPPRCD_COLUMNS).to_pandas()
+    close = read_secprd(root, year, ticker)["close"]
+    return normalise_opprcd(raw, strike_divisor(raw["strike_price"], close))
 
 
 def read_secprd(root: Path, year: int, ticker: str = "SPX") -> pd.DataFrame:  # pragma: no cover

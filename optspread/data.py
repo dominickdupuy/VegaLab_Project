@@ -29,6 +29,7 @@ from typing import Literal, Protocol, runtime_checkable
 from optspread.config import MarketConfig
 from optspread.leaks import sequence_violations
 from optspread.market import SyntheticChainProvider
+from optspread.realdata import Split
 from optspread.rng import SeededStepRNG
 from optspread.types import ChainProvider
 
@@ -100,11 +101,14 @@ class OptionMetricsSource:
 
     ``root`` defaults to ``optspread.realdata.data_root()``. Available exactly when
     the panel's surface grid and daily series are present; pandas is imported only
-    when a provider is built, so the core package does not need it.
+    when a provider is built, so the core package does not need it. ``split`` is the
+    date range its provider serves (#28): ``train`` or ``eval``, disjoint, and
+    neither reaches the dates after the evaluation range.
     """
 
     config: MarketConfig = field(default_factory=MarketConfig)
     root: Path | None = None
+    split: Split = "train"
 
     @property
     def name(self) -> SourceName:
@@ -129,7 +133,7 @@ class OptionMetricsSource:
             )
         from optspread.realdata.provider import HistoricalChainProvider, load_store
 
-        return HistoricalChainProvider(self.config, load_store(self.panel_dir))
+        return HistoricalChainProvider(self.config, load_store(self.panel_dir, self.split))
 
 
 PANEL_FILES = ("surface_grid.parquet", "spx_daily.parquet")

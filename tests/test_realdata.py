@@ -19,9 +19,9 @@ import pytest
 from optspread.config import MarketConfig
 from optspread.data import OptionMetricsSource, conformance_report
 from optspread.pricing import bs_price
-from optspread.realdata import data_root
+from optspread.realdata import HOLDOUT_START, SPLITS, data_root
 from optspread.realdata.opra import closing_quotes, parse_metadata, parse_osi
-from optspread.realdata.optionmetrics import normalise_opprcd
+from optspread.realdata.optionmetrics import normalise_opprcd, strike_divisor
 from optspread.realdata.panel import (
     K_GRID,
     TENOR_GRID,
@@ -443,3 +443,104 @@ def test_the_data_root_follows_the_environment(monkeypatch: pytest.MonkeyPatch) 
     assert data_root() == Path("/tmp/somewhere")
     monkeypatch.delenv("VEGALAB_DATA")
     assert "wrds_optionmetrics" in str(data_root())
+
+
+# -- strike units: the vendor's x 1000, or already divided out ----------------- #
+
+
+def test_the_strike_unit_is_read_from_the_data() -> None:
+    close = pd.Series([4000.0, 4100.0, 4200.0])
+    points = pd.Series([3000.0, 4000.0, 5000.0])
+    assert strike_divisor(points, close) == 1.0
+    assert strike_divisor(points * 1000.0, close) == 1000.0
+    with pytest.raises(ValueError, match="neither unit"):
+        strike_divisor(points * 30.0, close)
+
+
+def test_a_copy_already_in_index_points_is_not_divided_again() -> None:
+    raw = pd.DataFrame(
+        {
+            "date": ["2019-03-01"],
+            "symbol": ["SPXW 190308C2800000"],
+            "exdate": ["2019-03-08"],
+            "cp_flag": ["C"],
+            "strike_price": [2800.0],
+            "best_bid": [10.0],
+            "best_offer": [11.0],
+            "volume": [1.0],
+            "open_interest": [1.0],
+            "impl_volatility": [0.15],
+            "delta": [0.5],
+            "am_settlement": [0.0],
+            "forward_price": [2805.0],
+        }
+    )
+    assert normalise_opprcd(raw, divisor=1.0)["strike"].item() == 2800.0
+    vendor = raw.assign(strike_price=2_800_000.0)
+    assert normalise_opprcd(vendor)["strike"].item() == 2800.0
+
+
+# -- the date split and gaps (#28) -------------------------------------------- #
+
+
+def _frames(days: list[date]) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """A flat 20% surface on every day given, and a daily series on the same days."""
+    grid = pd.DataFrame(
+        [
+            {"date": d, "tenor_days": t, "k": k, "iv": SIGMA}
+            for d in days
+            for t in TENOR_GRID
+            for k in K_GRID
+        ]
+    )
+    daily = pd.DataFrame({"date": days, "spot": SPOT, "carry30": 0.0})
+    return grid, daily
+
+
+def _business_days(start: date, end: date) -> list[date]:
+    return [d.date() for d in pd.bdate_range(start, end)]
+
+
+def test_train_and_eval_are_disjoint_and_neither_reaches_the_holdout() -> None:
+    days = _business_days(date(2018, 12, 1), date(2018, 12, 31))
+    days += _business_days(date(2022, 8, 1), date(2022, 9, 30))
+    grid, daily = _frames(days)
+    train = SurfaceStore.from_frames(grid, daily, "train")
+    evaluation = SurfaceStore.from_frames(grid, daily, "eval")
+    assert max(train.dates) == "2018-12-31" and min(evaluation.dates) == "2022-08-01"
+    assert max(evaluation.dates) == "2022-08-24"
+    assert not set(train.dates) & set(evaluation.dates)
+    for store in (train, evaluation):
+        assert all(date.fromisoformat(d) < HOLDOUT_START for d in store.dates)
+    everything = SurfaceStore.from_frames(grid, daily)
+    assert max(everything.dates) == "2022-09-30", "market measurement still reads every date"
+    assert set(SPLITS) == {"train", "eval"}, "no split serves the holdout"
+
+
+def test_a_window_never_spans_a_day_dropped_as_unusable() -> None:
+    days = _business_days(date(2019, 3, 1), date(2019, 3, 29))
+    grid, daily = _frames(days)
+    hole = days[10]
+    grid = grid[grid["date"] != hole]  # the day is on the calendar but has no surface
+    store = SurfaceStore.from_frames(grid, daily, "eval")
+    assert str(hole) not in store.dates
+    n_days = 5
+    for i in store.window_starts(n_days):
+        window = store.dates[i : i + n_days + 1]
+        assert not window[0] < str(hole) < window[-1], f"window {window} spans {hole}"
+    assert store.window_starts(n_days).size == store.n - n_days - n_days
+    cfg = MarketConfig(n_days=n_days, tenor_days=(8,))
+    for seed in range(40):
+        p = HistoricalChainProvider(cfg, store)
+        p.reset(SeededStepRNG(seed))
+        end = store.dates[store.dates.index(p.start_date) + n_days]
+        assert not p.start_date < str(hole) < end
+
+
+def test_the_provider_refuses_a_surface_with_no_whole_window() -> None:
+    days = _business_days(date(2019, 3, 1), date(2019, 3, 29))
+    grid, daily = _frames(days)
+    grid = grid[~grid["date"].isin(days[3::4])]  # a hole every fourth day
+    store = SurfaceStore.from_frames(grid, daily, "eval")
+    with pytest.raises(ValueError, match="span a gap"):
+        HistoricalChainProvider(MarketConfig(n_days=5, tenor_days=(8,)), store)
