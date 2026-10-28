@@ -40,7 +40,7 @@
       "owner": "Dominick Dupuy",
       "verdict": "PASS",
       "criterion": "docs/PRE_REGISTRATION.md is tracked with no uncommitted changes; the earliest prereg-* tag points at a commit on this history that contains it; and the file at HEAD begins with the tagged text byte for byte (amendments appended, never edited in place)",
-      "evidence": "prereg-m2 at 34872b2f (2026-10-26); unchanged",
+      "evidence": "prereg-m2 at 34872b2f (2026-10-26); HEAD 370d9c37 appends 2,155 characters of amendments",
       "failed_first": ""
     },
     {
