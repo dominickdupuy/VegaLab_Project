@@ -13,6 +13,7 @@ import dataclasses
 import subprocess
 import sys
 import types
+import zipfile
 from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
@@ -44,16 +45,24 @@ def passes(item: GateItem) -> None:
 TRAIN = TrainConfig(total_timesteps=2048)
 
 
-def write_run(root: Path, name: str, *, learner: bool = False, ppo: bool = False) -> Path:
+def write_run(
+    root: Path,
+    name: str,
+    *,
+    learner: bool = False,
+    ppo: bool = False,
+    trainer: str | None = m2gate.REAL_TRAINER,
+) -> Path:
     """A run directory. ``learner`` records torch and SB3 versions, as any manifest written
-    with the train extra installed does; ``ppo`` makes it a PPO run."""
+    with the train extra installed does; ``ppo`` makes it a PPO run, trained by ``trainer``
+    (the real learner unless a test says otherwise)."""
     run_dir = root / name
     config = (
         RunConfig(policy="ppo", seed=len(name), train=TRAIN)
         if ppo
         else RunConfig(policy="always_on", seed=len(name))
     )
-    manifest = RunManifest.create(config)
+    manifest = RunManifest.create(config, trainer=trainer if ppo else None)
     if learner:
         versions = {**manifest.versions, "torch": "2.4.0", "stable_baselines3": "2.3.2"}
         manifest = manifest.model_copy(update={"versions": versions})
@@ -191,6 +200,86 @@ def test_ppo_harness_reads_the_real_record(tmp_path: Path, monkeypatch: pytest.M
     assert f"{len(real.values)} pinned values, hash {real.hash}" in item.evidence
 
 
+def sb3_archive(path: Path) -> None:
+    """A zip laid out as Stable-Baselines3 saves one; the gate reads only its member names."""
+    with zipfile.ZipFile(path, "w") as archive:
+        for member in ("data", "policy.pth", m2gate.SB3_ARCHIVE_MEMBER):
+            archive.writestr(member, "")
+
+
+def with_policy(run_dir: Path, write: Callable[[Path], None]) -> None:
+    """Save a policy.zip beside the run and hash it into its manifest, as execute_run does."""
+    write(run_dir / "policy.zip")
+    manifest = RunManifest.read(run_dir)
+    manifest.add_artifact(run_dir, run_dir / "policy.zip")
+    manifest.write(run_dir)
+
+
+def test_ppo_harness_refuses_a_stand_in_learners_run(
+    tmp_path: Path, fake_module: Callable[..., None], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(m2gate, "TRAIN_MODULE", "fake_train")
+    monkeypatch.setattr(m2gate, "REAL_TRAINER", "fake_train.train_ppo")
+    fake_module("fake_train", train_ppo=lambda: None, frozen_hyperparameters=_record(PINNED))
+    write_run(tmp_path, "fake", ppo=True, trainer="fake_learner.fake_trainer")
+    item = m2gate.ppo_harness_item(tmp_path)
+    blocked(item, "was trained by fake_learner.fake_trainer, not fake_train.train_ppo")
+    assert "0 PPO run(s) by fake_train.train_ppo" in item.evidence and "1 more" in item.evidence
+
+    # Before the trainer was recorded: a policy.zip that is not an SB3 archive, or none.
+    runs = tmp_path / "before"
+    old = write_run(runs, "old", ppo=True, trainer=None)
+    blocked(m2gate.ppo_harness_item(runs), "records no trainer and no policy.zip")
+    with_policy(old, lambda p: p.write_text("fake learner, training seed 0\n"))
+    blocked(m2gate.ppo_harness_item(runs), "policy.zip is not a Stable-Baselines3 archive")
+    with_policy(old, sb3_archive)
+    passes(m2gate.ppo_harness_item(runs))
+    # One real run among stand-ins is enough; the others are counted, not hidden.
+    item = m2gate.ppo_harness_item(tmp_path)
+    passes(item)
+    assert "1 PPO run(s) by fake_train.train_ppo" in item.evidence and "1 more" in item.evidence
+
+    # The real learner names itself the way the gate expects.
+    from optspread.manifest import callable_name
+    from optspread.train import train_ppo
+
+    assert callable_name(train_ppo) == "optspread.train.train_ppo"
+
+
+def test_a_pilot_from_before_the_trainer_was_recorded_is_judged_by_its_cells(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_pilot(tmp_path / "gridless", pilot_matrix(), trainer=None)
+    blocked(m2gate.pilot_item(tmp_path / "gridless"), "does not record which trainer")
+
+    from fake_learner import fake_trainer
+
+    base = RunConfig(
+        seed=7000,
+        market=MarketConfig(n_days=21, tenor_days=(10, 21)),
+        env=EnvConfig(episode_days=21),
+        cost=CostConfig(enabled=True),
+    )
+    grid = pilot_grid(base, n_seeds=5, n_episodes=20, premium=1.0, train=TRAIN)
+    root = tmp_path / "old"
+    record = run_grid(grid, root, trainer=fake_trainer)
+    write_pilot_matrices(record, root)
+    matrices = RunManifest.read(root)
+    matrices.trainer = None  # what write_pilot_matrices wrote before #31
+    matrices.write(root)
+    blocked(m2gate.pilot_item(root), "was trained by fake_learner.fake_trainer")
+    # Cells from before #31 too, each saved by the real learner: the pilot counts.
+    for cell in (c for c in record.cells if c.arm == "ppo"):
+        cell_manifest = RunManifest.read(root / cell.run_id)
+        cell_manifest.trainer = None
+        cell_manifest.write(root / cell.run_id)
+        with_policy(root / cell.run_id, sb3_archive)
+    passes(m2gate.pilot_item(root))
+    gone = next(c for c in record.cells if c.arm == "ppo")
+    (root / gone.run_id / "manifest.json").unlink()
+    blocked(m2gate.pilot_item(root), f"PPO cell {gone.run_id} has no valid manifest")
+
+
 def test_replay_absent_empty_mismatched_raising_and_matching(
     tmp_path: Path, fake_module: Callable[..., None], monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -207,13 +296,18 @@ def test_replay_absent_empty_mismatched_raising_and_matching(
     item = m2gate.replay_item(tmp_path)
     passes(item)
     assert "of 1 runs (0 PPO, 1 scripted)" in item.evidence
+    assert "run.json regenerated byte for byte" in item.evidence
+    # The criterion says what is checked: run.json reproduced, policy.zip only for tampering.
+    assert "regenerates its run.json byte for byte" in item.criterion
+    assert "policy.zip) must still match its recorded digest" in item.criterion
+    assert "reproduces every artifact digest" not in item.criterion
     assert "no PPO run under" in item.evidence
 
     fake_module("fake_replay", replay_matches=lambda run_dir: (False, "run.json digest moved"))
     blocked(m2gate.replay_item(tmp_path), "run.json digest moved")
     # A bare False (no reason) still names what failed.
     fake_module("fake_replay", replay_matches=lambda run_dir: False)
-    blocked(m2gate.replay_item(tmp_path), "digest differs")
+    blocked(m2gate.replay_item(tmp_path), "regenerated run.json differs")
 
     def boom(run_dir: Path) -> bool:
         raise OSError("disk full")
@@ -259,8 +353,13 @@ def test_dashboard_absent_then_live(
     def every_run(root: Path) -> list[types.SimpleNamespace]:
         return [types.SimpleNamespace(path=p) for p, _ in m2gate.run_manifests(root)[0]]
 
+    def board(p: Path, stated: str = "PASS", derived: str = "PASS") -> types.SimpleNamespace:
+        return types.SimpleNamespace(
+            source=p, milestone=p.name.split("_")[0], stated_verdict=stated, verdict=derived
+        )
+
     def every_board(d: Path) -> list[types.SimpleNamespace]:
-        return [types.SimpleNamespace(source=p) for p in sorted(d.glob("*_GATE_REPORT.json"))]
+        return [board(p) for p in sorted(d.glob("*_GATE_REPORT.json"))]
 
     fake_module("fake_dash", scan_runs=every_run, load_gate_boards=every_board)
     blocked(m2gate.dashboard_item(runs, docs), "nothing real to browse")
@@ -277,6 +376,15 @@ def test_dashboard_absent_then_live(
 
     fake_module("fake_dash", scan_runs=every_run, load_gate_boards=lambda d: [])
     blocked(m2gate.dashboard_item(runs, docs), "does not read M1_GATE_REPORT.json")
+
+    # Read, but the file says PASS over an item that does not pass (#31).
+    def overstated(d: Path) -> list[types.SimpleNamespace]:
+        return [board(p, "PASS", "NOT CLEARED") for p in sorted(d.glob("*_GATE_REPORT.json"))]
+
+    fake_module("fake_dash", scan_runs=every_run, load_gate_boards=overstated)
+    item = m2gate.dashboard_item(runs, docs)
+    blocked(item, "M1 states PASS where its items support NOT CLEARED")
+    assert "0 of 1 boards stating the verdict their items support" in item.evidence
 
     def boom(root: Path) -> list[Path]:
         raise KeyError("manifest_v2")
@@ -300,6 +408,20 @@ def test_dashboard_reads_the_real_data_layer(tmp_path: Path) -> None:
     # the pilot's matrix manifest is not a run: the browser skips it and so does the count
     assert "lists 2 of 2 valid manifests" in item.evidence and "(3 rows in all)" in item.evidence
     assert "reads 1 of 1 sidecars" in item.evidence
+
+
+def test_dashboard_fails_on_a_real_board_whose_verdict_line_was_edited(tmp_path: Path) -> None:
+    runs, docs = tmp_path / "runs", tmp_path / "docs"
+    write_run(runs, "r1")
+    failing = GateItem("x", "y", "z", "e", passed=False, failed_first="not yet")
+    build_report("M2", [failing]).write(docs / "M2_GATE_REPORT.md")
+    honest = m2gate.dashboard_item(runs, docs)
+    assert honest.passed  # NOT CLEARED, honestly stated: the board reads it right
+    sidecar = docs / "M2_GATE_REPORT.json"
+    sidecar.write_text(
+        sidecar.read_text().replace('"verdict": "NOT CLEARED"', '"verdict": "PASS"', 1)
+    )
+    blocked(m2gate.dashboard_item(runs, docs), "M2 states PASS where its items support NOT CLEARED")
 
 
 # -- Hemdutt Rao ------------------------------------------------------------- #
@@ -345,12 +467,13 @@ def write_pilot(
     *,
     config: RunConfig | None = None,
     record: tuple[str, ...] = ("matrix.npy", "matrix_oracle.npy"),
+    trainer: str | None = m2gate.REAL_TRAINER,
 ) -> None:
     """The two matrices and their manifest, as ``write_pilot_matrices`` leaves them."""
     root.mkdir(parents=True, exist_ok=True)
     np.save(root / "matrix.npy", matrix)
     np.save(root / "matrix_oracle.npy", np.zeros_like(matrix) if oracle is None else oracle)
-    manifest = RunManifest.create(config or pilot_config(N=matrix.shape[-1]))
+    manifest = RunManifest.create(config or pilot_config(N=matrix.shape[-1]), trainer=trainer)
     for name in record:
         manifest.add_artifact(root, root / name)
     manifest.write(root)
@@ -429,12 +552,15 @@ def test_the_pilot_item_reports_the_contrast_and_the_control(tmp_path: Path) -> 
     planned = m2gate.pilot_item(tmp_path, delta=200.0)
     passes(planned)
     assert "for delta = 200 the cheapest design is" in planned.evidence
+    assert "(exact power " in planned.evidence and "normal" not in planned.evidence  # #20
     hopeless = m2gate.pilot_item(tmp_path, delta=1e-3)
     passes(hopeless)  # the pilot ran; that no design is feasible is a finding, not a failure
     assert "no design up to 64 seeds is feasible" in hopeless.evidence
 
 
-def test_the_pilot_item_on_a_real_pilot_checks_the_grid(tmp_path: Path) -> None:
+def test_the_pilot_item_on_a_real_pilot_checks_the_grid(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from fake_learner import fake_trainer
 
     base = RunConfig(
@@ -445,6 +571,11 @@ def test_the_pilot_item_on_a_real_pilot_checks_the_grid(tmp_path: Path) -> None:
     )
     grid = pilot_grid(base, n_seeds=5, n_episodes=20, premium=1.0, train=TRAIN)
     write_pilot_matrices(run_grid(grid, tmp_path, trainer=fake_trainer), tmp_path)
+    # A pilot of the stand-in learner is not a pilot of PPO (#31), however it is laid out.
+    assert RunManifest.read(tmp_path).trainer == "fake_learner.fake_trainer"
+    blocked(m2gate.pilot_item(tmp_path), "trained by fake_learner.fake_trainer, not optspread")
+    # The rest of the item, with the stand-in taken for the real learner.
+    monkeypatch.setattr(m2gate, "REAL_TRAINER", "fake_learner.fake_trainer")
     item = m2gate.pilot_item(tmp_path)
     passes(item)
     assert "5 x 20 pilot" in item.evidence and "grid of 5 seeds" in item.evidence
