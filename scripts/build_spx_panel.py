@@ -6,6 +6,8 @@ Lane: Hemdutt Rao (data adapter).
     python scripts/build_spx_panel.py extract-opra  --databento DIR
     python scripts/build_spx_panel.py panel         [--years 2010 2026]
     python scripts/build_spx_panel.py fred
+    python scripts/build_spx_panel.py manifest      [--hash-inputs]
+    python scripts/build_spx_panel.py check         [--panel DIR]
 
 Every stage reads from and writes to ``VEGALAB_DATA`` (the team's shared folder) and
 skips work whose output already exists, so a rerun after a dropped connection picks
@@ -16,6 +18,15 @@ on demand, one at a time.
 by size and marked uninspected rather than downloaded: the daily closing snapshots
 are small, and the large jobs (definitions and statistics for whole symbol groups)
 are not needed to build the panel.
+
+``manifest`` records the sha256 and size of every file the build wrote, and the size
+of every raw ``opprcd``/``secprd`` input it read; ``--hash-inputs`` adds the inputs'
+sha256, which reads every byte of them.
+
+``check`` builds the real provider's chain for every day of both splits from a panel
+(``--panel``, default the shared folder's) and runs the leak suite's chain checks on
+each, calendar arbitrage among them (#29); it exits 1 if any day fails. Point it at a
+local copy of ``panel/`` to keep it off the sync client.
 """
 
 from __future__ import annotations
@@ -28,6 +39,7 @@ import time
 from concurrent.futures import ProcessPoolExecutor
 from datetime import date
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pandas as pd
 
@@ -45,6 +57,11 @@ from optspread.realdata.panel import (
     trading_calendar,
 )
 from optspread.realdata.surface import price_surface
+
+if TYPE_CHECKING:
+    from optspread.config import MarketConfig
+    from optspread.realdata.provider import SurfaceStore
+    from optspread.types import Chain
 
 DEFAULT_DATABENTO = Path.home() / "Library/CloudStorage/OneDrive-UniversityofFlorida/databento"
 INVENTORY_FIELDS = (
@@ -137,8 +154,17 @@ def extract_opra(
 
 OM_END = date.fromisoformat(OPTIONMETRICS_END)
 # Bump when a change to optspread.realdata alters what a year builds to: the cached
-# summaries of the old version are then ignored and every year is rebuilt.
-PANEL_VERSION = 2
+# summaries of the old version are then ignored and every year is rebuilt. The cache
+# is keyed on this number and nothing else, so a change to the normaliser, the pricer,
+# ``finalise``, ``atm_term`` or ``surface_grid`` without a bump is silently not built
+# (a change to the daily table alone needs none: ``build_panel`` recomputes it from
+# the summaries every run). 3: an AM expiry before a closure settles the trading day
+# before, and every vendor root is SPX or SPXW (#31). 4: the root is the settlement
+# flag on every row (the 2010 PM weeklies under SPX are SPXW), an expiry dated on an
+# unscheduled closure settles the trading day before, an expiry whose forward is off
+# the day's curve is dropped as stale, and the daily carry is against the parity spot
+# (``carry30_parity``) (#31).
+PANEL_VERSION = 4
 
 
 def _priced_by_month(quotes: pd.DataFrame) -> pd.DataFrame:
@@ -352,13 +378,28 @@ def _sha256(path: Path, attempts: int = 6) -> str:
     raise AssertionError("unreachable")
 
 
-def data_manifest(repo_copy: Path) -> dict[str, dict[str, object]]:
+# The raw inputs the panel stage reads, as the WRDS pull (or the vegalab import) left
+# them. They are recorded beside what the build wrote, so a teammate can tell whether
+# a different panel came from different code or from different inputs.
+RAW_INPUTS = ("opprcd", "secprd")
+
+
+def raw_inputs(root: Path) -> list[Path]:
+    """Every ``opprcd``/``secprd`` Parquet under ``root``, in path order."""
+    return sorted(f for kind in RAW_INPUTS for f in (root / kind).rglob("*.parquet"))
+
+
+def data_manifest(repo_copy: Path, hash_inputs: bool = False) -> dict[str, dict[str, object]]:
     """sha256 and size of every built file in the shared folder: what the repo can verify.
 
     Covers the inventory, the extracted closing quotes and the panel (not the
-    per-year cache). The same JSON is written to the shared folder and to
-    ``repo_copy``, so a teammate can check that their copy of the data is the one
-    the code was built and tested against.
+    per-year cache) under ``files``, and the raw ``opprcd``/``secprd`` inputs under
+    ``inputs``. An input always has its size; its sha256 only with ``hash_inputs``,
+    because that reads every byte of several gigabytes through the sync client, and
+    without it the entry says ``null`` rather than leaving the file out. The same
+    JSON is written to the shared folder and to ``repo_copy``, so a teammate can
+    check that their copy of the data is the one the code was built and tested
+    against.
     """
     import json
 
@@ -375,10 +416,74 @@ def data_manifest(repo_copy: Path) -> dict[str, dict[str, object]]:
         size = f.stat().st_size
         total += size
         out[f.relative_to(root).as_posix()] = {"sha256": h, "bytes": size}
-    text = json.dumps({"panel_version": PANEL_VERSION, "files": out}, indent=1, sort_keys=True)
+    inputs: dict[str, dict[str, object]] = {}
+    raw_total = 0
+    for f in raw_inputs(root):
+        size = f.stat().st_size
+        raw_total += size
+        inputs[f.relative_to(root).as_posix()] = {
+            "sha256": _sha256(f) if hash_inputs else None,
+            "bytes": size,
+        }
+    blob = {
+        "panel_version": PANEL_VERSION,
+        "files": out,
+        "inputs": inputs,
+        "inputs_hashed": hash_inputs,
+    }
+    text = json.dumps(blob, indent=1, sort_keys=True)
     (root / "MANIFEST.json").write_text(text + "\n")
     repo_copy.write_text(text + "\n")
     _log(f"manifest: {len(out)} files, {total / 1e9:.2f} GB")
+    if hash_inputs:
+        _log(f"manifest: {len(inputs)} raw inputs, {raw_total / 1e9:.2f} GB, hashed")
+    else:
+        _log(
+            f"manifest: {len(inputs)} raw inputs, {raw_total / 1e9:.2f} GB, recorded by size "
+            "only; pass --hash-inputs to add their sha256 (reads every byte, slow on the "
+            "synced folder)"
+        )
+    return out
+
+
+def calendar_check(panel_dir: Path) -> int:
+    """The leak suite's chain checks on the real provider's chain for every day of both
+    splits of the panel under ``panel_dir``. Prints a line per split and the first
+    failing days; returns how many days failed."""
+    from optspread.config import MarketConfig
+    from optspread.leaks import chain_violations
+    from optspread.realdata.provider import HistoricalChainProvider, SurfaceStore
+
+    grid = _read(panel_dir / "surface_grid.parquet")
+    daily = _read(panel_dir / "spx_daily.parquet")
+    cfg = MarketConfig()
+    failed = 0
+    for split in ("train", "eval"):
+        store = SurfaceStore.from_frames(grid, daily, split)
+        bad = [
+            (day, v)
+            for day, chain in zip(store.dates, day_chains(cfg, store), strict=True)
+            if (v := chain_violations(chain))
+        ]
+        failed += len(bad)
+        starts = HistoricalChainProvider(cfg, store).n_starts
+        _log(f"check {split}: {store.n} days, {starts} window starts, {len(bad)} days failing")
+        for day, v in bad[:10]:
+            _log(f"  {day}: {v[0]}")
+    return failed
+
+
+def day_chains(config: MarketConfig, store: SurfaceStore) -> list[Chain]:
+    """The chain the provider serves for each day of ``store``, at the start of a window."""
+    from optspread.realdata.provider import HistoricalChainProvider
+
+    provider = HistoricalChainProvider(
+        config.model_copy(update={"n_days": min(config.n_days, store.n - 1)}), store
+    )
+    out: list[Chain] = []
+    for i in range(store.n):
+        provider._start, provider._day = i, 0
+        out.append(provider._chain())
     return out
 
 
@@ -397,6 +502,13 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("fred")
     man = sub.add_parser("manifest")
     man.add_argument("--repo-copy", type=Path, default=Path("docs/DATA_MANIFEST.json"))
+    chk = sub.add_parser("check")
+    chk.add_argument("--panel", type=Path, default=None, help="a panel/ folder (default: shared)")
+    man.add_argument(
+        "--hash-inputs",
+        action="store_true",
+        help="also sha256 the raw opprcd/secprd inputs (reads several GB; sizes are always kept)",
+    )
     args = ap.parse_args(argv)
 
     root = data_root()
@@ -413,7 +525,9 @@ def main(argv: list[str] | None = None) -> int:
     elif args.stage == "fred":
         fred_check()
     elif args.stage == "manifest":
-        data_manifest(args.repo_copy)
+        data_manifest(args.repo_copy, hash_inputs=bool(args.hash_inputs))
+    elif args.stage == "check":
+        return 1 if calendar_check(args.panel or root / "panel") else 0
     return 0
 
 

@@ -1273,40 +1273,40 @@
    "sha256": "dd074acde1488d9fbd52ccff95b1388e00e963ea2f92fe2274172bc71b6d765d"
   },
   "panel/atm_term.parquet": {
-   "bytes": 4596037,
-   "sha256": "b9f99cd0442f97597fba43feb8b21523f32bd0e43bfb9c5c2cb622d7edd23e22"
+   "bytes": 4595933,
+   "sha256": "066e7d2f37d43e12865e7403de065c74cf95645ce8be7c825b95eb3be358ebcc"
   },
   "panel/coverage.parquet": {
-   "bytes": 61466,
-   "sha256": "157d38b18d01a8f3b3bc113bbf02f0fc53fa5d728c1028f5882f9dcf3c94f2e1"
+   "bytes": 61381,
+   "sha256": "a48f3d13aa33711bbd4264bd04a2b10f3f45e7704c2a71d116867670e265848e"
   },
   "panel/fred_check.parquet": {
    "bytes": 4006,
-   "sha256": "6bbfaf93eead729657fe6fb96e829cbb777a106602b8c8b6c628e27090a50216"
+   "sha256": "e6f663492dc76759ea6d12951265f234cc531f0e68fbe2b6ea667fbf9f55db91"
   },
   "panel/seam_overlap.parquet": {
    "bytes": 6367,
    "sha256": "95fbcea250c8f724fc836f9755c7f1057d83fd1113a2346baa156e800f6d887a"
   },
   "panel/spx/year=2010/part.parquet": {
-   "bytes": 19386084,
-   "sha256": "3f7c78c024e4ff709cc37fde8c65f280c7ffeb54ca576bdb80e27b1c12f8d6a4"
+   "bytes": 19689434,
+   "sha256": "8db2c725af3dbd452bf7d0e97dc210d322155e81a66a8318d3df7dd750de7c5e"
   },
   "panel/spx/year=2011/part.parquet": {
-   "bytes": 21632187,
-   "sha256": "0d1a87cbbf95e6b6d0a75dbc29ad5abfe76e89397f6c7201483745106751d21f"
+   "bytes": 21632090,
+   "sha256": "ce09a532e986b722484c7b07943021cf1cd42055d4811b9e21a4cbe373e0ee69"
   },
   "panel/spx/year=2012/part.parquet": {
-   "bytes": 26535275,
-   "sha256": "1afd9b6b5e180fc5d818541ec0ce8a65b3ef3eddec21efb0d67d8754d8748325"
+   "bytes": 26533374,
+   "sha256": "0e2bba8ea08fc86d22e9ca435d0346ca4ab355513a41711b37dcdfe1784f1624"
   },
   "panel/spx/year=2013/part.parquet": {
-   "bytes": 33789864,
-   "sha256": "06912dd988f8ccfc18014e8148239b8d99e955c9ea1f18c4a8fcea13e29e0d15"
+   "bytes": 33789588,
+   "sha256": "cc5b5ce266ae4042f3502bebb3ab23d367b6746b4792012e9ad3e6cbafee4be3"
   },
   "panel/spx/year=2014/part.parquet": {
-   "bytes": 54424145,
-   "sha256": "441a037cce83b044d02e27499df84789968d4cfc13703cb9525d7ca9851005be"
+   "bytes": 54423387,
+   "sha256": "db550956e7e03735bee6c99c4f9648577b4fce04abea627d60ed062ac2776954"
   },
   "panel/spx/year=2015/part.parquet": {
    "bytes": 85207352,
@@ -1321,8 +1321,8 @@
    "sha256": "da82297a0d06f5d27f5c7ee45b62fff1cd71c7e73507a3d4e693db0c723fc845"
   },
   "panel/spx/year=2018/part.parquet": {
-   "bytes": 151565006,
-   "sha256": "16850b7a5fda62fee879b767c51bbee9ab61d1a64424bd71864553600fbd6230"
+   "bytes": 151701130,
+   "sha256": "dc0bb5e28e3a21f98fc49a39aacf31a1fb07a922a0ad0d4838440ecbec595860"
   },
   "panel/spx/year=2019/part.parquet": {
    "bytes": 160534928,
@@ -1345,25 +1345,4020 @@
    "sha256": "d8e9dcf5bd90ec8afe4c09c32186d7a34a727a74193875526db64d7da2e5cd2c"
   },
   "panel/spx/year=2024/part.parquet": {
-   "bytes": 276743193,
-   "sha256": "1a0e3a7acb29df14a931742677820db7a433f966e39163ac0745f1653c80ec82"
+   "bytes": 276742459,
+   "sha256": "22d1bc8ca4ab5413f93bc15ece9eec0e443c7f56232035c1dba73347e35756a5"
   },
   "panel/spx/year=2025/part.parquet": {
-   "bytes": 288935829,
-   "sha256": "ae16d2f6130c3152f6d2e02475b82090c045d9db0e4a987e7646c24825fdfcd3"
+   "bytes": 288888800,
+   "sha256": "211b1f30cdc77f084bf2510d0b993c2e323742e10e15bd65266fc87cc14d0538"
   },
   "panel/spx/year=2026/part.parquet": {
    "bytes": 243187862,
    "sha256": "8e08cd69c08a970c148dca7298786c799d45cd7d11f4d5f1cf15da9436f7abdc"
   },
   "panel/spx_daily.parquet": {
-   "bytes": 362345,
-   "sha256": "972d3c927a11399ddd03c5f48645cf1e30696361d6abb7e33eb4da0adc0e6d3f"
+   "bytes": 362341,
+   "sha256": "13d63b4e8aaf788e8b4b9c3ae2101336604424f53fb5b70ecf968c93904e9a73"
   },
   "panel/surface_grid.parquet": {
-   "bytes": 9808580,
-   "sha256": "ab3c2790fb826413de4240f6ee79650836170ffaab6d555dfe20b594e3c17bbb"
+   "bytes": 9921999,
+   "sha256": "21cc8a29aea574960169c69c68b4b73753732110fe03bf0427179e72e05d4357"
   }
  },
- "panel_version": 2
+ "inputs": {
+  "opprcd/year=2010/DBA.parquet": {
+   "bytes": 1504446,
+   "sha256": null
+  },
+  "opprcd/year=2010/DBC.parquet": {
+   "bytes": 1342840,
+   "sha256": null
+  },
+  "opprcd/year=2010/DIA.parquet": {
+   "bytes": 11675297,
+   "sha256": null
+  },
+  "opprcd/year=2010/DJX.parquet": {
+   "bytes": 9531381,
+   "sha256": null
+  },
+  "opprcd/year=2010/GDX.parquet": {
+   "bytes": 3787250,
+   "sha256": null
+  },
+  "opprcd/year=2010/GLD.parquet": {
+   "bytes": 10755501,
+   "sha256": null
+  },
+  "opprcd/year=2010/IWM.parquet": {
+   "bytes": 7480808,
+   "sha256": null
+  },
+  "opprcd/year=2010/KRE.parquet": {
+   "bytes": 1970824,
+   "sha256": null
+  },
+  "opprcd/year=2010/MDY.parquet": {
+   "bytes": 5964588,
+   "sha256": null
+  },
+  "opprcd/year=2010/NDX.parquet": {
+   "bytes": 6216870,
+   "sha256": null
+  },
+  "opprcd/year=2010/QQQ.parquet": {
+   "bytes": 6144219,
+   "sha256": null
+  },
+  "opprcd/year=2010/RUT.parquet": {
+   "bytes": 6498227,
+   "sha256": null
+  },
+  "opprcd/year=2010/SLV.parquet": {
+   "bytes": 2482569,
+   "sha256": null
+  },
+  "opprcd/year=2010/SMH.parquet": {
+   "bytes": 1570516,
+   "sha256": null
+  },
+  "opprcd/year=2010/SPX.parquet": {
+   "bytes": 13119053,
+   "sha256": null
+  },
+  "opprcd/year=2010/SPY.parquet": {
+   "bytes": 15219026,
+   "sha256": null
+  },
+  "opprcd/year=2010/UNG.parquet": {
+   "bytes": 1771176,
+   "sha256": null
+  },
+  "opprcd/year=2010/USO.parquet": {
+   "bytes": 3389407,
+   "sha256": null
+  },
+  "opprcd/year=2010/VIX.parquet": {
+   "bytes": 2573173,
+   "sha256": null
+  },
+  "opprcd/year=2010/XBI.parquet": {
+   "bytes": 961305,
+   "sha256": null
+  },
+  "opprcd/year=2010/XLB.parquet": {
+   "bytes": 1824302,
+   "sha256": null
+  },
+  "opprcd/year=2010/XLE.parquet": {
+   "bytes": 5389603,
+   "sha256": null
+  },
+  "opprcd/year=2010/XLF.parquet": {
+   "bytes": 2132914,
+   "sha256": null
+  },
+  "opprcd/year=2010/XLI.parquet": {
+   "bytes": 1933891,
+   "sha256": null
+  },
+  "opprcd/year=2010/XLK.parquet": {
+   "bytes": 1560013,
+   "sha256": null
+  },
+  "opprcd/year=2010/XLP.parquet": {
+   "bytes": 1216137,
+   "sha256": null
+  },
+  "opprcd/year=2010/XLU.parquet": {
+   "bytes": 1595029,
+   "sha256": null
+  },
+  "opprcd/year=2010/XLV.parquet": {
+   "bytes": 1507028,
+   "sha256": null
+  },
+  "opprcd/year=2010/XLY.parquet": {
+   "bytes": 1881631,
+   "sha256": null
+  },
+  "opprcd/year=2010/XSP.parquet": {
+   "bytes": 6811545,
+   "sha256": null
+  },
+  "opprcd/year=2011/DBA.parquet": {
+   "bytes": 2027106,
+   "sha256": null
+  },
+  "opprcd/year=2011/DBC.parquet": {
+   "bytes": 1569004,
+   "sha256": null
+  },
+  "opprcd/year=2011/DIA.parquet": {
+   "bytes": 10284205,
+   "sha256": null
+  },
+  "opprcd/year=2011/DJX.parquet": {
+   "bytes": 6155199,
+   "sha256": null
+  },
+  "opprcd/year=2011/GDX.parquet": {
+   "bytes": 4187966,
+   "sha256": null
+  },
+  "opprcd/year=2011/GLD.parquet": {
+   "bytes": 15368652,
+   "sha256": null
+  },
+  "opprcd/year=2011/IWM.parquet": {
+   "bytes": 10370720,
+   "sha256": null
+  },
+  "opprcd/year=2011/KRE.parquet": {
+   "bytes": 1967812,
+   "sha256": null
+  },
+  "opprcd/year=2011/MDY.parquet": {
+   "bytes": 6548340,
+   "sha256": null
+  },
+  "opprcd/year=2011/NDX.parquet": {
+   "bytes": 7742551,
+   "sha256": null
+  },
+  "opprcd/year=2011/QQQ.parquet": {
+   "bytes": 7461398,
+   "sha256": null
+  },
+  "opprcd/year=2011/RUT.parquet": {
+   "bytes": 8450471,
+   "sha256": null
+  },
+  "opprcd/year=2011/SLV.parquet": {
+   "bytes": 5451256,
+   "sha256": null
+  },
+  "opprcd/year=2011/SMH.parquet": {
+   "bytes": 1701553,
+   "sha256": null
+  },
+  "opprcd/year=2011/SPX.parquet": {
+   "bytes": 14113489,
+   "sha256": null
+  },
+  "opprcd/year=2011/SPY.parquet": {
+   "bytes": 17064686,
+   "sha256": null
+  },
+  "opprcd/year=2011/UNG.parquet": {
+   "bytes": 1828375,
+   "sha256": null
+  },
+  "opprcd/year=2011/USO.parquet": {
+   "bytes": 4636263,
+   "sha256": null
+  },
+  "opprcd/year=2011/VIX.parquet": {
+   "bytes": 3082013,
+   "sha256": null
+  },
+  "opprcd/year=2011/XBI.parquet": {
+   "bytes": 1110000,
+   "sha256": null
+  },
+  "opprcd/year=2011/XLB.parquet": {
+   "bytes": 2230592,
+   "sha256": null
+  },
+  "opprcd/year=2011/XLE.parquet": {
+   "bytes": 7102987,
+   "sha256": null
+  },
+  "opprcd/year=2011/XLF.parquet": {
+   "bytes": 2810777,
+   "sha256": null
+  },
+  "opprcd/year=2011/XLI.parquet": {
+   "bytes": 2612144,
+   "sha256": null
+  },
+  "opprcd/year=2011/XLK.parquet": {
+   "bytes": 1870105,
+   "sha256": null
+  },
+  "opprcd/year=2011/XLP.parquet": {
+   "bytes": 1954487,
+   "sha256": null
+  },
+  "opprcd/year=2011/XLU.parquet": {
+   "bytes": 1720759,
+   "sha256": null
+  },
+  "opprcd/year=2011/XLV.parquet": {
+   "bytes": 2234464,
+   "sha256": null
+  },
+  "opprcd/year=2011/XLY.parquet": {
+   "bytes": 2507415,
+   "sha256": null
+  },
+  "opprcd/year=2011/XSP.parquet": {
+   "bytes": 5786145,
+   "sha256": null
+  },
+  "opprcd/year=2012/DBA.parquet": {
+   "bytes": 1855292,
+   "sha256": null
+  },
+  "opprcd/year=2012/DBC.parquet": {
+   "bytes": 1833897,
+   "sha256": null
+  },
+  "opprcd/year=2012/DIA.parquet": {
+   "bytes": 11741354,
+   "sha256": null
+  },
+  "opprcd/year=2012/DJX.parquet": {
+   "bytes": 5009830,
+   "sha256": null
+  },
+  "opprcd/year=2012/GDX.parquet": {
+   "bytes": 4752561,
+   "sha256": null
+  },
+  "opprcd/year=2012/GLD.parquet": {
+   "bytes": 17418142,
+   "sha256": null
+  },
+  "opprcd/year=2012/IWM.parquet": {
+   "bytes": 11520226,
+   "sha256": null
+  },
+  "opprcd/year=2012/KRE.parquet": {
+   "bytes": 2231708,
+   "sha256": null
+  },
+  "opprcd/year=2012/MDY.parquet": {
+   "bytes": 6842132,
+   "sha256": null
+  },
+  "opprcd/year=2012/NDX.parquet": {
+   "bytes": 8413434,
+   "sha256": null
+  },
+  "opprcd/year=2012/QQQ.parquet": {
+   "bytes": 8460622,
+   "sha256": null
+  },
+  "opprcd/year=2012/RUT.parquet": {
+   "bytes": 8242690,
+   "sha256": null
+  },
+  "opprcd/year=2012/SLV.parquet": {
+   "bytes": 6937796,
+   "sha256": null
+  },
+  "opprcd/year=2012/SMH.parquet": {
+   "bytes": 1436847,
+   "sha256": null
+  },
+  "opprcd/year=2012/SPX.parquet": {
+   "bytes": 17662411,
+   "sha256": null
+  },
+  "opprcd/year=2012/SPY.parquet": {
+   "bytes": 19310646,
+   "sha256": null
+  },
+  "opprcd/year=2012/UNG.parquet": {
+   "bytes": 2757670,
+   "sha256": null
+  },
+  "opprcd/year=2012/USO.parquet": {
+   "bytes": 5259838,
+   "sha256": null
+  },
+  "opprcd/year=2012/VIX.parquet": {
+   "bytes": 3470842,
+   "sha256": null
+  },
+  "opprcd/year=2012/XBI.parquet": {
+   "bytes": 1737789,
+   "sha256": null
+  },
+  "opprcd/year=2012/XLB.parquet": {
+   "bytes": 2773118,
+   "sha256": null
+  },
+  "opprcd/year=2012/XLE.parquet": {
+   "bytes": 7553307,
+   "sha256": null
+  },
+  "opprcd/year=2012/XLF.parquet": {
+   "bytes": 2859948,
+   "sha256": null
+  },
+  "opprcd/year=2012/XLI.parquet": {
+   "bytes": 2666462,
+   "sha256": null
+  },
+  "opprcd/year=2012/XLK.parquet": {
+   "bytes": 2112092,
+   "sha256": null
+  },
+  "opprcd/year=2012/XLP.parquet": {
+   "bytes": 2212005,
+   "sha256": null
+  },
+  "opprcd/year=2012/XLU.parquet": {
+   "bytes": 2051406,
+   "sha256": null
+  },
+  "opprcd/year=2012/XLV.parquet": {
+   "bytes": 2406249,
+   "sha256": null
+  },
+  "opprcd/year=2012/XLY.parquet": {
+   "bytes": 2788079,
+   "sha256": null
+  },
+  "opprcd/year=2012/XSP.parquet": {
+   "bytes": 5543472,
+   "sha256": null
+  },
+  "opprcd/year=2013/DBA.parquet": {
+   "bytes": 1718960,
+   "sha256": null
+  },
+  "opprcd/year=2013/DBC.parquet": {
+   "bytes": 1690858,
+   "sha256": null
+  },
+  "opprcd/year=2013/DIA.parquet": {
+   "bytes": 11267870,
+   "sha256": null
+  },
+  "opprcd/year=2013/DJX.parquet": {
+   "bytes": 5075898,
+   "sha256": null
+  },
+  "opprcd/year=2013/GDX.parquet": {
+   "bytes": 6061026,
+   "sha256": null
+  },
+  "opprcd/year=2013/GLD.parquet": {
+   "bytes": 23395862,
+   "sha256": null
+  },
+  "opprcd/year=2013/IWM.parquet": {
+   "bytes": 13407401,
+   "sha256": null
+  },
+  "opprcd/year=2013/KRE.parquet": {
+   "bytes": 2117481,
+   "sha256": null
+  },
+  "opprcd/year=2013/MDY.parquet": {
+   "bytes": 6109494,
+   "sha256": null
+  },
+  "opprcd/year=2013/NDX.parquet": {
+   "bytes": 9153915,
+   "sha256": null
+  },
+  "opprcd/year=2013/QQQ.parquet": {
+   "bytes": 10177532,
+   "sha256": null
+  },
+  "opprcd/year=2013/RUT.parquet": {
+   "bytes": 14848710,
+   "sha256": null
+  },
+  "opprcd/year=2013/SLV.parquet": {
+   "bytes": 7157987,
+   "sha256": null
+  },
+  "opprcd/year=2013/SMH.parquet": {
+   "bytes": 1413943,
+   "sha256": null
+  },
+  "opprcd/year=2013/SPX.parquet": {
+   "bytes": 22197146,
+   "sha256": null
+  },
+  "opprcd/year=2013/SPY.parquet": {
+   "bytes": 27538398,
+   "sha256": null
+  },
+  "opprcd/year=2013/UNG.parquet": {
+   "bytes": 3058277,
+   "sha256": null
+  },
+  "opprcd/year=2013/USO.parquet": {
+   "bytes": 6153848,
+   "sha256": null
+  },
+  "opprcd/year=2013/VIX.parquet": {
+   "bytes": 3361200,
+   "sha256": null
+  },
+  "opprcd/year=2013/XBI.parquet": {
+   "bytes": 1965212,
+   "sha256": null
+  },
+  "opprcd/year=2013/XLB.parquet": {
+   "bytes": 3116935,
+   "sha256": null
+  },
+  "opprcd/year=2013/XLE.parquet": {
+   "bytes": 7642951,
+   "sha256": null
+  },
+  "opprcd/year=2013/XLF.parquet": {
+   "bytes": 3885147,
+   "sha256": null
+  },
+  "opprcd/year=2013/XLI.parquet": {
+   "bytes": 3398531,
+   "sha256": null
+  },
+  "opprcd/year=2013/XLK.parquet": {
+   "bytes": 2477483,
+   "sha256": null
+  },
+  "opprcd/year=2013/XLP.parquet": {
+   "bytes": 2986652,
+   "sha256": null
+  },
+  "opprcd/year=2013/XLU.parquet": {
+   "bytes": 2702155,
+   "sha256": null
+  },
+  "opprcd/year=2013/XLV.parquet": {
+   "bytes": 3137389,
+   "sha256": null
+  },
+  "opprcd/year=2013/XLY.parquet": {
+   "bytes": 3493687,
+   "sha256": null
+  },
+  "opprcd/year=2013/XSP.parquet": {
+   "bytes": 3157622,
+   "sha256": null
+  },
+  "opprcd/year=2014/DBA.parquet": {
+   "bytes": 1615035,
+   "sha256": null
+  },
+  "opprcd/year=2014/DBC.parquet": {
+   "bytes": 1445675,
+   "sha256": null
+  },
+  "opprcd/year=2014/DIA.parquet": {
+   "bytes": 12256932,
+   "sha256": null
+  },
+  "opprcd/year=2014/DJX.parquet": {
+   "bytes": 4349773,
+   "sha256": null
+  },
+  "opprcd/year=2014/GDX.parquet": {
+   "bytes": 6088720,
+   "sha256": null
+  },
+  "opprcd/year=2014/GLD.parquet": {
+   "bytes": 20499460,
+   "sha256": null
+  },
+  "opprcd/year=2014/IWM.parquet": {
+   "bytes": 16674128,
+   "sha256": null
+  },
+  "opprcd/year=2014/KRE.parquet": {
+   "bytes": 3662844,
+   "sha256": null
+  },
+  "opprcd/year=2014/MDY.parquet": {
+   "bytes": 6706472,
+   "sha256": null
+  },
+  "opprcd/year=2014/NDX.parquet": {
+   "bytes": 18036374,
+   "sha256": null
+  },
+  "opprcd/year=2014/QQQ.parquet": {
+   "bytes": 15166131,
+   "sha256": null
+  },
+  "opprcd/year=2014/RUT.parquet": {
+   "bytes": 15492874,
+   "sha256": null
+  },
+  "opprcd/year=2014/SLV.parquet": {
+   "bytes": 7161495,
+   "sha256": null
+  },
+  "opprcd/year=2014/SMH.parquet": {
+   "bytes": 2151228,
+   "sha256": null
+  },
+  "opprcd/year=2014/SPX.parquet": {
+   "bytes": 34961053,
+   "sha256": null
+  },
+  "opprcd/year=2014/SPY.parquet": {
+   "bytes": 32030053,
+   "sha256": null
+  },
+  "opprcd/year=2014/UNG.parquet": {
+   "bytes": 4880776,
+   "sha256": null
+  },
+  "opprcd/year=2014/USO.parquet": {
+   "bytes": 7260412,
+   "sha256": null
+  },
+  "opprcd/year=2014/VIX.parquet": {
+   "bytes": 3410528,
+   "sha256": null
+  },
+  "opprcd/year=2014/XBI.parquet": {
+   "bytes": 3714582,
+   "sha256": null
+  },
+  "opprcd/year=2014/XLB.parquet": {
+   "bytes": 3921905,
+   "sha256": null
+  },
+  "opprcd/year=2014/XLE.parquet": {
+   "bytes": 9104769,
+   "sha256": null
+  },
+  "opprcd/year=2014/XLF.parquet": {
+   "bytes": 4602143,
+   "sha256": null
+  },
+  "opprcd/year=2014/XLI.parquet": {
+   "bytes": 5500704,
+   "sha256": null
+  },
+  "opprcd/year=2014/XLK.parquet": {
+   "bytes": 4451868,
+   "sha256": null
+  },
+  "opprcd/year=2014/XLP.parquet": {
+   "bytes": 4601908,
+   "sha256": null
+  },
+  "opprcd/year=2014/XLU.parquet": {
+   "bytes": 4407430,
+   "sha256": null
+  },
+  "opprcd/year=2014/XLV.parquet": {
+   "bytes": 5193765,
+   "sha256": null
+  },
+  "opprcd/year=2014/XLY.parquet": {
+   "bytes": 5749861,
+   "sha256": null
+  },
+  "opprcd/year=2014/XSP.parquet": {
+   "bytes": 6729278,
+   "sha256": null
+  },
+  "opprcd/year=2015/DBA.parquet": {
+   "bytes": 1573123,
+   "sha256": null
+  },
+  "opprcd/year=2015/DBC.parquet": {
+   "bytes": 1495571,
+   "sha256": null
+  },
+  "opprcd/year=2015/DIA.parquet": {
+   "bytes": 13865278,
+   "sha256": null
+  },
+  "opprcd/year=2015/DJX.parquet": {
+   "bytes": 5296125,
+   "sha256": null
+  },
+  "opprcd/year=2015/GDX.parquet": {
+   "bytes": 6288966,
+   "sha256": null
+  },
+  "opprcd/year=2015/GLD.parquet": {
+   "bytes": 16534155,
+   "sha256": null
+  },
+  "opprcd/year=2015/IWM.parquet": {
+   "bytes": 19536561,
+   "sha256": null
+  },
+  "opprcd/year=2015/KRE.parquet": {
+   "bytes": 5507674,
+   "sha256": null
+  },
+  "opprcd/year=2015/MDY.parquet": {
+   "bytes": 6889407,
+   "sha256": null
+  },
+  "opprcd/year=2015/NDX.parquet": {
+   "bytes": 25791243,
+   "sha256": null
+  },
+  "opprcd/year=2015/QQQ.parquet": {
+   "bytes": 14943635,
+   "sha256": null
+  },
+  "opprcd/year=2015/RUT.parquet": {
+   "bytes": 14393656,
+   "sha256": null
+  },
+  "opprcd/year=2015/SLV.parquet": {
+   "bytes": 7101171,
+   "sha256": null
+  },
+  "opprcd/year=2015/SMH.parquet": {
+   "bytes": 2987764,
+   "sha256": null
+  },
+  "opprcd/year=2015/SPX.parquet": {
+   "bytes": 54027796,
+   "sha256": null
+  },
+  "opprcd/year=2015/SPY.parquet": {
+   "bytes": 31288205,
+   "sha256": null
+  },
+  "opprcd/year=2015/UNG.parquet": {
+   "bytes": 4858082,
+   "sha256": null
+  },
+  "opprcd/year=2015/USO.parquet": {
+   "bytes": 7880325,
+   "sha256": null
+  },
+  "opprcd/year=2015/VIX.parquet": {
+   "bytes": 3861129,
+   "sha256": null
+  },
+  "opprcd/year=2015/XBI.parquet": {
+   "bytes": 7492315,
+   "sha256": null
+  },
+  "opprcd/year=2015/XLB.parquet": {
+   "bytes": 5803734,
+   "sha256": null
+  },
+  "opprcd/year=2015/XLE.parquet": {
+   "bytes": 9357762,
+   "sha256": null
+  },
+  "opprcd/year=2015/XLF.parquet": {
+   "bytes": 5113990,
+   "sha256": null
+  },
+  "opprcd/year=2015/XLI.parquet": {
+   "bytes": 5857020,
+   "sha256": null
+  },
+  "opprcd/year=2015/XLK.parquet": {
+   "bytes": 5311660,
+   "sha256": null
+  },
+  "opprcd/year=2015/XLP.parquet": {
+   "bytes": 5232651,
+   "sha256": null
+  },
+  "opprcd/year=2015/XLRE.parquet": {
+   "bytes": 60042,
+   "sha256": null
+  },
+  "opprcd/year=2015/XLU.parquet": {
+   "bytes": 5353766,
+   "sha256": null
+  },
+  "opprcd/year=2015/XLV.parquet": {
+   "bytes": 6420577,
+   "sha256": null
+  },
+  "opprcd/year=2015/XLY.parquet": {
+   "bytes": 6799164,
+   "sha256": null
+  },
+  "opprcd/year=2015/XSP.parquet": {
+   "bytes": 14644522,
+   "sha256": null
+  },
+  "opprcd/year=2016/DBA.parquet": {
+   "bytes": 1810654,
+   "sha256": null
+  },
+  "opprcd/year=2016/DBC.parquet": {
+   "bytes": 1455815,
+   "sha256": null
+  },
+  "opprcd/year=2016/DIA.parquet": {
+   "bytes": 15038950,
+   "sha256": null
+  },
+  "opprcd/year=2016/DJX.parquet": {
+   "bytes": 5020486,
+   "sha256": null
+  },
+  "opprcd/year=2016/GDX.parquet": {
+   "bytes": 6812169,
+   "sha256": null
+  },
+  "opprcd/year=2016/GLD.parquet": {
+   "bytes": 17716304,
+   "sha256": null
+  },
+  "opprcd/year=2016/IWM.parquet": {
+   "bytes": 25363735,
+   "sha256": null
+  },
+  "opprcd/year=2016/KRE.parquet": {
+   "bytes": 5962055,
+   "sha256": null
+  },
+  "opprcd/year=2016/MDY.parquet": {
+   "bytes": 7082298,
+   "sha256": null
+  },
+  "opprcd/year=2016/NDX.parquet": {
+   "bytes": 35805082,
+   "sha256": null
+  },
+  "opprcd/year=2016/QQQ.parquet": {
+   "bytes": 14686814,
+   "sha256": null
+  },
+  "opprcd/year=2016/RUT.parquet": {
+   "bytes": 20372309,
+   "sha256": null
+  },
+  "opprcd/year=2016/SLV.parquet": {
+   "bytes": 8025539,
+   "sha256": null
+  },
+  "opprcd/year=2016/SMH.parquet": {
+   "bytes": 3267610,
+   "sha256": null
+  },
+  "opprcd/year=2016/SPX.parquet": {
+   "bytes": 52714342,
+   "sha256": null
+  },
+  "opprcd/year=2016/SPY.parquet": {
+   "bytes": 33090722,
+   "sha256": null
+  },
+  "opprcd/year=2016/UNG.parquet": {
+   "bytes": 3547413,
+   "sha256": null
+  },
+  "opprcd/year=2016/USO.parquet": {
+   "bytes": 6449439,
+   "sha256": null
+  },
+  "opprcd/year=2016/VIX.parquet": {
+   "bytes": 5267811,
+   "sha256": null
+  },
+  "opprcd/year=2016/XBI.parquet": {
+   "bytes": 8300382,
+   "sha256": null
+  },
+  "opprcd/year=2016/XLB.parquet": {
+   "bytes": 5845062,
+   "sha256": null
+  },
+  "opprcd/year=2016/XLE.parquet": {
+   "bytes": 9670429,
+   "sha256": null
+  },
+  "opprcd/year=2016/XLF.parquet": {
+   "bytes": 6372717,
+   "sha256": null
+  },
+  "opprcd/year=2016/XLI.parquet": {
+   "bytes": 5885840,
+   "sha256": null
+  },
+  "opprcd/year=2016/XLK.parquet": {
+   "bytes": 5591289,
+   "sha256": null
+  },
+  "opprcd/year=2016/XLP.parquet": {
+   "bytes": 5583856,
+   "sha256": null
+  },
+  "opprcd/year=2016/XLRE.parquet": {
+   "bytes": 1211008,
+   "sha256": null
+  },
+  "opprcd/year=2016/XLU.parquet": {
+   "bytes": 5677701,
+   "sha256": null
+  },
+  "opprcd/year=2016/XLV.parquet": {
+   "bytes": 6225524,
+   "sha256": null
+  },
+  "opprcd/year=2016/XLY.parquet": {
+   "bytes": 6585576,
+   "sha256": null
+  },
+  "opprcd/year=2016/XSP.parquet": {
+   "bytes": 15371847,
+   "sha256": null
+  },
+  "opprcd/year=2017/DBA.parquet": {
+   "bytes": 1706537,
+   "sha256": null
+  },
+  "opprcd/year=2017/DBC.parquet": {
+   "bytes": 1335765,
+   "sha256": null
+  },
+  "opprcd/year=2017/DIA.parquet": {
+   "bytes": 15356441,
+   "sha256": null
+  },
+  "opprcd/year=2017/DJX.parquet": {
+   "bytes": 5502257,
+   "sha256": null
+  },
+  "opprcd/year=2017/GDX.parquet": {
+   "bytes": 5957985,
+   "sha256": null
+  },
+  "opprcd/year=2017/GLD.parquet": {
+   "bytes": 18130066,
+   "sha256": null
+  },
+  "opprcd/year=2017/IWM.parquet": {
+   "bytes": 23153119,
+   "sha256": null
+  },
+  "opprcd/year=2017/KRE.parquet": {
+   "bytes": 6274958,
+   "sha256": null
+  },
+  "opprcd/year=2017/MDY.parquet": {
+   "bytes": 6203775,
+   "sha256": null
+  },
+  "opprcd/year=2017/NDX.parquet": {
+   "bytes": 23798497,
+   "sha256": null
+  },
+  "opprcd/year=2017/QQQ.parquet": {
+   "bytes": 18230800,
+   "sha256": null
+  },
+  "opprcd/year=2017/RUT.parquet": {
+   "bytes": 28144781,
+   "sha256": null
+  },
+  "opprcd/year=2017/SLV.parquet": {
+   "bytes": 6729247,
+   "sha256": null
+  },
+  "opprcd/year=2017/SMH.parquet": {
+   "bytes": 4651214,
+   "sha256": null
+  },
+  "opprcd/year=2017/SPX.parquet": {
+   "bytes": 67902234,
+   "sha256": null
+  },
+  "opprcd/year=2017/SPY.parquet": {
+   "bytes": 36550589,
+   "sha256": null
+  },
+  "opprcd/year=2017/UNG.parquet": {
+   "bytes": 2927224,
+   "sha256": null
+  },
+  "opprcd/year=2017/USO.parquet": {
+   "bytes": 4889619,
+   "sha256": null
+  },
+  "opprcd/year=2017/VIX.parquet": {
+   "bytes": 4774169,
+   "sha256": null
+  },
+  "opprcd/year=2017/XBI.parquet": {
+   "bytes": 7240786,
+   "sha256": null
+  },
+  "opprcd/year=2017/XLB.parquet": {
+   "bytes": 5585888,
+   "sha256": null
+  },
+  "opprcd/year=2017/XLE.parquet": {
+   "bytes": 9191777,
+   "sha256": null
+  },
+  "opprcd/year=2017/XLF.parquet": {
+   "bytes": 5965111,
+   "sha256": null
+  },
+  "opprcd/year=2017/XLI.parquet": {
+   "bytes": 6341405,
+   "sha256": null
+  },
+  "opprcd/year=2017/XLK.parquet": {
+   "bytes": 5987643,
+   "sha256": null
+  },
+  "opprcd/year=2017/XLP.parquet": {
+   "bytes": 5257363,
+   "sha256": null
+  },
+  "opprcd/year=2017/XLRE.parquet": {
+   "bytes": 1587379,
+   "sha256": null
+  },
+  "opprcd/year=2017/XLU.parquet": {
+   "bytes": 5361880,
+   "sha256": null
+  },
+  "opprcd/year=2017/XLV.parquet": {
+   "bytes": 6190943,
+   "sha256": null
+  },
+  "opprcd/year=2017/XLY.parquet": {
+   "bytes": 6606725,
+   "sha256": null
+  },
+  "opprcd/year=2017/XSP.parquet": {
+   "bytes": 18163427,
+   "sha256": null
+  },
+  "opprcd/year=2018/DBA.parquet": {
+   "bytes": 1672859,
+   "sha256": null
+  },
+  "opprcd/year=2018/DBC.parquet": {
+   "bytes": 1182417,
+   "sha256": null
+  },
+  "opprcd/year=2018/DIA.parquet": {
+   "bytes": 18266215,
+   "sha256": null
+  },
+  "opprcd/year=2018/DJX.parquet": {
+   "bytes": 6696300,
+   "sha256": null
+  },
+  "opprcd/year=2018/GDX.parquet": {
+   "bytes": 5134724,
+   "sha256": null
+  },
+  "opprcd/year=2018/GLD.parquet": {
+   "bytes": 13229772,
+   "sha256": null
+  },
+  "opprcd/year=2018/IWM.parquet": {
+   "bytes": 20637097,
+   "sha256": null
+  },
+  "opprcd/year=2018/KRE.parquet": {
+   "bytes": 7092724,
+   "sha256": null
+  },
+  "opprcd/year=2018/MDY.parquet": {
+   "bytes": 7166738,
+   "sha256": null
+  },
+  "opprcd/year=2018/NDX.parquet": {
+   "bytes": 32250083,
+   "sha256": null
+  },
+  "opprcd/year=2018/QQQ.parquet": {
+   "bytes": 22540510,
+   "sha256": null
+  },
+  "opprcd/year=2018/RUT.parquet": {
+   "bytes": 41318399,
+   "sha256": null
+  },
+  "opprcd/year=2018/SLV.parquet": {
+   "bytes": 5434117,
+   "sha256": null
+  },
+  "opprcd/year=2018/SMH.parquet": {
+   "bytes": 8406728,
+   "sha256": null
+  },
+  "opprcd/year=2018/SPX.parquet": {
+   "bytes": 94856411,
+   "sha256": null
+  },
+  "opprcd/year=2018/SPY.parquet": {
+   "bytes": 45395720,
+   "sha256": null
+  },
+  "opprcd/year=2018/UNG.parquet": {
+   "bytes": 4579028,
+   "sha256": null
+  },
+  "opprcd/year=2018/USO.parquet": {
+   "bytes": 4151815,
+   "sha256": null
+  },
+  "opprcd/year=2018/VIX.parquet": {
+   "bytes": 5241149,
+   "sha256": null
+  },
+  "opprcd/year=2018/XBI.parquet": {
+   "bytes": 9307945,
+   "sha256": null
+  },
+  "opprcd/year=2018/XLB.parquet": {
+   "bytes": 6572240,
+   "sha256": null
+  },
+  "opprcd/year=2018/XLC.parquet": {
+   "bytes": 1130249,
+   "sha256": null
+  },
+  "opprcd/year=2018/XLE.parquet": {
+   "bytes": 10808253,
+   "sha256": null
+  },
+  "opprcd/year=2018/XLF.parquet": {
+   "bytes": 6277339,
+   "sha256": null
+  },
+  "opprcd/year=2018/XLI.parquet": {
+   "bytes": 7898240,
+   "sha256": null
+  },
+  "opprcd/year=2018/XLK.parquet": {
+   "bytes": 7823132,
+   "sha256": null
+  },
+  "opprcd/year=2018/XLP.parquet": {
+   "bytes": 5459540,
+   "sha256": null
+  },
+  "opprcd/year=2018/XLRE.parquet": {
+   "bytes": 1625864,
+   "sha256": null
+  },
+  "opprcd/year=2018/XLU.parquet": {
+   "bytes": 5890211,
+   "sha256": null
+  },
+  "opprcd/year=2018/XLV.parquet": {
+   "bytes": 8021616,
+   "sha256": null
+  },
+  "opprcd/year=2018/XLY.parquet": {
+   "bytes": 8765351,
+   "sha256": null
+  },
+  "opprcd/year=2018/XSP.parquet": {
+   "bytes": 25671239,
+   "sha256": null
+  },
+  "opprcd/year=2019/DBA.parquet": {
+   "bytes": 1465166,
+   "sha256": null
+  },
+  "opprcd/year=2019/DBC.parquet": {
+   "bytes": 1202846,
+   "sha256": null
+  },
+  "opprcd/year=2019/DIA.parquet": {
+   "bytes": 15482878,
+   "sha256": null
+  },
+  "opprcd/year=2019/DJX.parquet": {
+   "bytes": 5090687,
+   "sha256": null
+  },
+  "opprcd/year=2019/GDX.parquet": {
+   "bytes": 6868771,
+   "sha256": null
+  },
+  "opprcd/year=2019/GLD.parquet": {
+   "bytes": 15960774,
+   "sha256": null
+  },
+  "opprcd/year=2019/IWM.parquet": {
+   "bytes": 21227511,
+   "sha256": null
+  },
+  "opprcd/year=2019/KRE.parquet": {
+   "bytes": 7338821,
+   "sha256": null
+  },
+  "opprcd/year=2019/MDY.parquet": {
+   "bytes": 7613957,
+   "sha256": null
+  },
+  "opprcd/year=2019/NDX.parquet": {
+   "bytes": 41719549,
+   "sha256": null
+  },
+  "opprcd/year=2019/QQQ.parquet": {
+   "bytes": 23379460,
+   "sha256": null
+  },
+  "opprcd/year=2019/RUT.parquet": {
+   "bytes": 51602870,
+   "sha256": null
+  },
+  "opprcd/year=2019/SLV.parquet": {
+   "bytes": 6208799,
+   "sha256": null
+  },
+  "opprcd/year=2019/SMH.parquet": {
+   "bytes": 10873672,
+   "sha256": null
+  },
+  "opprcd/year=2019/SPX.parquet": {
+   "bytes": 103159211,
+   "sha256": null
+  },
+  "opprcd/year=2019/SPY.parquet": {
+   "bytes": 51050087,
+   "sha256": null
+  },
+  "opprcd/year=2019/UNG.parquet": {
+   "bytes": 4805983,
+   "sha256": null
+  },
+  "opprcd/year=2019/USO.parquet": {
+   "bytes": 4700208,
+   "sha256": null
+  },
+  "opprcd/year=2019/VIX.parquet": {
+   "bytes": 5516080,
+   "sha256": null
+  },
+  "opprcd/year=2019/XBI.parquet": {
+   "bytes": 9162451,
+   "sha256": null
+  },
+  "opprcd/year=2019/XLB.parquet": {
+   "bytes": 6396204,
+   "sha256": null
+  },
+  "opprcd/year=2019/XLC.parquet": {
+   "bytes": 2956306,
+   "sha256": null
+  },
+  "opprcd/year=2019/XLE.parquet": {
+   "bytes": 9525404,
+   "sha256": null
+  },
+  "opprcd/year=2019/XLF.parquet": {
+   "bytes": 6014261,
+   "sha256": null
+  },
+  "opprcd/year=2019/XLI.parquet": {
+   "bytes": 7857639,
+   "sha256": null
+  },
+  "opprcd/year=2019/XLK.parquet": {
+   "bytes": 7991319,
+   "sha256": null
+  },
+  "opprcd/year=2019/XLP.parquet": {
+   "bytes": 5632183,
+   "sha256": null
+  },
+  "opprcd/year=2019/XLRE.parquet": {
+   "bytes": 1651928,
+   "sha256": null
+  },
+  "opprcd/year=2019/XLU.parquet": {
+   "bytes": 5851925,
+   "sha256": null
+  },
+  "opprcd/year=2019/XLV.parquet": {
+   "bytes": 8278958,
+   "sha256": null
+  },
+  "opprcd/year=2019/XLY.parquet": {
+   "bytes": 9528479,
+   "sha256": null
+  },
+  "opprcd/year=2019/XSP.parquet": {
+   "bytes": 32502615,
+   "sha256": null
+  },
+  "opprcd/year=2020/DBA.parquet": {
+   "bytes": 1418467,
+   "sha256": null
+  },
+  "opprcd/year=2020/DBC.parquet": {
+   "bytes": 1224023,
+   "sha256": null
+  },
+  "opprcd/year=2020/DIA.parquet": {
+   "bytes": 19738509,
+   "sha256": null
+  },
+  "opprcd/year=2020/DJX.parquet": {
+   "bytes": 6714832,
+   "sha256": null
+  },
+  "opprcd/year=2020/GDX.parquet": {
+   "bytes": 8409033,
+   "sha256": null
+  },
+  "opprcd/year=2020/GLD.parquet": {
+   "bytes": 26133027,
+   "sha256": null
+  },
+  "opprcd/year=2020/IWM.parquet": {
+   "bytes": 30103453,
+   "sha256": null
+  },
+  "opprcd/year=2020/KRE.parquet": {
+   "bytes": 7626809,
+   "sha256": null
+  },
+  "opprcd/year=2020/MDY.parquet": {
+   "bytes": 9956026,
+   "sha256": null
+  },
+  "opprcd/year=2020/NDX.parquet": {
+   "bytes": 67065638,
+   "sha256": null
+  },
+  "opprcd/year=2020/QQQ.parquet": {
+   "bytes": 45036901,
+   "sha256": null
+  },
+  "opprcd/year=2020/RUT.parquet": {
+   "bytes": 51888576,
+   "sha256": null
+  },
+  "opprcd/year=2020/SLV.parquet": {
+   "bytes": 10508784,
+   "sha256": null
+  },
+  "opprcd/year=2020/SMH.parquet": {
+   "bytes": 11871165,
+   "sha256": null
+  },
+  "opprcd/year=2020/SPX.parquet": {
+   "bytes": 127764971,
+   "sha256": null
+  },
+  "opprcd/year=2020/SPY.parquet": {
+   "bytes": 72748421,
+   "sha256": null
+  },
+  "opprcd/year=2020/UNG.parquet": {
+   "bytes": 5048278,
+   "sha256": null
+  },
+  "opprcd/year=2020/USO.parquet": {
+   "bytes": 7518288,
+   "sha256": null
+  },
+  "opprcd/year=2020/VIX.parquet": {
+   "bytes": 6696629,
+   "sha256": null
+  },
+  "opprcd/year=2020/XBI.parquet": {
+   "bytes": 11367657,
+   "sha256": null
+  },
+  "opprcd/year=2020/XLB.parquet": {
+   "bytes": 7397997,
+   "sha256": null
+  },
+  "opprcd/year=2020/XLC.parquet": {
+   "bytes": 4568150,
+   "sha256": null
+  },
+  "opprcd/year=2020/XLE.parquet": {
+   "bytes": 12579000,
+   "sha256": null
+  },
+  "opprcd/year=2020/XLF.parquet": {
+   "bytes": 7945744,
+   "sha256": null
+  },
+  "opprcd/year=2020/XLI.parquet": {
+   "bytes": 8489683,
+   "sha256": null
+  },
+  "opprcd/year=2020/XLK.parquet": {
+   "bytes": 9585628,
+   "sha256": null
+  },
+  "opprcd/year=2020/XLP.parquet": {
+   "bytes": 6343833,
+   "sha256": null
+  },
+  "opprcd/year=2020/XLRE.parquet": {
+   "bytes": 1881252,
+   "sha256": null
+  },
+  "opprcd/year=2020/XLU.parquet": {
+   "bytes": 7833935,
+   "sha256": null
+  },
+  "opprcd/year=2020/XLV.parquet": {
+   "bytes": 11982377,
+   "sha256": null
+  },
+  "opprcd/year=2020/XLY.parquet": {
+   "bytes": 11217274,
+   "sha256": null
+  },
+  "opprcd/year=2020/XSP.parquet": {
+   "bytes": 56990004,
+   "sha256": null
+  },
+  "opprcd/year=2021/DBA.parquet": {
+   "bytes": 1929447,
+   "sha256": null
+  },
+  "opprcd/year=2021/DBC.parquet": {
+   "bytes": 1579693,
+   "sha256": null
+  },
+  "opprcd/year=2021/DIA.parquet": {
+   "bytes": 21123440,
+   "sha256": null
+  },
+  "opprcd/year=2021/DJX.parquet": {
+   "bytes": 6766850,
+   "sha256": null
+  },
+  "opprcd/year=2021/GDX.parquet": {
+   "bytes": 6944157,
+   "sha256": null
+  },
+  "opprcd/year=2021/GLD.parquet": {
+   "bytes": 20135166,
+   "sha256": null
+  },
+  "opprcd/year=2021/IWM.parquet": {
+   "bytes": 37280055,
+   "sha256": null
+  },
+  "opprcd/year=2021/KRE.parquet": {
+   "bytes": 8698280,
+   "sha256": null
+  },
+  "opprcd/year=2021/MDY.parquet": {
+   "bytes": 10849276,
+   "sha256": null
+  },
+  "opprcd/year=2021/NDX.parquet": {
+   "bytes": 100710426,
+   "sha256": null
+  },
+  "opprcd/year=2021/QQQ.parquet": {
+   "bytes": 55117900,
+   "sha256": null
+  },
+  "opprcd/year=2021/RUT.parquet": {
+   "bytes": 58094310,
+   "sha256": null
+  },
+  "opprcd/year=2021/SLV.parquet": {
+   "bytes": 11180816,
+   "sha256": null
+  },
+  "opprcd/year=2021/SMH.parquet": {
+   "bytes": 11608436,
+   "sha256": null
+  },
+  "opprcd/year=2021/SPX.parquet": {
+   "bytes": 153697192,
+   "sha256": null
+  },
+  "opprcd/year=2021/SPY.parquet": {
+   "bytes": 78248038,
+   "sha256": null
+  },
+  "opprcd/year=2021/UNG.parquet": {
+   "bytes": 5171623,
+   "sha256": null
+  },
+  "opprcd/year=2021/USO.parquet": {
+   "bytes": 9416930,
+   "sha256": null
+  },
+  "opprcd/year=2021/VIX.parquet": {
+   "bytes": 7768854,
+   "sha256": null
+  },
+  "opprcd/year=2021/XBI.parquet": {
+   "bytes": 12438698,
+   "sha256": null
+  },
+  "opprcd/year=2021/XLB.parquet": {
+   "bytes": 8085667,
+   "sha256": null
+  },
+  "opprcd/year=2021/XLC.parquet": {
+   "bytes": 6817947,
+   "sha256": null
+  },
+  "opprcd/year=2021/XLE.parquet": {
+   "bytes": 10676545,
+   "sha256": null
+  },
+  "opprcd/year=2021/XLF.parquet": {
+   "bytes": 8111269,
+   "sha256": null
+  },
+  "opprcd/year=2021/XLI.parquet": {
+   "bytes": 9190390,
+   "sha256": null
+  },
+  "opprcd/year=2021/XLK.parquet": {
+   "bytes": 11947868,
+   "sha256": null
+  },
+  "opprcd/year=2021/XLP.parquet": {
+   "bytes": 6496581,
+   "sha256": null
+  },
+  "opprcd/year=2021/XLRE.parquet": {
+   "bytes": 1977015,
+   "sha256": null
+  },
+  "opprcd/year=2021/XLU.parquet": {
+   "bytes": 6596546,
+   "sha256": null
+  },
+  "opprcd/year=2021/XLV.parquet": {
+   "bytes": 9596986,
+   "sha256": null
+  },
+  "opprcd/year=2021/XLY.parquet": {
+   "bytes": 11372433,
+   "sha256": null
+  },
+  "opprcd/year=2021/XSP.parquet": {
+   "bytes": 61247502,
+   "sha256": null
+  },
+  "opprcd/year=2022/DBA.parquet": {
+   "bytes": 2041710,
+   "sha256": null
+  },
+  "opprcd/year=2022/DBC.parquet": {
+   "bytes": 2329541,
+   "sha256": null
+  },
+  "opprcd/year=2022/DIA.parquet": {
+   "bytes": 22723349,
+   "sha256": null
+  },
+  "opprcd/year=2022/DJX.parquet": {
+   "bytes": 7378943,
+   "sha256": null
+  },
+  "opprcd/year=2022/GDX.parquet": {
+   "bytes": 8181937,
+   "sha256": null
+  },
+  "opprcd/year=2022/GLD.parquet": {
+   "bytes": 20054644,
+   "sha256": null
+  },
+  "opprcd/year=2022/IWM.parquet": {
+   "bytes": 37644770,
+   "sha256": null
+  },
+  "opprcd/year=2022/KRE.parquet": {
+   "bytes": 12317659,
+   "sha256": null
+  },
+  "opprcd/year=2022/MDY.parquet": {
+   "bytes": 8002911,
+   "sha256": null
+  },
+  "opprcd/year=2022/NDX.parquet": {
+   "bytes": 117841979,
+   "sha256": null
+  },
+  "opprcd/year=2022/QQQ.parquet": {
+   "bytes": 53269548,
+   "sha256": null
+  },
+  "opprcd/year=2022/RUT.parquet": {
+   "bytes": 53897631,
+   "sha256": null
+  },
+  "opprcd/year=2022/SLV.parquet": {
+   "bytes": 9668993,
+   "sha256": null
+  },
+  "opprcd/year=2022/SMH.parquet": {
+   "bytes": 13673941,
+   "sha256": null
+  },
+  "opprcd/year=2022/SPX.parquet": {
+   "bytes": 148924097,
+   "sha256": null
+  },
+  "opprcd/year=2022/SPY.parquet": {
+   "bytes": 68749098,
+   "sha256": null
+  },
+  "opprcd/year=2022/UNG.parquet": {
+   "bytes": 6885984,
+   "sha256": null
+  },
+  "opprcd/year=2022/USO.parquet": {
+   "bytes": 11395549,
+   "sha256": null
+  },
+  "opprcd/year=2022/VIX.parquet": {
+   "bytes": 8827072,
+   "sha256": null
+  },
+  "opprcd/year=2022/XBI.parquet": {
+   "bytes": 12359275,
+   "sha256": null
+  },
+  "opprcd/year=2022/XLB.parquet": {
+   "bytes": 9096777,
+   "sha256": null
+  },
+  "opprcd/year=2022/XLC.parquet": {
+   "bytes": 7803757,
+   "sha256": null
+  },
+  "opprcd/year=2022/XLE.parquet": {
+   "bytes": 15042216,
+   "sha256": null
+  },
+  "opprcd/year=2022/XLF.parquet": {
+   "bytes": 9108160,
+   "sha256": null
+  },
+  "opprcd/year=2022/XLI.parquet": {
+   "bytes": 10223345,
+   "sha256": null
+  },
+  "opprcd/year=2022/XLK.parquet": {
+   "bytes": 13862232,
+   "sha256": null
+  },
+  "opprcd/year=2022/XLP.parquet": {
+   "bytes": 8252441,
+   "sha256": null
+  },
+  "opprcd/year=2022/XLRE.parquet": {
+   "bytes": 2355376,
+   "sha256": null
+  },
+  "opprcd/year=2022/XLU.parquet": {
+   "bytes": 8415027,
+   "sha256": null
+  },
+  "opprcd/year=2022/XLV.parquet": {
+   "bytes": 11252300,
+   "sha256": null
+  },
+  "opprcd/year=2022/XLY.parquet": {
+   "bytes": 14978505,
+   "sha256": null
+  },
+  "opprcd/year=2022/XSP.parquet": {
+   "bytes": 73064228,
+   "sha256": null
+  },
+  "opprcd/year=2023/DBA.parquet": {
+   "bytes": 1772228,
+   "sha256": null
+  },
+  "opprcd/year=2023/DBC.parquet": {
+   "bytes": 1903035,
+   "sha256": null
+  },
+  "opprcd/year=2023/DIA.parquet": {
+   "bytes": 26361573,
+   "sha256": null
+  },
+  "opprcd/year=2023/DJX.parquet": {
+   "bytes": 6869384,
+   "sha256": null
+  },
+  "opprcd/year=2023/GDX.parquet": {
+   "bytes": 8933742,
+   "sha256": null
+  },
+  "opprcd/year=2023/GLD.parquet": {
+   "bytes": 23709800,
+   "sha256": null
+  },
+  "opprcd/year=2023/IWM.parquet": {
+   "bytes": 33110323,
+   "sha256": null
+  },
+  "opprcd/year=2023/KRE.parquet": {
+   "bytes": 12430017,
+   "sha256": null
+  },
+  "opprcd/year=2023/MDY.parquet": {
+   "bytes": 5803643,
+   "sha256": null
+  },
+  "opprcd/year=2023/NDX.parquet": {
+   "bytes": 146228755,
+   "sha256": null
+  },
+  "opprcd/year=2023/QQQ.parquet": {
+   "bytes": 52193304,
+   "sha256": null
+  },
+  "opprcd/year=2023/RUT.parquet": {
+   "bytes": 46715254,
+   "sha256": null
+  },
+  "opprcd/year=2023/SLV.parquet": {
+   "bytes": 8696642,
+   "sha256": null
+  },
+  "opprcd/year=2023/SMH.parquet": {
+   "bytes": 16722796,
+   "sha256": null
+  },
+  "opprcd/year=2023/SPX.parquet": {
+   "bytes": 152613865,
+   "sha256": null
+  },
+  "opprcd/year=2023/SPY.parquet": {
+   "bytes": 59309894,
+   "sha256": null
+  },
+  "opprcd/year=2023/UNG.parquet": {
+   "bytes": 4665148,
+   "sha256": null
+  },
+  "opprcd/year=2023/USO.parquet": {
+   "bytes": 9730886,
+   "sha256": null
+  },
+  "opprcd/year=2023/VIX.parquet": {
+   "bytes": 10377998,
+   "sha256": null
+  },
+  "opprcd/year=2023/XBI.parquet": {
+   "bytes": 11791813,
+   "sha256": null
+  },
+  "opprcd/year=2023/XLB.parquet": {
+   "bytes": 8452708,
+   "sha256": null
+  },
+  "opprcd/year=2023/XLC.parquet": {
+   "bytes": 8024745,
+   "sha256": null
+  },
+  "opprcd/year=2023/XLE.parquet": {
+   "bytes": 14233454,
+   "sha256": null
+  },
+  "opprcd/year=2023/XLF.parquet": {
+   "bytes": 9864770,
+   "sha256": null
+  },
+  "opprcd/year=2023/XLI.parquet": {
+   "bytes": 11695941,
+   "sha256": null
+  },
+  "opprcd/year=2023/XLK.parquet": {
+   "bytes": 13573258,
+   "sha256": null
+  },
+  "opprcd/year=2023/XLP.parquet": {
+   "bytes": 8120600,
+   "sha256": null
+  },
+  "opprcd/year=2023/XLRE.parquet": {
+   "bytes": 2525512,
+   "sha256": null
+  },
+  "opprcd/year=2023/XLU.parquet": {
+   "bytes": 9577530,
+   "sha256": null
+  },
+  "opprcd/year=2023/XLV.parquet": {
+   "bytes": 12061131,
+   "sha256": null
+  },
+  "opprcd/year=2023/XLY.parquet": {
+   "bytes": 13012210,
+   "sha256": null
+  },
+  "opprcd/year=2023/XSP.parquet": {
+   "bytes": 83584003,
+   "sha256": null
+  },
+  "opprcd/year=2024/DBA.parquet": {
+   "bytes": 1474211,
+   "sha256": null
+  },
+  "opprcd/year=2024/DBC.parquet": {
+   "bytes": 1377306,
+   "sha256": null
+  },
+  "opprcd/year=2024/DIA.parquet": {
+   "bytes": 25143583,
+   "sha256": null
+  },
+  "opprcd/year=2024/DJX.parquet": {
+   "bytes": 6403836,
+   "sha256": null
+  },
+  "opprcd/year=2024/GDX.parquet": {
+   "bytes": 9997364,
+   "sha256": null
+  },
+  "opprcd/year=2024/GLD.parquet": {
+   "bytes": 21749746,
+   "sha256": null
+  },
+  "opprcd/year=2024/IWM.parquet": {
+   "bytes": 36145789,
+   "sha256": null
+  },
+  "opprcd/year=2024/KRE.parquet": {
+   "bytes": 13614396,
+   "sha256": null
+  },
+  "opprcd/year=2024/MDY.parquet": {
+   "bytes": 6060194,
+   "sha256": null
+  },
+  "opprcd/year=2024/NDX.parquet": {
+   "bytes": 144593396,
+   "sha256": null
+  },
+  "opprcd/year=2024/QQQ.parquet": {
+   "bytes": 60210439,
+   "sha256": null
+  },
+  "opprcd/year=2024/RUT.parquet": {
+   "bytes": 61253713,
+   "sha256": null
+  },
+  "opprcd/year=2024/SLV.parquet": {
+   "bytes": 11706263,
+   "sha256": null
+  },
+  "opprcd/year=2024/SMH.parquet": {
+   "bytes": 18272006,
+   "sha256": null
+  },
+  "opprcd/year=2024/SPX.parquet": {
+   "bytes": 189264918,
+   "sha256": null
+  },
+  "opprcd/year=2024/SPY.parquet": {
+   "bytes": 72908747,
+   "sha256": null
+  },
+  "opprcd/year=2024/UNG.parquet": {
+   "bytes": 5983665,
+   "sha256": null
+  },
+  "opprcd/year=2024/USO.parquet": {
+   "bytes": 9199579,
+   "sha256": null
+  },
+  "opprcd/year=2024/VIX.parquet": {
+   "bytes": 10978443,
+   "sha256": null
+  },
+  "opprcd/year=2024/XBI.parquet": {
+   "bytes": 13272903,
+   "sha256": null
+  },
+  "opprcd/year=2024/XLB.parquet": {
+   "bytes": 5579424,
+   "sha256": null
+  },
+  "opprcd/year=2024/XLC.parquet": {
+   "bytes": 8829614,
+   "sha256": null
+  },
+  "opprcd/year=2024/XLE.parquet": {
+   "bytes": 14218292,
+   "sha256": null
+  },
+  "opprcd/year=2024/XLF.parquet": {
+   "bytes": 11787804,
+   "sha256": null
+  },
+  "opprcd/year=2024/XLI.parquet": {
+   "bytes": 11101156,
+   "sha256": null
+  },
+  "opprcd/year=2024/XLK.parquet": {
+   "bytes": 16121626,
+   "sha256": null
+  },
+  "opprcd/year=2024/XLP.parquet": {
+   "bytes": 8144948,
+   "sha256": null
+  },
+  "opprcd/year=2024/XLRE.parquet": {
+   "bytes": 2739419,
+   "sha256": null
+  },
+  "opprcd/year=2024/XLU.parquet": {
+   "bytes": 10417410,
+   "sha256": null
+  },
+  "opprcd/year=2024/XLV.parquet": {
+   "bytes": 11695643,
+   "sha256": null
+  },
+  "opprcd/year=2024/XLY.parquet": {
+   "bytes": 12331939,
+   "sha256": null
+  },
+  "opprcd/year=2024/XSP.parquet": {
+   "bytes": 99723415,
+   "sha256": null
+  },
+  "opprcd/year=2025/DBA.parquet": {
+   "bytes": 898891,
+   "sha256": null
+  },
+  "opprcd/year=2025/DBC.parquet": {
+   "bytes": 858212,
+   "sha256": null
+  },
+  "opprcd/year=2025/DIA.parquet": {
+   "bytes": 17932352,
+   "sha256": null
+  },
+  "opprcd/year=2025/DJX.parquet": {
+   "bytes": 3936430,
+   "sha256": null
+  },
+  "opprcd/year=2025/GDX.parquet": {
+   "bytes": 7468968,
+   "sha256": null
+  },
+  "opprcd/year=2025/GLD.parquet": {
+   "bytes": 23143544,
+   "sha256": null
+  },
+  "opprcd/year=2025/IWM.parquet": {
+   "bytes": 24181221,
+   "sha256": null
+  },
+  "opprcd/year=2025/KRE.parquet": {
+   "bytes": 9690635,
+   "sha256": null
+  },
+  "opprcd/year=2025/MDY.parquet": {
+   "bytes": 4549637,
+   "sha256": null
+  },
+  "opprcd/year=2025/NDX.parquet": {
+   "bytes": 82955130,
+   "sha256": null
+  },
+  "opprcd/year=2025/QQQ.parquet": {
+   "bytes": 42746361,
+   "sha256": null
+  },
+  "opprcd/year=2025/RUT.parquet": {
+   "bytes": 37770969,
+   "sha256": null
+  },
+  "opprcd/year=2025/SLV.parquet": {
+   "bytes": 9940874,
+   "sha256": null
+  },
+  "opprcd/year=2025/SMH.parquet": {
+   "bytes": 10702568,
+   "sha256": null
+  },
+  "opprcd/year=2025/SPX.parquet": {
+   "bytes": 130562742,
+   "sha256": null
+  },
+  "opprcd/year=2025/SPY.parquet": {
+   "bytes": 50323329,
+   "sha256": null
+  },
+  "opprcd/year=2025/UNG.parquet": {
+   "bytes": 4219003,
+   "sha256": null
+  },
+  "opprcd/year=2025/USO.parquet": {
+   "bytes": 6241349,
+   "sha256": null
+  },
+  "opprcd/year=2025/VIX.parquet": {
+   "bytes": 7311528,
+   "sha256": null
+  },
+  "opprcd/year=2025/XBI.parquet": {
+   "bytes": 8422377,
+   "sha256": null
+  },
+  "opprcd/year=2025/XLB.parquet": {
+   "bytes": 4303914,
+   "sha256": null
+  },
+  "opprcd/year=2025/XLC.parquet": {
+   "bytes": 5202929,
+   "sha256": null
+  },
+  "opprcd/year=2025/XLE.parquet": {
+   "bytes": 9922155,
+   "sha256": null
+  },
+  "opprcd/year=2025/XLF.parquet": {
+   "bytes": 8020084,
+   "sha256": null
+  },
+  "opprcd/year=2025/XLI.parquet": {
+   "bytes": 7793107,
+   "sha256": null
+  },
+  "opprcd/year=2025/XLK.parquet": {
+   "bytes": 9558169,
+   "sha256": null
+  },
+  "opprcd/year=2025/XLP.parquet": {
+   "bytes": 4896734,
+   "sha256": null
+  },
+  "opprcd/year=2025/XLRE.parquet": {
+   "bytes": 1682210,
+   "sha256": null
+  },
+  "opprcd/year=2025/XLU.parquet": {
+   "bytes": 5977830,
+   "sha256": null
+  },
+  "opprcd/year=2025/XLV.parquet": {
+   "bytes": 6556511,
+   "sha256": null
+  },
+  "opprcd/year=2025/XLY.parquet": {
+   "bytes": 7301657,
+   "sha256": null
+  },
+  "opprcd/year=2025/XSP.parquet": {
+   "bytes": 64789577,
+   "sha256": null
+  },
+  "secprd/year=2010/DBA.parquet": {
+   "bytes": 11525,
+   "sha256": null
+  },
+  "secprd/year=2010/DBC.parquet": {
+   "bytes": 11637,
+   "sha256": null
+  },
+  "secprd/year=2010/DIA.parquet": {
+   "bytes": 12530,
+   "sha256": null
+  },
+  "secprd/year=2010/DJX.parquet": {
+   "bytes": 10251,
+   "sha256": null
+  },
+  "secprd/year=2010/GDX.parquet": {
+   "bytes": 11915,
+   "sha256": null
+  },
+  "secprd/year=2010/GLD.parquet": {
+   "bytes": 12425,
+   "sha256": null
+  },
+  "secprd/year=2010/IWM.parquet": {
+   "bytes": 12663,
+   "sha256": null
+  },
+  "secprd/year=2010/KRE.parquet": {
+   "bytes": 11933,
+   "sha256": null
+  },
+  "secprd/year=2010/MDY.parquet": {
+   "bytes": 11769,
+   "sha256": null
+  },
+  "secprd/year=2010/NDX.parquet": {
+   "bytes": 10797,
+   "sha256": null
+  },
+  "secprd/year=2010/QQQ.parquet": {
+   "bytes": 12366,
+   "sha256": null
+  },
+  "secprd/year=2010/RUT.parquet": {
+   "bytes": 10653,
+   "sha256": null
+  },
+  "secprd/year=2010/SLV.parquet": {
+   "bytes": 11373,
+   "sha256": null
+  },
+  "secprd/year=2010/SMH.parquet": {
+   "bytes": 11762,
+   "sha256": null
+  },
+  "secprd/year=2010/SPX.parquet": {
+   "bytes": 10465,
+   "sha256": null
+  },
+  "secprd/year=2010/SPY.parquet": {
+   "bytes": 12816,
+   "sha256": null
+  },
+  "secprd/year=2010/UNG.parquet": {
+   "bytes": 11409,
+   "sha256": null
+  },
+  "secprd/year=2010/USO.parquet": {
+   "bytes": 12085,
+   "sha256": null
+  },
+  "secprd/year=2010/VIX.parquet": {
+   "bytes": 10206,
+   "sha256": null
+  },
+  "secprd/year=2010/XBI.parquet": {
+   "bytes": 12024,
+   "sha256": null
+  },
+  "secprd/year=2010/XLB.parquet": {
+   "bytes": 12101,
+   "sha256": null
+  },
+  "secprd/year=2010/XLE.parquet": {
+   "bytes": 12532,
+   "sha256": null
+  },
+  "secprd/year=2010/XLF.parquet": {
+   "bytes": 11959,
+   "sha256": null
+  },
+  "secprd/year=2010/XLI.parquet": {
+   "bytes": 12153,
+   "sha256": null
+  },
+  "secprd/year=2010/XLK.parquet": {
+   "bytes": 11988,
+   "sha256": null
+  },
+  "secprd/year=2010/XLP.parquet": {
+   "bytes": 11599,
+   "sha256": null
+  },
+  "secprd/year=2010/XLU.parquet": {
+   "bytes": 11812,
+   "sha256": null
+  },
+  "secprd/year=2010/XLV.parquet": {
+   "bytes": 11763,
+   "sha256": null
+  },
+  "secprd/year=2010/XLY.parquet": {
+   "bytes": 12149,
+   "sha256": null
+  },
+  "secprd/year=2010/XSP.parquet": {
+   "bytes": 10354,
+   "sha256": null
+  },
+  "secprd/year=2011/DBA.parquet": {
+   "bytes": 11854,
+   "sha256": null
+  },
+  "secprd/year=2011/DBC.parquet": {
+   "bytes": 11738,
+   "sha256": null
+  },
+  "secprd/year=2011/DIA.parquet": {
+   "bytes": 12536,
+   "sha256": null
+  },
+  "secprd/year=2011/DJX.parquet": {
+   "bytes": 10332,
+   "sha256": null
+  },
+  "secprd/year=2011/GDX.parquet": {
+   "bytes": 12302,
+   "sha256": null
+  },
+  "secprd/year=2011/GLD.parquet": {
+   "bytes": 12476,
+   "sha256": null
+  },
+  "secprd/year=2011/IWM.parquet": {
+   "bytes": 12755,
+   "sha256": null
+  },
+  "secprd/year=2011/KRE.parquet": {
+   "bytes": 11822,
+   "sha256": null
+  },
+  "secprd/year=2011/MDY.parquet": {
+   "bytes": 12438,
+   "sha256": null
+  },
+  "secprd/year=2011/NDX.parquet": {
+   "bytes": 10745,
+   "sha256": null
+  },
+  "secprd/year=2011/QQQ.parquet": {
+   "bytes": 12293,
+   "sha256": null
+  },
+  "secprd/year=2011/RUT.parquet": {
+   "bytes": 10600,
+   "sha256": null
+  },
+  "secprd/year=2011/SLV.parquet": {
+   "bytes": 12387,
+   "sha256": null
+  },
+  "secprd/year=2011/SMH.parquet": {
+   "bytes": 11966,
+   "sha256": null
+  },
+  "secprd/year=2011/SPX.parquet": {
+   "bytes": 10488,
+   "sha256": null
+  },
+  "secprd/year=2011/SPY.parquet": {
+   "bytes": 12636,
+   "sha256": null
+  },
+  "secprd/year=2011/UNG.parquet": {
+   "bytes": 11808,
+   "sha256": null
+  },
+  "secprd/year=2011/USO.parquet": {
+   "bytes": 12227,
+   "sha256": null
+  },
+  "secprd/year=2011/VIX.parquet": {
+   "bytes": 10300,
+   "sha256": null
+  },
+  "secprd/year=2011/XBI.parquet": {
+   "bytes": 12019,
+   "sha256": null
+  },
+  "secprd/year=2011/XLB.parquet": {
+   "bytes": 12377,
+   "sha256": null
+  },
+  "secprd/year=2011/XLE.parquet": {
+   "bytes": 12592,
+   "sha256": null
+  },
+  "secprd/year=2011/XLF.parquet": {
+   "bytes": 11949,
+   "sha256": null
+  },
+  "secprd/year=2011/XLI.parquet": {
+   "bytes": 12258,
+   "sha256": null
+  },
+  "secprd/year=2011/XLK.parquet": {
+   "bytes": 11845,
+   "sha256": null
+  },
+  "secprd/year=2011/XLP.parquet": {
+   "bytes": 11798,
+   "sha256": null
+  },
+  "secprd/year=2011/XLU.parquet": {
+   "bytes": 11921,
+   "sha256": null
+  },
+  "secprd/year=2011/XLV.parquet": {
+   "bytes": 11988,
+   "sha256": null
+  },
+  "secprd/year=2011/XLY.parquet": {
+   "bytes": 12002,
+   "sha256": null
+  },
+  "secprd/year=2011/XSP.parquet": {
+   "bytes": 10371,
+   "sha256": null
+  },
+  "secprd/year=2012/DBA.parquet": {
+   "bytes": 11154,
+   "sha256": null
+  },
+  "secprd/year=2012/DBC.parquet": {
+   "bytes": 11555,
+   "sha256": null
+  },
+  "secprd/year=2012/DIA.parquet": {
+   "bytes": 12148,
+   "sha256": null
+  },
+  "secprd/year=2012/DJX.parquet": {
+   "bytes": 9990,
+   "sha256": null
+  },
+  "secprd/year=2012/GDX.parquet": {
+   "bytes": 12225,
+   "sha256": null
+  },
+  "secprd/year=2012/GLD.parquet": {
+   "bytes": 12148,
+   "sha256": null
+  },
+  "secprd/year=2012/IWM.parquet": {
+   "bytes": 12542,
+   "sha256": null
+  },
+  "secprd/year=2012/KRE.parquet": {
+   "bytes": 11479,
+   "sha256": null
+  },
+  "secprd/year=2012/MDY.parquet": {
+   "bytes": 11968,
+   "sha256": null
+  },
+  "secprd/year=2012/NDX.parquet": {
+   "bytes": 10842,
+   "sha256": null
+  },
+  "secprd/year=2012/QQQ.parquet": {
+   "bytes": 12547,
+   "sha256": null
+  },
+  "secprd/year=2012/RUT.parquet": {
+   "bytes": 10447,
+   "sha256": null
+  },
+  "secprd/year=2012/SLV.parquet": {
+   "bytes": 11915,
+   "sha256": null
+  },
+  "secprd/year=2012/SMH.parquet": {
+   "bytes": 11566,
+   "sha256": null
+  },
+  "secprd/year=2012/SPX.parquet": {
+   "bytes": 10350,
+   "sha256": null
+  },
+  "secprd/year=2012/SPY.parquet": {
+   "bytes": 12438,
+   "sha256": null
+  },
+  "secprd/year=2012/UNG.parquet": {
+   "bytes": 12012,
+   "sha256": null
+  },
+  "secprd/year=2012/USO.parquet": {
+   "bytes": 12065,
+   "sha256": null
+  },
+  "secprd/year=2012/VIX.parquet": {
+   "bytes": 9960,
+   "sha256": null
+  },
+  "secprd/year=2012/XBI.parquet": {
+   "bytes": 12177,
+   "sha256": null
+  },
+  "secprd/year=2012/XLB.parquet": {
+   "bytes": 11684,
+   "sha256": null
+  },
+  "secprd/year=2012/XLE.parquet": {
+   "bytes": 12278,
+   "sha256": null
+  },
+  "secprd/year=2012/XLF.parquet": {
+   "bytes": 11579,
+   "sha256": null
+  },
+  "secprd/year=2012/XLI.parquet": {
+   "bytes": 11674,
+   "sha256": null
+  },
+  "secprd/year=2012/XLK.parquet": {
+   "bytes": 11791,
+   "sha256": null
+  },
+  "secprd/year=2012/XLP.parquet": {
+   "bytes": 11550,
+   "sha256": null
+  },
+  "secprd/year=2012/XLU.parquet": {
+   "bytes": 11680,
+   "sha256": null
+  },
+  "secprd/year=2012/XLV.parquet": {
+   "bytes": 12058,
+   "sha256": null
+  },
+  "secprd/year=2012/XLY.parquet": {
+   "bytes": 12017,
+   "sha256": null
+  },
+  "secprd/year=2012/XSP.parquet": {
+   "bytes": 10122,
+   "sha256": null
+  },
+  "secprd/year=2013/DBA.parquet": {
+   "bytes": 11060,
+   "sha256": null
+  },
+  "secprd/year=2013/DBC.parquet": {
+   "bytes": 11128,
+   "sha256": null
+  },
+  "secprd/year=2013/DIA.parquet": {
+   "bytes": 12565,
+   "sha256": null
+  },
+  "secprd/year=2013/DJX.parquet": {
+   "bytes": 10280,
+   "sha256": null
+  },
+  "secprd/year=2013/GDX.parquet": {
+   "bytes": 12510,
+   "sha256": null
+  },
+  "secprd/year=2013/GLD.parquet": {
+   "bytes": 12609,
+   "sha256": null
+  },
+  "secprd/year=2013/IWM.parquet": {
+   "bytes": 12813,
+   "sha256": null
+  },
+  "secprd/year=2013/KRE.parquet": {
+   "bytes": 12146,
+   "sha256": null
+  },
+  "secprd/year=2013/MDY.parquet": {
+   "bytes": 12474,
+   "sha256": null
+  },
+  "secprd/year=2013/NDX.parquet": {
+   "bytes": 12782,
+   "sha256": null
+  },
+  "secprd/year=2013/QQQ.parquet": {
+   "bytes": 12637,
+   "sha256": null
+  },
+  "secprd/year=2013/RUT.parquet": {
+   "bytes": 11178,
+   "sha256": null
+  },
+  "secprd/year=2013/SLV.parquet": {
+   "bytes": 12098,
+   "sha256": null
+  },
+  "secprd/year=2013/SMH.parquet": {
+   "bytes": 11649,
+   "sha256": null
+  },
+  "secprd/year=2013/SPX.parquet": {
+   "bytes": 10575,
+   "sha256": null
+  },
+  "secprd/year=2013/SPY.parquet": {
+   "bytes": 12833,
+   "sha256": null
+  },
+  "secprd/year=2013/UNG.parquet": {
+   "bytes": 11904,
+   "sha256": null
+  },
+  "secprd/year=2013/USO.parquet": {
+   "bytes": 11876,
+   "sha256": null
+  },
+  "secprd/year=2013/VIX.parquet": {
+   "bytes": 9630,
+   "sha256": null
+  },
+  "secprd/year=2013/XBI.parquet": {
+   "bytes": 12468,
+   "sha256": null
+  },
+  "secprd/year=2013/XLB.parquet": {
+   "bytes": 12176,
+   "sha256": null
+  },
+  "secprd/year=2013/XLE.parquet": {
+   "bytes": 12358,
+   "sha256": null
+  },
+  "secprd/year=2013/XLF.parquet": {
+   "bytes": 12173,
+   "sha256": null
+  },
+  "secprd/year=2013/XLI.parquet": {
+   "bytes": 12545,
+   "sha256": null
+  },
+  "secprd/year=2013/XLK.parquet": {
+   "bytes": 12040,
+   "sha256": null
+  },
+  "secprd/year=2013/XLP.parquet": {
+   "bytes": 12241,
+   "sha256": null
+  },
+  "secprd/year=2013/XLU.parquet": {
+   "bytes": 12149,
+   "sha256": null
+  },
+  "secprd/year=2013/XLV.parquet": {
+   "bytes": 12590,
+   "sha256": null
+  },
+  "secprd/year=2013/XLY.parquet": {
+   "bytes": 12562,
+   "sha256": null
+  },
+  "secprd/year=2013/XSP.parquet": {
+   "bytes": 10467,
+   "sha256": null
+  },
+  "secprd/year=2014/DBA.parquet": {
+   "bytes": 11355,
+   "sha256": null
+  },
+  "secprd/year=2014/DBC.parquet": {
+   "bytes": 11498,
+   "sha256": null
+  },
+  "secprd/year=2014/DIA.parquet": {
+   "bytes": 12270,
+   "sha256": null
+  },
+  "secprd/year=2014/DJX.parquet": {
+   "bytes": 10195,
+   "sha256": null
+  },
+  "secprd/year=2014/GDX.parquet": {
+   "bytes": 12034,
+   "sha256": null
+  },
+  "secprd/year=2014/GLD.parquet": {
+   "bytes": 12246,
+   "sha256": null
+  },
+  "secprd/year=2014/IWM.parquet": {
+   "bytes": 12502,
+   "sha256": null
+  },
+  "secprd/year=2014/KRE.parquet": {
+   "bytes": 12023,
+   "sha256": null
+  },
+  "secprd/year=2014/MDY.parquet": {
+   "bytes": 12287,
+   "sha256": null
+  },
+  "secprd/year=2014/NDX.parquet": {
+   "bytes": 11886,
+   "sha256": null
+  },
+  "secprd/year=2014/QQQ.parquet": {
+   "bytes": 12702,
+   "sha256": null
+  },
+  "secprd/year=2014/RUT.parquet": {
+   "bytes": 12111,
+   "sha256": null
+  },
+  "secprd/year=2014/SLV.parquet": {
+   "bytes": 11535,
+   "sha256": null
+  },
+  "secprd/year=2014/SMH.parquet": {
+   "bytes": 11898,
+   "sha256": null
+  },
+  "secprd/year=2014/SPX.parquet": {
+   "bytes": 10631,
+   "sha256": null
+  },
+  "secprd/year=2014/SPY.parquet": {
+   "bytes": 12754,
+   "sha256": null
+  },
+  "secprd/year=2014/UNG.parquet": {
+   "bytes": 12004,
+   "sha256": null
+  },
+  "secprd/year=2014/USO.parquet": {
+   "bytes": 12148,
+   "sha256": null
+  },
+  "secprd/year=2014/VIX.parquet": {
+   "bytes": 9791,
+   "sha256": null
+  },
+  "secprd/year=2014/XBI.parquet": {
+   "bytes": 12368,
+   "sha256": null
+  },
+  "secprd/year=2014/XLB.parquet": {
+   "bytes": 12083,
+   "sha256": null
+  },
+  "secprd/year=2014/XLE.parquet": {
+   "bytes": 12701,
+   "sha256": null
+  },
+  "secprd/year=2014/XLF.parquet": {
+   "bytes": 11825,
+   "sha256": null
+  },
+  "secprd/year=2014/XLI.parquet": {
+   "bytes": 12203,
+   "sha256": null
+  },
+  "secprd/year=2014/XLK.parquet": {
+   "bytes": 12209,
+   "sha256": null
+  },
+  "secprd/year=2014/XLP.parquet": {
+   "bytes": 12218,
+   "sha256": null
+  },
+  "secprd/year=2014/XLU.parquet": {
+   "bytes": 12275,
+   "sha256": null
+  },
+  "secprd/year=2014/XLV.parquet": {
+   "bytes": 12563,
+   "sha256": null
+  },
+  "secprd/year=2014/XLY.parquet": {
+   "bytes": 12329,
+   "sha256": null
+  },
+  "secprd/year=2014/XSP.parquet": {
+   "bytes": 10371,
+   "sha256": null
+  },
+  "secprd/year=2015/DBA.parquet": {
+   "bytes": 11172,
+   "sha256": null
+  },
+  "secprd/year=2015/DBC.parquet": {
+   "bytes": 11489,
+   "sha256": null
+  },
+  "secprd/year=2015/DIA.parquet": {
+   "bytes": 12427,
+   "sha256": null
+  },
+  "secprd/year=2015/DJX.parquet": {
+   "bytes": 10204,
+   "sha256": null
+  },
+  "secprd/year=2015/GDX.parquet": {
+   "bytes": 11996,
+   "sha256": null
+  },
+  "secprd/year=2015/GLD.parquet": {
+   "bytes": 12282,
+   "sha256": null
+  },
+  "secprd/year=2015/IWM.parquet": {
+   "bytes": 12526,
+   "sha256": null
+  },
+  "secprd/year=2015/KRE.parquet": {
+   "bytes": 12286,
+   "sha256": null
+  },
+  "secprd/year=2015/MDY.parquet": {
+   "bytes": 12193,
+   "sha256": null
+  },
+  "secprd/year=2015/NDX.parquet": {
+   "bytes": 10817,
+   "sha256": null
+  },
+  "secprd/year=2015/QQQ.parquet": {
+   "bytes": 12491,
+   "sha256": null
+  },
+  "secprd/year=2015/RUT.parquet": {
+   "bytes": 11196,
+   "sha256": null
+  },
+  "secprd/year=2015/SLV.parquet": {
+   "bytes": 11292,
+   "sha256": null
+  },
+  "secprd/year=2015/SMH.parquet": {
+   "bytes": 11973,
+   "sha256": null
+  },
+  "secprd/year=2015/SPX.parquet": {
+   "bytes": 10633,
+   "sha256": null
+  },
+  "secprd/year=2015/SPY.parquet": {
+   "bytes": 12716,
+   "sha256": null
+  },
+  "secprd/year=2015/UNG.parquet": {
+   "bytes": 11596,
+   "sha256": null
+  },
+  "secprd/year=2015/USO.parquet": {
+   "bytes": 12222,
+   "sha256": null
+  },
+  "secprd/year=2015/VIX.parquet": {
+   "bytes": 10074,
+   "sha256": null
+  },
+  "secprd/year=2015/XBI.parquet": {
+   "bytes": 12637,
+   "sha256": null
+  },
+  "secprd/year=2015/XLB.parquet": {
+   "bytes": 12254,
+   "sha256": null
+  },
+  "secprd/year=2015/XLE.parquet": {
+   "bytes": 12653,
+   "sha256": null
+  },
+  "secprd/year=2015/XLF.parquet": {
+   "bytes": 11744,
+   "sha256": null
+  },
+  "secprd/year=2015/XLI.parquet": {
+   "bytes": 12204,
+   "sha256": null
+  },
+  "secprd/year=2015/XLK.parquet": {
+   "bytes": 12062,
+   "sha256": null
+  },
+  "secprd/year=2015/XLP.parquet": {
+   "bytes": 11857,
+   "sha256": null
+  },
+  "secprd/year=2015/XLRE.parquet": {
+   "bytes": 5657,
+   "sha256": null
+  },
+  "secprd/year=2015/XLU.parquet": {
+   "bytes": 12147,
+   "sha256": null
+  },
+  "secprd/year=2015/XLV.parquet": {
+   "bytes": 12297,
+   "sha256": null
+  },
+  "secprd/year=2015/XLY.parquet": {
+   "bytes": 12295,
+   "sha256": null
+  },
+  "secprd/year=2015/XSP.parquet": {
+   "bytes": 10281,
+   "sha256": null
+  },
+  "secprd/year=2016/DBA.parquet": {
+   "bytes": 10887,
+   "sha256": null
+  },
+  "secprd/year=2016/DBC.parquet": {
+   "bytes": 11217,
+   "sha256": null
+  },
+  "secprd/year=2016/DIA.parquet": {
+   "bytes": 12501,
+   "sha256": null
+  },
+  "secprd/year=2016/DJX.parquet": {
+   "bytes": 10358,
+   "sha256": null
+  },
+  "secprd/year=2016/GDX.parquet": {
+   "bytes": 12212,
+   "sha256": null
+  },
+  "secprd/year=2016/GLD.parquet": {
+   "bytes": 12525,
+   "sha256": null
+  },
+  "secprd/year=2016/IWM.parquet": {
+   "bytes": 12861,
+   "sha256": null
+  },
+  "secprd/year=2016/KRE.parquet": {
+   "bytes": 12370,
+   "sha256": null
+  },
+  "secprd/year=2016/MDY.parquet": {
+   "bytes": 12429,
+   "sha256": null
+  },
+  "secprd/year=2016/NDX.parquet": {
+   "bytes": 12527,
+   "sha256": null
+  },
+  "secprd/year=2016/QQQ.parquet": {
+   "bytes": 12565,
+   "sha256": null
+  },
+  "secprd/year=2016/RUT.parquet": {
+   "bytes": 8213,
+   "sha256": null
+  },
+  "secprd/year=2016/SLV.parquet": {
+   "bytes": 11738,
+   "sha256": null
+  },
+  "secprd/year=2016/SMH.parquet": {
+   "bytes": 12121,
+   "sha256": null
+  },
+  "secprd/year=2016/SPX.parquet": {
+   "bytes": 10775,
+   "sha256": null
+  },
+  "secprd/year=2016/SPY.parquet": {
+   "bytes": 12851,
+   "sha256": null
+  },
+  "secprd/year=2016/UNG.parquet": {
+   "bytes": 11398,
+   "sha256": null
+  },
+  "secprd/year=2016/USO.parquet": {
+   "bytes": 11597,
+   "sha256": null
+  },
+  "secprd/year=2016/VIX.parquet": {
+   "bytes": 10005,
+   "sha256": null
+  },
+  "secprd/year=2016/XBI.parquet": {
+   "bytes": 12540,
+   "sha256": null
+  },
+  "secprd/year=2016/XLB.parquet": {
+   "bytes": 12315,
+   "sha256": null
+  },
+  "secprd/year=2016/XLE.parquet": {
+   "bytes": 12727,
+   "sha256": null
+  },
+  "secprd/year=2016/XLF.parquet": {
+   "bytes": 11998,
+   "sha256": null
+  },
+  "secprd/year=2016/XLI.parquet": {
+   "bytes": 12382,
+   "sha256": null
+  },
+  "secprd/year=2016/XLK.parquet": {
+   "bytes": 12344,
+   "sha256": null
+  },
+  "secprd/year=2016/XLP.parquet": {
+   "bytes": 12210,
+   "sha256": null
+  },
+  "secprd/year=2016/XLRE.parquet": {
+   "bytes": 12552,
+   "sha256": null
+  },
+  "secprd/year=2016/XLU.parquet": {
+   "bytes": 12266,
+   "sha256": null
+  },
+  "secprd/year=2016/XLV.parquet": {
+   "bytes": 12381,
+   "sha256": null
+  },
+  "secprd/year=2016/XLY.parquet": {
+   "bytes": 12294,
+   "sha256": null
+  },
+  "secprd/year=2016/XSP.parquet": {
+   "bytes": 10439,
+   "sha256": null
+  },
+  "secprd/year=2017/DBA.parquet": {
+   "bytes": 10876,
+   "sha256": null
+  },
+  "secprd/year=2017/DBC.parquet": {
+   "bytes": 11005,
+   "sha256": null
+  },
+  "secprd/year=2017/DIA.parquet": {
+   "bytes": 12592,
+   "sha256": null
+  },
+  "secprd/year=2017/DJX.parquet": {
+   "bytes": 10370,
+   "sha256": null
+  },
+  "secprd/year=2017/GDX.parquet": {
+   "bytes": 11547,
+   "sha256": null
+  },
+  "secprd/year=2017/GLD.parquet": {
+   "bytes": 12035,
+   "sha256": null
+  },
+  "secprd/year=2017/IWM.parquet": {
+   "bytes": 12428,
+   "sha256": null
+  },
+  "secprd/year=2017/KRE.parquet": {
+   "bytes": 12202,
+   "sha256": null
+  },
+  "secprd/year=2017/MDY.parquet": {
+   "bytes": 12047,
+   "sha256": null
+  },
+  "secprd/year=2017/NDX.parquet": {
+   "bytes": 12477,
+   "sha256": null
+  },
+  "secprd/year=2017/QQQ.parquet": {
+   "bytes": 12300,
+   "sha256": null
+  },
+  "secprd/year=2017/RUT.parquet": {
+   "bytes": 7813,
+   "sha256": null
+  },
+  "secprd/year=2017/SLV.parquet": {
+   "bytes": 11153,
+   "sha256": null
+  },
+  "secprd/year=2017/SMH.parquet": {
+   "bytes": 12245,
+   "sha256": null
+  },
+  "secprd/year=2017/SPX.parquet": {
+   "bytes": 10746,
+   "sha256": null
+  },
+  "secprd/year=2017/SPY.parquet": {
+   "bytes": 12660,
+   "sha256": null
+  },
+  "secprd/year=2017/UNG.parquet": {
+   "bytes": 11106,
+   "sha256": null
+  },
+  "secprd/year=2017/USO.parquet": {
+   "bytes": 11412,
+   "sha256": null
+  },
+  "secprd/year=2017/VIX.parquet": {
+   "bytes": 9368,
+   "sha256": null
+  },
+  "secprd/year=2017/XBI.parquet": {
+   "bytes": 12396,
+   "sha256": null
+  },
+  "secprd/year=2017/XLB.parquet": {
+   "bytes": 12069,
+   "sha256": null
+  },
+  "secprd/year=2017/XLE.parquet": {
+   "bytes": 12310,
+   "sha256": null
+  },
+  "secprd/year=2017/XLF.parquet": {
+   "bytes": 11862,
+   "sha256": null
+  },
+  "secprd/year=2017/XLI.parquet": {
+   "bytes": 12242,
+   "sha256": null
+  },
+  "secprd/year=2017/XLK.parquet": {
+   "bytes": 12418,
+   "sha256": null
+  },
+  "secprd/year=2017/XLP.parquet": {
+   "bytes": 11871,
+   "sha256": null
+  },
+  "secprd/year=2017/XLRE.parquet": {
+   "bytes": 11354,
+   "sha256": null
+  },
+  "secprd/year=2017/XLU.parquet": {
+   "bytes": 12098,
+   "sha256": null
+  },
+  "secprd/year=2017/XLV.parquet": {
+   "bytes": 12303,
+   "sha256": null
+  },
+  "secprd/year=2017/XLY.parquet": {
+   "bytes": 12112,
+   "sha256": null
+  },
+  "secprd/year=2017/XSP.parquet": {
+   "bytes": 10371,
+   "sha256": null
+  },
+  "secprd/year=2018/DBA.parquet": {
+   "bytes": 10834,
+   "sha256": null
+  },
+  "secprd/year=2018/DBC.parquet": {
+   "bytes": 11194,
+   "sha256": null
+  },
+  "secprd/year=2018/DIA.parquet": {
+   "bytes": 12588,
+   "sha256": null
+  },
+  "secprd/year=2018/DJX.parquet": {
+   "bytes": 10446,
+   "sha256": null
+  },
+  "secprd/year=2018/GDX.parquet": {
+   "bytes": 11724,
+   "sha256": null
+  },
+  "secprd/year=2018/GLD.parquet": {
+   "bytes": 12119,
+   "sha256": null
+  },
+  "secprd/year=2018/IWM.parquet": {
+   "bytes": 12610,
+   "sha256": null
+  },
+  "secprd/year=2018/KRE.parquet": {
+   "bytes": 12390,
+   "sha256": null
+  },
+  "secprd/year=2018/MDY.parquet": {
+   "bytes": 12236,
+   "sha256": null
+  },
+  "secprd/year=2018/NDX.parquet": {
+   "bytes": 12759,
+   "sha256": null
+  },
+  "secprd/year=2018/QQQ.parquet": {
+   "bytes": 12658,
+   "sha256": null
+  },
+  "secprd/year=2018/RUT.parquet": {
+   "bytes": 7863,
+   "sha256": null
+  },
+  "secprd/year=2018/SLV.parquet": {
+   "bytes": 11140,
+   "sha256": null
+  },
+  "secprd/year=2018/SMH.parquet": {
+   "bytes": 12258,
+   "sha256": null
+  },
+  "secprd/year=2018/SPX.parquet": {
+   "bytes": 10813,
+   "sha256": null
+  },
+  "secprd/year=2018/SPY.parquet": {
+   "bytes": 12666,
+   "sha256": null
+  },
+  "secprd/year=2018/UNG.parquet": {
+   "bytes": 11786,
+   "sha256": null
+  },
+  "secprd/year=2018/USO.parquet": {
+   "bytes": 11733,
+   "sha256": null
+  },
+  "secprd/year=2018/VIX.parquet": {
+   "bytes": 10052,
+   "sha256": null
+  },
+  "secprd/year=2018/XBI.parquet": {
+   "bytes": 12453,
+   "sha256": null
+  },
+  "secprd/year=2018/XLB.parquet": {
+   "bytes": 12299,
+   "sha256": null
+  },
+  "secprd/year=2018/XLC.parquet": {
+   "bytes": 8527,
+   "sha256": null
+  },
+  "secprd/year=2018/XLE.parquet": {
+   "bytes": 12512,
+   "sha256": null
+  },
+  "secprd/year=2018/XLF.parquet": {
+   "bytes": 12086,
+   "sha256": null
+  },
+  "secprd/year=2018/XLI.parquet": {
+   "bytes": 12416,
+   "sha256": null
+  },
+  "secprd/year=2018/XLK.parquet": {
+   "bytes": 12367,
+   "sha256": null
+  },
+  "secprd/year=2018/XLP.parquet": {
+   "bytes": 12345,
+   "sha256": null
+  },
+  "secprd/year=2018/XLRE.parquet": {
+   "bytes": 11757,
+   "sha256": null
+  },
+  "secprd/year=2018/XLU.parquet": {
+   "bytes": 12231,
+   "sha256": null
+  },
+  "secprd/year=2018/XLV.parquet": {
+   "bytes": 12484,
+   "sha256": null
+  },
+  "secprd/year=2018/XLY.parquet": {
+   "bytes": 12482,
+   "sha256": null
+  },
+  "secprd/year=2018/XSP.parquet": {
+   "bytes": 10338,
+   "sha256": null
+  },
+  "secprd/year=2019/DBA.parquet": {
+   "bytes": 10950,
+   "sha256": null
+  },
+  "secprd/year=2019/DBC.parquet": {
+   "bytes": 10732,
+   "sha256": null
+  },
+  "secprd/year=2019/DIA.parquet": {
+   "bytes": 12347,
+   "sha256": null
+  },
+  "secprd/year=2019/DJX.parquet": {
+   "bytes": 10353,
+   "sha256": null
+  },
+  "secprd/year=2019/GDX.parquet": {
+   "bytes": 11909,
+   "sha256": null
+  },
+  "secprd/year=2019/GLD.parquet": {
+   "bytes": 12250,
+   "sha256": null
+  },
+  "secprd/year=2019/IWM.parquet": {
+   "bytes": 12345,
+   "sha256": null
+  },
+  "secprd/year=2019/KRE.parquet": {
+   "bytes": 12121,
+   "sha256": null
+  },
+  "secprd/year=2019/MDY.parquet": {
+   "bytes": 12074,
+   "sha256": null
+  },
+  "secprd/year=2019/NDX.parquet": {
+   "bytes": 12978,
+   "sha256": null
+  },
+  "secprd/year=2019/QQQ.parquet": {
+   "bytes": 12595,
+   "sha256": null
+  },
+  "secprd/year=2019/RUT.parquet": {
+   "bytes": 7740,
+   "sha256": null
+  },
+  "secprd/year=2019/SLV.parquet": {
+   "bytes": 11387,
+   "sha256": null
+  },
+  "secprd/year=2019/SMH.parquet": {
+   "bytes": 12383,
+   "sha256": null
+  },
+  "secprd/year=2019/SPX.parquet": {
+   "bytes": 10888,
+   "sha256": null
+  },
+  "secprd/year=2019/SPY.parquet": {
+   "bytes": 12628,
+   "sha256": null
+  },
+  "secprd/year=2019/UNG.parquet": {
+   "bytes": 11908,
+   "sha256": null
+  },
+  "secprd/year=2019/USO.parquet": {
+   "bytes": 11609,
+   "sha256": null
+  },
+  "secprd/year=2019/VIX.parquet": {
+   "bytes": 9925,
+   "sha256": null
+  },
+  "secprd/year=2019/XBI.parquet": {
+   "bytes": 12219,
+   "sha256": null
+  },
+  "secprd/year=2019/XLB.parquet": {
+   "bytes": 12120,
+   "sha256": null
+  },
+  "secprd/year=2019/XLC.parquet": {
+   "bytes": 12261,
+   "sha256": null
+  },
+  "secprd/year=2019/XLE.parquet": {
+   "bytes": 12367,
+   "sha256": null
+  },
+  "secprd/year=2019/XLF.parquet": {
+   "bytes": 12069,
+   "sha256": null
+  },
+  "secprd/year=2019/XLI.parquet": {
+   "bytes": 12244,
+   "sha256": null
+  },
+  "secprd/year=2019/XLK.parquet": {
+   "bytes": 12520,
+   "sha256": null
+  },
+  "secprd/year=2019/XLP.parquet": {
+   "bytes": 12309,
+   "sha256": null
+  },
+  "secprd/year=2019/XLRE.parquet": {
+   "bytes": 11962,
+   "sha256": null
+  },
+  "secprd/year=2019/XLU.parquet": {
+   "bytes": 12366,
+   "sha256": null
+  },
+  "secprd/year=2019/XLV.parquet": {
+   "bytes": 12281,
+   "sha256": null
+  },
+  "secprd/year=2019/XLY.parquet": {
+   "bytes": 12407,
+   "sha256": null
+  },
+  "secprd/year=2019/XSP.parquet": {
+   "bytes": 10482,
+   "sha256": null
+  },
+  "secprd/year=2020/DBA.parquet": {
+   "bytes": 10871,
+   "sha256": null
+  },
+  "secprd/year=2020/DBC.parquet": {
+   "bytes": 11267,
+   "sha256": null
+  },
+  "secprd/year=2020/DIA.parquet": {
+   "bytes": 12737,
+   "sha256": null
+  },
+  "secprd/year=2020/DJX.parquet": {
+   "bytes": 10643,
+   "sha256": null
+  },
+  "secprd/year=2020/GDX.parquet": {
+   "bytes": 12433,
+   "sha256": null
+  },
+  "secprd/year=2020/GLD.parquet": {
+   "bytes": 12575,
+   "sha256": null
+  },
+  "secprd/year=2020/IWM.parquet": {
+   "bytes": 12764,
+   "sha256": null
+  },
+  "secprd/year=2020/KRE.parquet": {
+   "bytes": 12378,
+   "sha256": null
+  },
+  "secprd/year=2020/MDY.parquet": {
+   "bytes": 12423,
+   "sha256": null
+  },
+  "secprd/year=2020/NDX.parquet": {
+   "bytes": 12712,
+   "sha256": null
+  },
+  "secprd/year=2020/QQQ.parquet": {
+   "bytes": 12840,
+   "sha256": null
+  },
+  "secprd/year=2020/RUT.parquet": {
+   "bytes": 7833,
+   "sha256": null
+  },
+  "secprd/year=2020/SLV.parquet": {
+   "bytes": 12087,
+   "sha256": null
+  },
+  "secprd/year=2020/SMH.parquet": {
+   "bytes": 12687,
+   "sha256": null
+  },
+  "secprd/year=2020/SPX.parquet": {
+   "bytes": 11046,
+   "sha256": null
+  },
+  "secprd/year=2020/SPY.parquet": {
+   "bytes": 12874,
+   "sha256": null
+  },
+  "secprd/year=2020/UNG.parquet": {
+   "bytes": 11950,
+   "sha256": null
+  },
+  "secprd/year=2020/USO.parquet": {
+   "bytes": 12335,
+   "sha256": null
+  },
+  "secprd/year=2020/VIX.parquet": {
+   "bytes": 10501,
+   "sha256": null
+  },
+  "secprd/year=2020/XBI.parquet": {
+   "bytes": 12684,
+   "sha256": null
+  },
+  "secprd/year=2020/XLB.parquet": {
+   "bytes": 12512,
+   "sha256": null
+  },
+  "secprd/year=2020/XLC.parquet": {
+   "bytes": 12489,
+   "sha256": null
+  },
+  "secprd/year=2020/XLE.parquet": {
+   "bytes": 12627,
+   "sha256": null
+  },
+  "secprd/year=2020/XLF.parquet": {
+   "bytes": 12324,
+   "sha256": null
+  },
+  "secprd/year=2020/XLI.parquet": {
+   "bytes": 12627,
+   "sha256": null
+  },
+  "secprd/year=2020/XLK.parquet": {
+   "bytes": 12658,
+   "sha256": null
+  },
+  "secprd/year=2020/XLP.parquet": {
+   "bytes": 12392,
+   "sha256": null
+  },
+  "secprd/year=2020/XLRE.parquet": {
+   "bytes": 12190,
+   "sha256": null
+  },
+  "secprd/year=2020/XLU.parquet": {
+   "bytes": 12399,
+   "sha256": null
+  },
+  "secprd/year=2020/XLV.parquet": {
+   "bytes": 12470,
+   "sha256": null
+  },
+  "secprd/year=2020/XLY.parquet": {
+   "bytes": 12579,
+   "sha256": null
+  },
+  "secprd/year=2020/XSP.parquet": {
+   "bytes": 10745,
+   "sha256": null
+  },
+  "secprd/year=2021/DBA.parquet": {
+   "bytes": 11432,
+   "sha256": null
+  },
+  "secprd/year=2021/DBC.parquet": {
+   "bytes": 11815,
+   "sha256": null
+  },
+  "secprd/year=2021/DIA.parquet": {
+   "bytes": 12452,
+   "sha256": null
+  },
+  "secprd/year=2021/DJX.parquet": {
+   "bytes": 10351,
+   "sha256": null
+  },
+  "secprd/year=2021/GDX.parquet": {
+   "bytes": 12211,
+   "sha256": null
+  },
+  "secprd/year=2021/GLD.parquet": {
+   "bytes": 12268,
+   "sha256": null
+  },
+  "secprd/year=2021/IWM.parquet": {
+   "bytes": 12402,
+   "sha256": null
+  },
+  "secprd/year=2021/KRE.parquet": {
+   "bytes": 12248,
+   "sha256": null
+  },
+  "secprd/year=2021/MDY.parquet": {
+   "bytes": 12129,
+   "sha256": null
+  },
+  "secprd/year=2021/NDX.parquet": {
+   "bytes": 11488,
+   "sha256": null
+  },
+  "secprd/year=2021/QQQ.parquet": {
+   "bytes": 12707,
+   "sha256": null
+  },
+  "secprd/year=2021/RUT.parquet": {
+   "bytes": 7804,
+   "sha256": null
+  },
+  "secprd/year=2021/SLV.parquet": {
+   "bytes": 12267,
+   "sha256": null
+  },
+  "secprd/year=2021/SMH.parquet": {
+   "bytes": 12379,
+   "sha256": null
+  },
+  "secprd/year=2021/SPX.parquet": {
+   "bytes": 11097,
+   "sha256": null
+  },
+  "secprd/year=2021/SPY.parquet": {
+   "bytes": 12601,
+   "sha256": null
+  },
+  "secprd/year=2021/UNG.parquet": {
+   "bytes": 11810,
+   "sha256": null
+  },
+  "secprd/year=2021/USO.parquet": {
+   "bytes": 12411,
+   "sha256": null
+  },
+  "secprd/year=2021/VIX.parquet": {
+   "bytes": 10044,
+   "sha256": null
+  },
+  "secprd/year=2021/XBI.parquet": {
+   "bytes": 12429,
+   "sha256": null
+  },
+  "secprd/year=2021/XLB.parquet": {
+   "bytes": 12235,
+   "sha256": null
+  },
+  "secprd/year=2021/XLC.parquet": {
+   "bytes": 12241,
+   "sha256": null
+  },
+  "secprd/year=2021/XLE.parquet": {
+   "bytes": 12358,
+   "sha256": null
+  },
+  "secprd/year=2021/XLF.parquet": {
+   "bytes": 12273,
+   "sha256": null
+  },
+  "secprd/year=2021/XLI.parquet": {
+   "bytes": 12239,
+   "sha256": null
+  },
+  "secprd/year=2021/XLK.parquet": {
+   "bytes": 12380,
+   "sha256": null
+  },
+  "secprd/year=2021/XLP.parquet": {
+   "bytes": 12006,
+   "sha256": null
+  },
+  "secprd/year=2021/XLRE.parquet": {
+   "bytes": 12262,
+   "sha256": null
+  },
+  "secprd/year=2021/XLU.parquet": {
+   "bytes": 12110,
+   "sha256": null
+  },
+  "secprd/year=2021/XLV.parquet": {
+   "bytes": 12420,
+   "sha256": null
+  },
+  "secprd/year=2021/XLY.parquet": {
+   "bytes": 12223,
+   "sha256": null
+  },
+  "secprd/year=2021/XSP.parquet": {
+   "bytes": 10594,
+   "sha256": null
+  },
+  "secprd/year=2022/DBA.parquet": {
+   "bytes": 11488,
+   "sha256": null
+  },
+  "secprd/year=2022/DBC.parquet": {
+   "bytes": 12016,
+   "sha256": null
+  },
+  "secprd/year=2022/DIA.parquet": {
+   "bytes": 12643,
+   "sha256": null
+  },
+  "secprd/year=2022/DJX.parquet": {
+   "bytes": 10510,
+   "sha256": null
+  },
+  "secprd/year=2022/GDX.parquet": {
+   "bytes": 12559,
+   "sha256": null
+  },
+  "secprd/year=2022/GLD.parquet": {
+   "bytes": 12631,
+   "sha256": null
+  },
+  "secprd/year=2022/IWM.parquet": {
+   "bytes": 12711,
+   "sha256": null
+  },
+  "secprd/year=2022/KRE.parquet": {
+   "bytes": 12512,
+   "sha256": null
+  },
+  "secprd/year=2022/MDY.parquet": {
+   "bytes": 12277,
+   "sha256": null
+  },
+  "secprd/year=2022/NDX.parquet": {
+   "bytes": 11526,
+   "sha256": null
+  },
+  "secprd/year=2022/QQQ.parquet": {
+   "bytes": 12929,
+   "sha256": null
+  },
+  "secprd/year=2022/RUT.parquet": {
+   "bytes": 7791,
+   "sha256": null
+  },
+  "secprd/year=2022/SLV.parquet": {
+   "bytes": 12305,
+   "sha256": null
+  },
+  "secprd/year=2022/SMH.parquet": {
+   "bytes": 12620,
+   "sha256": null
+  },
+  "secprd/year=2022/SPX.parquet": {
+   "bytes": 11131,
+   "sha256": null
+  },
+  "secprd/year=2022/SPY.parquet": {
+   "bytes": 12906,
+   "sha256": null
+  },
+  "secprd/year=2022/UNG.parquet": {
+   "bytes": 12252,
+   "sha256": null
+  },
+  "secprd/year=2022/USO.parquet": {
+   "bytes": 12333,
+   "sha256": null
+  },
+  "secprd/year=2022/VIX.parquet": {
+   "bytes": 10207,
+   "sha256": null
+  },
+  "secprd/year=2022/XBI.parquet": {
+   "bytes": 12705,
+   "sha256": null
+  },
+  "secprd/year=2022/XLB.parquet": {
+   "bytes": 12516,
+   "sha256": null
+  },
+  "secprd/year=2022/XLC.parquet": {
+   "bytes": 12523,
+   "sha256": null
+  },
+  "secprd/year=2022/XLE.parquet": {
+   "bytes": 12815,
+   "sha256": null
+  },
+  "secprd/year=2022/XLF.parquet": {
+   "bytes": 12541,
+   "sha256": null
+  },
+  "secprd/year=2022/XLI.parquet": {
+   "bytes": 12408,
+   "sha256": null
+  },
+  "secprd/year=2022/XLK.parquet": {
+   "bytes": 12572,
+   "sha256": null
+  },
+  "secprd/year=2022/XLP.parquet": {
+   "bytes": 12353,
+   "sha256": null
+  },
+  "secprd/year=2022/XLRE.parquet": {
+   "bytes": 12552,
+   "sha256": null
+  },
+  "secprd/year=2022/XLU.parquet": {
+   "bytes": 12481,
+   "sha256": null
+  },
+  "secprd/year=2022/XLV.parquet": {
+   "bytes": 12331,
+   "sha256": null
+  },
+  "secprd/year=2022/XLY.parquet": {
+   "bytes": 12610,
+   "sha256": null
+  },
+  "secprd/year=2022/XSP.parquet": {
+   "bytes": 11417,
+   "sha256": null
+  },
+  "secprd/year=2023/DBA.parquet": {
+   "bytes": 11336,
+   "sha256": null
+  },
+  "secprd/year=2023/DBC.parquet": {
+   "bytes": 11340,
+   "sha256": null
+  },
+  "secprd/year=2023/DIA.parquet": {
+   "bytes": 12134,
+   "sha256": null
+  },
+  "secprd/year=2023/DJX.parquet": {
+   "bytes": 10301,
+   "sha256": null
+  },
+  "secprd/year=2023/GDX.parquet": {
+   "bytes": 12163,
+   "sha256": null
+  },
+  "secprd/year=2023/GLD.parquet": {
+   "bytes": 12208,
+   "sha256": null
+  },
+  "secprd/year=2023/IWM.parquet": {
+   "bytes": 12615,
+   "sha256": null
+  },
+  "secprd/year=2023/KRE.parquet": {
+   "bytes": 12244,
+   "sha256": null
+  },
+  "secprd/year=2023/MDY.parquet": {
+   "bytes": 12129,
+   "sha256": null
+  },
+  "secprd/year=2023/NDX.parquet": {
+   "bytes": 11501,
+   "sha256": null
+  },
+  "secprd/year=2023/QQQ.parquet": {
+   "bytes": 12506,
+   "sha256": null
+  },
+  "secprd/year=2023/RUT.parquet": {
+   "bytes": 7751,
+   "sha256": null
+  },
+  "secprd/year=2023/SLV.parquet": {
+   "bytes": 12116,
+   "sha256": null
+  },
+  "secprd/year=2023/SMH.parquet": {
+   "bytes": 12514,
+   "sha256": null
+  },
+  "secprd/year=2023/SPX.parquet": {
+   "bytes": 11066,
+   "sha256": null
+  },
+  "secprd/year=2023/SPY.parquet": {
+   "bytes": 12502,
+   "sha256": null
+  },
+  "secprd/year=2023/UNG.parquet": {
+   "bytes": 11709,
+   "sha256": null
+  },
+  "secprd/year=2023/USO.parquet": {
+   "bytes": 12226,
+   "sha256": null
+  },
+  "secprd/year=2023/VIX.parquet": {
+   "bytes": 10001,
+   "sha256": null
+  },
+  "secprd/year=2023/XBI.parquet": {
+   "bytes": 12181,
+   "sha256": null
+  },
+  "secprd/year=2023/XLB.parquet": {
+   "bytes": 11859,
+   "sha256": null
+  },
+  "secprd/year=2023/XLC.parquet": {
+   "bytes": 12198,
+   "sha256": null
+  },
+  "secprd/year=2023/XLE.parquet": {
+   "bytes": 12176,
+   "sha256": null
+  },
+  "secprd/year=2023/XLF.parquet": {
+   "bytes": 11906,
+   "sha256": null
+  },
+  "secprd/year=2023/XLI.parquet": {
+   "bytes": 12072,
+   "sha256": null
+  },
+  "secprd/year=2023/XLK.parquet": {
+   "bytes": 12268,
+   "sha256": null
+  },
+  "secprd/year=2023/XLP.parquet": {
+   "bytes": 11898,
+   "sha256": null
+  },
+  "secprd/year=2023/XLRE.parquet": {
+   "bytes": 11889,
+   "sha256": null
+  },
+  "secprd/year=2023/XLU.parquet": {
+   "bytes": 11989,
+   "sha256": null
+  },
+  "secprd/year=2023/XLV.parquet": {
+   "bytes": 11705,
+   "sha256": null
+  },
+  "secprd/year=2023/XLY.parquet": {
+   "bytes": 12170,
+   "sha256": null
+  },
+  "secprd/year=2023/XSP.parquet": {
+   "bytes": 11020,
+   "sha256": null
+  },
+  "secprd/year=2024/DBA.parquet": {
+   "bytes": 11666,
+   "sha256": null
+  },
+  "secprd/year=2024/DBC.parquet": {
+   "bytes": 11246,
+   "sha256": null
+  },
+  "secprd/year=2024/DIA.parquet": {
+   "bytes": 12520,
+   "sha256": null
+  },
+  "secprd/year=2024/DJX.parquet": {
+   "bytes": 10425,
+   "sha256": null
+  },
+  "secprd/year=2024/GDX.parquet": {
+   "bytes": 12417,
+   "sha256": null
+  },
+  "secprd/year=2024/GLD.parquet": {
+   "bytes": 12553,
+   "sha256": null
+  },
+  "secprd/year=2024/IWM.parquet": {
+   "bytes": 12750,
+   "sha256": null
+  },
+  "secprd/year=2024/KRE.parquet": {
+   "bytes": 12546,
+   "sha256": null
+  },
+  "secprd/year=2024/MDY.parquet": {
+   "bytes": 12018,
+   "sha256": null
+  },
+  "secprd/year=2024/NDX.parquet": {
+   "bytes": 11529,
+   "sha256": null
+  },
+  "secprd/year=2024/QQQ.parquet": {
+   "bytes": 12813,
+   "sha256": null
+  },
+  "secprd/year=2024/RUT.parquet": {
+   "bytes": 9652,
+   "sha256": null
+  },
+  "secprd/year=2024/SLV.parquet": {
+   "bytes": 12501,
+   "sha256": null
+  },
+  "secprd/year=2024/SMH.parquet": {
+   "bytes": 12848,
+   "sha256": null
+  },
+  "secprd/year=2024/SPX.parquet": {
+   "bytes": 11185,
+   "sha256": null
+  },
+  "secprd/year=2024/SPY.parquet": {
+   "bytes": 12776,
+   "sha256": null
+  },
+  "secprd/year=2024/UNG.parquet": {
+   "bytes": 12333,
+   "sha256": null
+  },
+  "secprd/year=2024/USO.parquet": {
+   "bytes": 12099,
+   "sha256": null
+  },
+  "secprd/year=2024/VIX.parquet": {
+   "bytes": 9919,
+   "sha256": null
+  },
+  "secprd/year=2024/XBI.parquet": {
+   "bytes": 12378,
+   "sha256": null
+  },
+  "secprd/year=2024/XLB.parquet": {
+   "bytes": 12236,
+   "sha256": null
+  },
+  "secprd/year=2024/XLC.parquet": {
+   "bytes": 12429,
+   "sha256": null
+  },
+  "secprd/year=2024/XLE.parquet": {
+   "bytes": 12487,
+   "sha256": null
+  },
+  "secprd/year=2024/XLF.parquet": {
+   "bytes": 12374,
+   "sha256": null
+  },
+  "secprd/year=2024/XLI.parquet": {
+   "bytes": 12423,
+   "sha256": null
+  },
+  "secprd/year=2024/XLK.parquet": {
+   "bytes": 12479,
+   "sha256": null
+  },
+  "secprd/year=2024/XLP.parquet": {
+   "bytes": 12172,
+   "sha256": null
+  },
+  "secprd/year=2024/XLRE.parquet": {
+   "bytes": 12300,
+   "sha256": null
+  },
+  "secprd/year=2024/XLU.parquet": {
+   "bytes": 12552,
+   "sha256": null
+  },
+  "secprd/year=2024/XLV.parquet": {
+   "bytes": 12177,
+   "sha256": null
+  },
+  "secprd/year=2024/XLY.parquet": {
+   "bytes": 12397,
+   "sha256": null
+  },
+  "secprd/year=2024/XSP.parquet": {
+   "bytes": 10795,
+   "sha256": null
+  },
+  "secprd/year=2025/DBA.parquet": {
+   "bytes": 8845,
+   "sha256": null
+  },
+  "secprd/year=2025/DBC.parquet": {
+   "bytes": 8888,
+   "sha256": null
+  },
+  "secprd/year=2025/DIA.parquet": {
+   "bytes": 9657,
+   "sha256": null
+  },
+  "secprd/year=2025/DJX.parquet": {
+   "bytes": 8295,
+   "sha256": null
+  },
+  "secprd/year=2025/GDX.parquet": {
+   "bytes": 9693,
+   "sha256": null
+  },
+  "secprd/year=2025/GLD.parquet": {
+   "bytes": 9692,
+   "sha256": null
+  },
+  "secprd/year=2025/IWM.parquet": {
+   "bytes": 9841,
+   "sha256": null
+  },
+  "secprd/year=2025/KRE.parquet": {
+   "bytes": 9604,
+   "sha256": null
+  },
+  "secprd/year=2025/MDY.parquet": {
+   "bytes": 9416,
+   "sha256": null
+  },
+  "secprd/year=2025/NDX.parquet": {
+   "bytes": 9004,
+   "sha256": null
+  },
+  "secprd/year=2025/QQQ.parquet": {
+   "bytes": 9785,
+   "sha256": null
+  },
+  "secprd/year=2025/RUT.parquet": {
+   "bytes": 9833,
+   "sha256": null
+  },
+  "secprd/year=2025/SLV.parquet": {
+   "bytes": 9576,
+   "sha256": null
+  },
+  "secprd/year=2025/SMH.parquet": {
+   "bytes": 9820,
+   "sha256": null
+  },
+  "secprd/year=2025/SPX.parquet": {
+   "bytes": 8818,
+   "sha256": null
+  },
+  "secprd/year=2025/SPY.parquet": {
+   "bytes": 9793,
+   "sha256": null
+  },
+  "secprd/year=2025/UNG.parquet": {
+   "bytes": 9589,
+   "sha256": null
+  },
+  "secprd/year=2025/USO.parquet": {
+   "bytes": 9382,
+   "sha256": null
+  },
+  "secprd/year=2025/VIX.parquet": {
+   "bytes": 8172,
+   "sha256": null
+  },
+  "secprd/year=2025/XBI.parquet": {
+   "bytes": 9659,
+   "sha256": null
+  },
+  "secprd/year=2025/XLB.parquet": {
+   "bytes": 9488,
+   "sha256": null
+  },
+  "secprd/year=2025/XLC.parquet": {
+   "bytes": 9618,
+   "sha256": null
+  },
+  "secprd/year=2025/XLE.parquet": {
+   "bytes": 9606,
+   "sha256": null
+  },
+  "secprd/year=2025/XLF.parquet": {
+   "bytes": 9599,
+   "sha256": null
+  },
+  "secprd/year=2025/XLI.parquet": {
+   "bytes": 9642,
+   "sha256": null
+  },
+  "secprd/year=2025/XLK.parquet": {
+   "bytes": 9698,
+   "sha256": null
+  },
+  "secprd/year=2025/XLP.parquet": {
+   "bytes": 9269,
+   "sha256": null
+  },
+  "secprd/year=2025/XLRE.parquet": {
+   "bytes": 9104,
+   "sha256": null
+  },
+  "secprd/year=2025/XLU.parquet": {
+   "bytes": 9491,
+   "sha256": null
+  },
+  "secprd/year=2025/XLV.parquet": {
+   "bytes": 9575,
+   "sha256": null
+  },
+  "secprd/year=2025/XLY.parquet": {
+   "bytes": 9619,
+   "sha256": null
+  },
+  "secprd/year=2025/XSP.parquet": {
+   "bytes": 8349,
+   "sha256": null
+  }
+ },
+ "inputs_hashed": false,
+ "panel_version": 4
 }
