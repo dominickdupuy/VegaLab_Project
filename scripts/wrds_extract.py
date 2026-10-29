@@ -9,7 +9,8 @@ One file per (ticker, year): OUT/opprcd/year=YYYY/<TICKER>.parquet, written to .
 renamed on success, so a rerun resumes by skipping finished files. Underlying daily
 prices go to OUT/secprd/year=YYYY/<TICKER>.parquet the same way. The ticker list maps
 each ticker to its OptionMetrics secids (default: scripts/wrds_secids.json). The
-account is ``$WRDS_USERNAME``; the wrds client asks for its password or reads
+account is ``--username``, else ``$WRDS_USERNAME``; there is no default account, and
+the pull refuses to start without one. The wrds client asks for its password or reads
 ~/.pgpass. docs/DATA.md, Extraction, has the rest.
 """
 
@@ -21,7 +22,7 @@ import json
 import os
 import sys
 import time
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -34,7 +35,6 @@ if TYPE_CHECKING:  # the wrds extra; imported where it is used, so --help needs 
 
 SECIDS = Path(__file__).resolve().parent / "wrds_secids.json"
 USERNAME_ENV = "WRDS_USERNAME"
-DEFAULT_USERNAME = "dominickdupuy"
 END_DATE = "2025-08-29"  # vendor ceiling at extraction, recorded in docs/DATA.md
 CHUNK = 250_000
 ZSTD_LEVEL = 19
@@ -48,10 +48,14 @@ def log(out: Path, msg: str) -> None:
         fh.write(line + "\n")
 
 
-def connect() -> wrds.Connection:
+def account(username: str | None, env: Mapping[str, str] | None = None) -> str | None:
+    """The WRDS account: ``--username``, else ``$WRDS_USERNAME``, else none at all."""
+    return username or (os.environ if env is None else env).get(USERNAME_ENV) or None
+
+
+def connect(username: str) -> wrds.Connection:
     import wrds
 
-    username = os.environ.get(USERNAME_ENV) or DEFAULT_USERNAME
     return wrds.Connection(wrds_username=username, autoconnect=True, verbose=False)
 
 
@@ -132,12 +136,20 @@ def main(argv: Sequence[str] | None = None) -> int:
         default=SECIDS,
         help=f"JSON of ticker -> OptionMetrics secids (default: {SECIDS.name})",
     )
+    parser.add_argument(
+        "--username", help=f"WRDS account (default: ${USERNAME_ENV}; one of the two is required)"
+    )
     args = parser.parse_args(argv)
+    username = account(args.username)
+    if username is None:
+        parser.error(
+            f"no WRDS account: set {USERNAME_ENV} or pass --username (there is no default)"
+        )
     out = Path(args.out)
     tickers: dict[str, list[int]] = json.loads(Path(args.secids).read_text())
 
     out.mkdir(parents=True, exist_ok=True)
-    db = connect()
+    db = connect(username)
     total = 0
     t0 = time.time()
     for year in range(int(args.first_year), int(args.last_year) + 1):
@@ -179,7 +191,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                         time.sleep(30 * attempt)
                         with contextlib.suppress(Exception):
                             db.close()
-                        db = connect()
+                        db = connect(username)
                 else:
                     log(out, f"GAVE UP {kind} {year} {ticker}")
     log(out, f"DONE opprcd rows {total:,} in {(time.time() - t0) / 3600:.2f}h")

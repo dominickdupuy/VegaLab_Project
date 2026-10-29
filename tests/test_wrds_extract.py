@@ -3,7 +3,7 @@
 The script used to read its arguments and import wrds at module import, so neither
 ``--help`` nor an import worked anywhere but on the machine that ran the pull. The
 connection and the query are stood in for; what is tested is the argument parsing,
-the account, and the resume rule.
+the account (required, with no built-in default), and the resume rule.
 """
 
 from __future__ import annotations
@@ -26,14 +26,33 @@ def test_help_needs_neither_wrds_nor_arguments(capsys: pytest.CaptureFixture[str
     assert "out first_year last_year [secids]" in capsys.readouterr().out
 
 
-def test_the_account_comes_from_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_the_account_is_the_flag_else_the_environment_and_never_a_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     fake = types.ModuleType("wrds")
     fake.Connection = lambda **kwargs: kwargs  # type: ignore[attr-defined]
     monkeypatch.setitem(sys.modules, "wrds", fake)
+    assert wrds_extract.account(None, {}) is None
+    assert wrds_extract.account(None, {"WRDS_USERNAME": ""}) is None
+    assert wrds_extract.account(None, {"WRDS_USERNAME": "someone"}) == "someone"
+    assert wrds_extract.account("flag", {"WRDS_USERNAME": "someone"}) == "flag"
+    assert wrds_extract.connect("someone")["wrds_username"] == "someone"
+
+
+def test_a_pull_with_no_account_stops_before_connecting(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def refuse(username: str) -> FakeDB:
+        raise AssertionError("connected without an account")
+
+    monkeypatch.setattr(wrds_extract, "connect", refuse)
     monkeypatch.delenv("WRDS_USERNAME", raising=False)
-    assert wrds_extract.connect()["wrds_username"] == "dominickdupuy"
-    monkeypatch.setenv("WRDS_USERNAME", "someone_else")
-    assert wrds_extract.connect()["wrds_username"] == "someone_else"
+    with pytest.raises(SystemExit) as exit_:
+        wrds_extract.main([str(tmp_path / "out"), "2024", "2024"])
+    assert exit_.value.code == 2
+    err = capsys.readouterr().err
+    assert "no WRDS account: set WRDS_USERNAME or pass --username" in err
+    assert not (tmp_path / "out").exists()
 
 
 def test_the_vendored_ticker_list_maps_tickers_to_secids() -> None:
@@ -43,6 +62,9 @@ def test_the_vendored_ticker_list_maps_tickers_to_secids() -> None:
 
 
 class FakeDB:
+    def __init__(self, username: str = "") -> None:
+        self.username = username
+
     def close(self) -> None:
         pass
 
@@ -64,6 +86,7 @@ def test_a_pull_writes_per_ticker_year_and_resumes(
     tickers = tmp_path / "secids.json"
     tickers.write_text(json.dumps({"SPX": [108105], "XSP": [125063, 189691]}))
     out = tmp_path / "out"
+    monkeypatch.setenv("WRDS_USERNAME", "someone")
     assert wrds_extract.main([str(out), "2024", "2025", str(tickers)]) == 0
     assert len(queries) == 8  # 2 years x 2 tickers x (opprcd, secprd)
     assert (out / "opprcd" / "year=2025" / "XSP.parquet").exists()
@@ -71,5 +94,7 @@ def test_a_pull_writes_per_ticker_year_and_resumes(
     assert "DONE opprcd rows 12" in (out / "download.log").read_text()
 
     queries.clear()
-    assert wrds_extract.main([str(out), "2024", "2025", str(tickers)]) == 0
+    monkeypatch.delenv("WRDS_USERNAME")
+    args = [str(out), "2024", "2025", str(tickers), "--username", "someone"]
+    assert wrds_extract.main(args) == 0
     assert queries == []

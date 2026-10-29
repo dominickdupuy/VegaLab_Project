@@ -1,0 +1,4 @@
+# Committed JSON keeps LF in every checkout, Windows' core.autocrlf included: the gates
+# hash some of it (docs/SWEEP_EXPECTED.json against the bytes git holds for it), so a
+# CRLF working copy would be a different file to them.
+*.json text eol=lf
