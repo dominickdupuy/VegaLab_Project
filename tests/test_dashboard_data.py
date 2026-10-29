@@ -24,6 +24,7 @@ from optspread.dashboard_data import (
     REPO_ROOT,
     RUNS_ENV,
     GateReportFormatError,
+    RunRow,
     compare_runs,
     docs_dir,
     filter_runs,
@@ -45,7 +46,7 @@ from optspread.dashboard_data import (
     unreadable_gate_reports,
 )
 from optspread.leaks import PASS_CRITERION
-from optspread.manifest import file_sha256
+from optspread.manifest import DataRecord, file_sha256
 from optspread.sweep import SweepConfig
 
 # -- where things are read from ------------------------------------------------ #
@@ -126,6 +127,36 @@ def test_a_run_whose_manifest_does_not_hash_its_results_is_unverified(
     row = load_run_row(forged)
     assert row.problems == () and row.status == "UNVERIFIED"
     assert premium_curve([row]) == {}
+
+
+def test_every_run_names_its_data_source_and_old_manifests_read_as_synthetic(
+    run_root: Path, tmp_path: Path
+) -> None:
+    clean = next(r for r in scan_runs(run_root) if r.status == "OK")
+    assert (clean.data_source, clean.source, clean.panel) == ("synthetic", "synthetic", "")
+
+    def copy(name: str, data: object) -> RunRow:
+        run = tmp_path / name
+        run.mkdir()
+        manifest = json.loads((clean.path / "manifest.json").read_text())
+        if data is None:
+            del manifest["data"]
+        else:
+            manifest["data"] = data
+        (run / "manifest.json").write_text(json.dumps(manifest))
+        (run / "run.json").write_bytes((clean.path / "run.json").read_bytes())
+        return load_run_row(run)
+
+    old = copy("old", None)  # written before GH-21: still OK, the source inferred
+    assert old.status == "OK" and (old.data_source, old.source, old.panel) == ("", "synthetic", "")
+    panel = {"panel/spx_daily.parquet": "a" * 64, "panel/surface_grid.parquet": "b" * 64}
+    real = copy("real", {"source": "optionmetrics", "panel": panel})
+    assert real.status == "OK" and real.source == "optionmetrics"
+    assert real.panel == DataRecord(source="optionmetrics", panel=panel).panel_id
+    bad = copy("bad", {"source": "somewhere"})  # listed with the problem, never as synthetic
+    assert bad.status == "INVALID" and bad.source == "somewhere"
+    assert any(p.startswith("manifest: data.source") for p in bad.problems)
+    assert copy("worse", {"panel": 1}).source == "unreadable"
 
 
 def test_unreadable_files_become_problems_not_exceptions(tmp_path: Path) -> None:

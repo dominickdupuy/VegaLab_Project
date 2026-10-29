@@ -26,7 +26,7 @@ import re
 import time
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
-from functools import partial
+from functools import lru_cache, partial
 from pathlib import Path
 from typing import Any
 
@@ -44,7 +44,7 @@ from optspread.leaks import (
     detect_leak,
     perturbation_check,
 )
-from optspread.manifest import MANIFEST_FILENAME, RunManifest, file_sha256
+from optspread.manifest import MANIFEST_FILENAME, DataRecord, RunManifest, file_sha256
 from optspread.market import SyntheticChainProvider
 from optspread.sweep import SWEEP_FILENAME
 from optspread.types import ChainProvider
@@ -78,6 +78,10 @@ class RunRow:
     manifest records ``run.json`` among its artifacts and every recorded digest
     matches; one that records nothing, or not the results file, is UNVERIFIED, since
     nothing ties the numbers shown to the numbers the manifest was written over.
+
+    ``data_source`` and ``panel`` are the manifest's data record (the source, and the
+    id of the panel a real-data run read); both are empty for a manifest written
+    before the source was recorded.
     """
 
     run_id: str
@@ -99,10 +103,18 @@ class RunRow:
     digests_ok: bool | None = None  # None: the manifest records no artifacts
     recorded: tuple[str, ...] = ()  # the artifact paths the manifest records
     problems: tuple[str, ...] = ()
+    data_source: str = ""  # empty: the manifest predates the data record
+    panel: str = ""  # DataRecord.panel_id; empty unless the run read the real panel
 
     @property
     def commit(self) -> str:
         return self.git_sha[:8]
+
+    @property
+    def source(self) -> str:
+        """The recorded source, else ``synthetic``: a manifest without the record was
+        written by a build whose ``harness.build_env`` ran only the generator."""
+        return self.data_source or "synthetic"
 
     @property
     def status(self) -> str:
@@ -165,8 +177,98 @@ def check_artifacts(run_dir: Path, artifacts: Mapping[str, str]) -> tuple[Artifa
     return tuple(checks)
 
 
+def _data_source(raw: Any) -> tuple[str, str]:
+    """``(source, panel id)`` from the manifest's data record; empty for a manifest
+    without one. A record that does not parse keeps the source it names (the manifest
+    check has listed it as a problem), so a broken record never reads as synthetic."""
+    data = _get(raw, "data")
+    if data is None:
+        return "", ""
+    try:
+        record = DataRecord.model_validate(data)
+    except ValidationError:
+        return str(_get(data, "source") or "unreadable"), ""
+    return record.source, record.panel_id
+
+
+GRID_PATTERN = "grid-*.json"  # an orchestrated grid's record, beside its cells
+
+
+@lru_cache(maxsize=64)
+def _grid_index(folder: Path, stamp: tuple[tuple[str, float], ...]) -> dict[str, str]:
+    """``{run id: grid hash}`` for the grid records in ``folder`` (``stamp`` keys the cache)."""
+    out: dict[str, str] = {}
+    for name, _ in stamp:
+        try:
+            raw: Any = json.loads((folder / name).read_text())
+            grid_hash = str(raw["grid_hash"])
+            for cell in raw["cells"]:
+                out.setdefault(str(cell["run_id"]), grid_hash)
+        except (OSError, ValueError, KeyError, TypeError):
+            continue
+    return out
+
+
+def grid_of(run_dir: Path) -> str:
+    """The hash of the orchestrated grid that lists this run as a cell, or empty.
+
+    A grid's cells sit beside its ``grid-<hash>.json``; the pilot and the sweep can share
+    a root, so the record is read rather than the folder name taken.
+    """
+    folder = run_dir.parent
+    try:
+        stamp = tuple(sorted((p.name, p.stat().st_mtime) for p in folder.glob(GRID_PATTERN)))
+    except OSError:
+        return ""
+    return _grid_index(folder, stamp).get(run_dir.name, "") if stamp else ""
+
+
+def _row_stamp(run_dir: Path) -> tuple[tuple[str, int, int], ...]:
+    """What a run's row is read from: each file in the run directory, and the grid and
+    sweep records beside it (its sweep), by name, modification time and size."""
+    out: list[tuple[str, int, int]] = []
+    for folder, keep in ((run_dir, None), (run_dir.parent, True)):
+        try:
+            entries = list(os.scandir(folder))
+        except OSError:
+            continue
+        for e in entries:
+            beside = e.name == SWEEP_FILENAME or (
+                e.name.startswith("grid-") and e.name.endswith(".json")
+            )
+            if keep and not beside:
+                continue
+            try:
+                st = e.stat()
+            except OSError:
+                continue
+            if e.is_file():
+                out.append((f"{'../' if keep else ''}{e.name}", st.st_mtime_ns, st.st_size))
+    return tuple(sorted(out))
+
+
+_ROWS: dict[Path, tuple[tuple[tuple[str, int, int], ...], RunRow]] = {}
+_MAX_ROWS = 4096
+
+
 def load_run_row(run_dir: Path) -> RunRow:
-    """Read one run directory without trusting it: every failure becomes a problem."""
+    """Read one run directory without trusting it: every failure becomes a problem.
+
+    The row is kept while every file it was read from stands (``_row_stamp``), so the
+    index of a few hundred runs is a stat per file rather than a read and a digest each;
+    a file written, replaced or edited is read and checked again."""
+    stamp = _row_stamp(run_dir)
+    held = _ROWS.get(run_dir)
+    if held is not None and held[0] == stamp:
+        return held[1]
+    row = _read_run_row(run_dir)
+    if len(_ROWS) >= _MAX_ROWS:
+        _ROWS.clear()
+    _ROWS[run_dir] = (stamp, row)
+    return row
+
+
+def _read_run_row(run_dir: Path) -> RunRow:
     problems: list[str] = []
     try:
         raw: Any = json.loads((run_dir / MANIFEST_FILENAME).read_text())
@@ -196,6 +298,7 @@ def load_run_row(run_dir: Path) -> RunRow:
         else ()
     )
     seed = _as_int(_get(raw, "config", "seed"))
+    data_source, panel = _data_source(raw)
     return RunRow(
         run_id=str(_get(raw, "run_id") or (record.run_id if record else run_dir.name)),
         path=run_dir,
@@ -212,10 +315,14 @@ def load_run_row(run_dir: Path) -> RunRow:
         t_stat=record.t_stat if record else _as_float(_get(results, "t_stat")),
         mean_cost=record.mean_cost if record else _as_float(_get(results, "mean_cost")),
         mean_trades=record.mean_trades if record else _as_float(_get(results, "mean_trades")),
-        sweep=run_dir.parent.name if (run_dir.parent / SWEEP_FILENAME).exists() else "",
+        sweep=run_dir.parent.name
+        if (run_dir.parent / SWEEP_FILENAME).exists()
+        else grid_of(run_dir),
         digests_ok=all(c.ok for c in checks) if checks else None,
         recorded=tuple(c.path for c in checks),
         problems=tuple(problems),
+        data_source=data_source,
+        panel=panel,
     )
 
 
