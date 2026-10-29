@@ -28,8 +28,8 @@ benchmark misleading.
 ``ppo`` belongs next to ``random``, not ``always_on``, because an untrained policy
 explores close to uniformly. The gap between those two is the training update.
 
-    python scripts/bench.py --steps 20000
-    python scripts/bench.py --steps 20000 --ppo
+    python -m scripts.bench --steps 20000
+    python -m scripts.bench --steps 20000 --ppo
 """
 
 from __future__ import annotations

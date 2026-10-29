@@ -7,6 +7,8 @@ files a sweep leaves behind. The panel builders live in ``dashboard_fixtures``.
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
+from functools import partial
 from pathlib import Path
 
 import pytest
@@ -102,3 +104,25 @@ def _no_shared_data_folder(
     itself; the default (the synced OneDrive folder) is never reached from the suite.
     """
     monkeypatch.setenv("VEGALAB_DATA", str(tmp_path_factory.mktemp("no_shared_data")))
+
+
+# The M4 tests' grids are trained by ``tests/fake_learner.py``. ``optspread.m4analysis`` reads
+# a grid with the rule every reader shares (``sweep.valid_run``), which holds a learned cell
+# to the real learner unless told otherwise; in those modules it is told the stand-in.
+STAND_IN_MODULES = ("test_m4analysis", "test_m4gate", "test_webviews")
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _the_m4_grids_stand_in_learner(request: pytest.FixtureRequest) -> Iterator[None]:
+    if request.module.__name__ not in STAND_IN_MODULES:
+        yield
+        return
+    from fake_learner import fake_trainer
+
+    from optspread import m4analysis
+    from optspread.manifest import callable_name
+    from optspread.sweep import valid_run
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(m4analysis, "valid_run", partial(valid_run, trainer=callable_name(fake_trainer)))
+        yield
