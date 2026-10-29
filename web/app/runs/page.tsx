@@ -2,17 +2,27 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import type { EChartsOption } from "echarts";
-import { Card, Chip, PageHead, Tile, Verdict } from "@/components/Bits";
+import { Card, Chip, PageHead, SelectField, Tile, Verdict } from "@/components/Bits";
 import { Chart } from "@/components/Chart";
+import { RunMixCard } from "@/components/ActionMix";
+import { CompareRuns, histOption } from "@/components/CompareRuns";
+import { Fold, Reading } from "@/components/PageBits";
+import { PremiumView } from "@/components/PremiumView";
+import { RunCatalog } from "@/components/RunCatalog";
+import { AttributionCard, CapitalCard, capitalPending, EquityCard, ReplayControl, ReplayResult, useCapital } from "@/components/RunExtras";
 import { RunTable } from "@/components/RunTable";
+import { InfoTip } from "@/components/InfoTip";
 import { Empty, ErrorBox, Loading } from "@/components/States";
 import ui from "@/components/ui.module.css";
-import { api, type Compare, type RunDetail, type RunFilters, type RunRow } from "@/lib/api";
-import { ARM_LABEL, armColor, axis, base, histBars, type PremiumPoint, premiumChart, type Tokens, useTokens } from "@/lib/chart";
-import { num, pct, short, usd, when } from "@/lib/format";
+import { api, type RunDetail, type RunFilters } from "@/lib/api";
+import { runsApi } from "@/lib/api_runs";
+import { ARM_LABEL, armColor, axis, base, runStamp, SOURCE_LABEL, type Tokens, useTokens } from "@/lib/chart";
+import { num, pct, prem, short, usd, when } from "@/lib/format";
+import { guide } from "@/lib/guide";
 import { useFetch } from "@/lib/useFetch";
+import { setQuery, useHashScroll, useQuery, useQuerySync } from "@/lib/url";
 
 export default function RunsPage() {
   return (
@@ -27,74 +37,24 @@ function Runs() {
   const key = params.get("key");
   const a = params.get("a");
   const b = params.get("b");
-  if (a && b) return <CompareView a={a} b={b} />;
+  if (a && b) return <CompareRuns a={a} b={b} group={params.get("group") ?? undefined} />;
+  if (key === "latest") return <Latest />;
   if (key) return <DetailView runKey={key} />;
-  return <ListView initialQuery={params.get("q") ?? ""} />;
+  return <ListView />;
 }
 
-// ---------------------------------------------------------------- the list
+const FILTER_KEYS = ["policy", "premium", "seed", "config_hash", "commit", "sweep", "source", "q"] as const;
 
-function FilterSelect<T extends string | number>({
-  label,
-  value,
-  options,
-  onChange,
-  render,
-}: {
-  label: string;
-  value: T | "";
-  options: T[];
-  onChange: (v: T | "") => void;
-  render?: (v: T) => string;
-}) {
-  return (
-    <label className={ui.field}>
-      <span className={ui.fieldLabel}>{label}</span>
-      <select
-        className={ui.select}
-        value={String(value)}
-        onChange={(e) => {
-          const raw = e.target.value;
-          if (raw === "") return onChange("");
-          const hit = options.find((o) => String(o) === raw);
-          onChange(hit === undefined ? "" : hit);
-        }}
-      >
-        <option value="">All</option>
-        {options.map((o) => (
-          <option key={String(o)} value={String(o)}>
-            {render ? render(o) : String(o)}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
+function filtersFrom(q: ReturnType<typeof useQuery>): Filters {
+  const n = (k: string) => {
+    const v = q.str(k);
+    return v === "" || !Number.isFinite(Number(v)) ? ("" as const) : Number(v);
+  };
+  return { policy: q.str("policy"), premium: n("premium"), seed: n("seed"), config_hash: q.str("config_hash"), commit: q.str("commit"), sweep: q.str("sweep"), source: q.str("source"), q: q.str("q") };
 }
 
-function runCurves(rows: RunRow[]): Record<string, PremiumPoint[]> {
-  const out: Record<string, PremiumPoint[]> = {};
-  for (const r of rows) {
-    if (r.premium === null || r.mean_pnl === null) continue;
-    (out[r.policy] ??= []).push({ premium: r.premium, mean: r.mean_pnl, se: r.se_pnl, label: `${short(r.config_hash, 10)}-s${r.seed ?? ""}` });
-  }
-  return out;
-}
-
-function ListView({ initialQuery }: { initialQuery: string }) {
-  const t = useTokens();
-  const router = useRouter();
-  const [f, setF] = useState<{ policy: string; premium: number | ""; seed: number | ""; config_hash: string; commit: string; sweep: string; source: string; q: string }>({
-    policy: "",
-    premium: "",
-    seed: "",
-    config_hash: "",
-    commit: "",
-    sweep: "",
-    source: "",
-    q: initialQuery,
-  });
-  const [picked, setPicked] = useState<string[]>([]);
-  const filters: RunFilters = {
+function toApi(f: Filters): RunFilters {
+  return {
     policy: f.policy ? [f.policy] : undefined,
     premium: f.premium !== "" ? [f.premium] : undefined,
     seed: f.seed !== "" ? [f.seed] : undefined,
@@ -104,38 +64,110 @@ function ListView({ initialQuery }: { initialQuery: string }) {
     source: f.source ? [f.source] : undefined,
     q: f.q || undefined,
   };
+}
+
+/** `key=latest` (with any filters): the newest OK run that matches, opened in place. */
+function Latest() {
+  const q = useQuery();
+  const f = filtersFrom(q);
+  const runs = useFetch((s) => api.runs(toApi(f), s), `latest|${JSON.stringify(f)}`);
+  const hit = runs.data?.rows.find((r) => r.status === "OK");
+  useEffect(() => {
+    if (hit) setQuery({ key: hit.key, ...Object.fromEntries(FILTER_KEYS.map((k) => [k, null])) });
+  }, [hit]);
+  if (runs.error) return <ErrorBox what="runs" error={runs.error} onRetry={runs.reload} />;
+  if (runs.data && !hit)
+    return (
+      <Empty title="No run matches">
+        <p>
+          <Link href="/launch/">Launch one</Link> or <Link href="/runs/">browse every run</Link>.
+        </p>
+      </Empty>
+    );
+  return hit ? <DetailView runKey={hit.key} /> : <Loading what="the latest run" />;
+}
+
+// ---------------------------------------------------------------- the list
+
+interface Filters {
+  policy: string;
+  premium: number | "";
+  seed: number | "";
+  config_hash: string;
+  commit: string;
+  sweep: string;
+  source: string;
+  q: string;
+}
+
+function ListView() {
+  const t = useTokens();
+  const router = useRouter();
+  const query = useQuery();
+  const [f, setF] = useState<Filters>(() => filtersFrom(query));
+  useQuerySync({ ...f });
+  const [picked, setPicked] = useState<string[]>([]);
+  const filters = toApi(f);
   const runs = useFetch((s) => api.runs(filters, s), JSON.stringify(f));
+  const premiums = useFetch((s) => runsApi.premiums(filters, s), `premiums|${JSON.stringify(f)}`);
+  const catalog = useFetch((s) => runsApi.catalog(s), "catalog");
   const data = runs.data;
   const facets = data?.facets;
-  const charted = useMemo(() => (data?.rows ?? []).filter((r) => r.status === "OK" && r.premium !== null), [data]);
+  const labels = catalog.data?.available ? catalog.data.labels : undefined;
   const toggle = (k: string) => setPicked((p) => (p.includes(k) ? p.filter((x) => x !== k) : [...p.slice(-1), k]));
+  const filtered = FILTER_KEYS.some((k) => f[k] !== "");
+  const arms = facets?.policies ?? [];
+
+  // in the head and on the table's own card, so it is beside the ticks wherever they are
+  const compareButton = (
+    <button
+      type="button"
+      className={`${ui.btn} ${ui.btnPrimary}`}
+      disabled={picked.length !== 2}
+      {...guide("runs-compare")}
+      onClick={() => router.push(`/runs/?a=${encodeURIComponent(picked[0] ?? "")}&b=${encodeURIComponent(picked[1] ?? "")}`)}
+    >
+      Compare selected ({picked.length}/2)
+    </button>
+  );
 
   return (
     <>
       <PageHead
-        eyebrow="Run browser"
-        title="Runs"
-        right={
-          <button
-            type="button"
-            className={`${ui.btn} ${ui.btnPrimary}`}
-            disabled={picked.length !== 2}
-            onClick={() => router.push(`/runs/?a=${encodeURIComponent(picked[0] ?? "")}&b=${encodeURIComponent(picked[1] ?? "")}`)}
-          >
-            Compare selected ({picked.length}/2)
-          </button>
+        eyebrow="Runs"
+        title="What has each strategy made?"
+        lede={
+          data ? (
+            <>
+              {num(data.trials.n_runs)} runs of {arms.length} arm{arms.length === 1 ? "" : "s"}
+              {catalog.data?.available ? ", grouped below by the question each answers" : ""}. Open one to see its equity, capital, attribution and trades, or tick two to compare them on the same seeds.
+            </>
+          ) : undefined
         }
+        right={compareButton}
       />
+
+      {arms.length ? (
+        <div className={ui.row} aria-label="The arms">
+          {arms.map((a) => (
+            <span key={a} style={{ whiteSpace: "nowrap" }}>
+              <Chip color={armColor(t, a)}>{ARM_LABEL[a] ?? a}</Chip>
+            </span>
+          ))}
+        </div>
+      ) : null}
+
+      {catalog.data?.available && !filtered ? <RunCatalog catalog={catalog.data} /> : null}
 
       <Card>
         <div className={ui.filterBar}>
-          <FilterSelect label="Arm" value={f.policy} options={facets?.policies ?? []} onChange={(v) => setF({ ...f, policy: v })} render={(v) => ARM_LABEL[v] ?? v} />
-          <FilterSelect label="Premium (vol pts)" value={f.premium} options={facets?.premiums ?? []} onChange={(v) => setF({ ...f, premium: v })} />
-          <FilterSelect label="Seed" value={f.seed} options={facets?.seeds ?? []} onChange={(v) => setF({ ...f, seed: v })} />
-          <FilterSelect label="Config hash" value={f.config_hash} options={facets?.config_hashes ?? []} onChange={(v) => setF({ ...f, config_hash: v })} />
-          <FilterSelect label="Commit" value={f.commit} options={facets?.commits ?? []} onChange={(v) => setF({ ...f, commit: v })} />
-          <FilterSelect label="Sweep" value={f.sweep} options={facets?.sweeps ?? []} onChange={(v) => setF({ ...f, sweep: v })} render={(v) => short(v, 12)} />
-          <FilterSelect label="Data source" value={f.source} options={facets?.sources ?? []} onChange={(v) => setF({ ...f, source: v })} />
+          <SelectField label="Arm" all="All" value={f.policy} options={facets?.policies ?? []} onChange={(v) => setF({ ...f, policy: v })} render={(v) => ARM_LABEL[v] ?? v} />
+          <SelectField label="Premium (vol pts)" term="premium" all="All" value={f.premium} options={facets?.premiums ?? []} onChange={(v) => setF({ ...f, premium: v })} />
+          <SelectField label="First seed" term="seed_first" all="All" value={f.seed} options={facets?.seeds ?? []} onChange={(v) => setF({ ...f, seed: v })} />
+          <SelectField label="Config hash" term="config_hash" all="All" value={f.config_hash} options={facets?.config_hashes ?? []} onChange={(v) => setF({ ...f, config_hash: v })} />
+          <SelectField label="Commit" all="All" value={f.commit} options={facets?.commits ?? []} onChange={(v) => setF({ ...f, commit: v })} />
+          <SelectField label="Sweep" all="All" value={f.sweep} options={facets?.sweeps ?? []} onChange={(v) => setF({ ...f, sweep: v })} render={(v) => short(v, 12)} />
+          <SelectField label="Data" all="All" value={f.source} options={facets?.sources ?? []} onChange={(v) => setF({ ...f, source: v })} render={(v) => SOURCE_LABEL[v] ?? v} />
           <label className={ui.field} style={{ flex: 1, minWidth: 200 }}>
             <span className={ui.fieldLabel}>Search run id, hash or commit</span>
             <input className={ui.input} value={f.q} placeholder="e.g. adddb0b7" onChange={(e) => setF({ ...f, q: e.target.value })} />
@@ -146,113 +178,32 @@ function ListView({ initialQuery }: { initialQuery: string }) {
       {runs.error ? <ErrorBox what="runs" error={runs.error} onRetry={runs.reload} /> : null}
       {runs.loading && !data ? <Loading what="runs" /> : null}
 
+      {premiums.data && premiums.data.groups.length ? <PremiumView data={premiums.data} /> : premiums.error ? <ErrorBox what="the premium view" error={premiums.error} onRetry={premiums.reload} /> : null}
+
       {data ? (
-        <>
-          <div className={ui.grid4}>
-            <Tile label="Shown" value={num(data.n_shown)} note={`of ${num(data.trials.n_runs)} runs indexed`} accent />
-            <Tile label="OK" value={num(data.trials.n_ok)} note={`${num(data.trials.n_runs - data.trials.n_ok)} flagged`} />
-            <Tile label="Distinct configs" value={num(data.trials.n_configs)} />
-            <Tile label="Distinct seeds" value={num(data.trials.n_seeds)} />
-          </div>
-
-          {data.rows.length ? (
-            <Card
-              title="Runs"
-              sub="Tick two to compare."
-              source={
-                <>
-                  <code>{data.root}</code>
-                </>
-              }
-            >
-              <RunTable rows={data.rows} selected={picked} onToggle={toggle} />
-            </Card>
-          ) : (
-            <Empty title="No runs match">
-              <p>
-                {data.trials.n_runs ? "Clear a filter." : "No runs yet: "}
-                {data.trials.n_runs ? null : <code>python scripts/oracle_sweep.py --episodes 50</code>}
-              </p>
-            </Empty>
-          )}
-
-          {charted.length > 1 ? (
-            <Card title="Mean P&L against planted premium" sub="OK runs shown above, per arm, ±1 se." source="run.json of each run">
-              <Chart option={premiumChart(t, runCurves(charted))} height={320} label="Mean P&L per episode against the planted premium, by arm" />
-            </Card>
-          ) : null}
-        </>
+        data.rows.length ? (
+          <Card
+            title={`${num(data.n_shown)} of ${num(data.trials.n_runs)} runs`}
+            sub={`${num(data.trials.n_ok)} OK${data.trials.n_runs - data.trials.n_ok ? `, ${num(data.trials.n_runs - data.trials.n_ok)} flagged` : ""} · ${num(data.trials.n_configs)} configs · ${num(data.trials.n_seeds)} first seeds. Tick two to compare.`}
+            source={`Every run directory under the runs root (${data.root}) with a manifest; numbers from each run's run.json, checked against the manifest's digests.`}
+            right={compareButton}
+          >
+            <RunTable rows={data.rows} selected={picked} onToggle={toggle} labels={labels} />
+          </Card>
+        ) : (
+          <Empty title="No runs match">
+            <p>
+              {data.trials.n_runs ? "Clear a filter." : "No runs yet: "}
+              {data.trials.n_runs ? null : <Link href="/launch/">launch one</Link>}
+            </p>
+          </Empty>
+        )
       ) : null}
     </>
   );
 }
 
 // ---------------------------------------------------------------- one run
-
-function histOption(t: Tokens, edges: number[], counts: number[], color: string, name: string, xName = "P&L per episode ($)"): EChartsOption {
-  const width = edges.length > 1 ? (edges[1] ?? 0) - (edges[0] ?? 0) : 1;
-  return {
-    ...base(t),
-    legend: { show: false },
-    tooltip: {
-      ...base(t).tooltip,
-      trigger: "item",
-      formatter: (p: unknown) => {
-        const v = (p as { value: [number, number] }).value;
-        return `${usd(v[0] - width / 2)} to ${usd(v[0] + width / 2)}<br/><b>${v[1]}</b> episode${v[1] === 1 ? "" : "s"}`;
-      },
-    },
-    xAxis: { type: "value", name: xName, nameLocation: "middle", scale: true, ...axis(t) },
-    yAxis: { type: "value", name: "Episodes", nameLocation: "middle", minInterval: 1, ...axis(t), nameGap: 36 },
-    series: [
-      {
-        name,
-        type: "bar",
-        barWidth: "92%",
-        barCategoryGap: 0,
-        itemStyle: { color, borderRadius: [3, 3, 0, 0] },
-        data: histBars(edges, counts),
-        markLine: {
-          symbol: "none",
-          silent: true,
-          lineStyle: { color: t.text2, type: "solid", width: 1 },
-          label: { color: t.muted, formatter: "0" },
-          data: [{ xAxis: 0 }],
-        },
-      },
-    ],
-  };
-}
-
-function equityOption(t: Tokens, d: RunDetail): EChartsOption {
-  const eq = d.equity;
-  if (!eq) return {};
-  const len = Math.max(...eq.paths.map((p) => p.length));
-  const mean = Array.from({ length: len }, (_, i) => {
-    const vals = eq.paths.map((p) => p[i]).filter((v): v is number => v !== undefined);
-    return vals.reduce((s, v) => s + v, 0) / Math.max(vals.length, 1);
-  });
-  const color = armColor(t, d.row.policy);
-  return {
-    ...base(t),
-    legend: { show: false },
-    tooltip: { ...base(t).tooltip, trigger: "axis", formatter: (p: unknown) => `Day ${(p as { dataIndex: number }[])[0]?.dataIndex ?? 0}<br/>mean ${usd(mean[(p as { dataIndex: number }[])[0]?.dataIndex ?? 0])}` },
-    xAxis: { type: "category", data: Array.from({ length: len }, (_, i) => i), name: "Trading day", nameLocation: "middle", ...axis(t), splitLine: { show: false } },
-    yAxis: { type: "value", name: "Cumulative P&L ($)", nameLocation: "middle", ...axis(t), nameGap: 50 },
-    grid: { ...base(t).grid, left: 70 },
-    series: [
-      ...eq.paths.map((p, i) => ({
-        name: `seed ${eq.seeds[i]}`,
-        type: "line" as const,
-        data: p,
-        showSymbol: false,
-        silent: true,
-        lineStyle: { width: 1, color, opacity: 0.18 },
-      })),
-      { name: "mean", type: "line" as const, data: mean, showSymbol: false, lineStyle: { width: 2.5, color: t.text } },
-    ],
-  };
-}
 
 function bySeedOption(t: Tokens, d: RunDetail): EChartsOption {
   const color = armColor(t, d.row.policy);
@@ -271,13 +222,13 @@ function RiskTiles({ d }: { d: RunDetail }) {
   const r = d.risk;
   return (
     <div className={ui.grid4}>
-      <Tile accent label="Mean P&L / episode" value={usd(r.mean)} note={`se ${usd(r.se)} · t ${num(d.row.t_stat, 2)}`} />
-      <Tile label="Sortino" value={num(r.sortino, 2)} />
-      <Tile label="CVaR 5%" value={usd(r.cvar5)} />
-      <Tile label="Max drawdown" value={usd(r.max_drawdown)} note="episodes in seed order" />
-      <Tile label="Hit rate" value={pct(r.hit_rate)} />
+      <Tile label="Mean P&L / episode" value={usd(r.mean)} note={`se ${usd(r.se)} · t ${num(d.row.t_stat, 2)}`} />
+      <Tile label="Sortino" value={num(r.sortino, 2)} note="mean over downside spread" />
+      <Tile label="CVaR 5%" value={usd(r.cvar5)} note="the worst 5% of episodes" />
+      <Tile label="Hit rate" value={pct(r.hit_rate)} note="episodes that made money" />
       <Tile label="Turnover" value={num(r.turnover, 1)} note="trades / episode" />
-      <Tile label="Cost / episode" value={usd(d.row.mean_cost)} />
+      <Tile label="Cost / episode" value={usd(d.row.mean_cost)} note="spread and commission" />
+      <Tile label="Drawdown, seed order" value={usd(r.max_drawdown)} info="drawdown_seed" note="over episodes strung together" />
       <Tile label="Episodes" value={num(r.n)} note={d.episodes.length ? `seeds ${d.episodes[0]?.seed}…${d.episodes[d.episodes.length - 1]?.seed}` : "none recorded"} />
     </div>
   );
@@ -296,7 +247,7 @@ function ManifestCard({ d }: { d: RunDetail }) {
   flatten("", m.config, config);
   return (
     <div className={ui.grid2}>
-      <Card title="Manifest" source={<code>{d.provenance.manifest}</code>}>
+      <Card title="Manifest" source={d.provenance.manifest}>
         <dl className={ui.kv}>
           <dt>Run id</dt>
           <dd className="mono">{d.row.run_id}</dd>
@@ -309,6 +260,12 @@ function ManifestCard({ d }: { d: RunDetail }) {
           </dd>
           <dt>Config hash</dt>
           <dd className="mono">{d.row.config_hash}</dd>
+          <dt>Data source</dt>
+          <dd>
+            {d.row.source}
+            {d.row.panel ? <span className="mono"> · panel {d.row.panel}</span> : null}
+            {d.row.source_recorded ? null : <span className={ui.dim}> (inferred: the manifest predates the source record)</span>}
+          </dd>
           <dt>Schema</dt>
           <dd>v{String(m.schema_version ?? "?")}</dd>
           <dt>Replicas</dt>
@@ -360,7 +317,7 @@ function ManifestCard({ d }: { d: RunDetail }) {
           </table>
         </div>
       </Card>
-      <Card title="Config" source={<code>manifest.json → config</code>}>
+      <Card title="Config" info={"manifest.json → config: every knob the run was made with; its hash is the run's identity."}>
         <div className={ui.tableWrap} style={{ maxHeight: 460, overflow: "auto" }}>
           <table className={ui.table}>
             <tbody>
@@ -378,26 +335,53 @@ function ManifestCard({ d }: { d: RunDetail }) {
   );
 }
 
+/** One sentence on the run: what it made per episode, how sure, and its tail. */
+function runSentence(d: RunDetail): string {
+  const r = d.risk;
+  if (r.mean === null) return "No episodes recorded.";
+  const half = r.se !== null ? 1.96 * r.se : null;
+  const arm = ARM_LABEL[d.row.policy] ?? d.row.policy;
+  const where = d.row.source !== "synthetic" ? "on real SPX history" : `with ${prem(d.row.premium)} vol pt${d.row.premium === 1 ? "" : "s"} planted`;
+  const sure = half === null ? "" : r.mean - half > 0 ? ": clearly positive" : r.mean + half < 0 ? ": clearly negative" : ": not clearly different from zero";
+  return `${arm} ${where} made ${usd(r.mean)} per episode over ${num(r.n)} episodes (95% ${half === null ? "–" : `${usd(r.mean - half)} to ${usd(r.mean + half)}`})${sure}; its worst 5% of episodes average ${usd(r.cvar5)}.`;
+}
+
 function DetailView({ runKey }: { runKey: string }) {
   const t = useTokens();
   const run = useFetch((s) => api.run(runKey, s), runKey);
+  const catalog = useFetch((s) => runsApi.catalog(s), "catalog");
+  useHashScroll(Boolean(run.data));
   if (run.error) return <ErrorBox what={`run ${runKey}`} error={run.error} onRetry={run.reload} />;
   if (!run.data) return <Loading what="the run" />;
-  const d = run.data;
+  return <Detail d={run.data} label={catalog.data?.labels[run.data.row.key] ?? ""} question={catalog.data?.questions[run.data.row.key] ?? ""} t={t} />;
+}
+
+function Detail({ d, label, question, t }: { d: RunDetail; label: string; question: string; t: Tokens }) {
+  const cap = useCapital(d);
+  const stamp = runStamp(d.row);
+  const id = `${short(d.row.config_hash, 16)}-s${d.row.seed ?? "?"}`;
   return (
     <>
       <PageHead
-        eyebrow="Run record"
-        title={`${short(d.row.config_hash, 16)}-s${d.row.seed ?? "?"}`}
+        eyebrow={question ? `Run record · ${question}` : "Run record"}
+        title={label || id}
         lede={
           <>
-            <Chip color={armColor(t, d.row.policy)}>{ARM_LABEL[d.row.policy] ?? d.row.policy}</Chip> planted premium {num(d.row.premium, 1)} vol pts · source{" "}
-            {d.row.source} · created {when(d.row.created_at)}
+            <Chip color={armColor(t, d.row.policy)}>{ARM_LABEL[d.row.policy] ?? d.row.policy}</Chip>{" "}
+            {d.row.source !== "synthetic" ? (
+              <InfoTip term="real">real SPX history</InfoTip>
+            ) : (
+              <>
+                <InfoTip term="premium">planted premium</InfoTip> {prem(d.row.premium)} vol pts
+              </>
+            )}{" "}
+            · {label ? <span className="mono">{id} · </span> : null}created {when(d.row.created_at)}
           </>
         }
         right={
           <>
             <Verdict value={d.row.status} />
+            <ReplayControl d={d} />
             <Link href="/runs/" className={`${ui.btn} ${ui.btnSmall}`}>
               ← All runs
             </Link>
@@ -413,148 +397,41 @@ function DetailView({ runKey }: { runKey: string }) {
           </ul>
         </Card>
       ) : null}
+      <Reading>{runSentence(d)}</Reading>
       <RiskTiles d={d} />
       <div className={ui.grid2}>
-        <Card title="P&L distribution" sub={`${d.risk.n} episodes, net of costs`} source={<code>{d.provenance.results}</code>}>
+        <EquityCard d={d} cap={cap} />
+        <Card
+          title="P&L per episode"
+          sub={`${d.risk.n} episodes, net of costs; the line is zero.`}
+          source={`From ${d.provenance.results}.`}
+        >
           {d.histogram.counts.length ? (
-            <Chart option={histOption(t, d.histogram.edges, d.histogram.counts, armColor(t, d.row.policy), "episodes")} height={300} label="Histogram of per-episode P&L" />
+            <Chart
+              option={histOption(t, d.histogram.edges, d.histogram.counts, armColor(t, d.row.policy), "episodes")}
+              height={300}
+              label="Histogram of per-episode P&L"
+              stamp={stamp}
+              rows={() => d.histogram.counts.map((c, i) => ({ from: d.histogram.edges[i], to: d.histogram.edges[i + 1], episodes: c }))}
+            />
           ) : (
             <Empty title="No episodes recorded" />
           )}
         </Card>
-        <Card
-          title="Equity paths"
-          sub={d.equity ? `${d.equity.paths.length} of ${d.equity.n_recorded} paths, and the mean` : undefined}
-          source={d.equity ? <code>{d.equity.file}</code> : "run schema v1 records per-episode results only"}
-        >
-          {d.equity ? (
-            <Chart option={equityOption(t, d)} height={300} label="Cumulative P&L paths per episode" />
-          ) : (
-            <Empty title="Not recorded for this run" />
-          )}
-        </Card>
       </div>
+      <ReplayResult d={d} />
+      <CapitalCard d={d} cap={cap} />
+      {/* computed one at a time on the server: the capital re-simulation above the fold first */}
+      <AttributionCard d={d} wait={capitalPending(cap)} />
+      <RunMixCard d={d} wait={capitalPending(cap)} />
       {d.episodes.length ? (
-        <Card title="P&L by episode seed" source={<code>{d.provenance.results}</code>}>
-          <Chart option={bySeedOption(t, d)} height={240} label="Per-episode P&L by seed" />
-        </Card>
+        <Fold title="P&L by episode seed" sub="every episode's P&L, in seed order">
+          <Chart option={bySeedOption(t, d)} height={240} label="Per-episode P&L by seed" stamp={stamp} rows={() => d.episodes.map((e) => ({ ...e }))} />
+        </Fold>
       ) : null}
-      <ManifestCard d={d} />
-    </>
-  );
-}
-
-// ---------------------------------------------------------------- compare
-
-function CompareView({ a, b }: { a: string; b: string }) {
-  const t = useTokens();
-  const cmp = useFetch((s) => api.compare(a, b, s), `${a}|${b}`);
-  if (cmp.error) return <ErrorBox what="the comparison" error={cmp.error} onRetry={cmp.reload} />;
-  if (!cmp.data) return <Loading what="the comparison" />;
-  const c: Compare = cmp.data;
-  const seeds = c.a.episodes.map((e) => e.seed);
-  const bySeedB = new Map(c.b.episodes.map((e) => [e.seed, e.pnl]));
-  const option: EChartsOption = {
-    ...base(t),
-    xAxis: { type: "category", data: seeds, name: "Episode seed", nameLocation: "middle", ...axis(t), splitLine: { show: false } },
-    yAxis: { type: "value", name: "P&L ($)", nameLocation: "middle", ...axis(t), nameGap: 50 },
-    grid: { ...base(t).grid, left: 70 },
-    series: [
-      { name: `A · ${ARM_LABEL[c.a.row.policy] ?? c.a.row.policy}`, type: "line", data: c.a.episodes.map((e) => e.pnl), symbolSize: 6, lineStyle: { width: 1.5, color: t.s1 }, itemStyle: { color: t.s1 } },
-      { name: `B · ${ARM_LABEL[c.b.row.policy] ?? c.b.row.policy}`, type: "line", data: seeds.map((s) => bySeedB.get(s) ?? null), symbolSize: 6, lineStyle: { width: 1.5, color: t.s2 }, itemStyle: { color: t.s2 } },
-    ],
-  };
-  const side = (label: string, d: RunDetail) => (
-    <Card
-      title={
-        <>
-          {label} · <Link href={`/runs/?key=${encodeURIComponent(d.row.key)}`} className="mono">{short(d.row.config_hash, 12)}-s{d.row.seed}</Link>
-        </>
-      }
-      right={<Verdict value={d.row.status} />}
-      source={<code>{d.provenance.run_dir}</code>}
-    >
-      <dl className={ui.kv}>
-        <dt>Arm</dt>
-        <dd>{ARM_LABEL[d.row.policy] ?? d.row.policy}</dd>
-        <dt>Premium</dt>
-        <dd>{num(d.row.premium, 1)} vol pts</dd>
-        <dt>Mean P&L</dt>
-        <dd>
-          {usd(d.risk.mean)} (se {usd(d.risk.se)})
-        </dd>
-        <dt>Sortino</dt>
-        <dd>{num(d.risk.sortino, 2)}</dd>
-        <dt>CVaR 5%</dt>
-        <dd>{usd(d.risk.cvar5)}</dd>
-        <dt>Max drawdown</dt>
-        <dd>{usd(d.risk.max_drawdown)}</dd>
-        <dt>Turnover</dt>
-        <dd>{num(d.risk.turnover, 1)} trades/ep</dd>
-        <dt>Commit</dt>
-        <dd className="mono">{d.row.commit}</dd>
-      </dl>
-    </Card>
-  );
-  return (
-    <>
-      <PageHead
-        eyebrow="Compare"
-        title="Paired on shared seeds"
-        right={
-          <Link href="/runs/" className={`${ui.btn} ${ui.btnSmall}`}>
-            ← All runs
-          </Link>
-        }
-      />
-      <div className={ui.grid4}>
-        <Tile accent label="Mean of B − A" value={usd(c.diff_mean)} note={`se ${usd(c.diff_se)}`} />
-        <Tile label="Paired t" value={num(c.diff_t, 2)} />
-        <Tile label="Shared seeds" value={num(c.shared_seeds)} note={`A has ${c.a.episodes.length}, B has ${c.b.episodes.length}`} />
-        <Tile label="Config fields that differ" value={num(c.config_diff.length)} />
-      </div>
-      <div className={ui.grid2}>
-        {side("A", c.a)}
-        {side("B", c.b)}
-      </div>
-      <div className={ui.grid2}>
-        <Card title="P&L by seed">
-          <Chart option={option} height={300} label="Per-seed P&L of both runs" />
-        </Card>
-        <Card title="Paired differences" sub="B − A per shared seed.">
-          {c.diff_histogram.counts.length ? (
-            <Chart option={histOption(t, c.diff_histogram.edges, c.diff_histogram.counts, t.s4, "differences", "B − A per seed ($)")} height={300} label="Histogram of paired differences" />
-          ) : (
-            <Empty title="No shared seeds" />
-          )}
-        </Card>
-      </div>
-      <Card title="What differs">
-        {c.config_diff.length ? (
-          <div className={ui.tableWrap}>
-            <table className={ui.table}>
-              <thead>
-                <tr>
-                  <th>Field</th>
-                  <th>A</th>
-                  <th>B</th>
-                </tr>
-              </thead>
-              <tbody>
-                {c.config_diff.map((r) => (
-                  <tr key={r.key}>
-                    <td className="mono">{r.key}</td>
-                    <td>{JSON.stringify(r.a)}</td>
-                    <td>{JSON.stringify(r.b)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <Empty title="Identical configs" />
-        )}
-      </Card>
+      <Fold title="Provenance" sub="the manifest, its digests and the config">
+        <ManifestCard d={d} />
+      </Fold>
     </>
   );
 }

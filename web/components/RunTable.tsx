@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { RunRow } from "@/lib/api";
 import { ARM_LABEL, armColor, useTokens } from "@/lib/chart";
-import { num, short, usd, when } from "@/lib/format";
+import { num, prem, short, usd, when } from "@/lib/format";
+import { guide } from "@/lib/guide";
 import { Chip, Verdict } from "./Bits";
+import { InfoTip } from "./InfoTip";
 import ui from "./ui.module.css";
 
 type Key = "created_at" | "policy" | "premium" | "seed" | "n_episodes" | "mean_pnl" | "se_pnl" | "t_stat" | "mean_cost" | "mean_trades" | "status";
@@ -36,9 +38,12 @@ export function RunTable({
   compact,
   selected,
   onToggle,
+  labels,
 }: {
   rows: RunRow[];
   compact?: boolean;
+  /** What each run is, by key (a runs root's catalog.json); shown under its id. */
+  labels?: Record<string, string>;
   /** Keys picked for a compare; a checkbox column appears when onToggle is given. */
   selected?: string[];
   onToggle?: (key: string) => void;
@@ -47,6 +52,8 @@ export function RunTable({
   const [sort, setSort] = useState<{ key: Key; dir: 1 | -1 }>({ key: "created_at", dir: -1 });
   const sorted = useMemo(() => [...rows].sort((a, b) => sort.dir * cmp(a[sort.key], b[sort.key])), [rows, sort]);
   const cols = compact ? COLUMNS.filter((c) => !["se_pnl", "mean_cost", "mean_trades"].includes(c.key)) : COLUMNS;
+  // a column with one value says nothing: the commit when every run shares it
+  const commits = !compact && new Set(rows.map((r) => r.commit)).size > 1;
 
   const head = (c: (typeof COLUMNS)[number]) => (
     <th key={c.key} className={c.num ? ui.num : undefined} aria-sort={sort.key === c.key ? (sort.dir === 1 ? "ascending" : "descending") : "none"}>
@@ -65,7 +72,7 @@ export function RunTable({
             {onToggle ? <th aria-label="Compare" /> : null}
             <th>Run</th>
             {cols.map(head)}
-            {compact ? null : <th>Commit</th>}
+            {commits ? <th>Commit</th> : null}
           </tr>
         </thead>
         <tbody>
@@ -75,24 +82,32 @@ export function RunTable({
               <tr key={r.key} className={picked ? ui.rowSelected : undefined}>
                 {onToggle ? (
                   <td>
-                    <input type="checkbox" aria-label={`Compare ${r.run_id}`} checked={picked} onChange={() => onToggle(r.key)} />
+                    <input type="checkbox" aria-label={`Compare ${r.run_id}`} checked={picked} onChange={() => onToggle(r.key)} {...guide(`runs-pick-${r.key}`)} />
                   </td>
                 ) : null}
                 <td>
-                  <Link href={`/runs/?key=${encodeURIComponent(r.key)}`} className="mono" title={r.key}>
+                  <Link href={`/runs/?key=${encodeURIComponent(r.key)}`} className="mono" title={r.key} {...guide("runs-open")}>
                     {short(r.config_hash, 10)}-s{r.seed ?? "?"}
                   </Link>
+                  {labels?.[r.key] ? <div style={{ fontSize: 12.5 }}>{labels[r.key]}</div> : null}
                   {r.sweep ? <div className={ui.dim} style={{ fontSize: 12 }}>sweep {short(r.sweep, 10)}</div> : null}
+                  {r.source !== "synthetic" && r.source ? <div className={ui.dim} style={{ fontSize: 12 }}>real SPX</div> : null}
                 </td>
                 {cols.map((c) => {
                   const v = r[c.key];
                   let cell: React.ReactNode;
                   if (c.key === "created_at") cell = <span className={ui.dim}>{when(r.created_at)}</span>;
-                  else if (c.key === "policy") cell = <Chip color={armColor(t, r.policy)}>{ARM_LABEL[r.policy] ?? (r.policy || "–")}</Chip>;
+                  else if (c.key === "policy")
+                    cell = (
+                      <span style={{ whiteSpace: "nowrap" }}>
+                        <Chip color={armColor(t, r.policy)}>{ARM_LABEL[r.policy] ?? (r.policy || "–")}</Chip>
+                      </span>
+                    );
                   else if (c.key === "status") cell = <Verdict value={r.status} />;
                   else if (c.key === "mean_pnl" || c.key === "se_pnl" || c.key === "mean_cost") cell = usd(v as number | null);
                   else if (c.key === "t_stat") cell = num(v as number | null, 2);
-                  else if (c.key === "premium" || c.key === "mean_trades") cell = num(v as number | null, 1);
+                  else if (c.key === "premium") cell = prem(v as number | null);
+                  else if (c.key === "mean_trades") cell = num(v as number | null, 1);
                   else cell = num(v as number | null);
                   return (
                     <td key={c.key} className={c.num ? ui.num : undefined}>
@@ -100,7 +115,7 @@ export function RunTable({
                     </td>
                   );
                 })}
-                {compact ? null : (
+                {!commits ? null : (
                   <td className="mono" title={r.git_sha}>
                     {r.commit || "–"}
                     {r.git_dirty ? <span className={ui.dim}> +dirty</span> : null}
