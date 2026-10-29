@@ -9,8 +9,10 @@ The scripted arms have no training variance, so their curve along the premium ax
 (decision D2) is the oracle the M2 power curve is read against: how many dollars of
 mean P&L one planted vol point is worth to a seller. Cells land under
 ``<root>/<sweep hash>/<run id>/`` as ordinary run directories, and a second run with
-the same arguments reads them back instead of recomputing. Costs are on. Every number
-is synthetic.
+the same arguments reads them back instead of recomputing. Costs are on. On the generator
+(the default) every number is synthetic; ``--source optionmetrics`` evaluates every
+cell on the real panel's ``eval`` split (pre-registration A8) instead, under
+``<root>/optionmetrics``.
 """
 
 from __future__ import annotations
@@ -20,7 +22,9 @@ import sys
 from pathlib import Path
 from typing import cast, get_args
 
+from optspread.cli import add_source_arguments, chosen_source, describe
 from optspread.config import CostConfig, PolicyName, RunConfig, config_hash
+from optspread.orchestrate import source_root
 from optspread.sweep import SweepConfig, run_sweep
 
 POLICY_NAMES: tuple[str, ...] = get_args(PolicyName)
@@ -35,7 +39,9 @@ def main() -> int:
         "--arms", nargs="+", choices=POLICY_NAMES, default=["flat", "always_on", "delta_seller"]
     )
     parser.add_argument("--root", type=Path, default=Path("runs") / "sweeps")
+    add_source_arguments(parser)
     args = parser.parse_args()
+    source = chosen_source(parser, args)
 
     arms = cast(tuple[PolicyName, ...], tuple(str(a) for a in args.arms))
     sweep = SweepConfig(
@@ -45,10 +51,10 @@ def main() -> int:
         premiums=tuple(float(p) for p in args.premiums),
         arms=arms,
     )
-    root = Path(args.root) / config_hash(sweep)
-    record = run_sweep(sweep, root)
+    root = source_root(Path(args.root), source) / config_hash(sweep)
+    record = run_sweep(sweep, root, source=source)
     print(record.render())
-    print(f"cells under {root} (synthetic; costs on)")
+    print(f"cells under {root} ({describe(source)}; costs on)")
     return 0
 
 
