@@ -8,7 +8,8 @@ Three layers, plus a floor for the detector itself:
    chain at ``t`` must not move (``perturbation_check``). Needs the per-step
    stream contract in ``optspread.rng``.
 2. Structural invariants: ordered strikes and expiries, positive vols,
-   no-arbitrage bounds and put-call parity (``chain_violations``).
+   no-arbitrage bounds, put-call parity, and no calendar arbitrage: total implied
+   variance non-decreasing in tenor (``chain_violations``).
 3. Poisoned environment: ``PoisonedChainProvider`` contaminates the spot shown
    at ``t`` with ``eps`` times the return into ``t+1``. The perturbation check
    catches it exactly (the chain at ``t`` now moves when stream ``t+1`` is
@@ -45,7 +46,7 @@ from optspread.market import SyntheticChainProvider
 from optspread.policies import Policy, RandomPolicy
 from optspread.pricing import bs_price
 from optspread.rng import SeededStepRNG, SplicedStepRNG, StepRNG
-from optspread.types import Chain, ChainProvider
+from optspread.types import Chain, ChainProvider, FloatArray
 
 PASS_CRITERION = """A run of the leak suite passes when all three hold:
 
@@ -148,7 +149,104 @@ def chain_violations(chain: Chain, tol: float = 1e-6) -> list[str]:
             out.append(f"put bounds violated at expiry row {row}")
         if np.any(np.abs(C - P - (chain.spot - chain.strikes * disc)) > tol):
             out.append(f"put-call parity violated at expiry row {row}")
+    out += calendar_violations(chain)
     return out
+
+
+# Calendar arbitrage. Bounds and parity price each expiry row from its own IVs, so
+# they hold for any positive vol and cannot see one row against another: a 60%
+# 21-day row over a 15% 42-day row passes both, though its ATM call costs more than
+# the 42-day one (#29). The condition that can is on total implied variance,
+# w = sigma^2 T: a call's price over spot is a function of forward log-moneyness
+# k = ln(K / F_T) and w alone, so a longer call is worth at least a shorter one at
+# the same k exactly when w(k, T) is non-decreasing in T (Gatheral and Jacquier,
+# "Arbitrage-free SVI volatility surfaces", 2014, Lemma 2.1). It is read at fixed k,
+# not fixed strike, because the engine's forward S e^{rT} moves with T: at r = 4% the
+# same strike sits 0.0033 lower in k at 42 days than at 21, and a real carry can have
+# either sign.
+#
+# The tolerance has two parts. CALENDAR_ATOL covers rounding: w is a product of
+# float64s no larger than about 20 (a 300% vol at two years), so its error is a few
+# 1e-15, and a source whose forward variance is exactly zero between two tenors, the
+# legal boundary, must still pass. In price terms 1e-12 of w moves a 21-day ATM SPX
+# call by about 2e-8 points, below the 1e-6 the bounds and parity checks allow. The
+# second part is the interpolation the check itself does: the strike that is k on the
+# shorter row falls between two strikes of the longer row, which is read linearly. A
+# row that bends by a slope change J between two strikes h apart is misread at x from
+# one of them by at most J x (h - x) / h, so each comparison allows that, with J the
+# change in slope the row shows at the two bracketing strikes. On a smile that is flat
+# in k (the synthetic world) it is zero; on a skewed real smile it is about 1e-5 of w,
+# against the 0.026 the #29 surface falls by.
+CALENDAR_ATOL = 1e-12
+
+
+def total_variance(chain: Chain) -> FloatArray:
+    """``sigma^2 T`` per (expiry row, strike), in years at the chain's day count."""
+    taus = np.array([chain.tau(int(e)) for e in chain.expiry_days], dtype=np.float64)
+    return np.asarray(chain.ivs * chain.ivs * taus[:, None], dtype=np.float64)
+
+
+def _interpolation_slack(xs: FloatArray, ys: FloatArray, at: FloatArray) -> FloatArray:
+    """Bound on the error of reading ``ys`` linearly at ``at``: J x (h - x) / h per point."""
+    if xs.size < 3:
+        return np.zeros_like(at)
+    slopes = np.diff(ys) / np.diff(xs)
+    bend = np.abs(np.diff(slopes))  # slope change at each interior strike
+    bend = np.concatenate(([bend[0]], bend, [bend[-1]]))  # an end strike borrows its neighbour's
+    j = np.clip(np.searchsorted(xs, at, side="right") - 1, 0, xs.size - 2)
+    h = xs[j + 1] - xs[j]
+    x = np.clip(at - xs[j], 0.0, h)
+    return np.asarray((bend[j] + bend[j + 1]) * x * (h - x) / h, dtype=np.float64)
+
+
+def calendar_violations(chain: Chain, atol: float = CALENDAR_ATOL) -> list[str]:
+    """Total implied variance must not fall from one listed expiry to the next.
+
+    Compared per strike of the shorter row, at that strike's forward moneyness on the
+    longer row, which is read linearly between its own strikes; a strike whose
+    moneyness lies beyond the longer row's last strike is not compared rather than
+    extrapolated. One line per offending pair of rows, naming the worst strike and
+    the shortfall in total variance. The tolerance is argued at ``CALENDAR_ATOL``.
+    """
+    out: list[str] = []
+    w = total_variance(chain)
+    log_k = np.log(chain.strikes / chain.spot)
+    for row in range(chain.n_expiries - 1):
+        near, far = int(chain.expiry_days[row]), int(chain.expiry_days[row + 1])
+        k_near = log_k - chain.r * chain.tau(near)
+        k_far = log_k - chain.r * chain.tau(far)
+        w_far = np.interp(k_near, k_far, w[row + 1])
+        slack = atol + _interpolation_slack(k_far, w[row + 1], k_near)
+        shortfall = w[row] - w_far
+        inside = (k_near >= k_far[0]) & (k_near <= k_far[-1])
+        bad = inside & (shortfall > slack)
+        if not bad.any():
+            continue
+        i = int(np.argmax(np.where(bad, shortfall, -np.inf)))
+        out.append(
+            f"calendar arbitrage between expiry rows {row} and {row + 1} "
+            f"({near - chain.t}d to {far - chain.t}d): total variance falls at "
+            f"{int(bad.sum())} of {int(inside.sum())} strikes, worst at strike "
+            f"{chain.strikes[i]:g} by {shortfall[i]:.3g} ({w[row, i]:.4g} to {w_far[i]:.4g})"
+        )
+    return out
+
+
+def calendar_control(chain: Chain, near_vol: float = 0.60, far_vol: float = 0.15) -> Chain:
+    """The surface of #29 on ``chain``'s grid: the first row at ``near_vol``, the rest at
+    ``far_vol``. It clears bounds and parity, and is calendar arbitrage whenever
+    ``far_vol^2 T_far < near_vol^2 T_near``. The positive control for the check above."""
+    ivs = np.full_like(chain.ivs, far_vol)
+    ivs[0] = near_vol
+    return Chain(
+        chain.t,
+        chain.spot,
+        chain.r,
+        chain.strikes,
+        chain.expiry_days,
+        ivs,
+        chain.trading_days_per_year,
+    )
 
 
 def sequence_violations(chains: Sequence[Chain]) -> list[str]:

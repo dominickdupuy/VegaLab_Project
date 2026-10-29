@@ -24,6 +24,19 @@ jobs:
       - run: pip install -e ".[dev,dashboard]"
       - run: mypy --strict optspread scripts
       - run: pytest tests/ --cov=optspread --cov-report=term-missing --cov-fail-under=85
+  check-train:
+    # the learner, which scripts/reproduce.py and the README's quick start install: mypy
+    # --strict must pass with Stable-Baselines3's own types too, and the PPO tests run
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - run: pip install -e ".[dev,train]"
+      - run: mypy --strict optspread scripts
+      - run: pytest tests/test_ppo.py tests/test_train.py tests/test_jobs.py
   web:
     runs-on: ubuntu-latest
     defaults:

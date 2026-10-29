@@ -2,7 +2,7 @@
 
 Lane: Hemdutt Rao (market layer).
 
-    python scripts/cost_drag.py --episodes 40
+    python -m scripts.cost_drag --episodes 40
 """
 
 from __future__ import annotations

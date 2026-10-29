@@ -2,7 +2,7 @@
 
 Lane: Hemdutt Rao (market layer).
 
-    python scripts/wave0_gate.py --episodes 200
+    python -m scripts.wave0_gate --episodes 200
 """
 
 from __future__ import annotations

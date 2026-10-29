@@ -10,10 +10,10 @@ tagged; and the dashboard run browser and gate board live on real manifests.
 Week 6 (issue #3, W6-4) adds the real data adapter.
 
 Each function returns a ``GateItem`` and never raises for a missing deliverable.
-Three of them depend on code being written in parallel (the PPO harness and replay,
-W6-5; the dashboard, W6-6), so each imports what it needs by the names below and
-reads NOT CLEARED with the import that failed when it is absent. Wiring the real
-modules in is a matter of changing a name here, not the logic.
+Three of them read code from other lanes (the PPO harness and replay, W6-5; the
+dashboard, W6-6), written beside this module in week 6 and present since, so each
+imports what it needs by the names below and reads NOT CLEARED with the import that
+failed when it is absent.
 
 The pre-registration convention: the confirmatory analysis is fixed by the
 earliest annotated or lightweight tag matching ``prereg-*`` (``prereg-m2`` at the
@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import importlib
 import subprocess
+import zipfile
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
@@ -40,7 +41,7 @@ from optspread.artifacts import RUN_FILENAME
 from optspread.data import conformance_suite
 from optspread.gatereport import GateItem
 from optspread.manifest import MANIFEST_FILENAME, IncompleteManifestError, RunManifest, file_sha256
-from optspread.orchestrate import PILOT_MATRIX, PILOT_ORACLE_MATRIX, read_grid
+from optspread.orchestrate import PILOT_MATRIX, PILOT_ORACLE_MATRIX, GridRecord, read_grid
 from optspread.power import (
     VarianceComponents,
     detectable_effect_t,
@@ -48,6 +49,7 @@ from optspread.power import (
     variance_components,
 )
 from optspread.sweep import changed_artifacts
+from optspread.train import POLICY_FILENAME
 from optspread.validation import (
     DEFAULT_CASE,
     DEFAULT_DELTAS,
@@ -60,17 +62,23 @@ from optspread.validation import (
     validate_pipeline,
 )
 
-# -- the names the parallel work is expected to land under ------------------- #
+# -- the names the other lanes' modules are imported under -------------------- #
 
 TRAIN_MODULE = "optspread.train"
 TRAIN_FUNCTION = "train_ppo"
+# What a PPO run trained by the real learner records as its trainer (#31).
+REAL_TRAINER = f"{TRAIN_MODULE}.{TRAIN_FUNCTION}"
+# A member of every archive Stable-Baselines3 saves, which no stand-in learner writes.
+SB3_ARCHIVE_MEMBER = "_stable_baselines3_version"
 # () -> record with .values, .hash, .library_version, .matches_library, .differences (D3)
 HYPERPARAMETERS = "frozen_hyperparameters"
 REPLAY_MODULE = "optspread.replay"
 REPLAY_FUNCTION = "replay_matches"  # (run_dir: Path) -> (matches, reason)
 DASHBOARD_MODULE = "optspread.dashboard_data"
 RUNS_FUNCTION = "scan_runs"  # (runs_root: Path) -> rows with .path, one per manifest.json
-GATES_FUNCTION = "load_gate_boards"  # (docs_dir: Path) -> boards with .source, one per report
+# (docs_dir: Path) -> boards with .source, .milestone, .stated_verdict (what the file says)
+# and .verdict (what its items support), one per report
+GATES_FUNCTION = "load_gate_boards"
 
 # The pilot's floor on its own size: below these the components are too noisy to plan on.
 PILOT_MIN_SEEDS = 5
@@ -135,9 +143,39 @@ def is_trained(manifest: RunManifest) -> bool:
     """A PPO run: the config names the learned arm and carries its training config.
 
     Library versions are no evidence: ``library_versions`` records torch and
-    Stable-Baselines3 in every manifest written where they are installed.
+    Stable-Baselines3 in every manifest written where they are installed. Nor is this
+    evidence that the real learner trained it: see ``not_real_learner``.
     """
     return manifest.config.policy == "ppo" and manifest.config.train is not None
+
+
+def not_real_learner(run_dir: Path, manifest: RunManifest) -> str:
+    """Why the PPO run at ``run_dir`` is not evidence of the real learner; "" when it is.
+
+    A test's stand-in trains a "PPO" run with the same config, and so the same run id,
+    as the real learner, so the config cannot tell them apart (#31). The manifest
+    names its trainer, and only ``REAL_TRAINER`` counts. A manifest written before the
+    trainer was recorded counts when the policy it hashed is a Stable-Baselines3
+    archive, which only the real learner saves.
+    """
+    if manifest.trainer is not None:
+        if manifest.trainer == REAL_TRAINER:
+            return ""
+        return f"{manifest.run_id} was trained by {manifest.trainer}, not {REAL_TRAINER}"
+    policy = run_dir / POLICY_FILENAME
+    recorded = manifest.artifacts.get(POLICY_FILENAME)
+    if recorded is None or not policy.is_file() or recorded != file_sha256(policy):
+        return f"{manifest.run_id} records no trainer and no {POLICY_FILENAME} to tell by"
+    try:
+        with zipfile.ZipFile(policy) as archive:
+            if SB3_ARCHIVE_MEMBER in archive.namelist():
+                return ""
+    except (OSError, zipfile.BadZipFile):
+        pass
+    return (
+        f"{manifest.run_id} records no trainer and its {POLICY_FILENAME} is not a "
+        "Stable-Baselines3 archive"
+    )
 
 
 # -- Ilan Danial: harness, replay, dashboard --------------------------------- #
@@ -146,7 +184,9 @@ PPO_CRITERION = (
     f"{TRAIN_MODULE} exposes a {TRAIN_FUNCTION} entry point and one pinned "
     f"{HYPERPARAMETERS} record (D3) whose values equal the installed Stable-Baselines3 "
     "defaults (its matches_library is True; not installed is not a pass); and at least one "
-    "PPO run (policy ppo with a training config) under the runs root has a valid manifest"
+    "PPO run (policy ppo with a training config) under the runs root has a valid manifest "
+    f"naming {REAL_TRAINER} as its trainer (one written before the trainer was recorded: "
+    "a Stable-Baselines3 policy.zip under its digest); a stand-in learner's run is not one"
 )
 
 
@@ -172,22 +212,33 @@ def ppo_harness_item(runs_root: Path) -> GateItem:
         differences = ", ".join(str(d) for d in getattr(record, "differences", ())) or "?"
         why = f"the pinned set differs from the stable-baselines3 {version} defaults: {differences}"
         return _not_cleared(name, ILAN, PPO_CRITERION, pinned_text, why)
-    trained = [m for _, m in results_runs(runs_root) if is_trained(m)]
+    trained = [(d, m) for d, m in results_runs(runs_root) if is_trained(m)]
+    refused = [why for why in (not_real_learner(d, m) for d, m in trained) if why]
     evidence = (
-        f"{pinned_text}, equal to the stable-baselines3 {version} defaults; {len(trained)} "
-        f"PPO run(s) under {runs_root}"
+        f"{pinned_text}, equal to the stable-baselines3 {version} defaults; "
+        f"{len(trained) - len(refused)} PPO run(s) by {REAL_TRAINER} under {runs_root}"
     )
+    if refused:
+        evidence += f" ({len(refused)} more by another trainer, or by none recorded)"
     if not trained:
         why = f"no PPO run with a valid manifest under {runs_root}"
+        return _not_cleared(name, ILAN, PPO_CRITERION, evidence, why)
+    if len(refused) == len(trained):
+        why = f"no PPO run under {runs_root} was trained by the real learner: {refused[0]}"
         return _not_cleared(name, ILAN, PPO_CRITERION, evidence, why)
     return GateItem(name, ILAN, PPO_CRITERION, evidence, passed=True)
 
 
+# What the replay does, not more (#31): run.json is regenerated and compared; the other
+# recorded artifacts are checked for tampering. A retrained policy is not compared with
+# the saved policy.zip, because only the episodes it produces are the run's numbers.
 REPLAY_CRITERION = (
     f"{REPLAY_MODULE}.{REPLAY_FUNCTION} re-runs a recorded run from its manifest (config "
-    "hash and seed) and reproduces every artifact digest the manifest records; one PPO run "
-    "and one scripted run are replayed when both kinds are under the runs root, at least "
-    "one run in any case"
+    "hash and seed, retraining a PPO arm) and regenerates its run.json byte for byte equal "
+    "to the file on disk; every other artifact the manifest records (a PPO run's "
+    "policy.zip) must still match its recorded digest, a check for tampering, and is not "
+    "regenerated; one PPO run and one scripted run are replayed when both kinds are under "
+    "the runs root, at least one run in any case"
 )
 
 
@@ -229,7 +280,10 @@ def replay_item(runs_root: Path) -> GateItem:
             (bool(result[0]), str(result[1])) if isinstance(result, tuple) else (bool(result), "")
         )
         if not matched:
-            reason = reason or "a replayed artifact digest differs from its manifest"
+            reason = reason or (
+                "the regenerated run.json differs from the file on disk, or a recorded "
+                "artifact from its digest"
+            )
             return _not_cleared(
                 name,
                 ILAN,
@@ -241,7 +295,7 @@ def replay_item(runs_root: Path) -> GateItem:
     counts = ", ".join(f"{len(v)} {k}" for k, v in kinds.items())
     evidence = (
         f"replayed {' and '.join(replayed)} of {len(runs)} runs ({counts}) under {runs_root}; "
-        "digests match"
+        "run.json regenerated byte for byte, every recorded digest unchanged"
     )
     absent = [k for k, v in kinds.items() if not v]
     if absent:
@@ -253,7 +307,8 @@ DASHBOARD_CRITERION = (
     f"the dashboard's data layer ({DASHBOARD_MODULE}.{RUNS_FUNCTION} and {GATES_FUNCTION}) "
     "lists every run directory under the runs root that has a valid manifest recording "
     "its run.json, of which there is at least one, and reads every gate report JSON "
-    "sidecar under docs/"
+    "sidecar under docs/, every board's stated verdict agreeing with the one its items "
+    "support"
 )
 
 
@@ -270,7 +325,16 @@ def dashboard_item(runs_root: Path, docs_dir: Path) -> GateItem:
     sidecars = sorted(docs_dir.glob("*_GATE_REPORT.json"))
     try:
         listed = {Path(row.path).resolve() for row in scan(runs_root)}
-        read = {Path(board.source).resolve() for board in load_boards(docs_dir)}
+        boards = list(load_boards(docs_dir))
+        read = {Path(board.source).resolve() for board in boards}
+        # A board whose file states a verdict its items do not support (#31): the board
+        # shows the derived one, but a report saying PASS over a failing item is a finding.
+        mismatched = [
+            f"{board.milestone} states {board.stated_verdict} where its items support "
+            f"{board.verdict}"
+            for board in boards
+            if board.stated_verdict != board.verdict
+        ]
     except Exception as exc:
         return _not_cleared(
             name, ILAN, DASHBOARD_CRITERION, "the data layer was called", f"it raised {exc!r}"
@@ -280,7 +344,9 @@ def dashboard_item(runs_root: Path, docs_dir: Path) -> GateItem:
     evidence = (
         f"run browser lists {len(runs) - len(unlisted)} of {len(runs)} valid manifests under "
         f"{runs_root} ({len(listed)} rows in all); gate board reads "
-        f"{len(sidecars) - len(unread)} of {len(sidecars)} sidecars"
+        f"{len(sidecars) - len(unread)} of {len(sidecars)} sidecars, "
+        f"{len(boards) - len(mismatched)} of {len(boards)} boards stating the verdict "
+        "their items support"
     )
     if not runs:
         why = f"no valid run manifest under {runs_root}: nothing real to browse"
@@ -288,6 +354,8 @@ def dashboard_item(runs_root: Path, docs_dir: Path) -> GateItem:
         why = f"the run browser does not list {len(unlisted)} valid run(s): {', '.join(unlisted)}"
     elif unread:
         why = f"the gate board does not read {', '.join(unread)}"
+    elif mismatched:
+        why = f"a gate report's stated verdict is not its items': {'; '.join(mismatched)}"
     else:
         return GateItem(name, ILAN, DASHBOARD_CRITERION, evidence, passed=True)
     return _not_cleared(name, ILAN, DASHBOARD_CRITERION, evidence, why)
@@ -325,7 +393,9 @@ PILOT_CRITERION = (
     f"the pilot's S x N contrast matrices ({PILOT_MATRIX}, PPO at the pilot premium minus "
     f"PPO at zero, and {PILOT_ORACLE_MATRIX}, the fixed-delta seller's same contrast; the "
     "pre-registered detection event of #26) sit beside a valid manifest that records both "
-    "digests and whose config is the PPO arm with its training config; "
+    "digests and whose config is the PPO arm with its training config, trained by "
+    f"{REAL_TRAINER} (the manifest's trainer, or for a pilot written before it was "
+    "recorded, every PPO cell of its grid record by the harness item's rule); "
     f"S >= {PILOT_MIN_SEEDS}, N >= {PILOT_MIN_EPISODES}, every entry finite, N equal to the "
     "manifest's n_episodes and S to the grid's seed count where the grid record is present; "
     "tau^2 and sigma^2 of the PPO contrast (what the pre-registered test tests) are reported "
@@ -342,16 +412,40 @@ def _components(label: str, vc: VarianceComponents) -> str:
     )
 
 
-def _grid_seeds(pilot_root: Path, run_id: str) -> int | None:
-    """The seed count of the grid record under ``pilot_root`` holding ``run_id``, if any."""
+def _grid_of(pilot_root: Path, run_id: str) -> GridRecord | None:
+    """The grid record under ``pilot_root`` holding ``run_id``, if any."""
     for path in sorted(pilot_root.glob("grid-*.json")):
         try:
             grid = read_grid(path)
         except (OSError, ValueError):  # SchemaVersionError and pydantic's are ValueErrors
             continue
         if any(c.run_id == run_id for c in grid.cells):
-            return grid.grid.n_seeds
+            return grid
     return None
+
+
+def _pilot_learner(pilot_root: Path, manifest: RunManifest) -> str:
+    """Why the pilot's learner is not the real one; "" when it is."""
+    if manifest.trainer is not None:
+        if manifest.trainer == REAL_TRAINER:
+            return ""
+        return f"the pilot's PPO cells were trained by {manifest.trainer}, not {REAL_TRAINER}"
+    # Matrices written before the trainer was recorded: the grid's PPO cells say.
+    grid = _grid_of(pilot_root, manifest.run_id)
+    if grid is None:
+        return (
+            "the manifest does not record which trainer produced the PPO cells, and no grid "
+            f"record under {pilot_root} names them"
+        )
+    for cell in (c for c in grid.cells if c.arm == "ppo"):
+        try:
+            cell_manifest = RunManifest.read(pilot_root / cell.run_id)
+        except (OSError, ValueError) as exc:
+            return f"PPO cell {cell.run_id} has no valid manifest: {exc}"
+        why = not_real_learner(pilot_root / cell.run_id, cell_manifest)
+        if why:
+            return why
+    return ""
 
 
 def pilot_item(
@@ -362,7 +456,7 @@ def pilot_item(
     train_rate: float = 1_000.0,
     eval_rate: float = 1_800.0,
 ) -> GateItem:
-    """Rates default to the M1-measured planning figures; the training budget is a placeholder."""
+    """Rates default to the M1-measured planning figures; the training budget to A4's 1,000,000."""
     name = "Variance-components pilot"
 
     def fail(evidence: str, why: str) -> GateItem:
@@ -382,6 +476,9 @@ def pilot_item(
     config = manifest.config
     if config.policy != "ppo" or config.train is None:
         why = f"the manifest's config is the {config.policy} arm, not PPO with a training config"
+        return fail(at, why)
+    why = _pilot_learner(pilot_root, manifest)
+    if why:
         return fail(at, why)
     arms: list[NDArray[np.float64]] = []
     for filename in (PILOT_MATRIX, PILOT_ORACLE_MATRIX):
@@ -415,7 +512,8 @@ def pilot_item(
         return fail(
             at, f"the matrix has N = {N} episodes, the manifest's config {config.n_episodes}"
         )
-    seeds = _grid_seeds(pilot_root, manifest.run_id)
+    grid = _grid_of(pilot_root, manifest.run_id)
+    seeds = None if grid is None else grid.grid.n_seeds
     premium = f"{config.market.iv_premium_vol_pts:g}"
     if seeds is not None and seeds != S:
         return fail(at, f"the matrix has S = {S} seeds, the grid record {seeds}")
@@ -450,8 +548,8 @@ def pilot_item(
             hours, n_seeds, episodes, power = min(costed)
             evidence += (
                 f"; for delta = {delta:,.4g} the cheapest design is {n_seeds} seeds x {episodes} "
-                f"episodes (normal-approximation power {power:.3f}, {hours:,.1f} core-hours at "
-                f"{train_steps_per_seed:,} training steps per seed, a placeholder)"
+                f"episodes (exact power {power:.3f}, {hours:,.1f} core-hours at "
+                f"{train_steps_per_seed:,} training steps per seed)"
             )
         else:
             evidence += f"; for delta = {delta:,.4g}: no design up to 64 seeds is feasible"

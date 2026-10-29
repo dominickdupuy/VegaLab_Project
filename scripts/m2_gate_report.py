@@ -4,9 +4,9 @@ Lane: Dominick Dupuy (statistical spine).
 
 The M2 row of the schedule, item by item, plus the real data adapter (issue #3,
 W6-4). The evidence functions live in ``optspread.m2gate``; this script only runs
-them and writes the report. Items whose code is still being written read NOT
-CLEARED with what failed first, which is the report doing its job rather than a
-build failure to hide.
+them and writes the report. An item whose evidence is missing reads NOT CLEARED
+with what failed first, which is the report doing its job rather than a build
+failure to hide.
 
     python -m scripts.m2_gate_report
     python -m scripts.m2_gate_report --quick --out -
@@ -43,15 +43,17 @@ from optspread.m2gate import (
     prereg_item,
     replay_item,
 )
+from optspread.orchestrate import default_runs_root
 
 DOC = Path("docs/M2_GATE_REPORT.md")
-DATA_ENV = "VEGALAB_DATA"
 
 
 def default_roots(env: Mapping[str, str] | None = None) -> tuple[Path, Path]:
-    """``(runs root, pilot root)``: under ``$VEGALAB_DATA`` when set, else cwd-relative."""
-    data = (os.environ if env is None else env).get(DATA_ENV, "")
-    runs = Path(data).expanduser() / "runs" if data else Path("runs")
+    """``(runs root, pilot root)``: under ``$VEGALAB_DATA`` when set, else cwd-relative.
+
+    The same rule as ``scripts/pilot.py`` and ``scripts/sweep.py``
+    (``orchestrate.default_runs_root``), so the report reads where they write."""
+    runs = default_runs_root(env)
     return runs, runs / "pilot"
 
 

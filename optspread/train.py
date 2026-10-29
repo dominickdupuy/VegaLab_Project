@@ -18,6 +18,15 @@ path 0, so an unwrapped training run would see one path over and over. The
 ``TRAIN_PATH_BASE``, which ``check_disjoint`` enforces, so a policy is never scored
 on a path it was trained on, and two training seeds never share a path.
 
+On real chains seeds are not enough: any seed maps to a window of market days, so a
+training seed and an evaluation seed can land on the same dates. There the dates are
+split instead (``optspread.realdata.SPLITS``, pre-registration A8):
+``train_ppo(..., source="optionmetrics")`` trains on the ``train`` split and the run is
+evaluated on ``eval``, so a policy is never scored on a day it was trained on. The training
+paths still differ by seed, now as different window starts. ``train_on`` is how an
+orchestrator hands a trainer the source; one that takes no ``source`` is refused there
+rather than left to train on the generator.
+
 **A run is deterministic on CPU.** Torch runs one thread per process
 (``torch.set_num_threads(1)``), the learner and its action sampling are seeded
 from ``TrainConfig.seed``, and evaluation takes the greedy action. With those three
@@ -51,12 +60,15 @@ from optspread.config import (
     config_hash,
     require_frozen,
 )
+from optspread.data import SourceName
 from optspread.env import Action
 from optspread.harness import build_env
+from optspread.manifest import callable_name
 from optspread.policies import Info, Observation, Policy
 
 POLICY_FILENAME = "policy.zip"
 TORCH_THREADS = 1
+STOP_CHECK_STEPS = 256  # environment steps between two asks of ``should_stop``
 
 # Training path seeds live at and above TRAIN_PATH_BASE; evaluation seeds below it.
 # The stride bounds one training run at 2**32 episodes, far past any total_timesteps
@@ -108,8 +120,32 @@ class TrainedPolicy(Policy, Protocol):
 
 
 # Config in, trained policy out. ``train_ppo`` is the production one; the
-# orchestration and replay take any, so their logic is tested without torch.
+# orchestration and replay take any, so their logic is tested without torch. A trainer
+# that can train on real chains also takes keyword ``source``.
 Trainer = Callable[[RunConfig], TrainedPolicy]
+
+
+def train_on(
+    trainer: Trainer,
+    config: RunConfig,
+    source: SourceName = "synthetic",
+) -> TrainedPolicy:
+    """``trainer(config)`` on the generator, exactly the call it always was; on another
+    source, ``trainer(config, source=...)``, so it trains on that source's ``train``
+    split. A trainer without a ``source`` parameter cannot do that and is refused:
+    it would train on the generator and be evaluated on real dates without saying so."""
+    if source == "synthetic":
+        return trainer(config)
+    params = inspect.signature(trainer).parameters
+    takes = "source" in params or any(p.kind is p.VAR_KEYWORD for p in params.values())
+    if not takes:
+        raise ValueError(
+            f"{callable_name(trainer)} takes no source, so it would train on the generator; "
+            f"a run on {source} trains on its train split (give the trainer a keyword "
+            "argument source)"
+        )
+    real: Callable[..., TrainedPolicy] = trainer
+    return real(config, source=source)
 
 
 class SB3Policy:
@@ -159,12 +195,23 @@ def sb3_kwargs(hp: PPOHyperparameters) -> dict[str, Any]:
     }
 
 
+class TrainingStoppedError(RuntimeError):
+    """Training was stopped by its ``should_stop`` before ``total_timesteps``; no policy."""
+
+
 def train_ppo(
     config: RunConfig,
     every: int | None = None,
     on_checkpoint: Callable[[int, SB3Policy], None] | None = None,
+    *,
+    source: SourceName = "synthetic",
+    should_stop: Callable[[], bool] | None = None,
 ) -> SB3Policy:
     """Train the PPO arm of ``config`` and return it. Needs the ``train`` extra.
+
+    On the generator (the default) the training paths are ``TrainingPaths``' seeds; on
+    another ``source`` the episodes are windows from its ``train`` split, which the run's
+    evaluation never reads.
 
     The D3 check is made again here, not left to ``TrainConfig``: pydantic's
     ``model_copy(update=...)`` skips validation, so a config can carry another set.
@@ -174,6 +221,11 @@ def train_ppo(
     then is the one a run with ``total_timesteps = steps`` returns, because every
     schedule in the D3 set is constant and evaluation draws on no learner state. The
     learning-curve check (#4) reads its curve this way from one training run.
+
+    With ``should_stop``, it is asked every ``STOP_CHECK_STEPS`` environment steps, and
+    when it says so training ends there and ``TrainingStoppedError`` is raised, so a
+    cancelled dashboard job gives its worker back at once rather than after the run.
+    Asking draws on no random state: a run it never stops is the run without it.
     """
     if config.train is None:
         raise ValueError(f"policy {config.policy!r} has no training config")
@@ -183,7 +235,7 @@ def train_ppo(
 
     torch.set_num_threads(TORCH_THREADS)
     train = config.train
-    env = TrainingPaths(build_env(config), train.seed)
+    env = TrainingPaths(build_env(config, source, split="train"), train.seed)
     model = PPO(
         train.hyperparameters.policy,
         env,
@@ -192,32 +244,38 @@ def train_ppo(
         verbose=0,
         **sb3_kwargs(train.hyperparameters),
     )
-    if on_checkpoint is None:
+    if on_checkpoint is None and should_stop is None:
         model.learn(total_timesteps=train.total_timesteps)
         return SB3Policy(model)
-    if every is None or every < 1:
+    if on_checkpoint is not None and (every is None or every < 1):
         raise ValueError(f"a checkpoint callback needs a positive interval, got {every!r}")
     from stable_baselines3.common.callbacks import BaseCallback
 
-    policy, interval, report = SB3Policy(model), every, on_checkpoint
+    policy, interval, report, stop = SB3Policy(model), every or 1, on_checkpoint, should_stop
 
-    class Checkpoints(BaseCallback):
+    class Checkpoints(BaseCallback):  # type: ignore[misc, unused-ignore]  # untyped without SB3
         def __init__(self) -> None:
             super().__init__()
             self.next = interval
+            self.stopped = False
 
         def _on_rollout_start(self) -> None:
             # Called before each rollout, so after the update on the previous one.
-            if self.num_timesteps >= self.next:
+            if report is not None and self.num_timesteps >= self.next:
                 report(self.num_timesteps, policy)
                 self.next = (self.num_timesteps // interval + 1) * interval
 
         def _on_step(self) -> bool:
-            return True
+            if stop is not None and self.n_calls % STOP_CHECK_STEPS == 0 and stop():
+                self.stopped = True
+            return not self.stopped
 
     callback = Checkpoints()
     model.learn(total_timesteps=train.total_timesteps, callback=callback)
-    on_checkpoint(model.num_timesteps, policy)
+    if callback.stopped:
+        raise TrainingStoppedError(f"training stopped at {model.num_timesteps:,} steps")
+    if on_checkpoint is not None:
+        on_checkpoint(model.num_timesteps, policy)
     return policy
 
 

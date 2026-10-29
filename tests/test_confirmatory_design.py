@@ -10,7 +10,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from optspread.power import VarianceComponents, power_t, variance_components
+from optspread.power import VarianceComponents, power_t, seeds_for, variance_components
 from scripts import confirmatory_design as cd
 
 
@@ -28,6 +28,17 @@ def test_the_design_is_the_cheapest_that_reaches_80_percent_exactly() -> None:
     assert design.core_hours == min(c.core_hours for c in best)
     for c in best:  # each N's S is the smallest that reaches the target
         assert power_t(500.0, vc.tau2, vc.sigma2, c.n_seeds - 1, c.n_episodes) < cd.TARGET
+
+
+def test_the_planner_and_the_rule_agree_on_every_n() -> None:
+    # #20: seeds_for plans on the same exact power A6 chooses on, so above A6's floor of
+    # five seeds the two give the same S at every N (on the normal form they did not).
+    vc = components(300.0, 4_000.0)
+    _, best, _ = cd.choose(500.0, vc, 1_000_000, 1_000.0, 1_800.0)
+    assert best
+    for c in best:
+        planned = seeds_for(500.0, vc.tau2, vc.sigma2, c.n_episodes, target_power=cd.TARGET)
+        assert max(planned, cd.MIN_SEEDS) == c.n_seeds
 
 
 def test_the_fallbacks_are_the_preregistered_ones() -> None:

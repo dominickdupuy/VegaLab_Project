@@ -14,7 +14,7 @@ window exists.
 from __future__ import annotations
 
 import os
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 import numpy as np
@@ -34,13 +34,20 @@ from dashboard_fixtures import (
 from optspread.dashboard_panel import (
     DATA_ENV,
     DEFAULT_DATA_ROOT,
+    TENOR_GRID,
+    GridSurface,
     PanelLayout,
+    atm_curves,
+    atm_landscape,
     available_dates,
     chain_sources,
     coverage_summary,
     daily_sources,
     data_root,
     expiries,
+    grid_axes,
+    grid_dates,
+    grid_surface,
     iv_surface,
     n_rows,
     nearest_expiry,
@@ -306,6 +313,102 @@ def test_the_seam_report_passes_the_build_statistics_through() -> None:
     assert partial is not None and np.isnan(partial.median("forward_diff_median_bp"))
     assert np.isnan(partial.median("not_a_column"))
     assert seam_report({}) is None
+
+
+# -- the 3D views: the gridded surface and the ATM term structure through time ------- #
+
+
+def _grid_columns() -> dict[str, list[object]]:
+    """Two days on a 2 x 3 grid; the second day has nothing quoted at the far wing."""
+    rows: list[tuple[date, int, float, float]] = []
+    for day, bump in ((date(2020, 3, 13), 0.0), (date(2020, 3, 16), 0.3)):
+        for tenor, level in ((30, 0.20), (60, 0.22)):
+            for k, skew in ((-0.1, 0.03), (0.0, 0.0), (0.1, -0.01)):
+                iv = np.nan if (bump and k == 0.1 and tenor == 60) else level + skew + bump
+                rows.append((day, tenor, k, iv))
+    return {
+        "date": [r[0] for r in rows],
+        "tenor_days": [r[1] for r in rows],
+        "k": [r[2] for r in rows],
+        "iv": [r[3] for r in rows],
+    }
+
+
+def test_the_grid_is_laid_out_per_day_with_its_holes() -> None:
+    grid = normalise(_grid_columns())
+    k, tenors = grid_axes(grid)
+    assert k.tolist() == [-0.1, 0.0, 0.1] and tenors.tolist() == [30, 60]
+    assert grid_dates(grid).tolist() == [date(2020, 3, 13), date(2020, 3, 16)]
+    calm = grid_surface(grid, date(2020, 3, 13))
+    assert calm.iv.shape == (2, 3) and calm.iv[1].tolist() == pytest.approx([0.25, 0.22, 0.21])
+    crash = grid_surface(grid, date(2020, 3, 16), (k, tenors))
+    assert np.isnan(crash.iv[1, 2]) and crash.iv[0, 1] == pytest.approx(0.5)  # a hole stays one
+    assert np.isnan(grid_surface(grid, date(2020, 3, 17)).iv).all()
+    assert grid_dates({}).size == 0 and grid_axes({})[0].size == 0
+
+
+def test_the_grid_is_read_off_in_total_variance_and_never_extrapolated() -> None:
+    g = GridSurface(
+        np.asarray([-0.1, 0.0, 0.1]),
+        np.asarray([30, 60]),
+        np.asarray([[0.23, 0.20, 0.19], [0.25, 0.22, np.nan]]),
+    )
+    pts = np.asarray([-0.05, 0.0, 0.2])
+    assert g.at(pts, 30.0)[:2].tolist() == pytest.approx([0.215, 0.20])  # on a row: that row
+    assert np.isnan(g.at(pts, 30.0)[2])  # past the quoted wing
+    mid = g.at(np.asarray([0.0]), 45.0)[0]
+    assert mid == pytest.approx(np.sqrt((0.2**2 * 30 + 0.22**2 * 60) / 2 / 45))
+    assert np.isnan(g.at(np.asarray([0.05]), 45.0)[0])  # the far row has no quote there
+    assert np.isnan(g.at(pts, 10.0)).all() and np.isnan(g.at(pts, 90.0)).all()
+    empty = GridSurface(g.k, g.tenor_days, np.full((2, 3), np.nan))
+    assert np.isnan(empty.at(pts, 45.0)).all()
+
+
+def _term_columns() -> dict[str, list[object]]:
+    """Two days of ATM IV per expiry; SPX and SPXW both list the 30-day expiry on day one."""
+    d1, d2 = date(2020, 3, 13), date(2020, 3, 16)
+    rows = [
+        (d1, "SPX", 30, 0.30),
+        (d1, "SPXW", 30, 0.20),  # the PM row is the one used
+        (d1, "SPXW", 60, 0.22),
+        (d1, "SPX", 365, np.nan),  # no IV: dropped, not a zero
+        (d2, "SPXW", 7, 0.80),
+        (d2, "SPXW", 30, 0.60),
+    ]
+    return {
+        "date": [r[0] for r in rows],
+        "root": [r[1] for r in rows],
+        "expiry": [r[0] + timedelta(days=r[2]) for r in rows],
+        "tau": [r[2] / 365.0 for r in rows],
+        "atm_iv": [r[3] for r in rows],
+    }
+
+
+def test_the_atm_curves_take_the_pm_row_and_bracket_every_tenor() -> None:
+    dates, iv = atm_curves(normalise(_term_columns()), (7, 30, 45, 60, 90))
+    assert dates.tolist() == [date(2020, 3, 13), date(2020, 3, 16)]
+    assert iv[0, 1] == pytest.approx(0.20)  # SPXW, not the SPX 0.30
+    assert iv[0, 2] == pytest.approx(np.sqrt((0.2**2 * 30 + 0.22**2 * 60) / 2 / 45))
+    assert np.isnan(iv[0, 0]) and np.isnan(iv[0, 4])  # nothing below 30 or past 60 days
+    assert iv[1, :2].tolist() == pytest.approx([0.80, 0.60]) and np.isnan(iv[1, 2])
+    empty_dates, empty = atm_curves({})
+    assert empty_dates.size == 0 and empty.shape == (0, len(TENOR_GRID))
+
+
+def test_the_landscape_averages_consecutive_days_and_says_by_how_many() -> None:
+    dates = np.arange(np.datetime64("2020-01-01"), np.datetime64("2020-01-11"))
+    curves = np.column_stack([np.arange(10.0), np.full(10, np.nan)])
+    curves[1, 0] = np.nan
+    full = atm_landscape(dates, curves, (30, 60))
+    assert full.stride == 1 and len(full.date) == 10 and full.tenor_days.tolist() == [30, 60]
+    land = atm_landscape(dates, curves, (30, 60), max_dates=4)
+    assert land.stride == 3 and len(land.date) == 4
+    assert land.date[0] == np.datetime64("2020-01-03") and land.date[-1] == dates[-1]
+    assert land.iv[:, 0].tolist() == pytest.approx([1.0, 4.0, 7.0, 9.0])  # NaN skipped, not 0
+    assert np.isnan(land.iv[:, 1]).all()
+    window = atm_landscape(dates, curves, (30, 60), start=date(2020, 1, 5), end=date(2020, 1, 6))
+    assert window.stride == 1 and window.iv[:, 0].tolist() == [4.0, 5.0]
+    assert len(atm_landscape(dates, curves, start=date(2021, 1, 1)).date) == 0
 
 
 # -- the parquet round trip (needs pyarrow) -------------------------------------------- #

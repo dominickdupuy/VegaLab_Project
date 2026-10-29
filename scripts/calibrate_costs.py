@@ -17,7 +17,9 @@ The fit minimises absolute error in the half-spread over a grid of both
 parameters, so a few wide quotes cannot drag it. It prints the fit, the error by
 delta bucket and tenor, and the current parameters' error for comparison, and
 writes the same tables to ``--out``. Nothing in the package changes until the
-fitted numbers are written into ``CostConfig`` by hand, in their own commit.
+fitted numbers are written into ``CostConfig`` by hand, in their own commit; that
+was done on 2026-10-25 (#8), so "current" now prints the fitted pair, and
+docs/COSTS.md keeps the parameters from before the freeze in that column.
 """
 
 from __future__ import annotations

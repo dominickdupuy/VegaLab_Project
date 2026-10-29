@@ -11,12 +11,14 @@ components in those units squared, or ``--matrix`` names an S x N ``.npy`` of ou
 to estimate them from. The rates default to the M1-measured figures, rounded as the
 README plans with them (about 1,000 steps/s/core with the training update, about 1,800
 for scripted evaluation); re-measure with ``make bench`` on the machine that will run
-the sweep. The per-seed training budget is not pre-registered (D3 fixes the
-hyperparameters, not ``total_timesteps``), so it is an explicit argument with no claim
-behind its default.
+the sweep. The per-seed training budget is pre-registration A4's 1,000,000 steps (from the
+learning-curve check, docs/LEARNING_CURVE.md), which is the default; another value plans
+a design the pre-registration does not cover.
 
-Prints the components, the variance budget, and the frontier: for each seed count the
-fewest episodes that reach the target power and what the design costs. Exit status 0
+Prints the components, the variance budget at each seed count, and the frontier: for
+each seed count the fewest episodes at which the confirmatory t test has the target
+power, by the exact noncentral t (``power_t``, pre-registration A3), and what the
+design costs. Seed counts start at 2, the fewest the test can run on. Exit status 0
 when at least one design is feasible, 1 when none is.
 """
 
@@ -28,7 +30,13 @@ from pathlib import Path
 
 import numpy as np
 
-from optspread.power import frontier, render_frontier, variance_budget, variance_components
+from optspread.power import (
+    frontier,
+    render_frontier,
+    variance_budget,
+    variance_budget_t,
+    variance_components,
+)
 
 
 def main() -> int:
@@ -46,7 +54,7 @@ def main() -> int:
         "--train-steps",
         type=int,
         default=1_000_000,
-        help="PPO steps per seed; a placeholder, not a pre-registered number",
+        help="PPO steps per seed (default: A4's 1,000,000)",
     )
     parser.add_argument("--episode-days", type=int, default=63)
     parser.add_argument("--train-rate", type=float, default=1_000.0, help="steps/s/core, training")
@@ -65,19 +73,26 @@ def main() -> int:
     else:
         parser.error("give --tau2 and --sigma2, or --matrix")
 
-    budget_var = variance_budget(delta, float(args.alpha), float(args.power))
+    seeds = [int(s) for s in args.seeds]
+    if min(seeds) < 2:
+        parser.error("every seed count must be at least 2: the t test runs on S seed means")
+    alpha, target = float(args.alpha), float(args.power)
+    budgets = ", ".join(
+        f"{variance_budget_t(delta, s, alpha, target):,.4g} at S = {s}" for s in seeds
+    )
     print(
-        f"delta = {delta:,.4g}, tau^2 = {tau2:,.4g}, sigma^2 = {sigma2:,.4g}; one-sided "
+        f"delta = {delta:,.4g}, tau^2 = {tau2:,.4g}, sigma^2 = {sigma2:,.4g}; one-sided t, "
         f"alpha = {args.alpha}, power = {args.power}: Var(grand mean) must not exceed "
-        f"{budget_var:,.4g}"
+        f"{budgets} (the normal approximation's {variance_budget(delta, alpha, target):,.4g} "
+        f"at any S overstates it)"
     )
     designs = frontier(
         delta,
         tau2,
         sigma2,
-        seeds=[int(s) for s in args.seeds],
-        alpha=float(args.alpha),
-        target_power=float(args.power),
+        seeds=seeds,
+        alpha=alpha,
+        target_power=target,
         train_steps_per_seed=int(args.train_steps),
         episode_days=int(args.episode_days),
         train_rate=float(args.train_rate),

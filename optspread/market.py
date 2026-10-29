@@ -7,6 +7,12 @@ drives the underlying, so every strategy has zero expectancy before costs. A
 positive premium prices the chain richer than the path realises: the planted
 variance risk premium the power sweep calibrates against.
 
+What is planted is a ``PlantedEffect`` (``optspread.effects``), applied to the fair
+surface each time a chain is built, at the size the config gives. The default is
+``ConstantPremium``, the whole surface shifted by the premium; another effect is
+passed in Python (``SyntheticChainProvider(config, effect=...)``), never through
+the config.
+
 RNG: the return into day ``t`` is drawn from ``rng.stream(t)`` alone (the
 per-step contract in ``optspread.rng``). The chain at ``t`` therefore depends on
 no stream later than ``t``, which ``optspread.leaks`` tests directly.
@@ -17,13 +23,15 @@ from __future__ import annotations
 import numpy as np
 
 from optspread.config import MarketConfig
+from optspread.effects import CONSTANT_PREMIUM, PlantedEffect, plant
 from optspread.rng import PATH_CHANNEL, StepRNG
 from optspread.types import Chain
 
 
 class SyntheticChainProvider:
-    def __init__(self, config: MarketConfig) -> None:
+    def __init__(self, config: MarketConfig, effect: PlantedEffect | None = None) -> None:
         self.config = config
+        self.effect = effect if effect is not None else CONSTANT_PREMIUM
         self._rng: StepRNG | None = None
         self._day = 0
         self._spot = config.spot0
@@ -71,13 +79,13 @@ class SyntheticChainProvider:
         offsets = np.arange(-cfg.n_strikes_each_side, cfg.n_strikes_each_side + 1)
         strikes = centre + cfg.strike_step * offsets.astype(np.float64)
         expiry_days = self._day + np.asarray(cfg.tenor_days, dtype=np.int64)
-        iv = cfg.sigma + cfg.iv_premium_vol_pts / 100.0
-        return Chain(
+        fair = Chain(
             t=self._day,
             spot=spot,
             r=cfg.r,
             strikes=strikes,
             expiry_days=expiry_days,
-            ivs=np.full((len(cfg.tenor_days), len(strikes)), iv, dtype=np.float64),
+            ivs=np.full((len(cfg.tenor_days), len(strikes)), cfg.sigma, dtype=np.float64),
             trading_days_per_year=cfg.trading_days_per_year,
         )
+        return plant(self.effect, fair, cfg.iv_premium_vol_pts)

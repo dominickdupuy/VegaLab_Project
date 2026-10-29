@@ -11,7 +11,11 @@ The closing snapshot is the ``cbbo-1m`` bar for the last minute of regular tradi
 the consolidated best bid and offer that OptionMetrics' ``best_bid`` and
 ``best_offer`` describe. Each job asks for the minute before the close and the
 minute after it (15:59 to 16:01 New York, or 12:59 to 13:01 on an early close), so
-the earlier of a file's two bars is the close and the later one is dropped.
+the earlier of a file's two bars is the close. ``cbbo-1m`` writes a bar only for an
+instrument whose book changed in that minute, so an illiquid contract can be absent
+from the closing bar and present in the next one; each instrument therefore keeps
+its earliest record in the closing window (``CLOSE_WINDOW``), and later records are
+dropped.
 
 Each tar is decoded in memory and only its SPX and SPXW rows are written out, so
 the 20 GB of OPRA batches never have to sit on local disk at once.
@@ -137,21 +141,32 @@ def parse_osi(symbols: pd.Series) -> pd.DataFrame:
 # -- the closing snapshot ---------------------------------------------------- #
 
 QUOTE_COLUMNS = ("date", "root", "expiry", "cp", "strike", "bid", "ask", "bid_size", "ask_size")
+CONTRACT = ["root", "expiry", "cp", "strike"]
+
+# The closing window: from the file's first bar (the close, 15:59 or 12:59 New York)
+# through the bar one minute later, the last the job asks for. A contract with no
+# update in the closing minute takes its quote from that next bar; nothing later
+# than it is read, whatever else a file holds.
+CLOSE_WINDOW = pd.Timedelta(minutes=1)
 
 
 def closing_quotes(frame: pd.DataFrame) -> pd.DataFrame:
-    """SPX and SPXW quotes at the closing bar (the file's first), one row per contract.
+    """SPX and SPXW closing quotes, one row per contract: its earliest bar in the window.
 
     ``frame`` is a decoded cbbo-1m DBN frame indexed by ``ts_recv`` (UTC) with the
-    ``symbol`` column mapped. Rows with no two-sided market keep NaN prices; the
-    panel decides what is usable, not the extractor.
+    ``symbol`` column mapped. The window runs from the file's first bar, which is the
+    close, through ``CLOSE_WINDOW`` after it, so a contract quoted in the closing bar
+    keeps that quote and one missing from it keeps its first later quote rather than
+    being lost for the day. Rows with no two-sided market keep NaN prices; the panel
+    decides what is usable, not the extractor.
     """
     if frame.empty:
         return pd.DataFrame(columns=list(QUOTE_COLUMNS))
-    at_close = frame[frame.index == frame.index.min()]
-    osi = parse_osi(at_close["symbol"])
+    first = frame.index.min()
+    window = frame[(frame.index >= first) & (frame.index <= first + CLOSE_WINDOW)]
+    osi = parse_osi(window["symbol"])
     keep = osi["root"].isin(ROOTS).to_numpy()
-    rows, osi = at_close[keep], osi[keep]
+    rows, osi = window[keep], osi[keep]
     bid = rows["bid_px_00"].to_numpy(dtype=np.float64)
     ask = rows["ask_px_00"].to_numpy(dtype=np.float64)
     out = pd.DataFrame(
@@ -167,9 +182,11 @@ def closing_quotes(frame: pd.DataFrame) -> pd.DataFrame:
             "ask_size": rows["ask_sz_00"].to_numpy(dtype=np.float64),
         }
     )
-    return out.drop_duplicates(["root", "expiry", "cp", "strike"], keep="last").reset_index(
-        drop=True
-    )
+    # Each contract's earliest bar; within that bar the last record, as before.
+    ts = pd.Series(rows.index.asi8, index=out.index)
+    earliest = ts == ts.groupby([out[c] for c in CONTRACT]).transform("min")
+    out = out[earliest.to_numpy()]
+    return out.drop_duplicates(CONTRACT, keep="last").reset_index(drop=True)
 
 
 def extract_spx_close(path: Path) -> tuple[date, pd.DataFrame]:  # pragma: no cover - vendor IO
@@ -184,7 +201,7 @@ def extract_spx_close(path: Path) -> tuple[date, pd.DataFrame]:  # pragma: no co
         store = db.DBNStore.from_bytes(io.BytesIO(handle.read()))
     quotes = closing_quotes(store.to_df())
     if quotes.empty:
-        raise ValueError(f"{path.name}: no SPX/SPXW rows in the closing bar")
+        raise ValueError(f"{path.name}: no SPX/SPXW rows in the closing window")
     days = set(quotes["date"])
     if len(days) != 1:
         raise ValueError(f"{path.name}: expected one trading day, found {sorted(days)}")

@@ -1,0 +1,130 @@
+/* The Real data page's own pieces: the question cards, the reading line, the small
+   info tooltip and the collapsible data-quality section. Colours and radii come from
+   the shared tokens in globals.css, so the page follows the theme. */
+
+/* ---------- the four questions ---------- */
+.questions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.question {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: var(--surface);
+  border: 0;
+  border-radius: var(--radius);
+  box-shadow: var(--sh-card);
+  padding: 16px 18px;
+  cursor: pointer;
+  transition: box-shadow var(--t-fast);
+  min-width: 0;
+}
+
+.question:hover {
+  box-shadow: var(--sh-raised);
+}
+
+.question:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.questionOn {
+  box-shadow: 0 0 0 2px var(--accent), var(--sh-card);
+  background: var(--accent-soft);
+}
+
+.questionOn:hover {
+  box-shadow: 0 0 0 2px var(--accent), var(--sh-raised);
+}
+
+.questionTeaser {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.questionText {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--text);
+}
+
+.questionHint {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.compact .question {
+  padding: 10px 14px;
+  gap: 4px;
+}
+
+.compact .questionText {
+  font-size: 14px;
+}
+
+.compact .questionHint {
+  display: none;
+}
+
+@media (max-width: 1000px) {
+  .questions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .questions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---------- views ---------- */
+.view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.viewHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.viewTitle {
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.dateBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+}
+
+.ok {
+  color: var(--pass-text);
+  font-weight: 700;
+}
+
+.bad {
+  color: var(--fail);
+  font-weight: 700;
+}

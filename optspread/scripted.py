@@ -24,6 +24,9 @@ Three things get checked, each falsifiable on its own:
 
 Check 3 is the one that failed on the first run. ``unpaid_exit`` is the size of
 the gap.
+
+The check takes any ``CostModel`` (``costs``), so a cost model of your own clears
+the same three before it is trusted (docs/EXTENDING.md).
 """
 
 from __future__ import annotations
@@ -35,7 +38,7 @@ import numpy as np
 
 from optspread.actions import ACTION_NAMES, IRON_CONDOR, PUT_CREDIT_SPREAD
 from optspread.config import CostConfig, RunConfig
-from optspread.costs import make_cost_model, trade_cost
+from optspread.costs import CostModel, make_cost_model, trade_cost
 from optspread.harness import build_env
 from optspread.policies import AlwaysOnPolicy, DeltaSellerPolicy, Policy
 from optspread.types import Position
@@ -82,10 +85,15 @@ class EpisodeAudit:
         return max(self.n_crossings - (self.n_opens + self.n_early_closes), 0)
 
 
-def audit_episode(config: RunConfig, policy: Policy, seed: int) -> EpisodeAudit:
-    """Run one episode and classify every position change as open, close or settlement."""
-    env = build_env(config)
-    costs = make_cost_model(config.cost)
+def audit_episode(
+    config: RunConfig, policy: Policy, seed: int, costs: CostModel | None = None
+) -> EpisodeAudit:
+    """Run one episode and classify every position change as open, close or settlement.
+
+    ``costs`` defaults to the model ``config.cost`` builds."""
+    if costs is None:
+        costs = make_cost_model(config.cost)
+    env = build_env(config, costs=costs)
     obs, info = env.reset(seed=seed)
     policy.reset(seed)
 
@@ -158,8 +166,15 @@ class DragRow:
         return self.identity_holds and self.settlement_is_free and self.no_unpaid_exit
 
 
-def drag_row(base: RunConfig, seller: str, action_id: int, roll_dte: int | None, n: int) -> DragRow:
-    """Run one seller with costs off and on over shared seeds."""
+def drag_row(
+    base: RunConfig,
+    seller: str,
+    action_id: int,
+    roll_dte: int | None,
+    n: int,
+    costs: CostModel | None = None,
+) -> DragRow:
+    """Run one seller with costs off and on over shared seeds; on is ``costs`` when given."""
     free = base.model_copy(update={"cost": CostConfig(enabled=False)})
     costed = base.model_copy(update={"cost": base.cost.model_copy(update={"enabled": True})})
 
@@ -171,7 +186,7 @@ def drag_row(base: RunConfig, seller: str, action_id: int, roll_dte: int | None,
     crossings = 0
     for seed in range(base.seed, base.seed + n):
         a = audit_episode(free, make_seller(action_id, roll_dte), seed)
-        b = audit_episode(costed, make_seller(action_id, roll_dte), seed)
+        b = audit_episode(costed, make_seller(action_id, roll_dte), seed, costs)
         pnl_free.append(a.pnl)
         pnl_costed.append(b.pnl)
         devs.append(abs(b.pnl - (a.pnl - b.cost_charged)))
@@ -226,14 +241,19 @@ class DragReport:
 
 
 def cost_drag_check(
-    n_episodes: int = 40, seed: int = 2000, sellers: Sequence[str] | None = None
+    n_episodes: int = 40,
+    seed: int = 2000,
+    sellers: Sequence[str] | None = None,
+    costs: CostModel | None = None,
 ) -> DragReport:
-    """Run the scripted sellers against the drag the cost model predicts."""
+    """Run the scripted sellers against the drag the cost model predicts.
+
+    ``costs`` is the model under test; the default is the one ``CostConfig`` builds."""
     wanted = set(sellers) if sellers is not None else {s[0] for s in SELLERS}
     base = RunConfig(seed=seed, n_episodes=n_episodes)
     return DragReport(
         tuple(
-            drag_row(base, name, action_id, roll, n_episodes)
+            drag_row(base, name, action_id, roll, n_episodes, costs)
             for name, action_id, roll in SELLERS
             if name in wanted
         )
