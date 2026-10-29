@@ -18,6 +18,11 @@ Three sources:
 The stub is what makes the boundary testable before the data exists. It sits at
 the same interface the real adapter will occupy, so ``conformance_report`` proves
 the downstream code is source-agnostic now, not after the fact.
+
+A source of your own is any object with this shape (docs/EXTENDING.md). Its ``name``
+is any string; the three above are the ones ``make_source`` builds. The two
+generator-backed sources take a ``PlantedEffect`` (``optspread.effects``), the
+constant premium unless told otherwise.
 """
 
 from __future__ import annotations
@@ -27,9 +32,11 @@ from pathlib import Path
 from typing import Literal, Protocol, runtime_checkable
 
 from optspread.config import MarketConfig
+from optspread.effects import CONSTANT_PREMIUM, PlantedEffect
 from optspread.leaks import sequence_violations
 from optspread.market import SyntheticChainProvider
-from optspread.realdata import Split
+from optspread.realdata import PANEL_FILES as PANEL_FILES  # the manifest reads it from here
+from optspread.realdata import Split, SplitRanges, check_split
 from optspread.rng import SeededStepRNG
 from optspread.types import ChainProvider
 
@@ -45,7 +52,7 @@ class ChainSource(Protocol):
     """A factory for providers. One source, many episodes, one provider each."""
 
     @property
-    def name(self) -> SourceName: ...
+    def name(self) -> str: ...
 
     @property
     def available(self) -> bool: ...
@@ -58,6 +65,7 @@ class ChainSource(Protocol):
 @dataclass(frozen=True, slots=True)
 class SyntheticSource:
     config: MarketConfig = field(default_factory=MarketConfig)
+    effect: PlantedEffect = CONSTANT_PREMIUM
 
     @property
     def name(self) -> SourceName:
@@ -68,7 +76,7 @@ class SyntheticSource:
         return True
 
     def provider(self) -> ChainProvider:
-        return SyntheticChainProvider(self.config)
+        return SyntheticChainProvider(self.config, self.effect)
 
 
 @dataclass(frozen=True, slots=True)
@@ -82,6 +90,7 @@ class OptionMetricsStubSource:
     """
 
     config: MarketConfig = field(default_factory=MarketConfig)
+    effect: PlantedEffect = CONSTANT_PREMIUM
 
     @property
     def name(self) -> SourceName:
@@ -92,7 +101,7 @@ class OptionMetricsStubSource:
         return True
 
     def provider(self) -> ChainProvider:
-        return SyntheticChainProvider(self.config)
+        return SyntheticChainProvider(self.config, self.effect)
 
 
 @dataclass(frozen=True, slots=True)
@@ -103,12 +112,35 @@ class OptionMetricsSource:
     the panel's surface grid and daily series are present; pandas is imported only
     when a provider is built, so the core package does not need it. ``split`` is the
     date range its provider serves (#28): ``train`` or ``eval``, disjoint, and
-    neither reaches the dates after the evaluation range.
+    neither reaches the dates after the evaluation range. Anything else, ``None``
+    included, is a ValueError here, so no record can carry it.
+
+    ``ranges`` replaces those dates (``optspread.realdata.SPLITS``, pre-registration
+    A8) for a surface of your own under its own ``root`` (docs/EXTENDING.md). It is
+    refused for the team's SPX panel, known by path (no ``root``, ``data_root()`` or
+    ``DEFAULT_ROOT``) or by content (either panel file, symlinks followed, has a digest
+    a team manifest recorded: ``optspread.realdata.is_team_panel``), here and again when
+    the provider is built, so A8's dates cannot be widened there.
     """
 
     config: MarketConfig = field(default_factory=MarketConfig)
     root: Path | None = None
     split: Split = "train"
+    ranges: SplitRanges | None = None
+
+    def __post_init__(self) -> None:
+        check_split(self.split)
+        if self.ranges is None:
+            return
+        from optspread.realdata import refuse_team_ranges
+
+        if self.root is None:
+            raise ValueError(
+                "date ranges of your own are for a surface under a root of your own; the "
+                "default root is the team's SPX panel, which serves only the splits "
+                "pre-registration A8 fixed (optspread.realdata.SPLITS)"
+            )
+        refuse_team_ranges(self.panel_dir, self.ranges)
 
     @property
     def name(self) -> SourceName:
@@ -133,19 +165,24 @@ class OptionMetricsSource:
             )
         from optspread.realdata.provider import HistoricalChainProvider, load_store
 
-        return HistoricalChainProvider(self.config, load_store(self.panel_dir, self.split))
+        store = load_store(self.panel_dir, self.split, self.ranges)
+        return HistoricalChainProvider(self.config, store)
 
 
-PANEL_FILES = ("surface_grid.parquet", "spx_daily.parquet")
-
-
-def make_source(name: SourceName, config: MarketConfig | None = None) -> ChainSource:
+def make_source(
+    name: SourceName, config: MarketConfig | None = None, *, split: Split = "train"
+) -> ChainSource:
+    """The named source. ``split`` picks the real source's date range
+    (``optspread.realdata.SPLITS``) and is checked for every source, so a caller that
+    passes ``None`` hears about it whichever source it asked for; the generated sources
+    keep training and evaluation apart by seed and otherwise ignore it."""
+    check_split(split)
     cfg = config if config is not None else MarketConfig()
     if name == "synthetic":
         return SyntheticSource(cfg)
     if name == "optionmetrics_stub":
         return OptionMetricsStubSource(cfg)
-    return OptionMetricsSource(cfg)
+    return OptionMetricsSource(cfg, split=split)
 
 
 # -- conformance: what any source must satisfy to sit at this boundary ------- #
@@ -153,7 +190,7 @@ def make_source(name: SourceName, config: MarketConfig | None = None) -> ChainSo
 
 @dataclass(frozen=True, slots=True)
 class ConformanceReport:
-    source: SourceName
+    source: str
     checked: bool  # False when the source is unavailable; not a pass
     n_chains: int
     violations: tuple[str, ...]
