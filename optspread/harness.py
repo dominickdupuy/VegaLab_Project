@@ -7,6 +7,21 @@ is reproducible from its config hash and seed alone. A learned arm (decision D3,
 Stable-Baselines3 PPO; ``optspread.train``) plugs in here by supplying the trained
 ``Policy``, whose ``act`` reads ``obs``: a ppo config names no policy that can be
 built from its name, so asking for one is an error rather than a silent default.
+
+The market and the cost model are built from the config unless a caller passes its
+own (``provider``, ``costs``), which is how a component of your own reaches every
+orchestrator (``optspread.extend``, docs/EXTENDING.md). The config hash does not see
+a component passed this way.
+
+Chains come from the generator unless a run names another source of
+``optspread.data`` (``source``). The source is not part of ``RunConfig``, so it is
+not in the config hash; ``artifacts.write_run`` records it in the manifest instead,
+and ``replay`` reruns on the source recorded there.
+
+On the real source a run's dates are a ``split`` of ``optspread.realdata.SPLITS``
+(#28, pre-registration A8): evaluation, the default here, draws from ``eval``, and
+``optspread.train`` builds its training environment on ``train``. The split is not in
+the config either; the manifest records it.
 """
 
 from __future__ import annotations
@@ -17,10 +32,12 @@ from dataclasses import dataclass
 import numpy as np
 
 from optspread.config import RunConfig
-from optspread.costs import make_cost_model
+from optspread.costs import CostModel, make_cost_model
+from optspread.data import SourceName, make_source
 from optspread.env import SpreadEnv
-from optspread.market import SyntheticChainProvider
 from optspread.policies import Policy, make_policy
+from optspread.realdata import Split
+from optspread.types import ChainProvider
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,9 +63,27 @@ class EvalSummary:
         return self.mean_pnl / self.se_pnl if self.se_pnl > 0 else 0.0
 
 
-def build_env(config: RunConfig) -> SpreadEnv:
+def build_env(
+    config: RunConfig,
+    source: SourceName = "synthetic",
+    *,
+    provider: ChainProvider | None = None,
+    costs: CostModel | None = None,
+    split: Split = "eval",
+) -> SpreadEnv:
+    """The environment for ``config`` on chains from ``source``, built from ``config.market``.
+
+    The default is the generator, ``SyntheticChainProvider(config.market)``, the only
+    provider this built before the source was a parameter. A ``provider`` or ``costs``
+    passed in replaces the one the config would build. ``split`` says which dates a
+    real source serves (``optspread.data.make_source``); the generator ignores it.
+    """
+    if provider is None:
+        provider = make_source(source, config.market, split=split).provider()
     return SpreadEnv(
-        SyntheticChainProvider(config.market), make_cost_model(config.cost), config.env
+        provider,
+        costs if costs is not None else make_cost_model(config.cost),
+        config.env,
     )
 
 
@@ -77,13 +112,21 @@ def summarize(results: Sequence[EpisodeResult]) -> EvalSummary:
     )
 
 
-def run_episodes(config: RunConfig, policy: Policy | None = None) -> tuple[EpisodeResult, ...]:
+def run_episodes(
+    config: RunConfig,
+    policy: Policy | None = None,
+    source: SourceName = "synthetic",
+    *,
+    provider: ChainProvider | None = None,
+    costs: CostModel | None = None,
+) -> tuple[EpisodeResult, ...]:
     """Run ``config.n_episodes`` episodes with seeds ``seed, seed+1, ...``.
 
     The per-episode grain, kept separate from ``summarize`` so the artifact writer
-    can persist every row while the gates only need the aggregate.
+    can persist every row while the gates only need the aggregate. On the real source
+    the episodes come from the ``eval`` split.
     """
-    env = build_env(config)
+    env = build_env(config, source, provider=provider, costs=costs)
     if policy is not None:
         pol = policy
     elif config.policy == "ppo":
@@ -94,5 +137,7 @@ def run_episodes(config: RunConfig, policy: Policy | None = None) -> tuple[Episo
     return tuple(run_episode(env, pol, s) for s in seeds)
 
 
-def evaluate(config: RunConfig, policy: Policy | None = None) -> EvalSummary:
-    return summarize(run_episodes(config, policy))
+def evaluate(
+    config: RunConfig, policy: Policy | None = None, source: SourceName = "synthetic"
+) -> EvalSummary:
+    return summarize(run_episodes(config, policy, source))
