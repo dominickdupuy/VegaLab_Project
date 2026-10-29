@@ -5,8 +5,8 @@ Lane: Hemdutt Rao (data adapter).
 The extraction (``scripts/wrds_extract.py``) writes one zstd Parquet per (table,
 ticker, year) under the shared folder. This module reads the SPX files and puts
 them into the panel's quote schema: strikes in index points rather than
-thousandths, the root read from the OSI symbol (``SPX`` or ``SPXW``), and the
-vendor's IV, greeks and forward kept under ``*_vendor`` names so they are never
+thousandths, one of two roots (``SPX`` or ``SPXW``, see ``normalise_opprcd``), and
+the vendor's IV, greeks and forward kept under ``*_vendor`` names so they are never
 mistaken for ours.
 
 The vendor stores ``strike_price`` as strike x 1000, but a copy may already have
@@ -22,6 +22,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pyarrow.parquet as pq
+
+from optspread.realdata import ROOTS
+from optspread.realdata.panel import NYSE_HOLIDAYS
 
 OPPRCD_COLUMNS = [
     "date",
@@ -68,23 +71,47 @@ def strike_divisor(strike: pd.Series, close: pd.Series) -> float:
 def normalise_opprcd(raw: pd.DataFrame, divisor: float = 1000.0) -> pd.DataFrame:
     """Vendor rows in the panel's quote schema (see module docstring).
 
-    Before the OSI migration (completed 2010-02-12) the vendor's ``symbol`` is the
-    old exchange code (``SPX.AT``, ``SPZ.MJ``), one code per contract, which says
-    nothing about the root. Those rows take their root from settlement instead:
-    AM-settled is the SPX root, PM-settled the SPXW family.
+    The panel has two roots, and they mean settlement: ``SPX`` is the AM-settled
+    monthly, ``SPXW`` the PM-settled family (weeklies, quarterlies, end-of-month).
+    Every row takes its root from the vendor's settlement flag, AM to SPX and PM to
+    SPXW, whatever its symbol says. An OSI symbol whose root agrees with its flag is
+    *listed*; every other row is *remapped*:
+
+    - in 2010 the PM-settled Friday weeklies are OSI symbols on the SPX root
+      (``SPX 100528C850000``, 3,990 rows, 2010-05-21 to 2010-12-02), so the symbol's
+      root alone would put PM contracts under the AM root (data audit MINOR-6);
+    - before the OSI migration (completed 2010-02-12) the vendor's ``symbol`` is the
+      old exchange code (``SPX.AT``, ``SPZ.MJ``), one code per contract, which says
+      nothing about the root, and through 2010 the vendor still carries other
+      root codes beside SPX and SPXW;
+    - to 2014 the PM-settled series had roots of their own, ``SPXPM`` (third-Friday
+      monthlies settled at the close) and ``SPXQ`` (end-of-quarter), both later
+      folded into SPXW. They settle and price as SPXW does, so ``iv30``'s "prefer
+      SPXW" rule and the dashboard's root filter should read them as SPXW.
+
+    A remapped row that lands on a contract already listed under the same root
+    (same date, expiry, right and strike) is the same contract quoted twice and is
+    dropped; the parity fit would otherwise count its pair twice.
 
     Until February 2015 the vendor dates an AM-settled monthly on the Saturday after
-    its last trading day. It settles at Friday's open, so those expiries move to the
-    Friday: left on the Saturday, every tau is a day long (about 2% low on a 30-day
-    IV, 7% on a 7-day one).
+    its last trading day. It settles at the open of that trading day, so those
+    expiries move to it: the Friday, or the Thursday when the Friday is a closure
+    (Good Friday, 2014-04-18). Left on the Saturday, every tau is a day long (about
+    2% low on a 30-day IV, 7% on a 7-day one). An expiry the vendor dates on a weekday
+    the exchange was closed (SPXW 2018-12-05 and 2025-01-09, national days of mourning,
+    ``panel.UNSCHEDULED_CLOSURES``) settled on the trading day before, and moves there
+    too (``_settlement_day``).
     """
     sym = raw["symbol"].astype("string")
     osi = sym.str.contains(" ", regex=False).fillna(False).to_numpy(dtype=bool)
     am = raw["am_settlement"].fillna(0.0).to_numpy(dtype=np.float64) > 0.5
-    root = np.where(osi, sym.str.split(" ", n=1).str[0].to_numpy(), np.where(am, "SPX", "SPXW"))
+    vendor_root = sym.str.split(" ", n=1).str[0].to_numpy()
+    root = np.where(am, ROOTS[0], ROOTS[1])  # SPX is AM, SPXW is PM
+    agrees = pd.Series(vendor_root, dtype="string").eq(pd.Series(root, dtype="string"))
+    listed = osi & agrees.fillna(False).to_numpy(dtype=bool)
     bid = raw["best_bid"].to_numpy(dtype=np.float64)
     ask = raw["best_offer"].to_numpy(dtype=np.float64)
-    return pd.DataFrame(
+    out = pd.DataFrame(
         {
             "date": pd.to_datetime(raw["date"]).dt.date,
             "root": root,
@@ -101,12 +128,33 @@ def normalise_opprcd(raw: pd.DataFrame, divisor: float = 1000.0) -> pd.DataFrame
             "am_settled": am,
         }
     )
+    if listed.all():
+        return out
+    # Listed rows first, so a remapped duplicate is the one dropped; listed rows are
+    # never dropped here, so a year with only SPX and SPXW symbols is unchanged.
+    order = np.argsort(~listed, kind="stable")
+    ranked = out.iloc[order]
+    dup = ranked.duplicated(["date", "root", "expiry", "cp", "strike"]).to_numpy()
+    return ranked[~(dup & ~listed[order])].sort_index().reset_index(drop=True)
 
 
 def _settlement_day(expiry: pd.Series, am: np.ndarray) -> pd.Series:
-    """A Saturday AM expiry settles at the open of the Friday before it."""
+    """The trading day an expiry settles on.
+
+    A Saturday AM expiry settles at the open of the trading day before it. Any expiry
+    dated on a weekday NYSE closure (``panel.NYSE_HOLIDAYS``, which lists the
+    unscheduled ones) settles on the trading day before it as well: the exchange moved
+    the SPXW expiries of 2018-12-05 and 2025-01-09 to the previous close, and the last
+    quotes of each price it there.
+    """
+    days = expiry.to_numpy(dtype="datetime64[D]")
+    holidays = np.asarray(NYSE_HOLIDAYS, dtype="datetime64[D]")
     saturday = (expiry.dt.weekday == 5).to_numpy() & am
-    return expiry - pd.to_timedelta(np.where(saturday, 1, 0), unit="D")
+    closed = np.isin(days, holidays) & (expiry.dt.weekday < 5).to_numpy()
+    move = saturday | closed
+    out = days.copy()
+    out[move] = np.busday_offset(days[move], 0, roll="backward", holidays=holidays)
+    return pd.Series(pd.to_datetime(out), index=expiry.index)
 
 
 def read_opprcd(root: Path, year: int, ticker: str = "SPX") -> pd.DataFrame:  # pragma: no cover
