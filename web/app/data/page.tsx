@@ -1,523 +1,182 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import type { EChartsOption } from "echarts";
-import { Card, Chip, PageHead, Segmented, Tile } from "@/components/Bits";
-import { Chart } from "@/components/Chart";
-import { Empty, ErrorBox, Loading, PanelNotBuilt } from "@/components/States";
-import ui from "@/components/ui.module.css";
-import { api, type ApiError, type Coverage, type Daily, type Seam, type Smile, type Surface, type Term } from "@/lib/api";
-import { SOURCE_LABEL, axis, base, sourceColor, type Tokens, useTokens } from "@/lib/chart";
-import { esc, num, pct, volPts } from "@/lib/format";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Card, PageHead } from "@/components/Bits";
+import { ErrorBox, Loading, PanelNotBuilt } from "@/components/States";
+import { useGridPlayback, type XMode } from "@/components/views/IvSurface";
+import { COMPARE_VIEWS, type CompareView, RealVsSim } from "@/components/views/RealVsSim";
+import { SellerDay } from "@/components/views/SellerDay";
+import { signedPts } from "@/components/views/VrpMapping";
+import { api, type SigmaFrom } from "@/lib/api";
+import { useTokens } from "@/lib/chart";
 import { useFetch } from "@/lib/useFetch";
+import { setQuery, useQuery, useQuerySync, useSectionScroll } from "@/lib/url";
+import s from "./_parts/data.module.css";
+import { DateBar, snapTo } from "./_parts/DateBar";
+import { PremiumView } from "./_parts/Premium";
+import { QualityBody } from "./_parts/Quality";
+import { SurfaceView } from "./_parts/Surface";
+import { Fold } from "@/components/PageBits";
+import { InfoTip, Labelled } from "@/components/InfoTip";
 
-const ROOTS = [
-  { value: "all", label: "SPX + SPXW" },
-  { value: "SPX", label: "SPX" },
-  { value: "SPXW", label: "SPXW" },
+/**
+ * The Real data page, led by the four questions a reader brings to it. Each opens a
+ * focused view that answers in one plain sentence computed from the panel; the data's
+ * own checks (coverage, the vendor seam, FRED, the build's version) fold away at the
+ * bottom. Every view and knob is in the URL, so a workflow step can open it:
+ *
+ *   ?q=premium[&show=levels][&by=year]
+ *   ?q=surface&date=2022-06-13[&tenor=90][&x=m]
+ *   ?q=sim&date=…[&cmp=diff][&premium=2][&sigma=atm]
+ *   ?q=seller&date=…
+ *   ?quality=1[&vendor=…][&roots=SPXW][&expiry=…]
+ *
+ * The old `section=` links still land: vrp on the premium, day on the surface,
+ * coverage and seam on the data-quality section, opened.
+ */
+
+const QUESTIONS = [
+  { value: "premium", text: "What premium does the market pay for volatility?", hint: "Today and since 2010, and where it sits on the sweep's axis.", term: "q_premium" },
+  { value: "surface", text: "What does the volatility surface look like on a day?", hint: "The 3D surface with playback, its smile and its term structure.", term: "q_surface" },
+  { value: "sim", text: "How does the simulator differ from the market?", hint: "Real against simulated on the same day, and where they part most.", term: "q_sim" },
+  { value: "seller", text: "What would the seller have opened on that day?", hint: "The iron condor on a real close: strikes, credit, risk and margin.", term: "q_seller" },
 ] as const;
-type Roots = (typeof ROOTS)[number]["value"];
-
-const vp = (x: number | null) => (x === null ? null : x * 100);
-
-// ---------------------------------------------------------------- coverage
-
-function coverageOption(t: Tokens, c: Coverage): EChartsOption {
-  const overlap = c.overlap;
-  return {
-    ...base(t),
-    tooltip: { ...base(t).tooltip, valueFormatter: (v: unknown) => num(v as number) },
-    xAxis: { type: "time", ...axis(t), splitLine: { show: false } },
-    yAxis: { type: "value", name: "Contracts quoted", nameLocation: "middle", ...axis(t), nameGap: 50 },
-    grid: { ...base(t).grid, left: 70, bottom: 64 },
-    dataZoom: [
-      { type: "inside", xAxisIndex: 0 },
-      { type: "slider", xAxisIndex: 0, height: 18, bottom: 10, borderColor: t.axis, textStyle: { color: t.muted } },
-    ],
-    series: [
-      ...c.strips.map((s, i) => ({
-        name: SOURCE_LABEL[s.source] ?? s.source,
-        type: "line" as const,
-        showSymbol: false,
-        sampling: "lttb" as const,
-        lineStyle: { width: 1.5, color: sourceColor(t, s.source) },
-        itemStyle: { color: sourceColor(t, s.source) },
-        data: s.date.map((d, j) => [d, s.missing[j] ? null : s.n_contracts[j]]),
-        markArea:
-          i === 0 && overlap
-            ? {
-                silent: true,
-                itemStyle: { color: t.dark ? "rgba(141,180,234,0.12)" : "rgba(42,92,154,0.08)" },
-                label: { color: t.text2, fontSize: 11, formatter: "overlap: the seam" },
-                data: [[{ xAxis: overlap[0] }, { xAxis: overlap[1] }]] as never,
-              }
-            : undefined,
-      })),
-      {
-        name: "Missing day",
-        type: "scatter" as const,
-        symbol: "triangle",
-        symbolSize: 9,
-        itemStyle: { color: t.fail },
-        data: c.missing.map(([d]) => [d, 0]),
-        tooltip: { trigger: "item" as const, formatter: (p: unknown) => `missing: ${esc((p as { value: [string] }).value[0])}` },
-      },
-    ],
-  };
-}
-
-function CoverageSection({ c }: { c: Coverage }) {
-  const t = useTokens();
-  return (
-    <>
-      <div className={ui.grid4}>
-        {c.spans.map((s) => (
-          <Tile
-            key={s.source}
-            accent
-            label={SOURCE_LABEL[s.source] ?? s.source}
-            value={`${num(s.n_days)} days`}
-            note={
-              <>
-                {s.first} → {s.last} · median {num(s.median_contracts)} contracts/day
-              </>
-            }
-          />
-        ))}
-        <Tile label="Overlap" value={c.overlap ? `${c.overlap[2]} days` : "none"} note={c.overlap ? `${c.overlap[0]} → ${c.overlap[1]}` : "no shared days"} />
-        <Tile label="Missing days" value={num(c.missing.length)} />
-      </div>
-      <div className={ui.grid2}>
-        <Card title="Coverage by source" sub="Contracts per day; band = overlap, triangles = missing." source={<code>{c.source}</code>}>
-          <Chart option={coverageOption(t, c)} height={300} label="Contracts quoted per trading day by source" />
-        </Card>
-        <Card title="Missing trading days" sub="Not interpolated." source={<code>{c.source}</code>}>
-          {c.missing.length ? (
-            <div className={ui.tableWrap} style={{ maxHeight: 300, overflow: "auto" }}>
-              <table className={ui.table}>
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Source</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {c.missing.map(([d, s]) => (
-                    <tr key={`${d}-${s}`}>
-                      <td className="mono">{d}</td>
-                      <td>
-                        <Chip color={sourceColor(t, s)}>{SOURCE_LABEL[s] ?? s}</Chip>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <Empty title="No missing trading days" />
-          )}
-        </Card>
-      </div>
-    </>
-  );
-}
-
-// ---------------------------------------------------------------- one date
-
-function smileOption(t: Tokens, s: Smile): EChartsOption {
-  const ours = s.moneyness.map((m, i) => [m, vp(s.iv[i] ?? null), s.strike[i]]);
-  const vendor = s.moneyness.map((m, i) => [m, vp(s.iv_vendor[i] ?? null), s.strike[i]]);
-  return {
-    ...base(t),
-    tooltip: {
-      ...base(t).tooltip,
-      formatter: (ps: unknown) => {
-        const arr = ps as { seriesName: string; value: [number, number | null, number] }[];
-        const head = arr[0] ? `K/F ${arr[0].value[0].toFixed(3)} · strike ${num(arr[0].value[2])}` : "";
-        return [head, ...arr.map((p) => `${p.seriesName}: <b>${p.value[1] === null ? "–" : p.value[1].toFixed(2)}</b>`)].join("<br/>");
-      },
-    },
-    xAxis: { type: "value", name: "Moneyness K / F", nameLocation: "middle", scale: true, ...axis(t) },
-    yAxis: { type: "value", name: "Implied vol (vol pts)", nameLocation: "middle", scale: true, ...axis(t), nameGap: 40 },
-    series: [
-      {
-        name: "Ours (optspread.pricing)",
-        type: "line",
-        data: ours,
-        symbolSize: 5,
-        lineStyle: { width: 2, color: t.s1 },
-        itemStyle: { color: t.s1 },
-        markLine: { symbol: "none", silent: true, lineStyle: { color: t.s5, width: 1, type: "solid" }, label: { color: t.muted, formatter: "F" }, data: [{ xAxis: 1 }] },
-      },
-      ...(s.has_vendor
-        ? [{ name: "OptionMetrics vendor IV", type: "line" as const, data: vendor, showSymbol: false, lineStyle: { width: 1.5, color: t.s2 }, itemStyle: { color: t.s2 } }]
-        : []),
-    ],
-  };
-}
-
-function surfaceOption(t: Tokens, s: Surface): EChartsOption {
-  const data: [number, number, number | null][] = [];
-  s.iv.forEach((row, j) => row.forEach((v, i) => data.push([i, j, v === null ? null : v * 100])));
-  const vals = data.map((d) => d[2]).filter((v): v is number => v !== null);
-  const lo = vals.length ? Math.min(...vals) : 0;
-  const hi = vals.length ? Math.max(...vals) : 1;
-  return {
-    ...base(t),
-    legend: { show: false },
-    tooltip: {
-      ...base(t).tooltip,
-      trigger: "item",
-      formatter: (p: unknown) => {
-        const v = (p as { value: [number, number, number | null] }).value;
-        return `K/F ${(s.moneyness[v[0]] ?? 0).toFixed(3)} · ${s.dte[v[1]]} DTE<br/>IV <b>${v[2] === null ? "not quoted" : v[2].toFixed(2)}</b>`;
-      },
-    },
-    grid: { left: 64, right: 80, top: 16, bottom: 44 },
-    xAxis: { type: "category", data: s.moneyness.map((m) => m.toFixed(2)), name: "Moneyness K / F", nameLocation: "middle", ...axis(t), splitLine: { show: false } },
-    yAxis: { type: "category", data: s.dte.map(String), name: "Days to expiry", nameLocation: "middle", ...axis(t), nameGap: 44, splitLine: { show: false } },
-    visualMap: {
-      min: Math.floor(lo),
-      max: Math.ceil(hi),
-      calculable: true,
-      orient: "vertical",
-      right: 0,
-      top: "middle",
-      itemHeight: 160,
-      text: ["vol pts", ""],
-      textStyle: { color: t.muted },
-      inRange: { color: t.dark ? ["#1a2e4d", "#2f5a91", "#6b9ad8", "#cde2fb"] : ["#e6eef8", "#86b6ef", "#2a78d6", "#13233d"] },
-    },
-    series: [{ type: "heatmap", data: data.filter((d) => d[2] !== null), progressive: 0, emphasis: { itemStyle: { borderColor: t.text, borderWidth: 1 } } }],
-  };
-}
-
-function termOption(t: Tokens, ts: Term): EChartsOption {
-  return {
-    ...base(t),
-    legend: { show: false },
-    tooltip: { ...base(t).tooltip, formatter: (p: unknown) => { const q = (p as { value: [number, number]; dataIndex: number }[])[0]; return q ? `${q.value[0]} DTE · ${esc(ts.expiry[q.dataIndex])}<br/>ATM IV <b>${q.value[1].toFixed(2)}</b>` : ""; } },
-    xAxis: { type: "value", name: "Days to expiry", nameLocation: "middle", ...axis(t) },
-    yAxis: { type: "value", name: "ATM implied vol (vol pts)", nameLocation: "middle", scale: true, ...axis(t), nameGap: 40 },
-    series: [{ type: "line", data: ts.dte.map((d, i) => [d, vp(ts.atm_iv[i] ?? null)]), symbolSize: 7, lineStyle: { width: 2, color: t.s1 }, itemStyle: { color: t.s1, borderColor: t.surface, borderWidth: 2 } }],
-  };
-}
-
-function DateSection({ dates, root }: { dates: string[]; root: string }) {
-  const t = useTokens();
-  const [date, setDate] = useState(dates[dates.length - 1] ?? "");
-  const [typed, setTyped] = useState(date);
-  const [source, setSource] = useState<string>("");
-  const [roots, setRoots] = useState<Roots>("all");
-  const [expiry, setExpiry] = useState<string>("");
-  const [maxDte, setMaxDte] = useState(365);
-  const q = { date, source: source || undefined, roots: roots === "all" ? undefined : [roots] };
-  const qk = JSON.stringify(q);
-  const chain = useFetch((s) => api.chain(q, s), qk, Boolean(date));
-  useEffect(() => setExpiry(""), [qk]);
-  const exp = expiry || chain.data?.default_expiry || "";
-  const smile = useFetch((s) => api.smile({ ...q, expiry: exp }, s), `${qk}|${exp}`, Boolean(date && exp));
-  const surface = useFetch((s) => api.surface({ ...q, max_dte: maxDte }, s), `${qk}|${maxDte}`, Boolean(date));
-  const term = useFetch((s) => api.term(q, s), qk, Boolean(date));
-
-  const snap = (value: string) => {
-    if (!dates.length) return;
-    // the nearest trading day on or before the one typed, so a weekend picks the Friday
-    let pick = dates[0] ?? "";
-    for (const d of dates) if (d <= value) pick = d;
-    setDate(pick);
-    setTyped(pick);
-  };
-  const step = (k: -1 | 1) => {
-    const i = dates.indexOf(date);
-    const next = dates[Math.max(0, Math.min(dates.length - 1, i + k))];
-    if (next) {
-      setDate(next);
-      setTyped(next);
-    }
-  };
-
-  const err = (e: ApiError | undefined, what: string) => (e ? <ErrorBox what={what} error={e} /> : null);
-  return (
-    <>
-      <Card title="One trading day">
-        <div className={ui.filterBar}>
-          <label className={ui.field}>
-            <span className={ui.fieldLabel}>Date</span>
-            <div className={ui.row} style={{ flexWrap: "nowrap" }}>
-              <button type="button" className={`${ui.btn} ${ui.btnSmall}`} onClick={() => step(-1)} aria-label="Previous trading day">
-                ←
-              </button>
-              <input className={ui.input} type="date" value={typed} min={dates[0]} max={dates[dates.length - 1]} onChange={(e) => setTyped(e.target.value)} onBlur={() => snap(typed)} onKeyDown={(e) => e.key === "Enter" && snap(typed)} />
-              <button type="button" className={`${ui.btn} ${ui.btnSmall}`} onClick={() => step(1)} aria-label="Next trading day">
-                →
-              </button>
-            </div>
-          </label>
-          <div className={ui.field}>
-            <span className={ui.fieldLabel}>Source</span>
-            <Segmented
-              label="Source"
-              value={source || (chain.data?.sources.includes("optionmetrics") ? "optionmetrics" : chain.data?.sources[0] ?? "")}
-              options={(chain.data?.sources ?? []).map((s) => ({ value: s, label: SOURCE_LABEL[s] ?? s }))}
-              onChange={setSource}
-            />
-          </div>
-          <div className={ui.field}>
-            <span className={ui.fieldLabel}>Roots</span>
-            <Segmented label="Roots" value={roots} options={ROOTS} onChange={setRoots} />
-          </div>
-          <label className={ui.field}>
-            <span className={ui.fieldLabel}>Expiry for the smile</span>
-            <select className={ui.select} value={exp} onChange={(e) => setExpiry(e.target.value)}>
-              {(chain.data?.expiries ?? []).map((e) => (
-                <option key={e.expiry} value={e.expiry}>
-                  {e.expiry} · {e.dte} DTE · {e.n_quotes} quotes
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className={ui.field}>
-            <span className={ui.fieldLabel}>
-              Surface out to <span>{maxDte} DTE</span>
-            </span>
-            <input className={ui.range} type="range" min={30} max={730} step={5} value={maxDte} onChange={(e) => setMaxDte(Number(e.target.value))} />
-          </label>
-        </div>
-      </Card>
-      {err(chain.error, "the chain")}
-      <div className={ui.grid2}>
-        <Card
-          title={smile.data ? `Smile · ${smile.data.expiry} (${smile.data.dte} DTE)` : "Smile"}
-          sub={smile.data ? `OTM quotes · ${smile.data.data_source} · F ${num(smile.data.forward, 1)}` : "OTM quotes against K / F"}
-          source={smile.data ? <code>{smile.data.source}</code> : undefined}
-        >
-          {err(smile.error, "the smile")}
-          {smile.loading && !smile.data ? <Loading what="the smile" /> : null}
-          {smile.data ? <Chart option={smileOption(t, smile.data)} height={320} label="Implied volatility smile against moneyness" /> : null}
-        </Card>
-        <Card title="ATM term structure" sub={term.data ? `ATM IV per expiry · ${term.data.data_source}` : "ATM IV per expiry"} source={term.data ? <code>{term.data.source}</code> : undefined}>
-          {err(term.error, "the term structure")}
-          {term.loading && !term.data ? <Loading what="the term structure" /> : null}
-          {term.data ? term.data.dte.length ? <Chart option={termOption(t, term.data)} height={320} label="ATM implied volatility against days to expiry" /> : <Empty title="No expiry straddles the forward" /> : null}
-        </Card>
-      </div>
-      <Card
-        title="IV surface"
-        sub="Moneyness × DTE; blank where not quoted."
-        source={surface.data ? <code>{surface.data.source}</code> : <code>{root}</code>}
-      >
-        {err(surface.error, "the surface")}
-        {surface.loading && !surface.data ? <Loading what="the surface" /> : null}
-        {surface.data ? surface.data.dte.length ? <Chart option={surfaceOption(t, surface.data)} height={Math.max(300, 22 * surface.data.dte.length + 70)} label="Implied volatility surface heatmap" /> : <Empty title="No expiry in range has enough quotes" /> : null}
-      </Card>
-    </>
-  );
-}
-
-// ---------------------------------------------------------------- IV30, RV and VRP
-
-interface Stitched {
-  date: string[];
-  iv30: (number | null)[];
-  rv21: (number | null)[];
-  rvFwd: (number | null)[];
-  vrp: (number | null)[];
-  source: string[];
-}
-
-/** One series 2010 to now: OptionMetrics where it quotes, Databento after it ends. */
-function stitch(d: Daily): Stitched {
-  const by = new Map<string, { iv: number | null; rv: number | null; fwd: number | null; vrp: number | null; src: string }>();
-  const order = [...d.series].sort((a, b) => (a.data_source === "optionmetrics" ? 1 : 0) - (b.data_source === "optionmetrics" ? 1 : 0));
-  for (const s of order) s.date.forEach((dt, i) => by.set(dt, { iv: s.iv30[i] ?? null, rv: s.rv21[i] ?? null, fwd: s.rv21_fwd[i] ?? null, vrp: s.vrp30[i] ?? null, src: s.data_source }));
-  const dates = [...by.keys()].sort();
-  const pick = <K extends "iv" | "rv" | "fwd" | "vrp">(k: K) => dates.map((dt) => vp(by.get(dt)?.[k] ?? null));
-  return { date: dates, iv30: pick("iv"), rv21: pick("rv"), rvFwd: pick("fwd"), vrp: pick("vrp"), source: dates.map((dt) => by.get(dt)?.src ?? "") };
-}
-
-function vrpOption(t: Tokens, s: Stitched, cut: string | null): EChartsOption {
-  return {
-    ...base(t),
-    legend: { ...base(t).legend, data: ["IV30 ATM", "RV21, forward", "RV21, trailing"] },
-    axisPointer: { link: [{ xAxisIndex: "all" }] },
-    tooltip: { ...base(t).tooltip, valueFormatter: (v: unknown) => (typeof v === "number" ? v.toFixed(2) : "–") },
-    grid: [
-      { left: 60, right: 18, top: 34, height: "50%" },
-      { left: 60, right: 18, top: "68%", bottom: 64 },
-    ],
-    xAxis: [
-      { type: "category", data: s.date, gridIndex: 0, ...axis(t), axisLabel: { show: false }, splitLine: { show: false } },
-      { type: "category", data: s.date, gridIndex: 1, ...axis(t), splitLine: { show: false } },
-    ],
-    yAxis: [
-      { type: "value", gridIndex: 0, name: "Vol pts", nameLocation: "middle", ...axis(t), nameGap: 38 },
-      { type: "value", gridIndex: 1, name: "VRP30", nameLocation: "middle", ...axis(t), nameGap: 38 },
-    ],
-    dataZoom: [
-      { type: "inside", xAxisIndex: [0, 1] },
-      { type: "slider", xAxisIndex: [0, 1], height: 18, bottom: 10, borderColor: t.axis, textStyle: { color: t.muted } },
-    ],
-    series: [
-      {
-        name: "IV30 ATM",
-        type: "line",
-        data: s.iv30,
-        showSymbol: false,
-        sampling: "lttb",
-        lineStyle: { width: 1.5, color: t.s1 },
-        itemStyle: { color: t.s1 },
-        markLine: cut
-          ? { symbol: "none", silent: true, lineStyle: { color: t.s5, width: 1, type: "solid" }, label: { color: t.muted, formatter: "source cut-over" }, data: [{ xAxis: cut }] }
-          : undefined,
-      },
-      { name: "RV21, forward", type: "line", data: s.rvFwd, showSymbol: false, sampling: "lttb", lineStyle: { width: 1.5, color: t.s2 }, itemStyle: { color: t.s2 } },
-      { name: "RV21, trailing", type: "line", data: s.rv21, showSymbol: false, sampling: "lttb", lineStyle: { width: 1, color: t.s5, opacity: 0.8 }, itemStyle: { color: t.s5 } },
-      {
-        name: "VRP30 = IV30 − forward RV21",
-        type: "bar",
-        xAxisIndex: 1,
-        yAxisIndex: 1,
-        data: s.vrp.map((v) => (v === null ? null : { value: v, itemStyle: { color: v >= 0 ? t.s1 : t.s2 } })),
-        barCategoryGap: 0,
-        large: true,
-      },
-    ],
-  };
-}
-
-function VrpSection({ d }: { d: Daily }) {
-  const t = useTokens();
-  const s = useMemo(() => stitch(d), [d]);
-  const cut = useMemo(() => {
-    const i = s.source.findIndex((x, j) => j > 0 && x !== s.source[j - 1]);
-    return i > 0 ? (s.date[i] ?? null) : null;
-  }, [s]);
-  return (
-    <>
-      <div className={ui.grid4}>
-        {Object.entries(d.stats).map(([src, st]) => (
-          <Tile
-            key={src}
-            accent
-            label={`Mean VRP30 · ${SOURCE_LABEL[src] ?? src}`}
-            value={`${num(st.mean_vol_pts, 2)} vol pts`}
-            note={
-              <>
-                median {num(st.median_vol_pts, 2)} · positive {pct(st.share_positive)} of {num(st.n_days)} days · {st.first} → {st.last}
-              </>
-            }
-          />
-        ))}
-      </div>
-      <Card
-        title="IV30, realised vol and VRP30"
-        sub="VRP30 = IV30 − forward RV21."
-        source={<code>{d.source}</code>}
-      >
-        {s.date.length ? <Chart option={vrpOption(t, s, cut)} height={460} label="IV30 and realised volatility over time, with the variance risk premium below" /> : <Empty title="No daily rows" />}
-      </Card>
-    </>
-  );
-}
-
-// ---------------------------------------------------------------- the seam
-
-const SEAM_LABEL: Record<string, string> = {
-  n_matched: "Contracts matched",
-  iv_diff_median_volpts: "IV diff, median (vol pts)",
-  iv_diff_p95_abs_volpts: "|IV diff|, p95 (vol pts)",
-  mid_diff_median_rel: "Mid diff, median (relative)",
-  forward_diff_median_bp: "Forward diff, median (bp)",
-  ours_vs_vendor_median_volpts: "Ours − vendor IV, median (vol pts)",
-};
-
-function seamOption(t: Tokens, s: Seam): EChartsOption {
-  const series = ["iv_diff_median_volpts", "iv_diff_p95_abs_volpts", "ours_vs_vendor_median_volpts"].filter((k) => s.stats[k]);
-  const colors = [t.s1, t.s2, t.s3];
-  return {
-    ...base(t),
-    xAxis: { type: "category", data: s.date, ...axis(t), splitLine: { show: false } },
-    yAxis: { type: "value", name: "Vol pts", nameLocation: "middle", ...axis(t), nameGap: 36 },
-    tooltip: { ...base(t).tooltip, valueFormatter: (v: unknown) => (typeof v === "number" ? v.toFixed(3) : "–") },
-    series: series.map((k, i) => ({ name: SEAM_LABEL[k] ?? k, type: "line" as const, data: s.stats[k] ?? [], symbolSize: 5, lineStyle: { width: 1.8, color: colors[i] }, itemStyle: { color: colors[i] } })),
-  };
-}
-
-function SeamSection({ s }: { s: Seam }) {
-  const t = useTokens();
-  return (
-    <Card
-      title="Seam: OptionMetrics vs Databento"
-      sub="Same contracts, overlap days."
-      source={
-        <>
-          <code>{s.source}</code>
-          {s.iv30_date.length ? " · IV30 difference from spx_daily.parquet" : ""}
-        </>
-      }
-    >
-      {s.available ? (
-        <div className={ui.stack}>
-          <div className={ui.grid3}>
-            {Object.entries(s.medians).map(([k, v]) => (
-              <Tile key={k} label={SEAM_LABEL[k] ?? k} value={k === "n_matched" ? num(v) : k === "mid_diff_median_rel" ? pct(v, 2) : num(v, 3)} note={`median, ${s.date.length} days`} />
-            ))}
-          </div>
-          <Chart option={seamOption(t, s)} height={260} label="Per-day seam statistics over the overlap" />
-          {s.iv30_date.length ? (
-            <p className={ui.dim} style={{ fontSize: 13 }}>
-              IV30 {SOURCE_LABEL[s.iv30_sources[1] ?? ""] ?? s.iv30_sources[1]} minus {SOURCE_LABEL[s.iv30_sources[0] ?? ""] ?? s.iv30_sources[0]} on {s.iv30_date.length} shared days:
-              median {num(median(s.iv30_diff_vol_pts), 3)} vol pts.
-            </p>
-          ) : null}
-        </div>
-      ) : (
-        <Empty title="No seam report">
-          <p>
-            <code>panel/seam_overlap.parquet</code>
-          </p>
-        </Empty>
-      )}
-    </Card>
-  );
-}
-
-function median(xs: (number | null)[]): number | null {
-  const v = xs.filter((x): x is number => x !== null).sort((a, b) => a - b);
-  if (!v.length) return null;
-  const m = Math.floor(v.length / 2);
-  return v.length % 2 ? (v[m] ?? null) : ((v[m - 1] ?? 0) + (v[m] ?? 0)) / 2;
-}
-
-// ---------------------------------------------------------------- the page
+type Question = (typeof QUESTIONS)[number]["value"];
+const Q_VALUES = QUESTIONS.map((x) => x.value);
+const SECTION_TO_Q: Record<string, Question | "quality"> = { vrp: "premium", day: "surface", coverage: "quality", seam: "quality" };
+const SIGMAS = ["config", "rv21", "atm"] as const;
 
 export default function DataPage() {
-  const status = useFetch((s) => api.dataStatus(s), "status");
-  const built = Boolean(status.data?.built);
-  const coverage = useFetch((s) => api.coverage(s), "coverage", built);
-  const dates = useFetch((s) => api.dates(undefined, s), "dates", built);
-  const daily = useFetch((s) => api.daily(undefined, undefined, s), "daily", built);
-  const seam = useFetch((s) => api.seam(s), "seam", built);
+  return (
+    <Suspense fallback={<Loading what="the panel" />}>
+      <Data />
+    </Suspense>
+  );
+}
+
+function Questions({ value, onPick, teaser }: { value: Question | null; onPick: (q: Question | null) => void; teaser: Partial<Record<Question, string>> }) {
+  return (
+    <div className={`${s.questions} ${value ? s.compact : ""}`} role="group" aria-label="What do you want to find out?">
+      {QUESTIONS.map((x) => (
+        <button key={x.value} type="button" aria-pressed={value === x.value} className={`${s.question} ${value === x.value ? s.questionOn : ""}`} onClick={() => onPick(value === x.value ? null : x.value)}>
+          {teaser[x.value] ? <span className={s.questionTeaser}>{teaser[x.value]}</span> : null}
+          <span className={s.questionText}>{x.text}</span>
+          <span className={s.questionHint}>{x.hint}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function Data() {
+  const t = useTokens();
+  const q = useQuery();
+  const legacy = SECTION_TO_Q[q.str("section")];
+  const [question, setQuestion] = useState<Question | null>(() => {
+    const raw = q.str("q");
+    if ((Q_VALUES as readonly string[]).includes(raw)) return raw as Question;
+    return legacy && legacy !== "quality" ? legacy : null;
+  });
+  // a link or a workflow step that moves to another question on this page (router.push with
+  // a new ?q=) reaches the open view: the page stays mounted, so it follows the URL's q
+  const urlQ = q.str("q");
+  useEffect(() => {
+    if ((Q_VALUES as readonly string[]).includes(urlQ) && urlQ !== question) setQuestion(urlQ as Question);
+  }, [urlQ]);
+  const [qualityOpen, setQualityOpen] = useState(() => q.bool("quality") || legacy === "quality");
+  const [rawDate, setRawDate] = useState(() => q.str("date"));
+  const [xMode, setXMode] = useState<XMode>(() => q.oneOf("x", ["k", "m"] as const, "k"));
+  const [cmp, setCmp] = useState<CompareView>(() => q.oneOf("cmp", COMPARE_VIEWS, "side"));
+  const [premium, setPremium] = useState(() => q.num("premium", 1, 0, 6));
+  const [sigma, setSigma] = useState<SigmaFrom>(() => q.oneOf("sigma", SIGMAS, "config"));
+
+  const status = useFetch((sig) => api.dataStatus(sig), "status");
+  const missing = status.data?.missing ?? [];
+  const usable = Boolean(status.data) && !missing.some((m) => m.endsWith("spx_daily.parquet") || m.endsWith("coverage.parquet"));
+  const gridDates = useFetch((sig) => api.gridDates(sig), "grid-dates", usable);
+  const dates = gridDates.data ?? [];
+  const date = dates.length ? snapTo(dates, rawDate) : rawDate;
+  const latest = dates[dates.length - 1];
+  const vrp = useFetch((sig) => api.vrp(sig), "vrp");
+
+  const needsGrid = question === "surface" || question === "sim";
+  const gridded = dates.includes(date);
+  const grid = useFetch((sig) => api.grid(date, sig), `grid|${date}`, needsGrid && gridded);
+  const setDate = useCallback((d: string) => setRawDate(d), []);
+  const play = useGridPlayback(dates, date, setDate);
+
+  useQuerySync(
+    { q: question, date: date && date !== latest ? date : null, x: xMode, cmp, premium, sigma, quality: qualityOpen, section: null },
+    { x: "k", cmp: "side", premium: 1, sigma: "config" },
+  );
+  useEffect(() => {
+    if (q.params.get("section")) setQuery({ section: null, q: question, quality: qualityOpen });
+  }, []);
+  useSectionScroll(legacy === "quality" ? "quality" : "", Boolean(status.data));
+
+  const h = vrp.data?.mapping?.headline;
+  const teaser = useMemo(() => ({ premium: h ? `${signedPts(h.mean)} vol pts` : undefined, surface: dates.length ? `${dates.length.toLocaleString("en-US")} days` : undefined }), [h, dates.length]);
+  const pick = (v: Question | null) => {
+    if (play.playing) play.toggle();
+    setQuestion(v);
+  };
+  const dateBar = question === "sim" || question === "seller" ? <DateBar dates={dates} date={date} onChange={setDate} /> : null;
+  const title = QUESTIONS.find((x) => x.value === question);
 
   return (
     <>
-      <PageHead
-        eyebrow="Real data"
-        title="SPX panel"
-      />
+      <PageHead eyebrow="Real data" title="What does the real SPX options market say?" lede="Pick a question; each view answers it in one sentence from the panel, with the charts to check it." />
       {status.error ? <ErrorBox what="the panel status" error={status.error} onRetry={status.reload} /> : null}
       {status.loading ? <Loading what="the panel status" /> : null}
-      {status.data && !built ? <PanelNotBuilt missing={status.data.missing} root={status.data.root} /> : null}
-      {built ? (
-        <>
-          {coverage.error ? <ErrorBox what="coverage" error={coverage.error} onRetry={coverage.reload} /> : null}
-          {coverage.data ? <CoverageSection c={coverage.data} /> : <Loading what="coverage" />}
-          {dates.data && dates.data.length ? <DateSection dates={dates.data} root={status.data?.root ?? ""} /> : null}
-          {daily.error ? <ErrorBox what="the daily series" error={daily.error} onRetry={daily.reload} /> : null}
-          {daily.data ? <VrpSection d={daily.data} /> : <Loading what="the daily series" />}
-          {seam.data ? <SeamSection s={seam.data} /> : null}
-        </>
+      {status.data && !usable ? <PanelNotBuilt missing={missing} root={status.data.root} /> : null}
+      <Questions value={question} onPick={pick} teaser={teaser} />
+      {usable && question && title ? (
+        <section className={s.view} aria-label={title.text}>
+          <div className={s.viewHead}>
+            <h2 className={s.viewTitle}>
+              <Labelled term={`data.${title.term}`}>{title.text}</Labelled>
+            </h2>
+          </div>
+          {gridDates.error && needsGrid ? <ErrorBox what="the gridded surface's dates" error={gridDates.error} onRetry={gridDates.reload} /> : null}
+          {question === "premium" ? <PremiumView /> : null}
+          {question === "surface" && dates.length ? (
+            <SurfaceView
+              dates={dates}
+              date={date}
+              setDate={setDate}
+              grid={grid.data}
+              gridError={grid.error ? <ErrorBox what="the surface" error={grid.error} onRetry={grid.reload} /> : null}
+              play={play}
+              xMode={xMode}
+              setXMode={setXMode}
+            />
+          ) : null}
+          {question === "sim" && dates.length ? (
+            <>
+              {dateBar}
+              <RealVsSim t={t} date={date} grid={grid.data} gridded={gridded} mode={xMode} setMode={setXMode} view={cmp} setView={setCmp} premium={premium} setPremium={setPremium} sigmaFrom={sigma} setSigmaFrom={setSigma} />
+            </>
+          ) : null}
+          {question === "seller" && dates.length ? (
+            <>
+              {dateBar}
+              <SellerDay date={date} gridded={gridded} />
+            </>
+          ) : null}
+          {needsGrid || question === "seller" ? !dates.length && gridDates.loading ? <Loading what="the trading days" /> : null : null}
+        </section>
+      ) : null}
+      {usable && status.data ? (
+        <Fold id="quality" title="Data quality" term="data.coverage" sub="coverage, the vendor seam, FRED and the build's version" open={qualityOpen} onToggle={setQualityOpen}>
+          <QualityBody date={date || latest || ""} status={status.data} />
+        </Fold>
+      ) : null}
+      {status.data && !usable && vrp.data?.mapping ? (
+        <Card title="The real premium" info="data.premium_mean">
+          <p>
+            {signedPts(vrp.data.mapping.headline.mean)} vol pts, 95% [{signedPts(vrp.data.mapping.headline.mean_low)}, {signedPts(vrp.data.mapping.headline.mean_high)}] <InfoTip term="data.premium_interval" />
+          </p>
+        </Card>
       ) : null}
     </>
   );
