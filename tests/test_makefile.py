@@ -50,3 +50,68 @@ def test_the_default_interpreter_is_the_venv_this_platform_made(
 def test_the_m2_target_passes_its_args_through(tmp_path: Path) -> None:
     line = _dry_run(tmp_path, "m2", "ARGS=--runs /tmp/r", "PY=py").strip()
     assert line == "py -m scripts.m2_gate_report --runs /tmp/r"
+
+
+def test_the_m4_target_passes_its_args_through(tmp_path: Path) -> None:
+    line = _dry_run(tmp_path, "m4", "ARGS=--root /tmp/r", "PY=py").strip()
+    assert line == "py -m scripts.m4_analysis --root /tmp/r"
+
+
+def test_the_m4gate_target_passes_its_args_through(tmp_path: Path) -> None:
+    line = _dry_run(tmp_path, "m4gate", "ARGS=--runs-root /tmp/r", "PY=py").strip()
+    assert line == "py -m scripts.m4_gate_report --runs-root /tmp/r"
+
+
+def test_the_script_targets_import_the_checkout_they_live_in(tmp_path: Path) -> None:
+    # `python scripts/x.py` puts scripts/ first on the path, and optspread then comes from
+    # whatever a shared venv's editable install points at; `-m scripts.x` imports this one.
+    for target, module in (("gate", "wave0_gate"), ("drag", "cost_drag"), ("bench", "bench")):
+        assert _dry_run(tmp_path, target, "PY=py").strip() == f"py -m scripts.{module}"
+
+
+def _fake_python(where: Path, name: str, version: tuple[int, int]) -> None:
+    script = where / name
+    script.write_text(
+        "#!/bin/sh\n"
+        f'if [ "$1" = "-c" ]; then exit {1 if version < (3, 12) else 0}; fi\n'
+        f"echo {name} {version}\n"
+    )
+    script.chmod(0o755)
+
+
+@pytest.mark.skipif(os.name == "nt", reason="the POSIX bootstrap probe")
+def test_make_reproduce_bootstraps_with_a_python_new_enough_for_the_project(
+    tmp_path: Path,
+) -> None:
+    import re
+
+    requires = re.search(r'requires-python = ">=(\d+\.\d+)"', (REPO / "pyproject.toml").read_text())
+    assert requires is not None
+    make_min = re.search(r"^MIN_PYTHON := (\S+)$", (REPO / "Makefile").read_text(), re.M)
+    assert make_min is not None and make_min[1] == requires[1]
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    _fake_python(bin_dir, "python3", (3, 9))  # macOS's system python3
+    _fake_python(bin_dir, "python3.12", (3, 12))
+    env = {"PATH": f"{bin_dir}{os.pathsep}/usr/bin{os.pathsep}/bin"}
+    make = shutil.which("make")
+    assert make is not None
+    out = subprocess.run(
+        [make, "-n", "-f", str(REPO / "Makefile"), "reproduce"],
+        cwd=tmp_path,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
+    assert out.strip() == "python3.12 scripts/reproduce.py"
+    _fake_python(bin_dir, "python3", (3, 13))
+    out = subprocess.run(
+        [make, "-n", "-f", str(REPO / "Makefile"), "reproduce"],
+        cwd=tmp_path,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
+    assert out.strip() == "python3 scripts/reproduce.py"
