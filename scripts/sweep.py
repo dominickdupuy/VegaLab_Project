@@ -13,10 +13,18 @@ every arm at every premium runs the same paths, and block i's policy is training
 seed ``--train-seed + i`` at every premium. Every cell is a run directory under
 ``--root``; ``grid-<hash>.json`` lists them. A second run with the same arguments
 reads finished cells back, so a killed sweep resumes where it stopped. One progress
-line per cell, with an ETA.
+line per cell, with an ETA. ``--root`` defaults to ``$VEGALAB_DATA/runs`` when
+``VEGALAB_DATA`` is set, else ``runs``: the runs root ``make m2`` and ``make m4`` read.
 
 ``--timesteps`` has no default and is required whenever the ppo arm is in the
-grid. Costs are on. Every number is synthetic (D2: the null world by design).
+grid. Costs are on. On the generator (the default) every number is synthetic (D2: the
+null world by design).
+
+``--source optionmetrics`` runs the grid on the real SPX panel: every cell is evaluated
+on the ``eval`` split and every PPO cell trained on ``train`` (the dates of
+pre-registration amendment A8), under
+``$VEGALAB_DATA/runs/optionmetrics`` by default. The planted premium is not applied to
+real chains, so there ``--premiums 0`` is the one level that means anything.
 """
 
 from __future__ import annotations
@@ -27,6 +35,13 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import cast, get_args
 
+from optspread.cli import (
+    add_source_arguments,
+    chosen_source,
+    describe,
+    premium_note,
+    runs_root,
+)
 from optspread.config import ArmName, CostConfig, RunConfig, TrainConfig
 from optspread.orchestrate import (
     PRIMARY_ARMS,
@@ -45,24 +60,33 @@ ARM_NAMES: tuple[str, ...] = get_args(ArmName)
 
 def main(argv: Sequence[str] | None = None, trainer: Trainer = train_ppo) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0] if __doc__ else "")
-    parser.add_argument("--root", type=Path, default=Path("runs"))
+    parser.add_argument(
+        "--root",
+        type=Path,
+        help="runs root (default: $VEGALAB_DATA/runs when VEGALAB_DATA is set, else runs; "
+        "where make m2 and make m4 look; .../runs/optionmetrics on the real source)",
+    )
     parser.add_argument("--premiums", type=float, nargs="+", default=list(SWEEP_PREMIUMS))
     parser.add_argument("--arms", nargs="+", choices=ARM_NAMES, default=list(PRIMARY_ARMS))
     parser.add_argument("--seeds", type=int, default=50, help="S: seed blocks")
     parser.add_argument("--episodes", type=int, default=200, help="N: episodes per block")
-    parser.add_argument("--timesteps", type=int, help="PPO steps per seed (not pre-registered)")
+    parser.add_argument("--timesteps", type=int, help="PPO steps per seed (A4 fixes 1000000)")
     parser.add_argument("--seed", type=int, default=100_000, help="first evaluation path seed")
     parser.add_argument("--train-seed", type=int, default=1000, help="training seed of block 0")
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--workers", type=int, default=1)
     parser.add_argument("--dry-run", action="store_true", help="print the plan and stop")
+    add_source_arguments(parser)
     args = parser.parse_args(argv)
+    source = chosen_source(parser, args)
 
     arms = cast(tuple[ArmName, ...], tuple(str(a) for a in args.arms))
     train = None
     if "ppo" in arms:
         if args.timesteps is None:
-            parser.error("--timesteps is required with the ppo arm; it is not pre-registered")
+            parser.error(
+                "--timesteps is required with the ppo arm (A4: 1000000); it has no default"
+            )
         train = TrainConfig(
             total_timesteps=int(args.timesteps), seed=int(args.train_seed), device=args.device
         )
@@ -75,8 +99,11 @@ def main(argv: Sequence[str] | None = None, trainer: Trainer = train_ppo) -> int
         n_seeds=int(args.seeds),
         train=train,
     )
-    root = Path(args.root)
-    print(plan_cells(grid_cells(grid), root, int(args.workers)).render(), flush=True)
+    root = runs_root(args.root, source)
+    if len(grid.premiums) > 1 and (note := premium_note(source)):
+        print(note, file=sys.stderr)
+    plan = plan_cells(grid_cells(grid), root, int(args.workers), trainer=trainer, source=source)
+    print(f"{plan.render()}; on {describe(source)}", flush=True)
     if args.dry_run:
         return 0
     try:
@@ -86,13 +113,16 @@ def main(argv: Sequence[str] | None = None, trainer: Trainer = train_ppo) -> int
             workers=int(args.workers),
             trainer=trainer,
             report=lambda p: print(p.render(), flush=True),
+            source=source,
         )
     except IncompleteGridError as exc:
         print(exc, file=sys.stderr)
         return 1
     print()
     print(record.render())
-    print(f"cells under {root}, listed in {root / grid_filename(grid)} (synthetic; costs on)")
+    print(
+        f"cells under {root}, listed in {root / grid_filename(grid)} ({describe(source)}; costs on)"
+    )
     return 0
 
 
