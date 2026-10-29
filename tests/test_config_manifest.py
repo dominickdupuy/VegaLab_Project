@@ -5,6 +5,8 @@ never reaches the results folder, which is a rule the tooling enforces rather
 than one the team remembers.
 """
 
+import functools
+import importlib.metadata
 import importlib.util
 import json
 from pathlib import Path
@@ -12,14 +14,20 @@ from pathlib import Path
 import pytest
 
 from optspread.config import CostConfig, MarketConfig, RunConfig, config_hash
+from optspread.data import DataUnavailableError, OptionMetricsSource, make_source
 from optspread.manifest import (
     MANIFEST_FILENAME,
+    OPTIONAL_VERSIONS,
     REQUIRED_FIELDS,
     REQUIRED_VERSIONS,
     SCHEMA_VERSION,
+    DataRecord,
     IncompleteManifestError,
     RunManifest,
+    callable_name,
     file_sha256,
+    git_dirty,
+    git_sha,
     library_versions,
 )
 
@@ -110,18 +118,99 @@ def test_reading_an_incomplete_manifest_raises_rather_than_returning_it(tmp_path
         RunManifest.read(tmp_path)
 
 
-def test_the_learner_versions_are_recorded_when_installed() -> None:
-    # A training run cannot be produced without the learner, so its presence in the
-    # manifest is the evidence that one was involved. Optional, so not required.
+def test_the_optional_versions_are_recorded_when_installed() -> None:
+    # The learner, gymnasium and the panel's reader can each move a number; each is
+    # recorded where it is installed and is not required (#31).
     versions = library_versions()
     assert set(REQUIRED_VERSIONS) <= versions.keys()
-    for name in ("torch", "stable_baselines3"):
+    assert {"gymnasium", "pandas", "pyarrow", "torch", "stable_baselines3"} == set(
+        OPTIONAL_VERSIONS
+    )
+    for name in OPTIONAL_VERSIONS:
         installed = importlib.util.find_spec(name) is not None
         assert (name in versions) == installed, name
+    assert versions["gymnasium"] == importlib.metadata.version("gymnasium")  # a core dependency
 
 
-def test_a_manifest_without_the_learner_still_validates(tmp_path: Path) -> None:
+def test_a_manifest_without_the_optional_versions_still_validates(tmp_path: Path) -> None:
+    # What every manifest written before #31 records: no gymnasium, no pandas.
     m = _complete(tmp_path)
     m.versions = {k: v for k, v in m.versions.items() if k in REQUIRED_VERSIONS}
     m.validate_complete()
     assert m.write(tmp_path).exists()
+
+
+# -- the data source: recorded beside the config, never in it (GH-21) ------------ #
+
+
+def test_the_trainer_is_recorded_only_when_a_policy_was_trained(tmp_path: Path) -> None:
+    m = _complete(tmp_path)
+    assert m.trainer is None
+    m.write(tmp_path)
+    assert "trainer" not in json.loads((tmp_path / MANIFEST_FILENAME).read_text())
+    m.trainer = callable_name(_complete)
+    assert m.trainer == "test_config_manifest._complete"
+    m.write(tmp_path)
+    assert RunManifest.read(tmp_path).trainer == m.trainer
+    assert callable_name(functools.partial(_complete)) == "functools.partial"
+
+
+def test_a_new_manifest_records_its_data_source(tmp_path: Path) -> None:
+    m = _complete(tmp_path)
+    assert m.data == DataRecord() and m.data_record.source == "synthetic"
+    m.write(tmp_path)
+    written = json.loads((tmp_path / MANIFEST_FILENAME).read_text())
+    assert written["data"] == {"source": "synthetic", "panel": {}}
+    assert "source" not in written["config"], "the source is provenance, not config"
+    assert RunManifest.read(tmp_path).data == DataRecord()
+
+
+def test_a_manifest_from_before_the_data_record_still_reads_and_keeps_its_keys(
+    tmp_path: Path,
+) -> None:
+    m = _complete(tmp_path)
+    m.write(tmp_path)
+    old = json.loads((tmp_path / MANIFEST_FILENAME).read_text())
+    del old["data"]  # what every manifest written before GH-21 looks like
+    (tmp_path / MANIFEST_FILENAME).write_text(json.dumps(old))
+    back = RunManifest.read(tmp_path)
+    assert back.data is None and back.data_record == DataRecord()
+    back.write(tmp_path)  # read and written again: no key appears that was not there
+    assert json.loads((tmp_path / MANIFEST_FILENAME).read_text()).keys() == old.keys()
+
+
+def test_the_real_source_records_the_panel_files_it_reads(tmp_path: Path) -> None:
+    source = OptionMetricsSource(root=tmp_path)
+    with pytest.raises(DataUnavailableError, match="no SPX panel"):
+        DataRecord.of(source)
+    (tmp_path / "panel").mkdir()
+    for name in ("surface_grid.parquet", "spx_daily.parquet"):
+        (tmp_path / "panel" / name).write_bytes(name.encode())
+    record = DataRecord.of(source)
+    assert record.source == "optionmetrics"
+    assert record.panel == {  # keyed as docs/DATA_MANIFEST.json keys them
+        f"panel/{name}": file_sha256(tmp_path / "panel" / name)
+        for name in ("surface_grid.parquet", "spx_daily.parquet")
+    }
+    assert len(record.panel_id) == 16 and record.panel_id == DataRecord.of(source).panel_id
+    (tmp_path / "panel" / "spx_daily.parquet").write_bytes(b"rebuilt")
+    assert DataRecord.of(source).panel_id != record.panel_id
+
+
+def test_the_generator_and_the_stub_read_no_panel() -> None:
+    for name in ("synthetic", "optionmetrics_stub"):
+        record = DataRecord.of(make_source(name))
+        assert record.source == name and record.panel == {} and record.panel_id == ""
+
+
+def test_the_commit_is_the_code_checkouts_from_any_working_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # GH-23: git used to be asked about the cwd, so a run started (or a worker left)
+    # outside the checkout recorded "unknown" and its manifest was refused.
+    here = git_sha()
+    if here == "unknown":  # pragma: no cover - only outside a git checkout
+        pytest.skip("not a git checkout")
+    monkeypatch.chdir(tmp_path)  # not a repository
+    assert git_sha() == here and RunManifest.create(RunConfig()).git_sha == here
+    assert git_sha(tmp_path) == "unknown" and git_dirty(tmp_path) is True

@@ -9,7 +9,8 @@ parallel instead of in sequence.
 
 Two files per run directory:
 
-    manifest.json   provenance (``optspread.manifest``): what produced the run
+    manifest.json   provenance (``optspread.manifest``): what produced the run, and from
+                    which data
     run.json        results (``RunRecord``): what the run produced
 
 ``SCHEMA_VERSION`` is written into every record and checked on read. Old runs
@@ -25,8 +26,9 @@ from pathlib import Path
 from pydantic import BaseModel, ConfigDict, Field
 
 from optspread.config import RunConfig, config_hash
+from optspread.data import SourceName, make_source
 from optspread.harness import EpisodeResult, EvalSummary
-from optspread.manifest import RunManifest
+from optspread.manifest import DataRecord, RunManifest
 
 SCHEMA_VERSION = 1
 RUN_FILENAME = "run.json"
@@ -107,20 +109,32 @@ def write_run(
     summary: EvalSummary,
     episodes: tuple[EpisodeResult, ...],
     extra: Sequence[Path] = (),
+    source: SourceName = "synthetic",
+    trainer: str | None = None,
+    data: DataRecord | None = None,
 ) -> RunManifest:
     """Write ``run.json`` then ``manifest.json`` with the results file hashed into it.
 
     Order matters: the manifest records a digest of the results, so the results
     must exist first. ``extra`` names further files already written inside
-    ``run_dir`` (a trained policy) to be hashed alongside. The returned manifest is
-    the one on disk.
+    ``run_dir`` (a trained policy) to be hashed alongside. ``source`` is the
+    ``optspread.data`` source the episodes ran on (the harness default, the
+    generator, unless the caller ran on another), recorded in the manifest with the
+    panel it read and, on the real source, the split its episodes came from
+    (``eval``). ``trainer`` names what trained a learned run's policy
+    (``manifest.callable_name``). Neither is in ``run.json``, so the results file of a
+    run is the same bytes whichever build wrote it. The returned manifest is the one on
+    disk. ``data`` replaces the record ``source`` stands for: a run made with components
+    of one's own records theirs (``sweep.expected_data``).
     """
     run_dir.mkdir(parents=True, exist_ok=True)
+    if data is None:  # before writing
+        data = DataRecord.of(make_source(source, config.market, split="eval"))
     record = RunRecord.of(config, summary, episodes)
     target = run_dir / RUN_FILENAME
-    target.write_text(dump_run(record), newline="\n")
+    target.write_text(dump_run(record), encoding="utf-8", newline="\n")
 
-    manifest = RunManifest.create(config)
+    manifest = RunManifest.create(config, data=data, trainer=trainer)
     manifest.add_artifact(run_dir, target)
     for path in extra:
         manifest.add_artifact(run_dir, path)
@@ -136,7 +150,7 @@ def write_run(
 
 
 def read_run(run_dir: Path) -> RunRecord:
-    record = RunRecord.model_validate_json((run_dir / RUN_FILENAME).read_text())
+    record = RunRecord.model_validate_json((run_dir / RUN_FILENAME).read_text(encoding="utf-8"))
     if record.schema_version != SCHEMA_VERSION:
         raise SchemaVersionError(
             f"run.json is schema v{record.schema_version}, this build reads v{SCHEMA_VERSION}"
