@@ -2,22 +2,24 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { type ReactNode, Suspense, useLayoutEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { short } from "@/lib/format";
-import { useTheme } from "@/lib/theme";
+import { flipTheme, useTheme } from "@/lib/theme";
 import { useFetch } from "@/lib/useFetch";
 import { usePoll } from "@/lib/usePoll";
 import ui from "./ui.module.css";
+import { CopyLink, WorkflowStrip } from "./Workflow";
 
 const TABS: { href: string; label: string }[] = [
-  { href: "/", label: "Overview" },
+  { href: "/", label: "Home" },
   { href: "/runs/", label: "Runs" },
   { href: "/launch/", label: "Launch" },
   { href: "/power/", label: "Power lab" },
   { href: "/data/", label: "Real data" },
-  { href: "/leaks/", label: "Leak demo" },
+  { href: "/leaks/", label: "Leak detector" },
   { href: "/sweep/", label: "Sweep" },
+  { href: "/attribution/", label: "Attribution" },
 ];
 
 function active(path: string, href: string): boolean {
@@ -26,15 +28,17 @@ function active(path: string, href: string): boolean {
 }
 
 function ThemeButton() {
-  const [theme, setTheme] = useTheme();
+  const [theme] = useTheme();
   const dark = theme === "dark";
+  const ref = useRef<HTMLButtonElement>(null);
   return (
     <button
+      ref={ref}
       type="button"
       className={ui.themeBtn}
       aria-label={dark ? "Switch to the light theme" : "Switch to the dark theme"}
       title={dark ? "Light theme" : "Dark theme"}
-      onClick={() => setTheme(dark ? "light" : "dark")}
+      onClick={() => flipTheme(dark ? "light" : "dark", ref.current)}
     >
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
         {dark ? (
@@ -65,6 +69,39 @@ function ServerStatus() {
   );
 }
 
+/** The tabs, with one underline that slides to the current tab. */
+function Nav({ path }: { path: string }) {
+  const nav = useRef<HTMLElement>(null);
+  const [track, setTrack] = useState<{ x: number; w: number } | null>(null);
+  useLayoutEffect(() => {
+    const el = nav.current;
+    if (!el) return;
+    const measure = () => {
+      const on = el.querySelector<HTMLElement>('[aria-current="page"]');
+      setTrack(on ? { x: on.offsetLeft + 10, w: Math.max(0, on.offsetWidth - 20) } : null);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [path]);
+  return (
+    <nav ref={nav} className={ui.nav} aria-label="Views" data-track={track ? "" : undefined}>
+      {TABS.map((t) => (
+        <Link
+          key={t.href}
+          href={t.href}
+          className={`${ui.navLink} ${active(path, t.href) ? ui.navActive : ""}`}
+          aria-current={active(path, t.href) ? "page" : undefined}
+        >
+          {t.label}
+        </Link>
+      ))}
+      {track ? <span className={ui.navTrack} style={{ width: track.w, transform: `translateX(${track.x}px)` }} aria-hidden="true" /> : null}
+    </nav>
+  );
+}
+
 export function Shell({ children }: { children: ReactNode }) {
   const path = usePathname() ?? "/";
   return (
@@ -75,23 +112,16 @@ export function Shell({ children }: { children: ReactNode }) {
             <span className={ui.brandName}>optspread platform</span>
             <span className={ui.brandLab}>VEGA LAB</span>
           </Link>
-          <nav className={ui.nav} aria-label="Views">
-            {TABS.map((t) => (
-              <Link
-                key={t.href}
-                href={t.href}
-                className={`${ui.navLink} ${active(path, t.href) ? ui.navActive : ""}`}
-                aria-current={active(path, t.href) ? "page" : undefined}
-              >
-                {t.label}
-              </Link>
-            ))}
-          </nav>
+          <Nav path={path} />
           <div className={ui.headerRight}>
             <ServerStatus />
+            <CopyLink />
             <ThemeButton />
           </div>
         </div>
+        <Suspense fallback={null}>
+          <WorkflowStrip />
+        </Suspense>
       </header>
       <main className={ui.main}>{children}</main>
       <footer className={ui.footer}>

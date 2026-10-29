@@ -61,7 +61,7 @@
 
   /* series, fixed by entity (lib/chart.ts maps names onto these) */
   --s1: #2a5c9a; /* delta_seller, optionmetrics, implied vol */
-  --s2: #d9822b; /* ppo, databento, realised vol */
+  --s2: #b45309; /* ppo, databento, realised vol: 5.0:1 on white, 4.6:1 on the page */
   --s3: #1f8a84; /* always_on */
   --s4: #6b5bb5; /* random */
   --s5: #7a8394; /* flat, reference lines */
@@ -79,8 +79,22 @@
   --radius-pill: 999px;
   --gutter: 24px;
   --max: 1440px;
-  --t-fast: 140ms;
-  --t: 220ms;
+  /* motion: one set of curves and durations for the whole site */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --t-fast: 160ms;
+  --t: 260ms;
+  --t-slow: 520ms;
+
+  /* type scale: every size on the site is one of these */
+  --fs-2xs: 11.5px; /* stamps, export buttons */
+  --fs-xs: 12px; /* labels, eyebrows, notes */
+  --fs-sm: 13.5px; /* tables, secondary text, the workflow strip */
+  --fs-base: 15px; /* body */
+  --fs-md: 16px; /* card titles */
+  --fs-lg: 19px; /* section heads, the homepage's card titles */
+  --fs-tile: 22px; /* a tile's value */
+  --fs-xl: 26px; /* a page's title */
 
   --font: Calibri, Carlito, "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
@@ -157,7 +171,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font);
-  font-size: 15px;
+  font-size: var(--fs-base);
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;
   font-variant-numeric: tabular-nums;
@@ -228,5 +242,52 @@ button:disabled {
   *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* an anchored section clears the sticky header and the workflow strip */
+[id] {
+  scroll-margin-top: 104px;
+}
+
+/* the control a workflow step asks the reader to use: a ring that pulses three times,
+   then stays still until the step is done. No overlay, nothing dimmed. */
+[data-guide-on] {
+  outline: 2px solid var(--accent-2) !important;
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+  animation: guide-ring 1.1s var(--ease-out) 3;
+}
+
+@keyframes guide-ring {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent-2) 45%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 10px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 4px var(--accent-soft);
+  }
+}
+
+/* the theme flip spreads from the toggle as a circle (View Transitions API) */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-new(root) {
+  animation: theme-reveal 520ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes theme-reveal {
+  from {
+    clip-path: circle(0 at var(--flip-x, 100%) var(--flip-y, 0));
+  }
+  to {
+    clip-path: circle(var(--flip-r, 150vmax) at var(--flip-x, 100%) var(--flip-y, 0));
   }
 }
