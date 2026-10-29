@@ -205,13 +205,15 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
             latest = reader.grid_dates()[-1]
             reader.chain_index(date.fromisoformat(latest), None, [])
 
-    class Redacted(JSONResponse):
+    # Untyped without the dashboard extra (CI's plain job), typed with it.
+    class Redacted(JSONResponse):  # type: ignore[misc, unused-ignore]
         """Every JSON body names a root, never where it is on the serving machine: a
         payload's ``root``, ``file`` or ``run_dir`` reads ``<runs root>/...``, not a home
         directory, as the errors already did."""
 
         def render(self, content: Any) -> bytes:
-            return super().render(redact(content))
+            rendered: bytes = super().render(redact(content))
+            return rendered
 
     app = FastAPI(
         title="optspread dashboard",
