@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import type { CustomSeriesRenderItemAPI, CustomSeriesRenderItemReturn, EChartsOption, SeriesOption } from "echarts";
-import { esc, num, usd } from "./format";
-import { useTheme } from "./theme";
+import { esc, MINUS, num, usd } from "./format";
+import { readTheme, subscribeTheme } from "./theme";
 
 /**
  * Chart styling from the CSS tokens, so a chart follows the theme like everything
@@ -47,7 +47,7 @@ const LIGHT: Tokens = {
   fail: "#b3261e",
   warn: "#8a5a00",
   s1: "#2a5c9a",
-  s2: "#d9822b",
+  s2: "#b45309",
   s3: "#1f8a84",
   s4: "#6b5bb5",
   s5: "#7a8394",
@@ -81,12 +81,18 @@ function readTokens(): Tokens {
   };
 }
 
-/** The tokens for the current theme, re-read whenever it flips. */
+// The tokens of each theme, read from the CSS once and then shared: one object per theme,
+// so every chart gets the same reference until the theme flips, and its option is equal.
+const byTheme: Partial<Record<string, Tokens>> = {};
+
+function currentTokens(): Tokens {
+  const theme = readTheme();
+  return (byTheme[theme] ??= readTokens());
+}
+
+/** The tokens for the current theme, re-read whenever it flips; right on the first client render. */
 export function useTokens(): Tokens {
-  const [theme] = useTheme();
-  const [tokens, setTokens] = useState<Tokens>(LIGHT);
-  useEffect(() => setTokens(readTokens()), [theme]);
-  return tokens;
+  return useSyncExternalStore(subscribeTheme, currentTokens, () => LIGHT);
 }
 
 const ARM_SLOT: Record<string, keyof Tokens> = {
@@ -124,7 +130,7 @@ export function base(t: Tokens) {
   return {
     backgroundColor: "transparent",
     textStyle: { fontFamily: t.font, color: t.text2, fontSize: 12 },
-    animationDuration: 300,
+    animation: false,
     grid: { left: 56, right: 18, top: 34, bottom: 40, containLabel: false },
     tooltip: {
       trigger: "axis" as const,
@@ -146,11 +152,20 @@ export function base(t: Tokens) {
   };
 }
 
+/** An axis tick as ECharts writes it, with a true minus: "−20,000", not "-20,000". A time
+ * axis sets its own formatter back to undefined, so ECharts writes its dates. */
+export function tick(v: number | string): string {
+  if (typeof v !== "number") return String(v);
+  const text = v.toLocaleString("en-US", { maximumFractionDigits: 6 });
+  return text.startsWith("-") ? `${MINUS}${text.slice(1)}` : text;
+}
+
 export function axis(t: Tokens, extra: Record<string, unknown> = {}) {
   return {
     axisLine: { lineStyle: { color: t.axis } },
     axisTick: { show: false },
-    axisLabel: { color: t.muted, fontFamily: t.font, fontSize: 11 },
+    // a label that would overlap its neighbour is dropped, which a phone-width chart needs
+    axisLabel: { color: t.muted, fontFamily: t.font, fontSize: 11, hideOverlap: true, formatter: tick },
     splitLine: { lineStyle: { color: t.grid } },
     nameTextStyle: { color: t.muted, fontFamily: t.font, fontSize: 11.5 },
     nameGap: 26,
@@ -241,4 +256,24 @@ export function premiumChart(t: Tokens, curves: Record<string, PremiumPoint[]>):
     grid: { ...base(t).grid, left: 70 },
     series: arms.flatMap((arm) => premiumCurve(t, arm, curves[arm] ?? [])),
   };
+}
+
+/** One colour per attribution component, fixed: the greeks on the series slots, cost and residual neutral. */
+export function componentColor(t: Tokens, c: string): string {
+  const map: Record<string, string> = {
+    delta: t.s1,
+    gamma: t.s2,
+    vega: t.s3,
+    theta: t.s4,
+    carry: t.s5,
+    cost: t.dark ? "#b9a07e" : "#7a5c3e",
+    residual: t.dark ? "#56627a" : "#b8c2d1",
+  };
+  return map[c] ?? t.s5;
+}
+
+/** A run's caption: the config hash, the commit and the data source that produced a figure. */
+export function runStamp(r: { config_hash: string; git_sha: string; git_dirty: boolean | null; source: string; panel: string }): string {
+  const sha = r.git_sha ? r.git_sha.slice(0, 10) : "no sha";
+  return `config ${r.config_hash || "?"} · git ${sha}${r.git_dirty ? "+dirty" : ""} · ${r.source || "synthetic"}${r.panel ? ` · panel ${r.panel}` : ""}`;
 }

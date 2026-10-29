@@ -1,0 +1,256 @@
+/* Folds, control bars and the pieces the analysis pages share (Power lab, Sweep,
+   Attribution, Leak detector, Real data). Tiles, readings and tooltips are in
+   ui.module.css. */
+
+/* ---------- a fold inside a control panel ---------- */
+.subFold {
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+
+.subFold > summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 2px 0 8px;
+}
+
+.subFold > summary:hover {
+  color: var(--accent-text);
+}
+
+/* ---------- the control bar: same controls, same place, every view ---------- */
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px 18px;
+}
+
+.barItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.barItem select {
+  min-width: 220px;
+}
+
+/* a selector with one value is not drawn: its slot goes with it */
+.barItem:empty {
+  display: none;
+}
+
+.barNote {
+  margin-left: auto;
+  font-size: 12.5px;
+  color: var(--muted);
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ---------- details on demand ---------- */
+.fold {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--sh-card);
+  min-width: 0;
+}
+
+.foldHead {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 13px 20px;
+  flex-wrap: wrap;
+  border-radius: var(--radius-lg);
+}
+
+.foldHead::-webkit-details-marker {
+  display: none;
+}
+
+.foldHead::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: rotate(-45deg);
+  transition: transform var(--t-fast);
+  align-self: center;
+  flex: none;
+}
+
+.fold[open] > .foldHead::before {
+  transform: rotate(45deg);
+}
+
+.foldHead:hover {
+  background: var(--accent-soft);
+}
+
+.foldHead:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.foldTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.foldSub {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.foldBody {
+  padding: 0 20px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.section {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 10px 0 -4px;
+}
+
+/* ---------- a card for one arm ---------- */
+.armHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.armDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+}
+
+/* ---------- key numbers in a row, quieter than tiles ---------- */
+
+
+
+
+
+
+/* ---------- pass/fail lines ---------- */
+.checks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.check {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) minmax(0, auto);
+  gap: 4px 14px;
+  align-items: baseline;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.check:first-child {
+  border-top: 0;
+  padding-top: 2px;
+}
+
+.checkText {
+  font-size: 14px;
+  color: var(--text);
+}
+
+.checkText span {
+  display: block;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.checkResult {
+  font-size: 13px;
+  color: var(--text-2);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.fieldGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 6px;
+}
+
+.fieldCell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--surface-solid);
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-2);
+  cursor: pointer;
+  text-align: left;
+}
+
+.fieldCell:hover {
+  border-color: var(--accent);
+}
+
+.fieldOn {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.ok {
+  color: var(--pass-text);
+  font-weight: 700;
+}
+
+.bad {
+  color: var(--fail);
+  font-weight: 700;
+}
+
+@media (max-width: 700px) {
+  .barNote {
+    margin-left: 0;
+  }
+  .barItem select {
+    min-width: 0;
+    width: 100%;
+  }
+  .barItem {
+    flex: 1 1 100%;
+  }
+  .check {
+    grid-template-columns: 80px minmax(0, 1fr);
+  }
+  .checkResult {
+    grid-column: 2;
+    text-align: left;
+  }
+}

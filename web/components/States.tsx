@@ -15,6 +15,48 @@ export function Skeleton({ height }: { height: number }) {
   return <div className={ui.skeleton} style={{ height }} aria-hidden="true" />;
 }
 
+/**
+ * The shape of a chart before it draws: ghost axes and gridlines at the chart's own
+ * height, so nothing on the page moves when the real one arrives.
+ */
+export function ChartSkeleton({ height, label = "Drawing the chart" }: { height: number; label?: string }) {
+  return (
+    <div className={ui.chartSkel} style={{ height }} role="status" aria-label={label}>
+      <span className={ui.chartSkelPlot}>
+        {[0, 1, 2, 3].map((i) => (
+          <span key={i} className={ui.chartSkelLine} />
+        ))}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * A long computation in progress (a re-simulation, an attribution): what it is doing,
+ * how far along it is, and how long it has taken. Determinate whenever the server says
+ * how far it is; an honest "working" bar otherwise.
+ */
+export function ComputeProgress({ what, stage, fraction, seconds }: { what: string; stage?: string; fraction?: number | null; seconds?: number | null }) {
+  const known = typeof fraction === "number" && Number.isFinite(fraction);
+  return (
+    <div className={ui.compute} role="status" aria-live="polite">
+      <div className={ui.spread}>
+        <span>
+          <b>{what}</b>
+          {stage ? <span className={ui.dim}> · {stage}</span> : null}
+        </span>
+        <span className={ui.dim}>
+          {known ? `${Math.round((fraction ?? 0) * 100)}%` : "working"}
+          {seconds ? ` · ${Math.round(seconds)} s` : ""}
+        </span>
+      </div>
+      <div className={ui.progress} role="progressbar" aria-label={what} aria-valuemin={0} aria-valuemax={100} aria-valuenow={known ? Math.round((fraction ?? 0) * 100) : undefined}>
+        <div className={`${ui.progressBar} ${known ? "" : ui.progressWorking}`} style={known ? { width: `${Math.max(2, Math.min(100, (fraction ?? 0) * 100))}%` } : undefined} />
+      </div>
+    </div>
+  );
+}
+
 /** Nothing to show yet: say what would appear here, and what produces it. */
 export function Empty({ title, children }: { title: string; children?: ReactNode }) {
   return (
