@@ -11,11 +11,29 @@ Every number is synthetic.
 from __future__ import annotations
 
 import dataclasses
+from pathlib import Path
 
 import numpy as np
 import pytest
+from fake_learner import fake_trainer
 
 from optspread.analysis import ALPHA, Decision, decide, decide_premium
+from optspread.config import (
+    ArmName,
+    CostConfig,
+    EnvConfig,
+    MarketConfig,
+    RunConfig,
+    TrainConfig,
+)
+from optspread.orchestrate import (
+    GridRecord,
+    grid_filename,
+    pilot_grid,
+    read_grid,
+    run_grid,
+    write_pilot_matrices,
+)
 from optspread.power import variance_components
 from optspread.validation import (
     DEFAULT_CASE,
@@ -29,6 +47,7 @@ from optspread.validation import (
     bootstrap_detection,
     simulate_arms,
     simulate_null_world,
+    validate_grid_decision,
     validate_null_world,
     validate_pipeline,
 )
@@ -59,6 +78,21 @@ def test_the_pipeline_passes_where_the_sweep_will_go(case: AnalyticCase) -> None
     se = float(np.sqrt(case.var_grand_mean))
     result = validate_pipeline(case, deltas=(0.0, se, 2.5 * se), replications=R, seed=3)
     assert result.passed, result.render()
+
+
+# The confirmatory test has S = 5, df 4, where t against normal matters most; the
+# section 8 gate itself (m2gate) runs its default case at S = 10. Here the null world
+# and the closed form at the confirmatory S and N.
+CONFIRMATORY_S = AnalyticCase(tau2=4.0, sigma2=100.0, n_seeds=5, n_episodes=500, path_sigma2=400.0)
+
+
+def test_the_null_world_and_the_closed_form_hold_at_the_confirmatory_df() -> None:
+    null = validate_null_world(CONFIRMATORY_S, replications=R, event=PREREGISTERED_EVENT[1])
+    assert null.within(), null
+    se = float(np.sqrt(CONFIRMATORY_S.var_grand_mean))
+    result = validate_pipeline(CONFIRMATORY_S, deltas=(0.0, se, 3.04 * se), replications=R, seed=9)
+    assert result.passed, result.render()
+    assert result.points[-1].analytic == pytest.approx(0.80, abs=2e-3)  # 3.04 se: lambda_80
 
 
 @pytest.mark.parametrize("label", list(POISONED_PIPELINES))
@@ -194,3 +228,91 @@ def test_decide_premium_is_the_paired_rule_on_one_arm_in_two_worlds() -> None:
     at_p, at_0 = arms[("learner", "premium")], arms[("learner", "null")]
     assert decide_premium(at_p, at_0) == decide(at_p, at_0)
     assert not decide_premium(at_0, at_0).rejected  # zero against itself never fires
+
+
+# -- the rule through a real grid record (#31) -------------------------------- #
+
+PILOT_PREMIUM = 2.0
+SHORT = RunConfig(
+    seed=7000,
+    n_episodes=4,
+    market=MarketConfig(n_days=21, tenor_days=(10, 21)),
+    env=EnvConfig(episode_days=21),
+    cost=CostConfig(enabled=True),
+)
+
+
+@pytest.fixture(scope="module")
+def pilot_on_disk(tmp_path_factory: pytest.TempPathFactory) -> tuple[GridRecord, Path]:
+    """A three-block pilot, both arms at zero and at the premium, read back from its file."""
+    root = tmp_path_factory.mktemp("pilot")
+    grid = pilot_grid(
+        SHORT,
+        n_seeds=3,
+        n_episodes=4,
+        premium=PILOT_PREMIUM,
+        train=TrainConfig(total_timesteps=64, seed=10),
+    )
+    write_pilot_matrices(run_grid(grid, root, trainer=fake_trainer), root)
+    return read_grid(root / grid_filename(grid)), root
+
+
+@pytest.mark.parametrize("arm", ["ppo", "delta_seller"])
+def test_every_route_from_a_grid_on_disk_reaches_one_decision(
+    pilot_on_disk: tuple[GridRecord, Path], arm: ArmName
+) -> None:
+    record, root = pilot_on_disk
+    check = validate_grid_decision(record, root, PILOT_PREMIUM, arm, pilot_files=True)
+    assert check.passed, check.failures
+    assert [r.name for r in check.routes][-1] == "cell headlines" and len(check.routes) == 5
+    ref = check.routes[0]
+    assert ref.se > 0.0, "a real contrast with seed and episode noise in it"
+    # The pilot's raw file is the record's matrix, cell for cell.
+    at_p = record.matrix(root, PILOT_PREMIUM, arm)
+    assert np.array_equal(at_p, np.load(root / f"matrix_{arm}_p{PILOT_PREMIUM:g}.npy"))
+
+
+def test_at_zero_premium_the_grid_decision_is_the_known_answer(
+    pilot_on_disk: tuple[GridRecord, Path],
+) -> None:
+    # The same policy on the same paths: the contrast is zero, exactly, by every route.
+    record, root = pilot_on_disk
+    for arm in record.grid.arms:
+        check = validate_grid_decision(record, root, 0.0, arm)
+        assert check.passed, check.failures
+        assert all(r.estimate == 0.0 and r.se == 0.0 for r in check.routes)
+        assert not any(r.rejected for r in check.routes)
+
+
+def test_the_grid_check_refuses_a_file_that_drifted_from_its_runs(
+    pilot_on_disk: tuple[GridRecord, Path], tmp_path: Path
+) -> None:
+    record, root = pilot_on_disk
+    copy = tmp_path / "pilot"
+    copy.mkdir()
+    for f in root.iterdir():
+        target = copy / f.name
+        if f.is_dir():
+            target.symlink_to(f, target_is_directory=True)
+        else:
+            target.write_bytes(f.read_bytes())
+    raw = copy / f"matrix_delta_seller_p{PILOT_PREMIUM:g}.npy"
+    np.save(raw, np.load(raw)[[1, 0, 2]])  # block 0 at the premium against block 1 at zero
+    check = validate_grid_decision(record, copy, PILOT_PREMIUM, "delta_seller", pilot_files=True)
+    assert [f.split(":")[0] for f in check.failures] == ["matrix_delta_seller_p<p>.npy"]
+
+
+def test_the_grid_check_refuses_blocks_that_ran_different_paths(
+    pilot_on_disk: tuple[GridRecord, Path],
+) -> None:
+    record, root = pilot_on_disk
+    cells = tuple(
+        c.model_copy(update={"seed": c.seed + 1})
+        if (c.premium, c.arm, c.block) == (0.0, "ppo", 2)
+        else c
+        for c in record.cells
+    )
+    check = validate_grid_decision(
+        record.model_copy(update={"cells": cells}), root, PILOT_PREMIUM, "ppo"
+    )
+    assert check.failures == ("block 2 ran different paths at 2 and at 0",)
