@@ -31,16 +31,19 @@ paths the design would be crossed and carry a shared-path term the formula above
 does not; that is a pre-registration question for the lane owner, not something
 this module settles.
 
-Two power functions, kept apart on purpose. ``power`` is the normal approximation a
-sample-size calculation at the planning stage uses, and ``episodes_for``,
-``seeds_for`` and ``frontier`` are built on it. ``power_t`` is the exact detection
+Two power functions, kept apart on purpose. ``power_t`` is the exact detection
 probability of the confirmatory test in ``optspread.analysis``, a one-sided Student t
 on the S seed-level means: under normal seed means its statistic is noncentral t
 with S - 1 degrees of freedom, so the probability is a closed form rather than an
-approximation. At the seed counts published work uses the two differ by enough to
-matter (the normal form overstates power), which is why the section 8 gate in
-``optspread.validation`` checks the test against ``power_t`` and reports ``power``
-beside it.
+approximation. The planning functions (``episodes_for``, ``seeds_for``, ``frontier``,
+``detectable_effect_t``, ``variance_budget_t``) are built on it, so a planned design
+has the power the committed test will have (#20). ``power``, ``detectable_effect``
+and ``variance_budget`` are the textbook normal approximation, kept for orientation:
+it ignores that the test estimates its variance from S seed means, and at the seed
+counts published work uses that matters. At S = 5 the normal floor is 18% below the
+exact one and the test has 66% power there; at S = 3 the gap is 38%. The section 8
+gate in ``optspread.validation`` checks the test against ``power_t`` and reports
+``power`` beside it.
 """
 
 from __future__ import annotations
@@ -187,11 +190,22 @@ def _z(p: float, name: str) -> float:
     return float(norm.ppf(p))
 
 
-def variance_budget(delta: float, alpha: float = 0.05, target_power: float = 0.80) -> float:
-    """The largest ``Var(grand mean)`` at which a one-sided test still has the target power.
+def _degenerate_power(delta: float, alpha: float) -> float:
+    """Power with no variance at all: the noncentrality is +inf, undefined or -inf (#31)."""
+    if delta > 0.0:
+        return 1.0
+    return alpha if delta == 0.0 else 0.0
 
-    ``(delta / (z_{1-alpha} + z_{power}))^2``: the design is feasible exactly when its
-    variance fits under this number.
+
+# The normal approximation: for orientation only (pre-registration A3). It ignores that
+# the test estimates its variance from S seed means, so it overstates power at small S.
+
+
+def variance_budget(delta: float, alpha: float = 0.05, target_power: float = 0.80) -> float:
+    """Normal approximation: the largest ``Var(grand mean)`` with the target power, any S.
+
+    ``(delta / (z_{1-alpha} + z_{power}))^2``, the limit of ``variance_budget_t`` as S
+    grows. The exact budget at a seed count is smaller; the planning functions use that.
     """
     if not delta > 0.0:
         raise ValueError(f"delta must be positive to size a one-sided test, got {delta}")
@@ -202,16 +216,39 @@ def variance_budget(delta: float, alpha: float = 0.05, target_power: float = 0.8
 def power(
     delta: float, tau2: float, sigma2: float, n_seeds: int, n_episodes: int, alpha: float = 0.05
 ) -> float:
-    """Power of the one-sided test of the grand mean against zero at effect ``delta``.
+    """Normal approximation to the power of the one-sided test at effect ``delta``.
 
     ``1 - Phi(z_{1-alpha} - delta / se)``: equals ``alpha`` at zero effect and rises
-    to one as the standard error shrinks or the effect grows.
+    to one as the standard error shrinks or the effect grows. At zero variance it is
+    the limit as ``se`` falls to 0: one, ``alpha`` or zero as the effect is positive,
+    zero or negative. Above ``power_t`` at every S; the section 8 gate reports it
+    beside the exact figure, and nothing is planned on it.
     """
     variance = var_grand_mean(tau2, sigma2, n_seeds, n_episodes)
     z_alpha = _z(1.0 - alpha, "alpha")
     if variance == 0.0:
-        return 1.0 if delta > 0.0 else alpha
+        return _degenerate_power(delta, alpha)
     return float(norm.sf(z_alpha - delta / math.sqrt(variance)))
+
+
+def detectable_effect(
+    tau2: float,
+    sigma2: float,
+    n_seeds: int,
+    n_episodes: int,
+    alpha: float = 0.05,
+    target_power: float = 0.80,
+) -> float:
+    """Normal approximation to the floor: ``(z_{1-alpha} + z_power) se``.
+
+    The inverse of ``variance_budget``. Below ``detectable_effect_t`` at every S, by
+    18% at five seeds and 38% at three; kept to show that gap, not to plan with.
+    """
+    z = _z(1.0 - alpha, "alpha") + _z(target_power, "target_power")
+    return z * math.sqrt(var_grand_mean(tau2, sigma2, n_seeds, n_episodes))
+
+
+# -- the exact power of the confirmatory test, and the plan built on it ----- #
 
 
 @lru_cache(maxsize=256)
@@ -230,34 +267,56 @@ def power_t(
 
     Seed means are ``N(delta, tau^2 + sigma^2 / N)``, so the statistic is noncentral t
     with ``S - 1`` degrees of freedom and noncentrality ``delta / se``,
-    ``se^2 = tau^2 / S + sigma^2 / (S N)``. Exactly ``alpha`` at zero effect.
+    ``se^2 = tau^2 / S + sigma^2 / (S N)``. Exactly ``alpha`` at zero effect; at zero
+    variance the limit, as for ``power``.
     """
     variance = var_grand_mean(tau2, sigma2, n_seeds, n_episodes)
     critical = t_critical(n_seeds, alpha)
     if variance == 0.0:
-        return 1.0 if delta > 0.0 else alpha
+        return _degenerate_power(delta, alpha)
     if delta == 0.0:
         return alpha
     return float(nct.sf(critical, n_seeds - 1, delta / math.sqrt(variance)))
 
 
-def detectable_effect(
-    tau2: float,
-    sigma2: float,
-    n_seeds: int,
-    n_episodes: int,
-    alpha: float = 0.05,
-    target_power: float = 0.80,
-) -> float:
-    """The smallest effect a design detects at the target power: ``(z_{1-alpha} + z_power) se``.
+@lru_cache(maxsize=1024)
+def t_noncentrality(n_seeds: int, alpha: float = 0.05, target_power: float = 0.80) -> float:
+    """The ``delta / se`` at which the t test on S seed means has the target power.
 
-    The inverse of ``variance_budget``, on the same normal approximation as the rest of
-    the planning functions. It needs no effect size as input, which is why the pilot
-    reports it: the floor in outcome units at a stated design, before anyone has
-    argued for a particular delta.
+    ``power_t`` depends on the design only through S and ``delta / se``, and rises with
+    the latter, so this one number per seed count is what exact planning needs: the
+    floor is it times ``se`` and the variance budget ``(delta / it)^2``. It plays the
+    part ``z_{1-alpha} + z_power`` plays in the normal form and falls to it as S grows
+    (3.04 at S = 5 against 2.49). Bisection between zero and a doubled upper bracket.
     """
-    z = _z(1.0 - alpha, "alpha") + _z(target_power, "target_power")
-    return z * math.sqrt(var_grand_mean(tau2, sigma2, n_seeds, n_episodes))
+    critical = t_critical(n_seeds, alpha)
+    _z(target_power, "target_power")  # range check only
+    if target_power <= alpha:
+        raise ValueError(f"target_power must exceed alpha, got {target_power} <= {alpha}")
+    df = n_seeds - 1
+    lo, hi = 0.0, _z(1.0 - alpha, "alpha") + _z(target_power, "target_power")
+    while nct.sf(critical, df, hi) < target_power:
+        lo, hi = hi, 2.0 * hi
+    while hi - lo > 1e-12 * hi:
+        mid = 0.5 * (lo + hi)
+        if nct.sf(critical, df, mid) < target_power:
+            lo = mid
+        else:
+            hi = mid
+    return hi
+
+
+def variance_budget_t(
+    delta: float, n_seeds: int, alpha: float = 0.05, target_power: float = 0.80
+) -> float:
+    """The largest ``Var(grand mean)`` at which the t test on S seeds has the target power.
+
+    ``(delta / t_noncentrality(S))^2``: a design at S seeds is feasible exactly when its
+    variance fits under this number. It grows with S toward ``variance_budget``.
+    """
+    if not delta > 0.0:
+        raise ValueError(f"delta must be positive to size a one-sided test, got {delta}")
+    return (delta / t_noncentrality(n_seeds, alpha, target_power)) ** 2
 
 
 def detectable_effect_t(
@@ -270,25 +329,13 @@ def detectable_effect_t(
 ) -> float:
     """The smallest effect the exact t test detects at the target power: ``power_t`` inverted.
 
-    ``power_t`` rises with the effect, so bisection between zero and a doubled
-    upper bracket finds it. Above ``detectable_effect`` at every S, by most at the
-    small seed counts where the normal form overstates power; the two meet as S grows.
+    ``t_noncentrality(S) * se``. It needs no effect size as input, which is why the
+    pilot reports it: the floor in outcome units at a stated design, before anyone has
+    argued for a particular delta. Above ``detectable_effect`` at every S, by most at
+    the small seed counts where the normal form overstates power; the two meet as S grows.
     """
-    _z(alpha, "alpha"), _z(target_power, "target_power")  # range checks only
-    if target_power <= alpha:
-        raise ValueError(f"target_power must exceed alpha, got {target_power} <= {alpha}")
-    if var_grand_mean(tau2, sigma2, n_seeds, n_episodes) == 0.0:
-        return 0.0
-    lo, hi = 0.0, detectable_effect(tau2, sigma2, n_seeds, n_episodes, alpha, target_power)
-    while power_t(hi, tau2, sigma2, n_seeds, n_episodes, alpha) < target_power:
-        lo, hi = hi, 2.0 * hi
-    while hi - lo > 1e-12 * hi:
-        mid = 0.5 * (lo + hi)
-        if power_t(mid, tau2, sigma2, n_seeds, n_episodes, alpha) < target_power:
-            lo = mid
-        else:
-            hi = mid
-    return hi
+    k = t_noncentrality(n_seeds, alpha, target_power)
+    return k * math.sqrt(var_grand_mean(tau2, sigma2, n_seeds, n_episodes))
 
 
 def episodes_for(
@@ -299,21 +346,33 @@ def episodes_for(
     alpha: float = 0.05,
     target_power: float = 0.80,
 ) -> int | None:
-    """Fewest episodes per seed that reach the target power at ``n_seeds`` seeds.
+    """Fewest episodes per seed at which the t test on ``n_seeds`` seeds has the target power.
 
-    ``None`` when ``tau^2 / S`` alone exceeds the variance budget: more episodes
-    cannot shrink the seed term, so no N makes the design feasible. That is reported
-    rather than rounded, because it is the answer the pilot exists to give.
+    ``None`` when ``tau^2 / S`` alone exceeds the exact variance budget at S: more
+    episodes cannot shrink the seed term, so no N makes the design feasible. That is
+    reported rather than rounded, because it is the answer the pilot exists to give.
+    Needs S >= 2, as the test does.
     """
-    budget_var = variance_budget(delta, alpha, target_power)
+    budget_var = variance_budget_t(delta, n_seeds, alpha, target_power)
     _check_variances(tau2, sigma2)
-    _check_design(n_seeds, 1)
     room = budget_var - tau2 / n_seeds
     if room <= 0.0:
         return None
     if sigma2 == 0.0:
         return 1
-    return max(math.ceil(sigma2 / (n_seeds * room)), 1)
+    n = max(math.ceil(sigma2 / (n_seeds * room)), 1)
+    # The closed form is exact up to the noncentrality's 1e-12, which can carry the
+    # boundary across an integer; settle that integer on power_t itself, so N is the
+    # fewest episodes the test powers rather than the formula's rounding of it.
+    if n > 1 and power_t(delta, tau2, sigma2, n_seeds, n - 1, alpha) >= target_power:
+        return n - 1
+    if power_t(delta, tau2, sigma2, n_seeds, n, alpha) < target_power:
+        return n + 1
+    return n
+
+
+# Where seeds_for gives up: the degrees of freedom stay within what scipy's t takes.
+MAX_PLANNED_SEEDS = 10**18
 
 
 def seeds_for(
@@ -324,14 +383,40 @@ def seeds_for(
     alpha: float = 0.05,
     target_power: float = 0.80,
 ) -> int:
-    """Fewest seeds that reach the target power at ``n_episodes`` episodes per seed.
+    """Fewest seeds (at least 2) at which the t test has the target power at ``n_episodes``.
 
-    Always feasible: ``S >= (tau^2 + sigma^2 / N) / budget``.
+    Always feasible in principle, since ``power_t`` rises with S to one: both the
+    noncentrality and the degrees of freedom grow. Doubling from S = 2 brackets the
+    answer and bisection on the integers finds it, so the result does not lean on the
+    normal form at all. An effect so small that no S up to ``MAX_PLANNED_SEEDS`` reaches
+    the target raises ``OverflowError``: that is no design, not a number to report.
     """
-    budget_var = variance_budget(delta, alpha, target_power)
+    if not delta > 0.0:
+        raise ValueError(f"delta must be positive to size a one-sided test, got {delta}")
     _check_variances(tau2, sigma2)
-    _check_design(1, n_episodes)
-    return max(math.ceil((tau2 + sigma2 / n_episodes) / budget_var), 1)
+    _check_design(2, n_episodes)
+    t_noncentrality(2, alpha, target_power)  # range checks only
+
+    def powered(n_seeds: int) -> bool:
+        return power_t(delta, tau2, sigma2, n_seeds, n_episodes, alpha) >= target_power
+
+    if powered(2):
+        return 2
+    lo, hi = 2, 4
+    while not powered(hi):
+        if hi >= MAX_PLANNED_SEEDS:
+            raise OverflowError(
+                f"no seed count up to {MAX_PLANNED_SEEDS:.0e} has power {target_power} "
+                f"at delta = {delta:g}"
+            )
+        lo, hi = hi, min(2 * hi, MAX_PLANNED_SEEDS)
+    while hi - lo > 1:
+        mid = (lo + hi) // 2
+        if powered(mid):
+            hi = mid
+        else:
+            lo = mid
+    return hi
 
 
 # -- the compute budget ----------------------------------------------------- #
@@ -392,7 +477,10 @@ def budget(
 
 @dataclass(frozen=True, slots=True)
 class Design:
-    """One row of the frontier: the cheapest feasible N at a seed count, or infeasible."""
+    """One row of the frontier: the cheapest feasible N at a seed count, or infeasible.
+
+    ``power`` is the exact ``power_t`` of the design, at least the target when feasible.
+    """
 
     n_seeds: int
     n_episodes: int | None
@@ -418,7 +506,10 @@ def frontier(
     eval_rate: float,
     cores: int = 1,
 ) -> tuple[Design, ...]:
-    """For each seed count, the fewest episodes that reach the target power and what it costs."""
+    """For each seed count, the fewest episodes the t test needs and what the design costs.
+
+    Seed counts below 2 have no t test and are refused, as ``power_t`` refuses them.
+    """
     designs: list[Design] = []
     for n_seeds in seeds:
         n_episodes = episodes_for(delta, tau2, sigma2, n_seeds, alpha, target_power)
@@ -429,7 +520,7 @@ def frontier(
             Design(
                 n_seeds,
                 n_episodes,
-                power(delta, tau2, sigma2, n_seeds, n_episodes, alpha),
+                power_t(delta, tau2, sigma2, n_seeds, n_episodes, alpha),
                 budget(
                     n_seeds,
                     n_episodes,

@@ -38,6 +38,12 @@ control paying a cost drag, nothing planted. The pre-registered event (each arm
 against itself at zero premium) must fire at alpha there; the event it replaced (the
 learner against the control) fires at nearly 1 and is the gate's negative control.
 
+``validate_grid_decision`` takes the rule off synthetic arrays (#31): one arm at one
+premium of a real grid record on disk, decided through ``GridRecord.matrix`` (what the
+M4 analysis reads), ``GridRecord.contrast`` and the ``.npy`` files the pilot writes,
+each of which must agree with the others and with the estimate and se the cells' own
+headlines give.
+
 ``bootstrap_detection`` is the section 5.3 check (an M4 item, cheap enough to land
 with the rule): resample the S seed means with replacement, apply the same test,
 and compare the detection rate with the analytic figure at the observed effect.
@@ -48,13 +54,26 @@ from __future__ import annotations
 import math
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
+from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 from scipy.stats import norm
 
-from optspread.analysis import ALPHA, Decision, decide
+from optspread.analysis import (
+    ALPHA,
+    NULL_PREMIUM,
+    Decision,
+    decide,
+    decide_contrast,
+    decide_premium,
+)
 from optspread.power import power, power_t, t_critical, var_grand_mean
+
+if TYPE_CHECKING:  # orchestrate pulls in the training stack; only the grid check needs it
+    from optspread.config import ArmName
+    from optspread.orchestrate import GridRecord
 
 K_SE = 4.0  # tolerance, in Monte Carlo standard errors, at every check
 
@@ -99,7 +118,7 @@ class AnalyticCase:
         return power_t(delta, self.tau2, self.sigma2, self.n_seeds, self.n_episodes, self.alpha)
 
     def normal_power(self, delta: float) -> float:
-        """The planning approximation, reported beside the closed form, never tested against."""
+        """The normal approximation, reported beside the closed form, never tested against."""
         return power(delta, self.tau2, self.sigma2, self.n_seeds, self.n_episodes, self.alpha)
 
     def describe(self) -> str:
@@ -329,8 +348,10 @@ NullArms = dict[tuple[str, str], NDArray[np.float64]]
 # Which two matrices an event tests, treated first: the pairing is what is under test.
 Event = Callable[[NullArms], tuple[NDArray[np.float64], NDArray[np.float64]]]
 
-# The section 8 case's units: Var(grand mean) of the contrast is 0.8, so a drag of 5 is
-# more than five standard errors and the rejected event fires almost every time.
+# The section 8 case's units. The pre-registered self-contrast has Var(grand mean)
+# tau^2 / S + sigma^2 / (S N) = 0.8; the replaced event's contrast (the learner against
+# the control) carries both arms' seed terms, 2 tau^2 / S + sigma^2 / (S N) = 1.2, so a
+# drag of 5 is 4.56 of its standard errors and that event fires almost every time (0.995).
 NULL_WORLD_DRAG = 5.0
 
 
@@ -413,6 +434,119 @@ def validate_null_world(
         p,
         math.sqrt(p * (1.0 - p) / replications),
     )
+
+
+# -- the rule through a real grid record (#31) -------------------------------- #
+
+# Routes that sum in a different order agree to rounding, not bit for bit.
+GRID_RTOL = 1e-9
+
+
+@dataclass(frozen=True, slots=True)
+class GridRoute:
+    """One way from the files on disk to the decision."""
+
+    name: str
+    estimate: float
+    se: float
+    rejected: bool
+
+
+def _route(name: str, decision: Decision) -> GridRoute:
+    return GridRoute(name, decision.estimate, decision.se, decision.rejected)
+
+
+@dataclass(frozen=True, slots=True)
+class GridDecisionCheck:
+    """One arm at one premium of a grid on disk, decided by every route the results take.
+
+    The first route is the reference. Every other must reach the same decision with
+    the same estimate and se, within ``GRID_RTOL``, and each seed block must have run
+    the same paths at the premium and at zero; ``failures`` names what did not.
+    """
+
+    premium: float
+    arm: str
+    routes: tuple[GridRoute, ...]
+    unpaired: tuple[int, ...]  # blocks whose two worlds started on different path seeds
+
+    @property
+    def failures(self) -> tuple[str, ...]:
+        ref = self.routes[0]
+        scale = max(abs(ref.estimate), ref.se, 1.0)
+        out = [
+            f"block {b} ran different paths at {self.premium:g} and at {NULL_PREMIUM:g}"
+            for b in self.unpaired
+        ]
+        for r in self.routes[1:]:
+            same = all(
+                math.isclose(a, b, rel_tol=GRID_RTOL, abs_tol=GRID_RTOL * scale)
+                for a, b in ((r.estimate, ref.estimate), (r.se, ref.se))
+            )
+            if not same or r.rejected != ref.rejected:
+                out.append(
+                    f"{r.name}: estimate {r.estimate:.6g} (se {r.se:.6g}, "
+                    f"{'detected' if r.rejected else 'not detected'}) against {ref.name}: "
+                    f"{ref.estimate:.6g} (se {ref.se:.6g}, "
+                    f"{'detected' if ref.rejected else 'not detected'})"
+                )
+        return tuple(out)
+
+    @property
+    def passed(self) -> bool:
+        return not self.failures
+
+
+def validate_grid_decision(
+    record: GridRecord,
+    root: Path,
+    premium: float,
+    arm: ArmName,
+    alpha: float = ALPHA,
+    pilot_files: bool = False,
+) -> GridDecisionCheck:
+    """The detection event for ``arm`` at ``premium``, read from a grid under ``root``.
+
+    The routes, the first the reference:
+
+    - ``GridRecord.matrix``: ``decide_premium`` on the arm's matrices at the premium
+      and at zero, each row read from its block's ``run.json`` (the M4 analysis);
+    - ``GridRecord.contrast``: ``decide_contrast`` on the record's contrast;
+    - with ``pilot_files`` (``record`` is a pilot's and ``premium`` its premium), the
+      files ``write_pilot_matrices`` left: the contrast matrix (``matrix.npy`` for
+      PPO, ``matrix_oracle.npy`` for the seller) and the raw ``matrix_<arm>_p<p>.npy``
+      at both premiums, as ``scripts/pilot_budget.py`` and a reader of the files see
+      them;
+    - the cells' headlines: each block's ``mean_pnl`` at the premium less at zero,
+      averaged over blocks, with the se of those differences. The harness computed
+      them from the same episodes, not the analysis, so they are an independent
+      sum; ``critical`` is the same ``t_{1-alpha, S-1}``.
+    """
+    from optspread.orchestrate import PILOT_MATRIX, PILOT_ORACLE_MATRIX
+
+    at_p = record.matrix(root, premium, arm)
+    at_0 = record.matrix(root, NULL_PREMIUM, arm)
+    routes = [
+        _route("GridRecord.matrix", decide_premium(at_p, at_0, alpha)),
+        _route("GridRecord.contrast", decide_contrast(record.contrast(root, premium, arm), alpha)),
+    ]
+    if pilot_files:
+        names = {"ppo": PILOT_MATRIX, "delta_seller": PILOT_ORACLE_MATRIX}
+        contrast_file = names.get(arm, f"matrix_{arm}.npy")
+        routes.append(_route(contrast_file, decide_contrast(np.load(root / contrast_file), alpha)))
+        raw = [np.load(root / f"matrix_{arm}_p{p:g}.npy") for p in (premium, NULL_PREMIUM)]
+        routes.append(_route(f"matrix_{arm}_p<p>.npy", decide_premium(raw[0], raw[1], alpha)))
+    S = record.grid.n_seeds
+    pairs = [(record.cell(premium, arm, b), record.cell(NULL_PREMIUM, arm, b)) for b in range(S)]
+    diffs = np.array([p.mean_pnl - z.mean_pnl for p, z in pairs], dtype=np.float64)
+    estimate = float(diffs.mean())
+    se = float(diffs.std(ddof=1)) / math.sqrt(S)
+    t_stat = estimate / se if se > 0.0 else (math.copysign(math.inf, estimate) if estimate else 0.0)
+    routes.append(GridRoute("cell headlines", estimate, se, t_stat > t_critical(S, alpha)))
+    unpaired = tuple(
+        b for b, (p, z) in enumerate(pairs) if (p.seed, p.n_episodes) != (z.seed, z.n_episodes)
+    )
+    return GridDecisionCheck(premium, str(arm), tuple(routes), unpaired)
 
 
 # -- section 5.3: the bootstrap check on seed means -------------------------- #

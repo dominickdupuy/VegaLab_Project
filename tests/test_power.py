@@ -4,8 +4,10 @@ Pre-registration D1 fixes ``Var(grand mean) = tau^2 / S + sigma^2 / (S * N)`` an
 one-sided test at alpha = 0.05 powered at 80%. The oracles here are closed forms: the
 estimator is checked on constructed matrices where the answer is exact, then on seeded
 synthetic data against its own sampling standard error over a 20-seed sweep; the power
-and sample-size functions are checked against the textbook one-sample formula and
-against each other (N - 1 misses the target, N meets it).
+and sample-size functions are checked against the textbook one-sample formula, against
+the noncentral t by quadrature, and against each other (N - 1 misses the target, N
+meets it). The planner is held to the exact power of the committed test (#20): the
+normal approximation is checked only as the orientation figure it now is.
 
 Every number is synthetic.
 """
@@ -30,8 +32,10 @@ from optspread.power import (
     render_frontier,
     seeds_for,
     t_critical,
+    t_noncentrality,
     var_grand_mean,
     variance_budget,
+    variance_budget_t,
     variance_components,
 )
 
@@ -140,28 +144,81 @@ def test_variance_budget_is_the_squared_effect_over_the_summed_quantiles() -> No
     )
 
 
-def test_sample_size_reduces_to_the_textbook_formula_when_tau_is_zero() -> None:
+def test_the_normal_form_reduces_to_the_textbook_formula_when_tau_is_zero() -> None:
     # One seed, no seed effect: N >= ((z_0.95 + z_0.80) sigma / delta)^2 = 24.73, so 25.
-    assert episodes_for(0.5, tau2=0.0, sigma2=1.0, n_seeds=1) == 25
     assert int(np.ceil((Z * 1.0 / 0.5) ** 2)) == 25
     assert power(0.5, 0.0, 1.0, n_seeds=1, n_episodes=24) < TARGET
     assert power(0.5, 0.0, 1.0, n_seeds=1, n_episodes=25) >= TARGET
 
 
+def test_the_exact_sample_size_at_zero_tau_and_the_normal_form_short_of_it() -> None:
+    # Five seeds, no seed effect: 1 / (5 N) <= (0.5 / 3.0398)^2 = 0.02706, N >= 7.39, so 8.
+    assert variance_budget_t(0.5, 5) == pytest.approx(0.027056, rel=1e-4)
+    assert episodes_for(0.5, tau2=0.0, sigma2=1.0, n_seeds=5) == 8
+    assert power_t(0.5, 0.0, 1.0, n_seeds=5, n_episodes=7) < TARGET
+    assert power_t(0.5, 0.0, 1.0, n_seeds=5, n_episodes=8) >= TARGET
+    # The normal form's 1 / (5 N) <= 0.0404 gives N = 5, at which the test has 66% power:
+    # the shortfall of #20, and why nothing is planned on it any more.
+    assert int(np.ceil(1.0 / (5 * variance_budget(0.5)))) == 5
+    assert power_t(0.5, 0.0, 1.0, n_seeds=5, n_episodes=5) == pytest.approx(0.660, abs=1e-3)
+
+
 def test_an_infeasible_design_is_reported_not_rounded() -> None:
-    # Budget (0.5 / 2.4865)^2 = 0.0404. With tau2 = 1 and 10 seeds the seed term alone is
+    # Exact budget at S = 10: (0.5 / 2.6969)^2 = 0.0344. With tau2 = 1 the seed term alone is
     # 0.1: no number of episodes can rescue the design, and the answer must say so.
     assert episodes_for(0.5, tau2=1.0, sigma2=1.0, n_seeds=10) is None
-    # At 30 seeds the seed term is 0.0333, leaving 0.0071 for sigma2/(S N): N = 5.
+    # At 30 seeds the budget is (0.5 / 2.5466)^2 = 0.03855 and the seed term 0.0333, leaving
+    # 0.0052 for sigma2/(S N): N >= 6.39, so 7 (the normal form said 5).
     n = episodes_for(0.5, tau2=1.0, sigma2=1.0, n_seeds=30)
-    assert n == 5
-    assert power(0.5, 1.0, 1.0, n_seeds=30, n_episodes=4) < TARGET
-    assert power(0.5, 1.0, 1.0, n_seeds=30, n_episodes=5) >= TARGET
-    # Solving for seeds at N = 5 instead: S >= (1 + 1/5) / 0.0404 = 29.7, so 30, and tight.
+    assert n == 7
+    assert power_t(0.5, 1.0, 1.0, n_seeds=30, n_episodes=6) < TARGET
+    assert power_t(0.5, 1.0, 1.0, n_seeds=30, n_episodes=7) >= TARGET
+    # Solving for seeds at N = 5 instead: 32 (the normal form said 30), and tight.
     s = seeds_for(0.5, tau2=1.0, sigma2=1.0, n_episodes=5)
-    assert s == 30
-    assert power(0.5, 1.0, 1.0, n_seeds=29, n_episodes=5) < TARGET
-    assert power(0.5, 1.0, 1.0, n_seeds=30, n_episodes=5) >= TARGET
+    assert s == 32
+    assert power_t(0.5, 1.0, 1.0, n_seeds=31, n_episodes=5) < TARGET
+    assert power_t(0.5, 1.0, 1.0, n_seeds=32, n_episodes=5) >= TARGET
+    # No episode variance: one episode, and with none at all the fewest seeds the test runs on.
+    assert episodes_for(0.5, tau2=0.0, sigma2=0.0, n_seeds=5) == 1
+    assert seeds_for(0.5, tau2=0.0, sigma2=0.0, n_episodes=5) == 2
+
+
+@pytest.mark.parametrize("k", [3.25, 2.85])
+def test_the_last_episode_is_settled_on_the_test_not_on_the_closed_form(
+    monkeypatch: pytest.MonkeyPatch, k: float
+) -> None:
+    # A noncentrality off by enough to round the closed form to 9 (k = 3.25) or 7 (2.85)
+    # where the test needs 8: the answer is still the fewest N power_t itself powers.
+    import optspread.power as pw
+
+    monkeypatch.setattr(pw, "t_noncentrality", lambda *_: k)
+    assert pw.episodes_for(0.5, tau2=0.0, sigma2=1.0, n_seeds=5) == 8
+
+
+def test_an_effect_no_seed_count_can_reach_is_refused() -> None:
+    with pytest.raises(OverflowError, match="no seed count"):
+        seeds_for(1e-300, tau2=1.0, sigma2=1.0, n_episodes=10)
+
+
+@pytest.mark.parametrize(
+    ("delta", "tau2", "sigma2"),
+    [(0.5, 0.0, 1.0), (0.5, 0.01, 1.0), (824.3, 51_838.0, 105_996_836.0), (1.0, 0.2, 50.0)],
+)
+def test_the_planner_gives_the_fewest_episodes_and_seeds_the_exact_test_powers(
+    delta: float, tau2: float, sigma2: float
+) -> None:
+    # The last-but-one row is the pilot's PPO contrast of A7 at its delta.
+    for S in (2, 3, 5, 8, 20, 50):
+        n = episodes_for(delta, tau2, sigma2, S)
+        if n is None:  # the seed term alone is past the exact budget
+            assert tau2 / S >= variance_budget_t(delta, S)
+            continue
+        assert power_t(delta, tau2, sigma2, S, n) >= TARGET
+        assert n == 1 or power_t(delta, tau2, sigma2, S, n - 1) < TARGET
+    for N in (1, 10, 200, 500, 1000):
+        s = seeds_for(delta, tau2, sigma2, N)
+        assert power_t(delta, tau2, sigma2, s, N) >= TARGET
+        assert s == 2 or power_t(delta, tau2, sigma2, s - 1, N) < TARGET
 
 
 def test_budget_arithmetic_is_exact() -> None:
@@ -183,6 +240,7 @@ def test_budget_arithmetic_is_exact() -> None:
 
 
 def test_the_frontier_reports_each_seed_count_with_its_cheapest_episode_count() -> None:
+    # The cases of the infeasible-design test above, by exact power.
     designs = frontier(
         0.5,
         tau2=1.0,
@@ -195,11 +253,11 @@ def test_the_frontier_reports_each_seed_count_with_its_cheapest_episode_count() 
     )
     assert [d.n_seeds for d in designs] == [10, 30, 60]
     assert not designs[0].feasible and designs[0].n_episodes is None and designs[0].budget is None
-    assert designs[1].n_episodes == 5
-    assert designs[2].n_episodes == 1  # 1/(60 * (0.0404 - 1/60)) = 0.70, so one episode
+    assert designs[1].n_episodes == 7
+    assert designs[2].n_episodes == 1  # 1/(60 * (0.03951 - 1/60)) = 0.73, so one episode
     for d in designs[1:]:
-        assert d.feasible and d.power is not None and d.budget is not None
-        assert d.power >= TARGET
+        assert d.feasible and d.power is not None and d.budget is not None and d.n_episodes
+        assert d.power == power_t(0.5, 1.0, 1.0, d.n_seeds, d.n_episodes) >= TARGET
         assert d.budget.total_hours > 0.0
     rendered = render_frontier(designs)
     assert "infeasible" in rendered
@@ -215,6 +273,18 @@ def test_degenerate_inputs_are_refused() -> None:
         variance_components(np.zeros(6))
     with pytest.raises(ValueError, match="delta"):
         episodes_for(0.0, tau2=1.0, sigma2=1.0, n_seeds=3)
+    with pytest.raises(ValueError, match="delta"):
+        seeds_for(-1.0, tau2=1.0, sigma2=1.0, n_episodes=3)
+    with pytest.raises(ValueError, match="2 seeds"):  # one seed mean has no t test to plan
+        episodes_for(0.5, tau2=0.0, sigma2=1.0, n_seeds=1)
+    with pytest.raises(ValueError, match="episode"):
+        seeds_for(0.5, tau2=1.0, sigma2=1.0, n_episodes=0)
+    with pytest.raises(ValueError, match="must exceed alpha"):
+        seeds_for(0.5, tau2=1.0, sigma2=1.0, n_episodes=3, target_power=0.01)
+    with pytest.raises(ValueError, match="delta"):
+        variance_budget_t(0.0, 5)
+    with pytest.raises(ValueError, match="delta"):
+        variance_budget(-1.0)
     with pytest.raises(ValueError, match="negative"):
         power(1.0, tau2=-1.0, sigma2=1.0, n_seeds=3, n_episodes=3)
     with pytest.raises(ValueError, match="alpha"):
@@ -274,7 +344,7 @@ def test_exact_power_matches_the_noncentral_t_by_quadrature(
 
 def test_exact_power_is_alpha_at_zero_and_sits_below_the_normal_approximation() -> None:
     assert power_t(0.0, 4.0, 100.0, 10, 25, ALPHA) == ALPHA
-    # At S = 10 the t test pays for estimating its variance; the planning form does not.
+    # At S = 10 the t test pays for estimating its variance; the normal form does not.
     for delta in (0.5, 1.0, 2.0, 3.0):
         assert power_t(delta, 4.0, 100.0, 10, 25) < power(delta, 4.0, 100.0, 10, 25)
     # With thousands of seeds the two coincide.
@@ -283,6 +353,16 @@ def test_exact_power_is_alpha_at_zero_and_sits_below_the_normal_approximation() 
     )
     assert power_t(1.0, 0.0, 0.0, 5, 5) == 1.0
     assert power_t(0.0, 0.0, 0.0, 5, 5) == ALPHA
+
+
+def test_with_no_variance_a_negative_effect_is_never_detected() -> None:
+    # The limit as se falls to 0 (#31): a one-sided test cannot reject on an effect of the
+    # wrong sign, so the power is 0, not alpha; the normal form agrees.
+    assert power_t(-1.0, 0.0, 0.0, 5, 5) == 0.0
+    assert power(-1.0, 0.0, 0.0, 5, 5) == 0.0
+    assert power(0.0, 0.0, 0.0, 5, 5) == ALPHA and power(1.0, 0.0, 0.0, 5, 5) == 1.0
+    # and continuously: a vanishing variance takes the power of a negative effect to 0
+    assert power_t(-1.0, 0.0, 1e-12, 5, 5) < 1e-12
 
 
 def test_the_detectable_effect_is_the_effect_at_which_power_hits_the_target() -> None:
@@ -308,6 +388,42 @@ def test_the_exact_t_floor_inverts_power_t_and_sits_above_the_normal_one() -> No
     assert detectable_effect_t(0.0, 0.0, 5, 10) == 0.0
     with pytest.raises(ValueError, match="must exceed alpha"):
         detectable_effect_t(1.0, 4.0, 5, 10, alpha=0.05, target_power=0.04)
+
+
+def test_the_noncentrality_is_the_one_power_t_needs_by_quadrature() -> None:
+    # Independent of scipy's nct: at the noncentrality the quadrature power is the target.
+    for S in (2, 3, 5, 10, 50):
+        k = t_noncentrality(S)
+        assert _power_by_quadrature(k, 1.0, S, ALPHA) == pytest.approx(TARGET, abs=1e-7)
+    assert t_noncentrality(5) == pytest.approx(3.0398, abs=1e-4)
+    assert t_noncentrality(2) > t_noncentrality(3) > t_noncentrality(5) > t_noncentrality(50) > Z
+    assert t_noncentrality(10**6) == pytest.approx(Z, abs=1e-5)
+    # the budget is (delta / k)^2 and climbs to the normal one as S grows
+    assert variance_budget_t(0.5, 5) == pytest.approx((0.5 / t_noncentrality(5)) ** 2, rel=1e-12)
+    assert variance_budget_t(0.5, 10**6) == pytest.approx(variance_budget(0.5), rel=1e-5)
+    with pytest.raises(ValueError, match="2 seeds"):
+        t_noncentrality(1)
+
+
+def test_the_audit_numbers_for_the_normal_floor() -> None:
+    # Week 6 audit (#20). Tau^2 dominating makes the floor a pure function of S.
+    def understated(S: int) -> float:
+        return 1.0 - detectable_effect(1.0, 0.0, S, 1) / detectable_effect_t(1.0, 0.0, S, 1)
+
+    assert understated(5) == pytest.approx(0.182, abs=1e-3)  # "about 18%"
+    assert understated(3) == pytest.approx(0.375, abs=1e-3)  # "about 38%"
+    # At the normal floor the test has 66% power at S = 5, not the 80% the form claims.
+    normal_floor = detectable_effect(1.0, 0.0, 5, 1)
+    assert power_t(normal_floor, 1.0, 0.0, 5, 1) == pytest.approx(0.656, abs=1e-3)
+    # The S = 5 to S = 50 floor ratio is 3.8, not sqrt(10) = 3.16.
+    exact = detectable_effect_t(1.0, 0.0, 5, 1) / detectable_effect_t(1.0, 0.0, 50, 1)
+    assert exact == pytest.approx(3.812, abs=1e-3)
+    assert detectable_effect(1.0, 0.0, 5, 1) / detectable_effect(1.0, 0.0, 50, 1) == (
+        pytest.approx(np.sqrt(10.0), rel=1e-12)
+    )
+    # The section 8 case of the README: S = 10, the normal form 0.72 where the test has 0.66.
+    assert power(2.0, 4.0, 100.0, 10, 25) == pytest.approx(0.723, abs=1e-3)
+    assert power_t(2.0, 4.0, 100.0, 10, 25) == pytest.approx(0.662, abs=1e-3)
 
 
 def test_component_standard_errors_on_a_constructed_matrix_are_exact() -> None:
