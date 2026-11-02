@@ -92,8 +92,10 @@ export function useTokens(): Tokens {
 const ARM_SLOT: Record<string, keyof Tokens> = {
   delta_seller: "s1",
   ppo: "s2",
-  always_on: "s3",
-  random: "s4",
+  a2c: "s3",
+  dqn: "s4",
+  always_on: "s5",
+  random: "s5",
   flat: "s5",
 };
 
@@ -108,6 +110,8 @@ export function sourceColor(t: Tokens, source: string): string {
 export const ARM_LABEL: Record<string, string> = {
   delta_seller: "Fixed-delta seller",
   ppo: "PPO",
+  a2c: "A2C",
+  dqn: "DQN",
   always_on: "Always-on condor",
   random: "Random",
   flat: "Flat",
