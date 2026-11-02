@@ -50,14 +50,20 @@ from optspread.config import (
     RunConfig,
     config_hash,
 )
+from optspread.env import OBS_NAMES
 from optspread.harness import EpisodeResult, build_env, summarize
 from optspread.manifest import MANIFEST_FILENAME, RunManifest, file_sha256
 from optspread.policies import Policy, make_policy
 
 EQUITY_FILENAME = "equity.json"
+ACTION_LOG_FILENAME = "action_log.json"
 LAUNCH_DIR = "launched"
 JOBS_DIR = ".jobs"
 MAX_EQUITY_PATHS = 200  # episodes whose equity path is kept; the rest are summarised only
+# Positions in the observation vector, looked up by name so a reordered OBS_NAMES cannot
+# silently mislabel the action log (time_frac is 0 and atm_iv is 8 at present).
+ACTION_LOG_INDEX_TIME_FRAC = OBS_NAMES.index("time_frac")
+ACTION_LOG_INDEX_ATM_IV = OBS_NAMES.index("atm_iv")
 
 Arm = Literal["flat", "always_on", "random", "delta_seller", "ppo"]
 SCRIPTED_ARMS: tuple[Arm, ...] = ("flat", "always_on", "random", "delta_seller")
@@ -244,6 +250,36 @@ def run_episode_traced(
     return EpisodeResult(seed, info["equity"] - equity0, total_cost, info["n_trades"], steps), path
 
 
+def run_episode_inspected(
+    config: RunConfig, policy: Policy, seed: int
+) -> tuple[EpisodeResult, list[float], list[int], list[float], list[float]]:
+    """Like run_episode_traced but also records (action, atm_iv, time_frac) per step."""
+    env = build_env(config)
+    obs, info = env.reset(seed=seed)
+    policy.reset(seed)
+    equity0, total_cost, steps, done = info["equity"], 0.0, 0, False
+    path: list[float] = [0.0]
+    actions: list[int] = []
+    atm_ivs: list[float] = []
+    time_fracs: list[float] = []
+    while not done:
+        action = policy.act(obs, info)
+        actions.append(int(action))
+        atm_ivs.append(float(obs[ACTION_LOG_INDEX_ATM_IV]))
+        time_fracs.append(float(obs[ACTION_LOG_INDEX_TIME_FRAC]))
+        obs, _, done, _, info = env.step(action)
+        total_cost += info["cost"]
+        steps += 1
+        path.append(float(info["equity"] - equity0))
+    return (
+        EpisodeResult(seed, info["equity"] - equity0, total_cost, info["n_trades"], steps),
+        path,
+        actions,
+        atm_ivs,
+        time_fracs,
+    )
+
+
 _SCRIPTED: dict[str, PolicyName] = {name: name for name in get_args(PolicyName)}
 
 
@@ -260,6 +296,8 @@ def _make_policy(config: RunConfig, log: Callable[[str], None]) -> Policy:
 
 def _existing(run_dir: Path, config: RunConfig) -> bool:
     if not (run_dir / RUN_FILENAME).is_file() or not (run_dir / MANIFEST_FILENAME).is_file():
+        return False
+    if not (run_dir / ACTION_LOG_FILENAME).is_file():  # runs from before the log: recompute
         return False
     try:
         manifest = RunManifest.read(run_dir)
@@ -311,12 +349,18 @@ def execute_job(job_id: str, spec_json: str, runs_root: str) -> str:
     policy = _make_policy(config, progress.log)
     results: list[EpisodeResult] = []
     paths: list[list[float]] = []
+    all_actions: list[list[int]] = []
+    all_atm_iv: list[list[float]] = []
+    all_time_frac: list[list[float]] = []
     start, last = time.perf_counter(), 0.0
     for i, seed in enumerate(range(config.seed, config.seed + total)):
-        result, path = run_episode_traced(config, policy, seed)
+        result, path, actions, atm_ivs, time_fracs = run_episode_inspected(config, policy, seed)
         results.append(result)
         if i < MAX_EQUITY_PATHS:
             paths.append(path)
+            all_actions.append(actions)
+            all_atm_iv.append(atm_ivs)
+            all_time_frac.append(time_fracs)
         now = time.perf_counter()
         if now - last > 0.25 or i + 1 == total:
             progress.write(done=i + 1, total=total, phase="evaluating", run_id=run_id, key=rel)
@@ -331,6 +375,15 @@ def execute_job(job_id: str, spec_json: str, runs_root: str) -> str:
         newline="\n",
     )
     manifest.add_artifact(run_dir, equity)
+    action_log = run_dir / ACTION_LOG_FILENAME
+    action_log.write_text(
+        json.dumps(
+            {"actions": all_actions, "atm_iv": all_atm_iv, "time_frac": all_time_frac},
+            separators=(",", ":"),
+        ),
+        newline="\n",
+    )
+    manifest.add_artifact(run_dir, action_log)
     manifest.write(run_dir)
     steps = sum(r.steps for r in results)
     progress.log(

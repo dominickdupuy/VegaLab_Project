@@ -20,6 +20,7 @@ from optspread.config import RunConfig, config_hash
 from optspread.dashboard_data import load_run_detail, load_run_row
 from optspread.harness import build_env, run_episode
 from optspread.jobs import (
+    ACTION_LOG_FILENAME,
     EQUITY_FILENAME,
     LAUNCH_DIR,
     PRESETS,
@@ -122,6 +123,28 @@ def test_ppo_is_hidden_without_the_learner() -> None:
         assert available_arms() == ("flat", "always_on", "random", "delta_seller")
 
 
+def test_action_log_is_written_alongside_equity(tmp_path: Path) -> None:
+    (tmp_path / ".jobs").mkdir()
+    rel =execute_job("test-alog", SMALL.model_dump_json(), str(tmp_path))
+    run_dir = tmp_path / rel
+    log_path = run_dir / ACTION_LOG_FILENAME
+    assert log_path.is_file(), "action_log.json must be written"
+    data = json.loads(log_path.read_text())
+    assert set(data) == {"actions", "atm_iv", "time_frac"}
+    n_eps = SMALL.n_episodes
+    assert len(data["actions"]) == n_eps
+    assert len(data["atm_iv"]) == n_eps
+    assert len(data["time_frac"]) == n_eps
+    # each episode has one entry per step, and the steps are the episode's days
+    assert len(data["actions"][0]) == SMALL.n_days
+    assert len(data["atm_iv"][0]) == SMALL.n_days
+    assert len(data["time_frac"][0]) == SMALL.n_days
+    assert all(isinstance(a, int) for a in data["actions"][0])
+    assert data["time_frac"][0][0] == pytest.approx(0.0)
+    assert all(v > 0.0 for v in data["atm_iv"][0])
+    assert ACTION_LOG_FILENAME in {a.path for a in load_run_detail(run_dir).artifacts}
+
+
 def test_the_traced_episode_is_the_harness_episode() -> None:
     config = to_run_config(SMALL)
     policy = make_policy("delta_seller")
@@ -140,7 +163,7 @@ def test_a_launched_run_is_an_ordinary_hashed_run(tmp_path: Path) -> None:
     row = load_run_row(tmp_path / rel)
     assert row.status == "OK" and row.digests_ok and row.n_episodes == 3
     detail = load_run_detail(tmp_path / rel)
-    assert {a.path for a in detail.artifacts} == {"run.json", EQUITY_FILENAME}
+    assert {a.path for a in detail.artifacts} == {"run.json", EQUITY_FILENAME, ACTION_LOG_FILENAME}
     equity = json.loads((tmp_path / rel / EQUITY_FILENAME).read_text())
     assert equity["seeds"] == [11, 12, 13] and len(equity["paths"]) == 3
     state = json.loads((tmp_path / ".jobs" / "j1.json").read_text())

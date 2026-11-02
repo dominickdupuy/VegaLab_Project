@@ -29,7 +29,7 @@ from dashboard_fixtures import (
 from optspread import webapi as w
 from optspread.dashboard_data import REPO_ROOT, load_run_detail, run_leak_demo
 from optspread.dashboard_panel import Columns, normalise
-from optspread.jobs import EQUITY_FILENAME, JobSpec, JobStatus, execute_job
+from optspread.jobs import ACTION_LOG_FILENAME, EQUITY_FILENAME, JobSpec, JobStatus, execute_job
 from optspread.sweep import SWEEP_FILENAME
 
 # -- runs ---------------------------------------------------------------------------- #
@@ -95,7 +95,7 @@ def test_a_launched_run_sends_its_equity_paths(tmp_path: Path) -> None:
     assert out.equity is not None and out.equity.seeds == [5, 6]
     assert out.equity.n_recorded == 2 and len(out.equity.paths[0]) == 22
     assert out.equity.paths[0][-1] == pytest.approx(out.episodes[0].pnl)
-    assert {a.path for a in out.artifacts} == {"run.json", EQUITY_FILENAME}
+    assert {a.path for a in out.artifacts} == {"run.json", EQUITY_FILENAME, ACTION_LOG_FILENAME}
     (tmp_path / key / EQUITY_FILENAME).write_text("[]")
     assert w.run_detail(w.load_detail(tmp_path, key), tmp_path, rows).equity is None
 
