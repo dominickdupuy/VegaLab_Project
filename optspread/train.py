@@ -221,6 +221,54 @@ def train_ppo(
     return policy
 
 
+def train_a2c(config: RunConfig) -> SB3Policy:
+    """Train the A2C arm of ``config`` and return it. Needs the ``train`` extra."""
+    if config.train is None:
+        raise ValueError(f"policy {config.policy!r} has no training config")
+    import torch
+    from stable_baselines3 import A2C
+
+    torch.set_num_threads(TORCH_THREADS)
+    train_cfg = config.train
+    env = TrainingPaths(build_env(config), train_cfg.seed)
+    model = A2C("MlpPolicy", env, seed=train_cfg.seed, device=train_cfg.device, verbose=0)
+    model.learn(total_timesteps=train_cfg.total_timesteps)
+    return SB3Policy(model)
+
+
+def train_dqn(config: RunConfig) -> SB3Policy:
+    """Train the DQN arm of ``config`` and return it. Needs the ``train`` extra."""
+    if config.train is None:
+        raise ValueError(f"policy {config.policy!r} has no training config")
+    import torch
+    from stable_baselines3 import DQN
+
+    torch.set_num_threads(TORCH_THREADS)
+    train_cfg = config.train
+    env = TrainingPaths(build_env(config), train_cfg.seed)
+    model = DQN("MlpPolicy", env, seed=train_cfg.seed, device=train_cfg.device, verbose=0)
+    model.learn(total_timesteps=train_cfg.total_timesteps)
+    return SB3Policy(model)
+
+
+_TRAINERS: dict[str, Callable[[RunConfig], SB3Policy]] = {
+    "ppo": train_ppo,
+    "a2c": train_a2c,
+    "dqn": train_dqn,
+}
+
+
+def train(config: RunConfig) -> SB3Policy:
+    """Dispatch to the trainer named by ``config.train.algorithm``."""
+    if config.train is None:
+        raise ValueError(f"policy {config.policy!r} has no training config")
+    algo = config.train.algorithm
+    trainer = _TRAINERS.get(algo)
+    if trainer is None:
+        raise ValueError(f"unknown algorithm {algo!r}")
+    return trainer(config)
+
+
 # -- what the M2 gate report states about D3 -------------------------------- #
 
 

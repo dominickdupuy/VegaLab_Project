@@ -136,6 +136,44 @@ def test_training_paths_are_disjoint_from_evaluation_and_from_each_other() -> No
         check_disjoint(RunConfig(seed=-1))
 
 
+def test_train_dispatches_on_the_algorithm_name(monkeypatch: pytest.MonkeyPatch) -> None:
+    # No learner needed: each trainer is replaced by a recorder, and train() must call
+    # exactly the one named by config.train.algorithm.
+    import optspread.train as train_mod
+
+    called: list[str] = []
+    for name in ("ppo", "a2c", "dqn"):
+        monkeypatch.setitem(
+            train_mod._TRAINERS, name, lambda config, _n=name: called.append(_n) or _n
+        )
+    for name in ("a2c", "dqn", "ppo"):
+        run = RunConfig(policy=name, train=TrainConfig(algorithm=name, total_timesteps=1))
+        assert train_mod.train(run) == name
+    assert called == ["a2c", "dqn", "ppo"]
+    with pytest.raises(ValueError, match="no training config"):
+        train_mod.train(RunConfig(policy="flat"))
+
+
+def test_train_dispatches_to_a2c(fake_a2c_config: RunConfig) -> None:
+    """train() must return a Policy when algorithm is a2c."""
+    pytest.importorskip("stable_baselines3")
+    from optspread.train import train
+
+    policy = train(fake_a2c_config)
+    assert callable(policy.act)
+    assert type(policy.model).__name__ == "A2C"
+
+
+def test_train_dispatches_to_dqn(fake_dqn_config: RunConfig) -> None:
+    """train() must return a Policy when algorithm is dqn."""
+    pytest.importorskip("stable_baselines3")
+    from optspread.train import train
+
+    policy = train(fake_dqn_config)
+    assert callable(policy.act)
+    assert type(policy.model).__name__ == "DQN"
+
+
 def test_every_training_episode_gets_its_own_path_whatever_seed_it_resets_with() -> None:
     # Stable-Baselines3 resets with a seed once and then with None; SpreadEnv reads None as
     # path 0. The wrapper ignores both and walks the training seed's own path sequence.

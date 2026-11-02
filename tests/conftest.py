@@ -25,6 +25,32 @@ TINY = RunConfig(
 TINY_SWEEP = SweepConfig(base=TINY, premiums=(0.0, 2.0), arms=("flat", "delta_seller"))
 
 
+@pytest.fixture
+def fake_a2c_config() -> RunConfig:
+    from optspread.config import EnvConfig, MarketConfig, TrainConfig
+
+    return RunConfig(
+        market=MarketConfig(n_days=5, tenor_days=(3,), n_strikes_each_side=2),
+        env=EnvConfig(episode_days=5),
+        policy="a2c",
+        n_episodes=2,
+        train=TrainConfig(algorithm="a2c", total_timesteps=50),
+    )
+
+
+@pytest.fixture
+def fake_dqn_config() -> RunConfig:
+    from optspread.config import EnvConfig, MarketConfig, TrainConfig
+
+    return RunConfig(
+        market=MarketConfig(n_days=5, tenor_days=(3,), n_strikes_each_side=2),
+        env=EnvConfig(episode_days=5),
+        policy="dqn",
+        n_episodes=2,
+        train=TrainConfig(algorithm="dqn", total_timesteps=50),
+    )
+
+
 @pytest.fixture(scope="session")
 def tiny_sweep() -> SweepConfig:
     return TINY_SWEEP
