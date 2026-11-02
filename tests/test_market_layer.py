@@ -56,6 +56,33 @@ def test_expired_option_is_intrinsic_without_nan() -> None:
 # -- market ---------------------------------------------------------------- #
 
 
+def test_vol_of_vol_makes_realised_vol_vary() -> None:
+    """With vol_of_vol > 0, the path sigma varies across days."""
+    cfg = MarketConfig(vol_of_vol=0.5, n_days=63)
+    prov = SyntheticChainProvider(cfg)
+    prov.reset(SeededStepRNG(42))
+    atm_ivs = []
+    for _ in range(10):
+        chain = prov.step()
+        atm_ivs.append(float(chain.ivs[0, chain.ivs.shape[1] // 2]))
+    # ATM IV must vary when vol_of_vol > 0
+    assert len(set(round(v, 6) for v in atm_ivs)) > 1
+
+
+def test_vol_of_vol_zero_recovers_constant_vol() -> None:
+    """vol_of_vol=0 must produce the same numbers as before the feature."""
+    base = MarketConfig()
+    prov_base = SyntheticChainProvider(base)
+    prov_new = SyntheticChainProvider(MarketConfig(vol_of_vol=0.0))
+    chain_base = prov_base.reset(SeededStepRNG(7))
+    chain_new = prov_new.reset(SeededStepRNG(7))
+    assert chain_base.spot == pytest.approx(chain_new.spot)
+    for _ in range(5):
+        cb, cn = prov_base.step(), prov_new.step()
+        assert cb.spot == pytest.approx(cn.spot)
+        assert cb.ivs == pytest.approx(cn.ivs)
+
+
 def test_same_seed_same_path_and_premium_lifts_iv() -> None:
     a = [make_chain(3).spot]
     prov = SyntheticChainProvider(MarketConfig())

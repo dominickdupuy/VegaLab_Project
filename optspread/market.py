@@ -17,7 +17,7 @@ from __future__ import annotations
 import numpy as np
 
 from optspread.config import MarketConfig
-from optspread.rng import PATH_CHANNEL, StepRNG
+from optspread.rng import PATH_CHANNEL, VOL_CHANNEL, StepRNG
 from optspread.types import Chain
 
 
@@ -27,6 +27,7 @@ class SyntheticChainProvider:
         self._rng: StepRNG | None = None
         self._day = 0
         self._spot = config.spot0
+        self._current_vol: float = config.sigma
 
     @property
     def n_days(self) -> int:
@@ -44,6 +45,7 @@ class SyntheticChainProvider:
         self._rng = rng
         self._day = 0
         self._spot = self.config.spot0
+        self._current_vol = self.config.sigma
         return self._chain(self._spot)
 
     def step(self) -> Chain:
@@ -56,13 +58,24 @@ class SyntheticChainProvider:
         return self._chain(self._spot)
 
     def log_return(self, day: int) -> float:
-        """The path's log return INTO ``day``: a pure function of ``stream(day)``."""
+        """The path's log return INTO ``day``. With vol_of_vol > 0, also advances ``_current_vol``.
+
+        Both draws come from ``stream(day)`` on their own channel, so the return into
+        ``day`` is still a pure function of the streams for steps ``<= day``.
+        """
         if self._rng is None:
             raise RuntimeError("log_return() before reset()")
         cfg = self.config
         dt = 1.0 / cfg.trading_days_per_year
+        if cfg.vol_of_vol > 0.0:
+            z_vol = float(self._rng.stream(day, VOL_CHANNEL).standard_normal())
+            self._current_vol = max(
+                self._current_vol * float(np.exp(cfg.vol_of_vol * float(np.sqrt(dt)) * z_vol)),
+                0.001,
+            )
         z = float(self._rng.stream(day, PATH_CHANNEL).standard_normal())
-        return -0.5 * cfg.sigma * cfg.sigma * dt + cfg.sigma * float(np.sqrt(dt)) * z
+        sigma = self._current_vol
+        return -0.5 * sigma * sigma * dt + sigma * float(np.sqrt(dt)) * z
 
     def _chain(self, spot: float) -> Chain:
         """Chain at the current day for ``spot`` (the poisoned variant passes a shifted spot)."""
@@ -71,7 +84,7 @@ class SyntheticChainProvider:
         offsets = np.arange(-cfg.n_strikes_each_side, cfg.n_strikes_each_side + 1)
         strikes = centre + cfg.strike_step * offsets.astype(np.float64)
         expiry_days = self._day + np.asarray(cfg.tenor_days, dtype=np.int64)
-        iv = cfg.sigma + cfg.iv_premium_vol_pts / 100.0
+        iv = self._current_vol + cfg.iv_premium_vol_pts / 100.0
         return Chain(
             t=self._day,
             spot=spot,
