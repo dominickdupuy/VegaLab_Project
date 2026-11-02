@@ -92,6 +92,8 @@ class JobSpec(BaseModel):
 
     policy: Arm = "delta_seller"
     iv_premium_vol_pts: float = Field(default=_MARKET.iv_premium_vol_pts, ge=-10.0, le=20.0)
+    vol_of_vol: float = Field(default=_MARKET.vol_of_vol, ge=0.0, le=2.0)
+    skew_slope: float = Field(default=_MARKET.skew_slope, ge=-1.0, le=1.0)
     sigma: float = Field(default=_MARKET.sigma, gt=0.0, le=1.5)
     r: float = Field(default=_MARKET.r, ge=-0.05, le=0.25)
     n_days: int = Field(default=_MARKET.n_days, ge=5, le=504)
@@ -149,6 +151,8 @@ def to_run_config(spec: JobSpec) -> RunConfig:
             "n_strikes_each_side": spec.n_strikes_each_side,
             "strike_step": spec.strike_step,
             "iv_premium_vol_pts": spec.iv_premium_vol_pts,
+            "vol_of_vol": spec.vol_of_vol,
+            "skew_slope": spec.skew_slope,
         },
         "cost": {
             "enabled": spec.costs_enabled,

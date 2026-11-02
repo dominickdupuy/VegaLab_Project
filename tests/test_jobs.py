@@ -95,6 +95,18 @@ def test_inconsistent_knobs_are_refused(knobs: dict[str, object], message: str) 
         JobSpec.model_validate(knobs)
 
 
+def test_vol_of_vol_and_skew_in_jobspec_pass_through() -> None:
+    spec = JobSpec(vol_of_vol=0.3, skew_slope=-0.05, n_days=21, tenor_days=(7, 14), n_episodes=3)
+    cfg = to_run_config(spec)
+    assert cfg.market.vol_of_vol == pytest.approx(0.3)
+    assert cfg.market.skew_slope == pytest.approx(-0.05)
+
+
+def test_jobspec_defaults_give_unchanged_config_hash() -> None:
+    spec = JobSpec(policy="flat")
+    assert config_hash(to_run_config(spec)) == config_hash(RunConfig(policy="flat"))
+
+
 def test_every_preset_builds_a_config() -> None:
     names = [p.name for p in PRESETS]
     assert len(set(names)) == len(names) and "null_world" in names

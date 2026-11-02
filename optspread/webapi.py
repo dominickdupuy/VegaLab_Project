@@ -491,6 +491,15 @@ _GROUPS: dict[str, tuple[str, str]] = {
         "Which policy runs: the scripted arms, or PPO when the learner is installed.",
     ),
     "iv_premium_vol_pts": ("Market", "Planted premium in vol points (D2). Zero is the null world."),
+    "vol_of_vol": (
+        "Market",
+        "Annualised vol-of-vol (0 = constant vol, GBM). Adds path-dependency to the smile level.",
+    ),
+    "skew_slope": (
+        "Market",
+        "IV tilt in vol pts per unit log(S/K). Positive = equity left skew "
+        "(higher IV at lower strikes). 0 = flat smile.",
+    ),
     "sigma": ("Market", "Annualised vol driving the path, decimal."),
     "r": ("Market", "Risk-free rate, decimal."),
     "n_days": ("Market", "Path and episode length in trading days."),
