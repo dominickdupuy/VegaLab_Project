@@ -193,3 +193,30 @@ def test_switching_into_an_uncovered_structure_still_closes_what_was_held() -> N
     assert cost == pytest.approx(trade_cost(costs, chain, condor.legs)), "only the exit is paid"
     assert book.position is None, "the policy asked to leave the condor; it is left"
     assert book.refused_opens == 1 and book.n_trades == 2
+
+def test_skew_slope_makes_smile() -> None:
+    """With positive skew_slope, lower strikes get higher IV (equity skew)."""
+    from optspread.config import MarketConfig
+    from optspread.market import SyntheticChainProvider
+    from optspread.rng import SeededStepRNG
+
+    prov = SyntheticChainProvider(MarketConfig(skew_slope=0.10))
+    chain = prov.reset(SeededStepRNG(0))
+    atm_idx = chain.ivs.shape[1] // 2
+    low_idx = atm_idx - 4   # lower strike
+    high_idx = atm_idx + 4  # higher strike
+    # positive slope -> lower strikes have higher IV
+    assert chain.ivs[0, low_idx] > chain.ivs[0, atm_idx]
+    assert chain.ivs[0, atm_idx] > chain.ivs[0, high_idx]
+
+
+def test_skew_slope_zero_gives_flat_smile() -> None:
+    """Default skew_slope=0 must produce a flat surface."""
+    from optspread.config import MarketConfig
+    from optspread.market import SyntheticChainProvider
+    from optspread.rng import SeededStepRNG
+
+    prov = SyntheticChainProvider(MarketConfig(skew_slope=0.0))
+    chain = prov.reset(SeededStepRNG(0))
+    # all IVs in the same tenor row should be equal
+    assert float(np.std(chain.ivs[0])) == pytest.approx(0.0)

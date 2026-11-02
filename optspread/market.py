@@ -84,13 +84,19 @@ class SyntheticChainProvider:
         offsets = np.arange(-cfg.n_strikes_each_side, cfg.n_strikes_each_side + 1)
         strikes = centre + cfg.strike_step * offsets.astype(np.float64)
         expiry_days = self._day + np.asarray(cfg.tenor_days, dtype=np.int64)
-        iv = self._current_vol + cfg.iv_premium_vol_pts / 100.0
+        iv_atm = self._current_vol + cfg.iv_premium_vol_pts / 100.0
+        # log(S/K) > 0 for low strikes (OTM puts), < 0 for high strikes (OTM calls)
+        log_moneyness = np.log(spot / strikes)  # shape: (n_strikes,)
+        smile = np.maximum(
+            0.001, iv_atm + cfg.skew_slope * log_moneyness
+        )  # shape: (n_strikes,)
+        ivs = np.tile(smile, (len(cfg.tenor_days), 1))  # same smile at every tenor
         return Chain(
             t=self._day,
             spot=spot,
             r=cfg.r,
             strikes=strikes,
             expiry_days=expiry_days,
-            ivs=np.full((len(cfg.tenor_days), len(strikes)), iv, dtype=np.float64),
+            ivs=ivs,
             trading_days_per_year=cfg.trading_days_per_year,
         )
