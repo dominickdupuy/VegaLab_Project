@@ -47,6 +47,7 @@ class MarketConfig(BaseModel):
     trading_days_per_year: int = 252
     vol_of_vol: float = 0.0  # annualised vol-of-vol; 0 = constant vol
     skew_slope: float = 0.0  # IV slope in vol pts per unit log(S/K); 0 = flat smile
+    alpha_bps: float = Field(default=0.0, ge=0.0, le=200.0)  # per-day drift in bps; 0 = zero drift
 
     @model_serializer(mode="wrap")
     def _omit_research_defaults(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
@@ -57,6 +58,8 @@ class MarketConfig(BaseModel):
             data.pop("vol_of_vol", None)
         if self.skew_slope == 0.0:
             data.pop("skew_slope", None)
+        if self.alpha_bps == 0.0:
+            data.pop("alpha_bps", None)
         return data
 
 

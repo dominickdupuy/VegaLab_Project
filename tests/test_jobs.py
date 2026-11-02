@@ -257,3 +257,9 @@ def test_jobs_run_in_a_separate_process(tmp_path: Path) -> None:
         assert manager.status(job).state == "done"
     finally:
         manager.shutdown()
+
+def test_alpha_bps_jobspec_passes_through_to_market_config() -> None:
+    from optspread.jobs import JobSpec, to_run_config
+    spec = JobSpec(policy="flat", n_days=10, tenor_days=(5, 10), n_episodes=2, alpha_bps=30.0)
+    cfg = to_run_config(spec)
+    assert cfg.market.alpha_bps == 30.0

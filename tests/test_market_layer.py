@@ -220,3 +220,25 @@ def test_skew_slope_zero_gives_flat_smile() -> None:
     chain = prov.reset(SeededStepRNG(0))
     # all IVs in the same tenor row should be equal
     assert float(np.std(chain.ivs[0])) == pytest.approx(0.0)
+
+def test_alpha_bps_shifts_path_upward() -> None:
+    """With alpha_bps > 0, the expected log-price grows over time."""
+    from optspread.config import MarketConfig
+    from optspread.market import SyntheticChainProvider
+    from optspread.rng import SeededStepRNG
+    import numpy as np
+
+    rng_seeds = list(range(50))
+    final_spots_zero = []
+    final_spots_alpha = []
+    n_days = 63
+    for seed in rng_seeds:
+        for alpha, container in [(0.0, final_spots_zero), (100.0, final_spots_alpha)]:
+            cfg = MarketConfig(alpha_bps=alpha, n_days=n_days)
+            prov = SyntheticChainProvider(cfg)
+            prov.reset(SeededStepRNG(seed))
+            for _ in range(n_days):
+                chain = prov.step()
+            container.append(chain.spot)
+    # Mean final spot must be higher with alpha > 0
+    assert np.mean(final_spots_alpha) > np.mean(final_spots_zero)

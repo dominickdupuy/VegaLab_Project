@@ -75,7 +75,8 @@ class SyntheticChainProvider:
             )
         z = float(self._rng.stream(day, PATH_CHANNEL).standard_normal())
         sigma = self._current_vol
-        return -0.5 * sigma * sigma * dt + sigma * float(np.sqrt(dt)) * z
+        drift = (cfg.alpha_bps / 10_000.0) * dt  # per-day drift from the alpha knob
+        return drift - 0.5 * sigma * sigma * dt + sigma * float(np.sqrt(dt)) * z
 
     def _chain(self, spot: float) -> Chain:
         """Chain at the current day for ``spot`` (the poisoned variant passes a shifted spot)."""

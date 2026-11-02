@@ -221,3 +221,17 @@ def test_train_algorithm_must_match_policy() -> None:
         RunConfig(policy="a2c", train=TrainConfig(algorithm="dqn", total_timesteps=10))
     with pytest.raises(ValueError, match="must match policy"):
         RunConfig(policy="ppo", train=TrainConfig(algorithm="a2c", total_timesteps=10))
+
+def test_alpha_bps_market_config_hash_unchanged_at_default() -> None:
+    from optspread.config import MarketConfig, canonical_json
+    import json
+    base = json.loads(canonical_json(MarketConfig()))
+    with_alpha = json.loads(canonical_json(MarketConfig(alpha_bps=0.0)))
+    assert base == with_alpha
+
+def test_alpha_bps_market_config_hash_differs_when_nonzero() -> None:
+    from optspread.config import MarketConfig, canonical_json
+    import json
+    base = json.loads(canonical_json(MarketConfig()))
+    with_alpha = json.loads(canonical_json(MarketConfig(alpha_bps=25.0)))
+    assert base != with_alpha

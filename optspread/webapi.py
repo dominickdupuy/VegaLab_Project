@@ -566,6 +566,10 @@ _GROUPS: dict[str, tuple[str, str]] = {
         "IV tilt in vol pts per unit log(S/K). Positive = equity left skew "
         "(higher IV at lower strikes). 0 = flat smile.",
     ),
+    "alpha_bps": (
+        "Market",
+        "Per-day drift in basis points (0 = zero-drift, 25 = long-biased SPX-like edge).",
+    ),
     "sigma": ("Market", "Annualised vol driving the path, decimal."),
     "r": ("Market", "Risk-free rate, decimal."),
     "n_days": ("Market", "Path and episode length in trading days."),
