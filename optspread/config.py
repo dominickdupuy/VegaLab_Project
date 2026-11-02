@@ -46,6 +46,19 @@ class MarketConfig(BaseModel):
     strike_step: float = 50.0
     iv_premium_vol_pts: float = 0.0  # planted premium; 0.0 is the null world
     trading_days_per_year: int = 252
+    vol_of_vol: float = 0.0  # annualised vol-of-vol; 0 = constant vol
+    skew_slope: float = 0.0  # IV slope in vol pts per unit log(S/K); 0 = flat smile
+
+    @model_serializer(mode="wrap")
+    def _omit_research_defaults(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
+        # At their defaults the new fields are absent from the serialised form, so every
+        # existing run keeps its config hash, run id and run directory.
+        data: dict[str, Any] = handler(self)
+        if self.vol_of_vol == 0.0:
+            data.pop("vol_of_vol", None)
+        if self.skew_slope == 0.0:
+            data.pop("skew_slope", None)
+        return data
 
 
 class CostConfig(BaseModel):

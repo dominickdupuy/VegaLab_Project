@@ -125,3 +125,19 @@ def test_a_manifest_without_the_learner_still_validates(tmp_path: Path) -> None:
     m.versions = {k: v for k, v in m.versions.items() if k in REQUIRED_VERSIONS}
     m.validate_complete()
     assert m.write(tmp_path).exists()
+
+
+def test_market_config_hash_unchanged_by_new_defaults() -> None:
+    """Existing runs must not be rehashed when new fields are at their defaults."""
+    from optspread.config import MarketConfig, canonical_json
+
+    data = json.loads(canonical_json(MarketConfig()))
+    assert "vol_of_vol" not in data, "vol_of_vol at default must be omitted"
+    assert "skew_slope" not in data, "skew_slope at default must be omitted"
+
+
+def test_market_config_hash_differs_when_nonzero() -> None:
+    from optspread.config import MarketConfig, config_hash
+
+    assert config_hash(MarketConfig()) != config_hash(MarketConfig(vol_of_vol=0.1))
+    assert config_hash(MarketConfig()) != config_hash(MarketConfig(skew_slope=-0.05))
