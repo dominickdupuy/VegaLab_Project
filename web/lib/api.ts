@@ -86,6 +86,15 @@ export interface Compare {
   diff_histogram: Histogram;
 }
 
+export interface PolicyHeatmap {
+  atm_iv_edges: number[];
+  time_frac_edges: number[];
+  action_names: string[];
+  counts: number[][][];  // [time_bin][iv_bin][action_id]
+  n_steps: number;
+  source: string;
+}
+
 // ---------- jobs ----------
 
 export interface Knob {
@@ -444,6 +453,7 @@ export const api = {
   runs: (f: RunFilters, s?: AbortSignal) => get<RunList>("/api/runs", f as Params, s),
   run: (key: string, s?: AbortSignal) => get<RunDetail>("/api/runs/detail", { key }, s),
   compare: (a: string, b: string, s?: AbortSignal) => get<Compare>("/api/runs/compare", { a, b }, s),
+  policyHeatmap: (key: string, s?: AbortSignal) => get<PolicyHeatmap>("/api/runs/policy", { key }, s),
   jobOptions: (s?: AbortSignal) => get<JobOptions>("/api/jobs/options", undefined, s),
   jobs: (s?: AbortSignal) => get<Job[]>("/api/jobs", undefined, s),
   job: (id: string, s?: AbortSignal) => get<Job>(`/api/jobs/${encodeURIComponent(id)}`, undefined, s),

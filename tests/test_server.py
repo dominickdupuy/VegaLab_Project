@@ -8,6 +8,7 @@ ordinary run directory the run list then shows. Needs the ``dashboard`` extra.
 
 from __future__ import annotations
 
+import json
 import shutil
 import time
 from collections.abc import Iterator
@@ -96,6 +97,33 @@ def test_runs_list_filter_detail_and_compare(client: TestClient) -> None:
     assert cmp["shared_seeds"] == 3 and cmp["config_diff"][0]["key"] == "policy"
     assert client.get("/api/runs/detail", params={"key": "../x"}).status_code == 404
     assert client.get("/api/runs/compare", params={"a": key, "b": "nope"}).status_code == 404
+
+
+def test_policy_heatmap_route_returns_404_without_log(client: TestClient) -> None:
+    res = client.get("/api/runs/policy", params={"key": "nonexistent/key"})
+    assert res.status_code == 404
+
+
+def test_policy_heatmap_route_serves_the_action_log_of_a_run(
+    client: TestClient, tmp_path: Path
+) -> None:
+    flat = client.get(
+        "/api/runs", params={"policy": "flat", "premium": 2.0, "sweep": "tiny"}
+    ).json()["rows"][0]["key"]
+    log = {
+        "actions": [[0, 1, 2, 3, 0] * 10],
+        "atm_iv": [[0.20] * 50],
+        "time_frac": [[i / 50 for i in range(50)]],
+    }
+    (tmp_path / "runs" / flat / "action_log.json").write_text(json.dumps(log))
+    res = client.get("/api/runs/policy", params={"key": flat})
+    assert res.status_code == 200
+    body = res.json()
+    assert body["n_steps"] == 50
+    assert len(body["counts"]) == 10 and len(body["counts"][0]) == 10
+    assert body["action_names"] == ["FLAT", "IRON_CONDOR", "SHORT_STRANGLE", "PUT_CREDIT_SPREAD"]
+    assert sum(sum(sum(row) for row in iv) for iv in body["counts"]) == 50
+    assert client.get("/api/runs/policy", params={"key": "../x"}).status_code == 404
 
 
 def test_gates(client: TestClient) -> None:

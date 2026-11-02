@@ -163,6 +163,17 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
             raise HTTPException(404, f"no run at {exc.args[0]!r} under {cfg.runs}") from exc
         return w.compare(da, db, cfg.runs, w.index(cfg.runs))
 
+    @app.get("/api/runs/policy")
+    def run_policy_heatmap(key: str) -> w.PolicyHeatmapOut:
+        try:
+            run_dir = w.resolve_run(cfg.runs, key)
+        except KeyError as exc:
+            raise HTTPException(404, f"no run at {key!r} under {cfg.runs}") from exc
+        result = w.policy_heatmap(run_dir)
+        if result is None:
+            raise HTTPException(404, f"no action_log.json for run {key!r}")
+        return result
+
     # -- gates ------------------------------------------------------------- #
 
     @app.get("/api/gates")
