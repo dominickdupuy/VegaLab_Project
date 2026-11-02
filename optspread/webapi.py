@@ -30,6 +30,7 @@ from scipy.stats import norm
 
 from optspread import dashboard_panel as panel
 from optspread import power as pw
+from optspread.actions import ACTION_NAMES
 from optspread.artifacts import SchemaVersionError
 from optspread.dashboard_data import (
     GateBoard,
@@ -46,7 +47,14 @@ from optspread.dashboard_data import (
     run_facets,
     scan_runs,
 )
-from optspread.jobs import EQUITY_FILENAME, PRESETS, JobSpec, JobStatus, available_arms
+from optspread.jobs import (
+    ACTION_LOG_FILENAME,
+    EQUITY_FILENAME,
+    PRESETS,
+    JobSpec,
+    JobStatus,
+    available_arms,
+)
 from optspread.leaks import LeakReport
 from optspread.manifest import MANIFEST_FILENAME
 from optspread.sweep import SWEEP_FILENAME, read_sweep
@@ -297,6 +305,64 @@ def _equity(run_dir: Path) -> EquityOut | None:
         seeds=[int(s) for s in seeds[:MAX_EQUITY_SENT]],
         paths=[[float(v) for v in p] for p in paths[:MAX_EQUITY_SENT]],
         n_recorded=len(paths),
+    )
+
+
+_N_BINS = 10
+
+
+class PolicyHeatmapOut(Out):
+    """Action frequency binned by (time_frac, atm_iv). Shape: [n_time][n_iv][n_actions]."""
+
+    atm_iv_edges: list[float]
+    time_frac_edges: list[float]
+    action_names: list[str]
+    counts: list[list[list[int]]]  # [time_bin][iv_bin][action_id]
+    n_steps: int
+    source: str
+
+
+def policy_heatmap(run_dir: Path) -> PolicyHeatmapOut | None:
+    """Where the policy acted, by time through the episode and the ATM vol it saw.
+
+    Reads the action log the harness wrote beside ``equity.json``. None when the
+    run has no log (runs from before it) or the log is empty or malformed.
+    """
+    target = run_dir / ACTION_LOG_FILENAME
+    try:
+        raw: Any = json.loads(target.read_text())
+        actions = [list(map(int, ep)) for ep in raw["actions"]]
+        atm_iv = [list(map(float, ep)) for ep in raw["atm_iv"]]
+        time_frac = [list(map(float, ep)) for ep in raw["time_frac"]]
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+    flat_actions = np.asarray([a for ep in actions for a in ep], dtype=np.int64)
+    flat_iv = np.asarray([v for ep in atm_iv for v in ep], dtype=np.float64)
+    flat_tf = np.asarray([v for ep in time_frac for v in ep], dtype=np.float64)
+    n_steps = len(flat_actions)
+    if n_steps == 0 or not (len(flat_iv) == len(flat_tf) == n_steps):
+        return None
+    if int(flat_actions.min()) < 0:
+        return None
+
+    n_actions = int(flat_actions.max()) + 1
+    iv_edges = np.linspace(float(flat_iv.min()), float(flat_iv.max()) + 1e-9, _N_BINS + 1)
+    tf_edges = np.linspace(0.0, 1.0 + 1e-9, _N_BINS + 1)
+    iv_bins = np.clip(np.searchsorted(iv_edges, flat_iv, side="right") - 1, 0, _N_BINS - 1)
+    tf_bins = np.clip(np.searchsorted(tf_edges, flat_tf, side="right") - 1, 0, _N_BINS - 1)
+
+    counts = np.zeros((_N_BINS, _N_BINS, n_actions), dtype=np.int64)
+    np.add.at(counts, (tf_bins, iv_bins, flat_actions), 1)
+
+    names = [ACTION_NAMES[i] if i < len(ACTION_NAMES) else str(i) for i in range(n_actions)]
+    return PolicyHeatmapOut(
+        atm_iv_edges=[float(e) for e in iv_edges],
+        time_frac_edges=[float(e) for e in tf_edges],
+        action_names=names,
+        counts=counts.tolist(),
+        n_steps=n_steps,
+        source=str(target),
     )
 
 

@@ -100,6 +100,29 @@ def test_a_launched_run_sends_its_equity_paths(tmp_path: Path) -> None:
     assert w.run_detail(w.load_detail(tmp_path, key), tmp_path, rows).equity is None
 
 
+def test_policy_heatmap_returns_correct_shape(tmp_path: Path) -> None:
+    log = {
+        "actions": [[0, 1, 2, 3, 0] * 10],
+        "atm_iv": [[0.20] * 50],
+        "time_frac": [[i / 50 for i in range(50)]],
+    }
+    (tmp_path / ACTION_LOG_FILENAME).write_text(json.dumps(log))
+    out = w.policy_heatmap(tmp_path)
+    assert out is not None
+    assert len(out.atm_iv_edges) == 11
+    assert len(out.time_frac_edges) == 11
+    assert len(out.counts) == 10
+    assert len(out.counts[0]) == 10
+    assert len(out.counts[0][0]) == 4
+    assert out.action_names == ["FLAT", "IRON_CONDOR", "SHORT_STRANGLE", "PUT_CREDIT_SPREAD"]
+    assert out.n_steps == 50
+    assert sum(sum(sum(row) for row in iv) for iv in out.counts) == 50
+
+
+def test_policy_heatmap_missing_log_returns_none(tmp_path: Path) -> None:
+    assert w.policy_heatmap(tmp_path) is None
+
+
 def test_histograms_handle_a_constant_sample_and_cap_their_bins() -> None:
     flat = w.histogram(np.zeros(5))
     assert flat.counts == [5] and flat.edges == [-0.5, 0.5]
