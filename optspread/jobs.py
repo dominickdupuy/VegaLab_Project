@@ -19,9 +19,9 @@ worker writes its progress and log to two small files under the jobs directory,
 which is how the server reads progress across the process boundary without a
 shared queue.
 
-PPO is offered only when ``optspread.train`` (W6-5) is importable with its
-learner installed. It is detected, not assumed, so the dashboard never offers an
-arm this checkout cannot run.
+The learned arms (PPO, A2C, DQN) are offered only when ``optspread.train`` (W6-5) is
+importable with its learner installed. They are detected, not assumed, so the
+dashboard never offers an arm this checkout cannot run.
 """
 
 from __future__ import annotations
@@ -65,8 +65,9 @@ MAX_EQUITY_PATHS = 200  # episodes whose equity path is kept; the rest are summa
 ACTION_LOG_INDEX_TIME_FRAC = OBS_NAMES.index("time_frac")
 ACTION_LOG_INDEX_ATM_IV = OBS_NAMES.index("atm_iv")
 
-Arm = Literal["flat", "always_on", "random", "delta_seller", "ppo"]
+Arm = Literal["flat", "always_on", "random", "delta_seller", "ppo", "a2c", "dqn"]
 SCRIPTED_ARMS: tuple[Arm, ...] = ("flat", "always_on", "random", "delta_seller")
+LEARNED_ARMS: frozenset[str] = frozenset({"ppo", "a2c", "dqn"})
 
 _MARKET, _COST, _ENV, _RUN = MarketConfig(), CostConfig(), EnvConfig(), RunConfig()
 
@@ -84,7 +85,10 @@ def ppo_available() -> bool:
 
 
 def available_arms() -> tuple[Arm, ...]:
-    return (*SCRIPTED_ARMS, "ppo") if ppo_available() else SCRIPTED_ARMS
+    """The scripted arms, plus the learned arms when the SB3 learners are present."""
+    if not ppo_available():
+        return SCRIPTED_ARMS
+    return (*SCRIPTED_ARMS, "ppo", "a2c", "dqn")
 
 
 class JobSpec(BaseModel):
@@ -130,8 +134,8 @@ class JobSpec(BaseModel):
             raise ValueError("wing_delta must sit further out than short_delta (be smaller)")
         if self.roll_dte >= tenors[self.expiry_idx]:
             raise ValueError("roll_dte must be shorter than the tenor new structures open at")
-        if (self.policy == "ppo") != (self.total_timesteps is not None):
-            raise ValueError("total_timesteps is set exactly when the arm is ppo")
+        if (self.policy in LEARNED_ARMS) != (self.total_timesteps is not None):
+            raise ValueError("total_timesteps is set exactly when the arm is learned (ppo, a2c, dqn)")
         if self.sigma + self.iv_premium_vol_pts / 100.0 <= 0.0:
             raise ValueError(
                 f"the implied vol, sigma {self.sigma} plus the premium "
@@ -178,8 +182,12 @@ def to_run_config(spec: JobSpec) -> RunConfig:
         "seed": spec.seed,
         "n_episodes": spec.n_episodes,
     }
-    if spec.policy == "ppo":
-        payload["train"] = {"total_timesteps": spec.total_timesteps, "seed": spec.seed}
+    if spec.policy in LEARNED_ARMS:
+        payload["train"] = {
+            "algorithm": spec.policy,
+            "total_timesteps": spec.total_timesteps,
+            "seed": spec.seed,
+        }
     return RunConfig.model_validate(payload)
 
 
@@ -287,9 +295,12 @@ def _make_policy(config: RunConfig, log: Callable[[str], None]) -> Policy:
     name = str(config.policy)
     if name in _SCRIPTED:
         return make_policy(_SCRIPTED[name], roll_dte=config.env.roll_dte)
-    train = importlib.import_module("optspread.train")
-    log("training PPO at the frozen D3 hyperparameters")
-    policy: Policy = train.train_ppo(config)
+    train_mod = importlib.import_module("optspread.train")
+    if name == "ppo":
+        log("training PPO at the frozen D3 hyperparameters")
+    else:
+        log(f"training {name.upper()} (SB3 defaults)")
+    policy: Policy = train_mod.train(config)
     log("training finished")
     return policy
 
@@ -438,8 +449,8 @@ class JobManager:
         self.jobs: dict[str, Job] = {}
 
     def submit(self, spec: JobSpec) -> str:
-        if spec.policy == "ppo" and not ppo_available():
-            raise ValueError("the PPO arm is not available in this checkout")
+        if spec.policy in LEARNED_ARMS and not ppo_available():
+            raise ValueError(f"the {spec.policy.upper()} arm is not available in this checkout")
         to_run_config(spec)  # refuse here, synchronously, anything the worker would refuse
         job_id = secrets.token_hex(6)
         future = self.executor.submit(

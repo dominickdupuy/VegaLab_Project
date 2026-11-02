@@ -123,6 +123,39 @@ def test_ppo_is_hidden_without_the_learner() -> None:
         assert available_arms() == ("flat", "always_on", "random", "delta_seller")
 
 
+def test_a2c_arm_in_available_arms_when_sb3_present() -> None:
+    from optspread.jobs import available_arms, ppo_available
+
+    if not ppo_available():
+        pytest.skip("stable_baselines3 not installed")
+    arms = available_arms()
+    assert "a2c" in arms
+    assert "dqn" in arms
+
+
+def test_a2c_jobspec_to_run_config() -> None:
+    from optspread.jobs import JobSpec, to_run_config
+
+    # expiry_idx defaults to 1, so the spec needs two tenors (as SMALL does), not one
+    spec = JobSpec(policy="a2c", total_timesteps=200, n_days=21, tenor_days=(7, 14), n_episodes=2)
+    cfg = to_run_config(spec)
+    assert cfg.policy == "a2c"
+    assert cfg.train is not None
+    assert cfg.train.algorithm == "a2c"
+    assert cfg.train.total_timesteps == 200
+
+
+def test_learned_arms_need_total_timesteps_and_scripted_arms_refuse_it() -> None:
+    from optspread.jobs import LEARNED_ARMS
+
+    assert LEARNED_ARMS == frozenset({"ppo", "a2c", "dqn"})
+    for arm in LEARNED_ARMS:
+        with pytest.raises(ValidationError, match="exactly when"):
+            JobSpec(policy=arm)  # no total_timesteps
+    with pytest.raises(ValidationError, match="exactly when"):
+        JobSpec(policy="flat", total_timesteps=100)
+
+
 def test_action_log_is_written_alongside_equity(tmp_path: Path) -> None:
     (tmp_path / ".jobs").mkdir()
     rel =execute_job("test-alog", SMALL.model_dump_json(), str(tmp_path))
