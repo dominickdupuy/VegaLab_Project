@@ -62,9 +62,9 @@
   /* series, fixed by entity (lib/chart.ts maps names onto these) */
   --s1: #2a5c9a; /* delta_seller, optionmetrics, implied vol */
   --s2: #d9822b; /* ppo, databento, realised vol */
-  --s3: #1f8a84; /* always_on */
-  --s4: #6b5bb5; /* random */
-  --s5: #7a8394; /* flat, reference lines */
+  --s3: #1f8a84; /* a2c */
+  --s4: #6b5bb5; /* dqn */
+  --s5: #7a8394; /* always_on, random, flat, reference lines */
   --grid: #e3e8ef;
   --axis: #c7d0dc;
 
