@@ -23,7 +23,6 @@ from pydantic import (
     ConfigDict,
     Field,
     SerializerFunctionWrapHandler,
-    field_validator,
     model_serializer,
     model_validator,
 )
@@ -31,7 +30,7 @@ from pydantic import (
 # The scripted policies ``optspread.policies.make_policy`` builds from a name alone.
 PolicyName = Literal["flat", "always_on", "random", "delta_seller"]
 # Every arm a run can have: the scripted ones plus the learner, which needs training.
-ArmName = Literal[PolicyName, "ppo"]
+ArmName = Literal[PolicyName, "ppo", "a2c", "dqn"]
 
 
 class MarketConfig(BaseModel):
@@ -143,16 +142,26 @@ class TrainConfig(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    algorithm: Literal["ppo"] = "ppo"
+    algorithm: Literal["ppo", "a2c", "dqn"] = "ppo"
     total_timesteps: int = Field(gt=0, lt=2**32)
     seed: int = Field(default=0, ge=0, lt=2**15)
     device: str = "cpu"
     hyperparameters: PPOHyperparameters = Field(default_factory=PPOHyperparameters)
 
-    @field_validator("hyperparameters")
-    @classmethod
-    def _frozen(cls, value: PPOHyperparameters) -> PPOHyperparameters:
-        return require_frozen(value)
+    @model_validator(mode="after")
+    def _check_ppo_frozen(self) -> TrainConfig:
+        # Only PPO is held to the D3 set; A2C and DQN carry no PPO hyperparameters.
+        if self.algorithm == "ppo":
+            require_frozen(self.hyperparameters)
+        return self
+
+    @model_serializer(mode="wrap")
+    def _omit_ppo_hyp_for_non_ppo(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
+        # A non-PPO run's hash does not depend on a PPO-only field it never reads.
+        data: dict[str, Any] = handler(self)
+        if self.algorithm != "ppo":
+            data.pop("hyperparameters", None)
+        return data
 
 
 class RunConfig(BaseModel):
@@ -168,10 +177,15 @@ class RunConfig(BaseModel):
 
     @model_validator(mode="after")
     def _train_iff_learned(self) -> RunConfig:
-        if (self.policy == "ppo") != (self.train is not None):
+        is_learned = self.policy in ("ppo", "a2c", "dqn")
+        if is_learned != (self.train is not None):
             raise ValueError(
-                f"policy {self.policy!r} with train={self.train!r}: a ppo run needs its "
-                "TrainConfig and a scripted run must not carry one"
+                f"policy {self.policy!r} with train={self.train!r}: a {self.policy} run "
+                "needs its TrainConfig and a scripted run must not carry one"
+            )
+        if self.train is not None and self.train.algorithm != self.policy:
+            raise ValueError(
+                f"train.algorithm {self.train.algorithm!r} must match policy {self.policy!r}"
             )
         return self
 

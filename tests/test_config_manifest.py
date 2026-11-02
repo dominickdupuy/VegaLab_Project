@@ -141,3 +141,83 @@ def test_market_config_hash_differs_when_nonzero() -> None:
 
     assert config_hash(MarketConfig()) != config_hash(MarketConfig(vol_of_vol=0.1))
     assert config_hash(MarketConfig()) != config_hash(MarketConfig(skew_slope=-0.05))
+
+# -- learned arms beyond PPO: A2C and DQN ----------------------------------- #
+
+
+def test_a2c_run_config_is_valid() -> None:
+    from optspread.config import RunConfig, TrainConfig
+
+    cfg = RunConfig(
+        policy="a2c",
+        train=TrainConfig(algorithm="a2c", total_timesteps=1000),
+    )
+    assert cfg.policy == "a2c"
+    assert cfg.train is not None and cfg.train.algorithm == "a2c"
+
+
+def test_dqn_run_config_is_valid() -> None:
+    from optspread.config import RunConfig, TrainConfig
+
+    cfg = RunConfig(
+        policy="dqn",
+        train=TrainConfig(algorithm="dqn", total_timesteps=1000),
+    )
+    assert cfg.policy == "dqn"
+
+
+def test_a2c_config_hash_excludes_ppo_hyperparameters() -> None:
+    import json
+
+    from optspread.config import RunConfig, TrainConfig, canonical_json
+
+    cfg = RunConfig(policy="a2c", train=TrainConfig(algorithm="a2c", total_timesteps=500))
+    data = json.loads(canonical_json(cfg))
+    assert "hyperparameters" not in data.get("train", {})
+
+
+def test_a2c_does_not_require_frozen_hyperparameters() -> None:
+    # Should not raise: A2C does not enforce the frozen PPO hyperparameters.
+    from optspread.config import PPOHyperparameters, TrainConfig
+
+    TrainConfig(
+        algorithm="a2c",
+        total_timesteps=500,
+        hyperparameters=PPOHyperparameters(ent_coef=0.01),
+    )
+
+
+def test_ppo_still_refuses_unfrozen_hyperparameters() -> None:
+    from optspread.config import PPOHyperparameters, TrainConfig
+
+    with pytest.raises(ValueError, match="frozen by decision D3"):
+        TrainConfig(
+            algorithm="ppo",
+            total_timesteps=500,
+            hyperparameters=PPOHyperparameters(ent_coef=0.01),
+        )
+
+
+@pytest.mark.parametrize("policy", ["a2c", "dqn"])
+def test_a_learned_arm_without_train_is_refused(policy: str) -> None:
+    from optspread.config import RunConfig
+
+    with pytest.raises(ValueError, match="run needs its TrainConfig"):
+        RunConfig(policy=policy)
+
+
+def test_a_scripted_arm_carrying_train_is_refused() -> None:
+    from optspread.config import RunConfig, TrainConfig
+
+    # train is present, so policy must be learned; a flat arm with train is refused.
+    with pytest.raises(ValueError):
+        RunConfig(policy="flat", train=TrainConfig(algorithm="ppo", total_timesteps=10))
+
+
+def test_train_algorithm_must_match_policy() -> None:
+    from optspread.config import RunConfig, TrainConfig
+
+    with pytest.raises(ValueError, match="must match policy"):
+        RunConfig(policy="a2c", train=TrainConfig(algorithm="dqn", total_timesteps=10))
+    with pytest.raises(ValueError, match="must match policy"):
+        RunConfig(policy="ppo", train=TrainConfig(algorithm="a2c", total_timesteps=10))
