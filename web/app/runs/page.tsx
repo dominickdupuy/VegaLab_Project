@@ -9,7 +9,7 @@ import { Chart } from "@/components/Chart";
 import { RunTable } from "@/components/RunTable";
 import { Empty, ErrorBox, Loading } from "@/components/States";
 import ui from "@/components/ui.module.css";
-import { api, type Compare, type RunDetail, type RunFilters, type RunRow } from "@/lib/api";
+import { api, type Compare, type PolicyHeatmap, type RunDetail, type RunFilters, type RunRow } from "@/lib/api";
 import { ARM_LABEL, armColor, axis, base, histBars, type PremiumPoint, premiumChart, type Tokens, useTokens } from "@/lib/chart";
 import { num, pct, short, usd, when } from "@/lib/format";
 import { useFetch } from "@/lib/useFetch";
@@ -267,6 +267,39 @@ function bySeedOption(t: Tokens, d: RunDetail): EChartsOption {
   };
 }
 
+/** One action's share of steps in each (ATM IV, time in episode) cell. counts is [time][iv][action]. */
+function policyHeatmapOption(heatmap: PolicyHeatmap, actionIdx: number, t: Tokens): EChartsOption {
+  const n_iv = heatmap.atm_iv_edges.length - 1;
+  const n_tf = heatmap.time_frac_edges.length - 1;
+  const data: [number, number, number][] = [];
+  for (let ti = 0; ti < n_tf; ti++) {
+    for (let ii = 0; ii < n_iv; ii++) {
+      const cell = heatmap.counts[ti]?.[ii] ?? [];
+      const total = cell.reduce((s, c) => s + c, 0);
+      const count = cell[actionIdx] ?? 0;
+      data.push([ii, ti, total > 0 ? count / total : 0]);
+    }
+  }
+  const ivLabels = heatmap.atm_iv_edges.slice(0, -1).map((v) => `${(v * 100).toFixed(1)}%`);
+  const tfLabels = heatmap.time_frac_edges.slice(0, -1).map((v) => `${Math.round(v * 100)}%`);
+  return {
+    ...base(t),
+    grid: { left: 60, right: 18, top: 34, bottom: 50, containLabel: false },
+    tooltip: {
+      ...base(t).tooltip,
+      trigger: "item",
+      formatter: (p: unknown) => {
+        const d = (p as { data: [number, number, number] }).data;
+        return `${(d[2] * 100).toFixed(1)}% of steps`;
+      },
+    },
+    xAxis: { type: "category", data: ivLabels, name: "ATM IV", nameLocation: "middle", ...axis(t), nameGap: 30 },
+    yAxis: { type: "category", data: tfLabels, name: "Time in episode", nameLocation: "middle", ...axis(t), nameGap: 42 },
+    visualMap: { min: 0, max: 1, show: false, inRange: { color: [t.surface2, t.accent] } },
+    series: [{ type: "heatmap", data, emphasis: { itemStyle: { shadowBlur: 4 } } }],
+  };
+}
+
 function RiskTiles({ d }: { d: RunDetail }) {
   const r = d.risk;
   return (
@@ -381,9 +414,12 @@ function ManifestCard({ d }: { d: RunDetail }) {
 function DetailView({ runKey }: { runKey: string }) {
   const t = useTokens();
   const run = useFetch((s) => api.run(runKey, s), runKey);
+  // Before the early returns so the hook order never changes. A 404 (no action log) leaves data undefined and the card hidden.
+  const heatmap = useFetch((s) => api.policyHeatmap(runKey, s), runKey);
   if (run.error) return <ErrorBox what={`run ${runKey}`} error={run.error} onRetry={run.reload} />;
   if (!run.data) return <Loading what="the run" />;
   const d = run.data;
+  const hm = heatmap.data;
   return (
     <>
       <PageHead
@@ -434,6 +470,18 @@ function DetailView({ runKey }: { runKey: string }) {
           )}
         </Card>
       </div>
+      {hm ? (
+        <Card title="Policy heatmap" sub={`${num(hm.n_steps)} steps recorded`} source={<code>{hm.source}</code>}>
+          <div className={ui.stack}>
+            {hm.action_names.map((name, idx) => (
+              <div key={name}>
+                <p className={ui.groupTitle}>{name}</p>
+                <Chart option={policyHeatmapOption(hm, idx, t)} height={200} label={`${name} frequency by ATM IV and time`} />
+              </div>
+            ))}
+          </div>
+        </Card>
+      ) : null}
       {d.episodes.length ? (
         <Card title="P&L by episode seed" source={<code>{d.provenance.results}</code>}>
           <Chart option={bySeedOption(t, d)} height={240} label="Per-episode P&L by seed" />
