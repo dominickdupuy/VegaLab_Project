@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Card, PageHead, Progress, Tile, Verdict } from "@/components/Bits";
 import { Empty, ErrorBox, Loading } from "@/components/States";
 import ui from "@/components/ui.module.css";
@@ -142,8 +143,8 @@ function JobCard({ job }: { job: Job }) {
   );
 }
 
-function Form({ options }: { options: JobOptions }) {
-  const [spec, setSpec] = useState<Spec>({ ...options.defaults });
+function Form({ options, initialOverrides }: { options: JobOptions; initialOverrides?: Partial<Spec> }) {
+  const [spec, setSpec] = useState<Spec>({ ...options.defaults, ...initialOverrides });
   const [preset, setPreset] = useState<string>("null_world");
   const [sent, setSent] = useState<{ error?: ApiError; busy: boolean }>({ busy: false });
   const [current, setCurrent] = useState<string | null>(null);
@@ -268,17 +269,47 @@ function Form({ options }: { options: JobOptions }) {
   );
 }
 
-export default function LaunchPage() {
+function numParam(params: ReturnType<typeof useSearchParams>, name: string): number | undefined {
+  const v = params.get(name);
+  if (v === null) return undefined;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+function LaunchInner() {
+  const params = useSearchParams();
+  const overrides: Partial<Spec> = {};
+  const sigma = numParam(params, "sigma");
+  const vol_of_vol = numParam(params, "vol_of_vol");
+  const skew_slope = numParam(params, "skew_slope");
+  const alpha_bps = numParam(params, "alpha_bps");
+  const n_days = numParam(params, "n_days");
+  if (sigma !== undefined) overrides.sigma = sigma;
+  if (vol_of_vol !== undefined) overrides.vol_of_vol = vol_of_vol;
+  if (skew_slope !== undefined) overrides.skew_slope = skew_slope;
+  if (alpha_bps !== undefined) overrides.alpha_bps = alpha_bps;
+  if (n_days !== undefined) overrides.n_days = n_days;
+  const hasOverrides = Object.keys(overrides).length > 0;
+
   const options = useFetch((s) => api.jobOptions(s), "options");
   return (
     <>
       <PageHead
         eyebrow="Launch"
         title="Start a run"
+        lede={hasOverrides ? "Pre-filled from Synth Data — adjust as needed." : undefined}
       />
       {options.error ? <ErrorBox what="the launch options" error={options.error} onRetry={options.reload} /> : null}
       {options.loading ? <Loading what="the knobs" /> : null}
-      {options.data ? <Form options={options.data} /> : null}
+      {options.data ? <Form options={options.data} initialOverrides={hasOverrides ? overrides : undefined} /> : null}
     </>
+  );
+}
+
+export default function LaunchPage() {
+  return (
+    <Suspense fallback={<Loading what="launch" />}>
+      <LaunchInner />
+    </Suspense>
   );
 }

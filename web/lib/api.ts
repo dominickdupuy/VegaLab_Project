@@ -15,6 +15,9 @@ export interface RunRow {
   seed: number | null;
   policy: string;
   premium: number | null;
+  alpha_bps: number | null;
+  vol_of_vol: number | null;
+  skew_slope: number | null;
   source: string;
   git_sha: string;
   commit: string;

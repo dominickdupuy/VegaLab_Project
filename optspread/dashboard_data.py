@@ -86,6 +86,9 @@ class RunRow:
     seed: int | None
     policy: str
     premium: float | None
+    alpha_bps: float | None
+    vol_of_vol: float | None
+    skew_slope: float | None
     git_sha: str
     git_dirty: bool | None
     created_at: str
@@ -203,6 +206,9 @@ def load_run_row(run_dir: Path) -> RunRow:
         seed=seed if seed is not None else (record.seed if record else None),
         policy=str(_get(raw, "config", "policy") or (record.policy if record else "")),
         premium=_as_float(_get(raw, "config", "market", "iv_premium_vol_pts")),
+        alpha_bps=_as_float(_get(raw, "config", "market", "alpha_bps")),
+        vol_of_vol=_as_float(_get(raw, "config", "market", "vol_of_vol")),
+        skew_slope=_as_float(_get(raw, "config", "market", "skew_slope")),
         git_sha=str(_get(raw, "git_sha") or ""),
         git_dirty=_get(raw, "git_dirty") if isinstance(_get(raw, "git_dirty"), bool) else None,
         created_at=str(_get(raw, "created_at") or ""),

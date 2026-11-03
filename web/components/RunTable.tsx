@@ -83,6 +83,11 @@ export function RunTable({
                     {short(r.config_hash, 10)}-s{r.seed ?? "?"}
                   </Link>
                   {r.sweep ? <div className={ui.dim} style={{ fontSize: 12 }}>sweep {short(r.sweep, 10)}</div> : null}
+                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: r.alpha_bps || r.vol_of_vol || r.skew_slope ? 3 : 0 }}>
+                    {r.alpha_bps ? <span className={ui.badge} title="alpha_bps">α {num(r.alpha_bps, 0)} bps</span> : null}
+                    {r.vol_of_vol ? <span className={ui.badge} title="vol_of_vol">vov {num(r.vol_of_vol, 2)}</span> : null}
+                    {r.skew_slope ? <span className={ui.badge} title="skew_slope">skew {num(r.skew_slope, 2)}</span> : null}
+                  </div>
                 </td>
                 {cols.map((c) => {
                   const v = r[c.key];

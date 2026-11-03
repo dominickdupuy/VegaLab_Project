@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import type { EChartsOption } from "echarts";
 import { Card, PageHead } from "@/components/Bits";
@@ -206,6 +207,13 @@ export default function SynthPage() {
             >
               {loading ? "Generating…" : "Generate"}
             </button>
+            <Link
+              href={`/launch/?sigma=${form.sigma}&vol_of_vol=${form.vol_of_vol}&skew_slope=${form.skew_slope}&alpha_bps=${form.alpha_bps}&n_days=${form.n_days}`}
+              className={ui.btn}
+              style={{ textAlign: "center", textDecoration: "none" }}
+            >
+              Train on this market →
+            </Link>
             {errorMsg && (
               <p style={{ color: "var(--fail)", fontSize: "0.85rem", margin: "0.25rem 0 0" }}>
                 {errorMsg}

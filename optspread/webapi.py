@@ -93,6 +93,9 @@ class RunRowOut(Out):
     seed: int | None
     policy: str
     premium: float | None
+    alpha_bps: float | None
+    vol_of_vol: float | None
+    skew_slope: float | None
     source: str
     git_sha: str
     commit: str
@@ -128,6 +131,9 @@ def row_out(row: RunRow, root: Path) -> RunRowOut:
         seed=row.seed,
         policy=row.policy,
         premium=row.premium,
+        alpha_bps=row.alpha_bps,
+        vol_of_vol=row.vol_of_vol,
+        skew_slope=row.skew_slope,
         source=run_source(row),
         git_sha=row.git_sha,
         commit=row.commit,
