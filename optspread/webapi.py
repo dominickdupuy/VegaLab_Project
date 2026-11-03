@@ -55,6 +55,7 @@ from optspread.jobs import (
     JobStatus,
     available_arms,
 )
+from optspread.config import MarketConfig
 from optspread.leaks import LeakReport
 from optspread.manifest import MANIFEST_FILENAME
 from optspread.sweep import SWEEP_FILENAME, read_sweep
@@ -1489,3 +1490,65 @@ def overview(
 def index(root: Path) -> tuple[RunRow, ...]:
     """Every run under the root except the job queue's own bookkeeping."""
     return tuple(r for r in scan_runs(root) if ".jobs" not in r.path.parts)
+
+
+# -- synthetic data preview ------------------------------------------------------- #
+
+
+class SynthPathsOut(BaseModel):
+    model_config = ConfigDict(frozen=True)
+    n_days: int
+    n_paths: int
+    seed: int
+    # shape: (n_paths, n_days+1) — index 0 is the initial value before any step
+    spots: list[list[float]]           # spot price paths
+    atm_ivs: list[list[float]]         # ATM IV paths (same shape)
+    # smile snapshot at day mid-point: strikes relative to spot, one row per path
+    smile_log_moneyness: list[float]   # log(S/K) values, shared across paths (n_strikes,)
+    smile_ivs: list[list[float]]       # shape: (n_paths, n_strikes)
+
+
+def synth_paths(config: MarketConfig, n_paths: int = 5, seed: int = 0) -> SynthPathsOut:
+    """Generate n_paths sample price and vol paths from the given MarketConfig."""
+    from optspread.market import SyntheticChainProvider
+    from optspread.rng import SeededStepRNG
+
+    spots_out: list[list[float]] = []
+    atm_ivs_out: list[list[float]] = []
+    smile_ivs_out: list[list[float]] = []
+    smile_lm: list[float] = []
+
+    mid_day = config.n_days // 2
+
+    for i in range(n_paths):
+        prov = SyntheticChainProvider(config)
+        chain = prov.reset(SeededStepRNG(seed + i))
+        spots_i = [chain.spot]
+        atm_iv_i = [float(chain.ivs[0, chain.ivs.shape[1] // 2])]
+        smile_snap_lm: list[float] = []
+        smile_snap_iv: list[float] = []
+
+        for d in range(config.n_days):
+            chain = prov.step()
+            spots_i.append(chain.spot)
+            atm_iv_i.append(float(chain.ivs[0, chain.ivs.shape[1] // 2]))
+            if prov.day == mid_day:
+                # log-moneyness: log(spot/K), positive = OTM puts (low K)
+                lm = np.log(chain.spot / chain.strikes).tolist()
+                smile_snap_lm = [float(x) for x in lm]
+                smile_snap_iv = [float(chain.ivs[0, j]) for j in range(len(chain.strikes))]
+
+        spots_out.append(spots_i)
+        atm_ivs_out.append([v * 100.0 for v in atm_iv_i])  # convert to pct for display
+        smile_ivs_out.append([v * 100.0 for v in smile_snap_iv])
+        smile_lm = smile_snap_lm  # capture from this path (same strikes each path)
+
+    return SynthPathsOut(
+        n_days=config.n_days,
+        n_paths=n_paths,
+        seed=seed,
+        spots=spots_out,
+        atm_ivs=atm_ivs_out,
+        smile_log_moneyness=smile_lm,
+        smile_ivs=smile_ivs_out,
+    )

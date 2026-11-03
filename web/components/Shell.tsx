@@ -14,6 +14,7 @@ const TABS: { href: string; label: string }[] = [
   { href: "/", label: "Overview" },
   { href: "/runs/", label: "Runs" },
   { href: "/launch/", label: "Launch" },
+  { href: "/synth/", label: "Synth data" },
   { href: "/power/", label: "Power lab" },
   { href: "/data/", label: "Real data" },
   { href: "/leaks/", label: "Leak demo" },

@@ -340,6 +340,18 @@ export interface Seam {
   source: string;
 }
 
+// ---------- synthetic data ----------
+
+export interface SynthPaths {
+  n_days: number;
+  n_paths: number;
+  seed: number;
+  spots: number[][];
+  atm_ivs: number[][];
+  smile_log_moneyness: number[];
+  smile_ivs: number[][];
+}
+
 // ---------- overview ----------
 
 export interface Overview {
@@ -472,4 +484,8 @@ export const api = {
   term: (q: ChainQuery, s?: AbortSignal) => get<Term>("/api/data/term", q as unknown as Params, s),
   daily: (start?: string, end?: string, s?: AbortSignal) => get<Daily>("/api/data/daily", { start, end }, s),
   seam: (s?: AbortSignal) => get<Seam>("/api/data/seam", undefined, s),
+  synthPaths: (params: {
+    sigma?: number; vol_of_vol?: number; skew_slope?: number;
+    alpha_bps?: number; n_days?: number; n_paths?: number; seed?: number;
+  }, s?: AbortSignal) => get<SynthPaths>("/api/synth", params as Params, s),
 };

@@ -257,6 +257,31 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
     def leaks(params: w.LeakDemoParams) -> w.LeakDemoOut:
         return w.leak_demo(run_leak_demo(eps=params.eps, n_seeds=params.n_seeds))
 
+    # -- synthetic data preview -------------------------------------------- #
+
+    @app.get("/api/synth")
+    def synth(
+        sigma: float = 0.20,
+        vol_of_vol: float = 0.0,
+        skew_slope: float = 0.0,
+        alpha_bps: float = 0.0,
+        n_days: int = 63,
+        n_paths: int = 5,
+        seed: int = 0,
+    ) -> w.SynthPathsOut:
+        from optspread.config import MarketConfig
+        try:
+            cfg = MarketConfig(
+                sigma=sigma,
+                vol_of_vol=vol_of_vol,
+                skew_slope=skew_slope,
+                alpha_bps=alpha_bps,
+                n_days=n_days,
+            )
+        except Exception as exc:
+            raise HTTPException(422, str(exc)) from exc
+        return w.synth_paths(cfg, n_paths=n_paths, seed=seed)
+
     # -- sweeps ------------------------------------------------------------ #
 
     @app.get("/api/sweeps")

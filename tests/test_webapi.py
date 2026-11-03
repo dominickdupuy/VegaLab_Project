@@ -385,6 +385,18 @@ def test_without_a_seam_file_the_seam_is_unavailable(tmp_path: Path) -> None:
 # -- the overview ------------------------------------------------------------------------- #
 
 
+def test_synth_paths_returns_correct_shape() -> None:
+    from optspread.config import MarketConfig
+    from optspread.webapi import synth_paths
+    cfg = MarketConfig(n_days=10, vol_of_vol=0.3, skew_slope=0.1, alpha_bps=25.0)
+    out = synth_paths(cfg, n_paths=3, seed=0)
+    assert len(out.spots) == 3
+    assert all(len(p) == 11 for p in out.spots)  # n_days+1
+    assert len(out.atm_ivs) == 3
+    assert len(out.smile_log_moneyness) > 0
+    assert len(out.smile_ivs) == 3
+
+
 def test_the_overview_brings_the_tiles_together(
     run_root: Path, gate_docs: Path, reader: w.PanelReader
 ) -> None:
