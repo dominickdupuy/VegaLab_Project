@@ -152,7 +152,7 @@ def main() -> None:
         print("  Install stable_baselines3 and optspread.train to include the PPO arm.")
     print(f"  Increase n_episodes (currently {n_ep}) and PPO total_timesteps ({PPO_TIMESTEPS})")
     print("  for more stable, publication-quality results.")
-    print("  Try vol_of_vol=0.3 or skew_slope=-0.3 to stress-test robustness.")
+    print("  Try vol_of_vol=0.3 or skew_slope=+0.3 (equity put skew) to stress-test robustness.")
     print("  P&L values are in raw dollar units (not normalised by initial equity).")
 
 

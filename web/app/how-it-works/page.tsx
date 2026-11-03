@@ -74,7 +74,7 @@ const KNOBS: { name: string; type: string; default: string; description: string 
     type: "float",
     default: "0",
     description:
-      "Log-moneyness IV tilt. Negative = equity left skew (puts cost more). Tests whether models hedge skew exposure correctly.",
+      "Log-moneyness IV tilt. Positive = equity put skew (low-strike IV higher, puts cost more). Tests whether models hedge skew exposure correctly.",
   },
   {
     name: "sigma",
@@ -85,7 +85,7 @@ const KNOBS: { name: string; type: string; default: string; description: string 
   {
     name: "n_days",
     type: "int > 0",
-    default: "252",
+    default: "63",
     description: "Episode length in trading days. Shorter = faster experiments.",
   },
 ];

@@ -12,6 +12,7 @@ import { useFetch } from "@/lib/useFetch";
 import { usePoll } from "@/lib/usePoll";
 
 const GROUP_ORDER = ["Arm", "Market", "Costs", "Structure", "Account", "Run", "Training"];
+const LEARNED_ARMS = new Set(["ppo", "a2c", "dqn"]);
 const SCRIPTED_RATE = 1_800; // steps/s/core, the M1-measured steady state (README, Throughput)
 
 function bounds(k: Knob): string {
@@ -46,7 +47,7 @@ function checkSpec(spec: Spec): Record<string, string> {
   if ((spec.wing_delta as number) >= (spec.short_delta as number)) errs.wing_delta = "must be smaller than the short delta";
   const opening = tenors[idx];
   if (opening !== undefined && (spec.roll_dte as number) >= opening) errs.roll_dte = `must be shorter than the opening tenor (${opening})`;
-  if (spec.policy === "ppo" && !spec.total_timesteps) errs.total_timesteps = "PPO needs a training budget";
+  if (LEARNED_ARMS.has(spec.policy as string) && !spec.total_timesteps) errs.total_timesteps = "Learned arms need a training budget";
   return errs;
 }
 
@@ -150,12 +151,12 @@ function Form({ options }: { options: JobOptions }) {
   const running = (jobs.data ?? []).some((j) => j.state === "queued" || j.state === "running");
   usePoll([jobs], running, 700);
 
-  const knobs = options.knobs.filter((k) => k.name !== "total_timesteps" || spec.policy === "ppo");
+  const knobs = options.knobs.filter((k) => k.name !== "total_timesteps" || LEARNED_ARMS.has(spec.policy as string));
   const errs = useMemo(() => {
     const out = checkSpec(spec);
     for (const k of knobs) {
       const e = checkKnob(k, spec[k.name]);
-      if (e && !(k.name === "total_timesteps" && spec.policy !== "ppo")) out[k.name] = e;
+      if (e && !(k.name === "total_timesteps" && !LEARNED_ARMS.has(spec.policy as string))) out[k.name] = e;
     }
     return out;
   }, [spec, knobs]);
@@ -166,7 +167,7 @@ function Form({ options }: { options: JobOptions }) {
     setPreset("");
     setSpec((s) => {
       const next = { ...s, [name]: v };
-      if (name === "policy") next.total_timesteps = v === "ppo" ? (s.total_timesteps ?? 100_000) : null;
+      if (name === "policy") next.total_timesteps = LEARNED_ARMS.has(v as string) ? (s.total_timesteps ?? 100_000) : null;
       return next;
     });
   };
@@ -175,7 +176,7 @@ function Form({ options }: { options: JobOptions }) {
     setSent({ busy: true });
     try {
       const body = { ...spec };
-      if (body.policy !== "ppo") delete body.total_timesteps;
+      if (!LEARNED_ARMS.has(body.policy as string)) delete body.total_timesteps;
       const job = await api.launch(body);
       setCurrent(job.job_id);
       setSent({ busy: false });

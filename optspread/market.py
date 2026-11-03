@@ -27,7 +27,7 @@ class SyntheticChainProvider:
         self._rng: StepRNG | None = None
         self._day = 0
         self._spot = config.spot0
-        self._current_vol: float = config.sigma
+        self._vols: list[float] = []  # precomputed in reset(); index d = vol entering day d
 
     @property
     def n_days(self) -> int:
@@ -45,7 +45,20 @@ class SyntheticChainProvider:
         self._rng = rng
         self._day = 0
         self._spot = self.config.spot0
-        self._current_vol = self.config.sigma
+        # Precompute the vol path so log_return(day) is idempotent — safe for the leak detector.
+        cfg = self.config
+        dt = 1.0 / cfg.trading_days_per_year
+        self._vols = [cfg.sigma]
+        for d in range(1, cfg.n_days + 1):
+            if cfg.vol_of_vol > 0.0:
+                z_vol = float(rng.stream(d, VOL_CHANNEL).standard_normal())
+                v = max(
+                    self._vols[-1] * float(np.exp(cfg.vol_of_vol * float(np.sqrt(dt)) * z_vol)),
+                    0.001,
+                )
+            else:
+                v = cfg.sigma
+            self._vols.append(v)
         return self._chain(self._spot)
 
     def step(self) -> Chain:
@@ -58,24 +71,19 @@ class SyntheticChainProvider:
         return self._chain(self._spot)
 
     def log_return(self, day: int) -> float:
-        """The path's log return INTO ``day``. With vol_of_vol > 0, also advances ``_current_vol``.
+        """The path's log return INTO ``day``. Pure read — vol was precomputed in reset().
 
-        Both draws come from ``stream(day)`` on their own channel, so the return into
-        ``day`` is still a pure function of the streams for steps ``<= day``.
+        Calling this multiple times for the same day always returns the same value,
+        which is required by the leak detector (it calls log_return to look ahead
+        without stepping, and must not disturb the path it is measuring).
         """
         if self._rng is None:
             raise RuntimeError("log_return() before reset()")
         cfg = self.config
         dt = 1.0 / cfg.trading_days_per_year
-        if cfg.vol_of_vol > 0.0:
-            z_vol = float(self._rng.stream(day, VOL_CHANNEL).standard_normal())
-            self._current_vol = max(
-                self._current_vol * float(np.exp(cfg.vol_of_vol * float(np.sqrt(dt)) * z_vol)),
-                0.001,
-            )
         z = float(self._rng.stream(day, PATH_CHANNEL).standard_normal())
-        sigma = self._current_vol
-        drift = (cfg.alpha_bps / 10_000.0) * dt  # per-day drift from the alpha knob
+        sigma = self._vols[day]
+        drift = cfg.alpha_bps / 10_000.0  # per-day drift in bps (not annualised — no dt)
         return drift - 0.5 * sigma * sigma * dt + sigma * float(np.sqrt(dt)) * z
 
     def _chain(self, spot: float) -> Chain:
@@ -85,7 +93,7 @@ class SyntheticChainProvider:
         offsets = np.arange(-cfg.n_strikes_each_side, cfg.n_strikes_each_side + 1)
         strikes = centre + cfg.strike_step * offsets.astype(np.float64)
         expiry_days = self._day + np.asarray(cfg.tenor_days, dtype=np.int64)
-        iv_atm = self._current_vol + cfg.iv_premium_vol_pts / 100.0
+        iv_atm = self._vols[self._day] + cfg.iv_premium_vol_pts / 100.0
         # log(S/K) > 0 for low strikes (OTM puts), < 0 for high strikes (OTM calls)
         log_moneyness = np.log(spot / strikes)  # shape: (n_strikes,)
         smile = np.maximum(

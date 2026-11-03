@@ -242,3 +242,39 @@ def test_alpha_bps_shifts_path_upward() -> None:
             container.append(chain.spot)
     # Mean final spot must be higher with alpha > 0
     assert np.mean(final_spots_alpha) > np.mean(final_spots_zero)
+
+
+def test_log_return_is_idempotent_with_vol_of_vol() -> None:
+    """log_return(day) must return the same value no matter how many times it is called.
+
+    The leak detector calls log_return to look ahead without stepping; if it had
+    a side effect (mutating _current_vol) the vol state would drift and the
+    measured path would diverge from the actual path.
+    """
+    cfg = MarketConfig(vol_of_vol=0.5, n_days=20)
+    prov = SyntheticChainProvider(cfg)
+    prov.reset(SeededStepRNG(99))
+    for day in range(1, 6):
+        r1 = prov.log_return(day)
+        r2 = prov.log_return(day)
+        assert r1 == r2, f"log_return({day}) is not idempotent: {r1} != {r2}"
+
+
+def test_alpha_bps_drift_is_per_day_not_annualised() -> None:
+    """alpha_bps is a per-day drift in basis points: 100 bps/day means ~1% expected per day.
+
+    With tiny sigma the mean log-return should be close to alpha_bps / 10_000
+    (no dt factor).  If the code had *dt the mean would be ~100x smaller.
+    """
+    import numpy as np
+
+    alpha = 100.0
+    cfg = MarketConfig(alpha_bps=alpha, sigma=0.001, n_days=5)
+    returns = []
+    for seed in range(500):
+        prov = SyntheticChainProvider(cfg)
+        prov.reset(SeededStepRNG(seed))
+        returns.append(prov.log_return(1))
+    mean_lr = float(np.mean(returns))
+    expected = alpha / 10_000.0  # 0.01 per day
+    assert abs(mean_lr - expected) < 0.001, f"mean log_return {mean_lr:.5f} != expected {expected}"
