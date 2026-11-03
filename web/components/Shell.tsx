@@ -18,6 +18,7 @@ const TABS: { href: string; label: string }[] = [
   { href: "/data/", label: "Real data" },
   { href: "/leaks/", label: "Leak demo" },
   { href: "/sweep/", label: "Sweep" },
+  { href: "/how-it-works/", label: "How it works" },
 ];
 
 function active(path: string, href: string): boolean {
