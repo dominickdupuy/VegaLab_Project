@@ -17,13 +17,19 @@ one the run asked for would write (``expected_data``): the source, the split, th
 components, and on the real panel its digests, so a cell read from a panel since rebuilt
 is recomputed rather than mixed into a grid with cells of the new build.
 
-Moved from ``optspread.sweep``, which re-exports it.
+Where runs live by default: ``default_runs_root`` (``$VEGALAB_DATA/runs``, else ``runs``
+under the current directory), and under it ``source_root``, a real-data run's own folder,
+because the source is not in a run id.
+
+Moved from ``optspread.sweep`` (the run-directory rules) and ``optspread.orchestrate``
+(the runs roots), which re-export it.
 """
 
 from __future__ import annotations
 
+import os
 import zipfile
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from functools import partial
 from pathlib import Path
 from typing import Any
@@ -274,3 +280,25 @@ def valid_run(
         if by != trainer and (by is not None or trainer == REAL_TRAINER):
             return None
     return record
+
+
+DATA_ENV = "VEGALAB_DATA"
+
+
+def default_runs_root(env: Mapping[str, str] | None = None) -> Path:
+    """Where the pilot, the sweep and the reports that read them meet by default.
+
+    ``$VEGALAB_DATA/runs`` when ``VEGALAB_DATA`` is set, else ``runs`` under the
+    current directory. ``scripts/pilot.py`` writes under ``<this>/pilot``,
+    ``scripts/sweep.py`` here, and ``make m2`` and ``make m4`` read the same places,
+    so a run started without ``--root`` lands where its report looks.
+    """
+    data = (os.environ if env is None else env).get(DATA_ENV, "")
+    return Path(data).expanduser() / "runs" if data else Path("runs")
+
+
+def source_root(root: Path, source: SourceName) -> Path:
+    """Where runs on ``source`` live under a runs root: the root itself for the generator,
+    ``<root>/<source>`` otherwise. The source is not in a run id, so a real-data run and
+    its synthetic twin share one; their own folders keep them apart by default."""
+    return root if source == "synthetic" else root / source

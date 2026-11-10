@@ -541,7 +541,7 @@ def test_workers_are_spawned_with_one_blas_thread_set_before_they_import_numpy(
             seen.append({n: os.environ.get(n) for n in orchestrate.SINGLE_THREAD_ENV})
             return super().submit(fn, *args, **kwargs)
 
-    monkeypatch.setattr(orchestrate, "ProcessPoolExecutor", Recording)
+    monkeypatch.setattr("optspread.experiment.schedule.ProcessPoolExecutor", Recording)
     grid = GridConfig(
         base=RunConfig(
             n_episodes=2,
