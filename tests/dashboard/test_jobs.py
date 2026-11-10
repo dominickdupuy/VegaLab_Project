@@ -220,6 +220,7 @@ def test_the_manager_reports_progress_and_failures(tmp_path: Path) -> None:
         manager.shutdown()
 
 
+@pytest.mark.spawns_processes
 def test_jobs_run_in_a_separate_process(tmp_path: Path) -> None:
     manager = JobManager(tmp_path, executor=ProcessPoolExecutor(1))
     try:
@@ -229,6 +230,7 @@ def test_jobs_run_in_a_separate_process(tmp_path: Path) -> None:
         manager.shutdown()
 
 
+@pytest.mark.spawns_processes
 def test_a_dead_worker_fails_its_job_and_the_pool_is_rebuilt(tmp_path: Path) -> None:
     manager = JobManager(tmp_path, workers=1)
     manager.target = dying_job
@@ -265,6 +267,8 @@ def test_a_pool_found_broken_at_launch_is_rebuilt_from_the_factory(tmp_path: Pat
         manager.shutdown()
 
 
+@pytest.mark.spawns_processes
+@pytest.mark.slow
 def test_a_job_that_kills_its_worker_on_start_is_relaunched_once(tmp_path: Path) -> None:
     manager = JobManager(tmp_path, workers=1)
     manager.target = dying_job
@@ -385,6 +389,7 @@ def test_a_job_killed_before_its_equity_paths_is_recomputed_not_reused(tmp_path:
     assert json.loads((tmp_path / ".jobs" / "j2.json").read_text())["phase"] == "reused"
 
 
+@pytest.mark.needs_torch
 def test_cancelling_a_training_job_stops_the_training(tmp_path: Path) -> None:
     pytest.importorskip("stable_baselines3")
     import time
@@ -453,6 +458,7 @@ def test_a_scripted_job_saves_no_policy(tmp_path: Path) -> None:
     assert not (run_dir / POLICY_FILENAME).exists()
 
 
+@pytest.mark.needs_torch
 def test_a_launched_ppo_run_is_resimulated_with_the_policy_it_saved(tmp_path: Path) -> None:
     pytest.importorskip("stable_baselines3")
     from optspread.actionmix import mix_run

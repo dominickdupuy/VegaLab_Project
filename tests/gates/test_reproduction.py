@@ -65,6 +65,7 @@ def test_the_committed_expected_file_is_the_whole_confirmatory_grid_and_small() 
     assert len(expected.sellers(99)) == 30 and expected.ppo_reference() is not None
 
 
+@pytest.mark.slow
 def test_one_confirmatory_seller_cell_regenerates_within_the_tolerance(tmp_path: Path) -> None:
     """The freeze, checked on whatever machine runs the suite: about 40 seconds."""
     expected = rp.read_expected(COMMITTED)
@@ -241,6 +242,7 @@ def test_a_retrained_ppo_cell_is_compared_statistically_not_by_its_numbers(
     assert "not bit-reproducible across platforms" in step.detail
 
 
+@pytest.mark.needs_torch
 def test_the_ppo_structure_is_read_off_the_policy_the_cell_saved(tmp_path: Path) -> None:
     pytest.importorskip("stable_baselines3")
     from optspread.config import CostConfig, EnvConfig, MarketConfig, RunConfig, TrainConfig

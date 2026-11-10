@@ -88,6 +88,7 @@ def test_cells_are_run_configs_keyed_by_hash_and_written_as_run_directories(
     assert (tmp_path / SWEEP_FILENAME).exists()
 
 
+@pytest.mark.slow
 def test_arms_at_one_premium_share_their_episode_seeds_exactly(tmp_path: Path) -> None:
     record = run_sweep(SWEEP, tmp_path)
     expected = list(range(SHORT.seed, SHORT.seed + SHORT.n_episodes))
@@ -96,6 +97,7 @@ def test_arms_at_one_premium_share_their_episode_seeds_exactly(tmp_path: Path) -
         assert [row.seed for row in rows] == expected, cell.run_id
 
 
+@pytest.mark.slow
 def test_p3_a_second_run_is_bit_identical(tmp_path: Path) -> None:
     a = run_sweep(SWEEP, tmp_path / "a")
     b = run_sweep(SWEEP, tmp_path / "b")
@@ -110,6 +112,7 @@ def test_p3_a_second_run_is_bit_identical(tmp_path: Path) -> None:
     ).read_bytes()
 
 
+@pytest.mark.slow
 def test_a_sweep_resumes_from_valid_cells_and_recomputes_only_the_missing(
     tmp_path: Path,
 ) -> None:
@@ -201,6 +204,7 @@ def test_pilot_matrix_blocks_use_disjoint_path_seeds() -> None:
             assert matrix[i, j] == direct.pnl, (i, j)
 
 
+@pytest.mark.slow
 def test_a_scripted_policy_shows_no_seed_effect_across_a_seed_sweep() -> None:
     # Under no seed effect E[MS_between] = E[MS_within], so (MS_between - MS_within)/N has
     # mean 0 and the clamped estimate tau2_hat is small relative to sigma2_hat: with S = 4

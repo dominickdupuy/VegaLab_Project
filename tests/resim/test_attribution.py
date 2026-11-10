@@ -185,6 +185,7 @@ def test_the_flat_arm_decomposes_to_nothing() -> None:
     assert result.totals == Terms() and result.gross == 0.0 and result.residual_share == 0.0
 
 
+@pytest.mark.slow
 def test_the_residual_is_a_remainder_it_shrinks_as_the_step_gets_relatively_smaller() -> None:
     # One trading day against a longer tenor is a smaller step in sigma sqrt(tau), so
     # the remainder must fall as tau grows: at least as sqrt(dt / tau) does (x0.5 per 4x

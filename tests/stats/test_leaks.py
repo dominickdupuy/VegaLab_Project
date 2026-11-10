@@ -288,6 +288,7 @@ def test_poisoned_environment_is_flagged() -> None:
     assert report.worst_feature == "ret_1d"
 
 
+@pytest.mark.slow
 def test_leak_floor_is_recorded() -> None:
     report = leak_floor(make_env, eps_grid=(1.0, 0.5, 0.25, 0.1, 0.05), seeds=SEEDS)
     assert report.floor is not None and report.floor <= 0.25
@@ -318,6 +319,7 @@ def test_a_flat_probe_would_have_left_most_fields_untested() -> None:
     assert report.covers_every_field, "even a weak probe must still report every field"
 
 
+@pytest.mark.slow
 def test_every_field_has_a_working_positive_control() -> None:
     report = field_coverage(make_env, COVERAGE_SEEDS)
     assert report.passed, chr(10) + report.render()

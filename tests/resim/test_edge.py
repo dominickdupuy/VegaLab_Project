@@ -246,6 +246,8 @@ def test_the_se_and_interval_are_a2s_on_the_block_means_by_hand(
 # -- the grid, the files and the command --------------------------------------------- #
 
 
+@pytest.mark.spawns_processes
+@pytest.mark.slow
 def test_the_grid_keeps_arms_reads_a_prefix_and_runs_on_workers(grid_root: Path) -> None:
     serial = edge_grid(grid_root, arms=["delta_seller"], first=2)
     assert serial.arms == ("delta_seller",) and serial.n_episodes == 2 and serial.first == 2

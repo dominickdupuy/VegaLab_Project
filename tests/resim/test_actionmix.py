@@ -345,6 +345,7 @@ def test_a_grid_gives_the_mix_per_cell_and_pooled_per_arm_and_premium(grid_root:
     assert snapshot(grid_root) == before
 
 
+@pytest.mark.spawns_processes
 def test_a_grid_can_keep_the_scripted_arm_alone_and_run_on_workers(grid_root: Path) -> None:
     serial, _ = mix_grid(grid_root, arms=["delta_seller"], first=2)
     assert serial.arms == ("delta_seller",) and all(c.arm == "delta_seller" for c in serial.cells)

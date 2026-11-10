@@ -317,6 +317,7 @@ def test_a_trainer_that_takes_no_source_is_refused_on_real_data(data: Path, tmp_
     assert not (tmp_path / "run" / RUN_FILENAME).exists()
 
 
+@pytest.mark.needs_torch
 def test_the_learner_builds_its_training_environment_on_the_training_range(
     data: Path, served: Served, monkeypatch: pytest.MonkeyPatch
 ) -> None:

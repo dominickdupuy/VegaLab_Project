@@ -255,6 +255,8 @@ def test_a_failed_cell_is_reported_and_the_rest_are_kept(tmp_path: Path) -> None
     run_grid(GRID, tmp_path, trainer=fake_trainer)
 
 
+@pytest.mark.spawns_processes
+@pytest.mark.slow
 def test_two_workers_write_exactly_the_bytes_one_worker_writes(tmp_path: Path) -> None:
     one = run_grid(GRID, tmp_path / "one", trainer=fake_trainer)
     two = run_grid(GRID, tmp_path / "two", workers=2, trainer=fake_trainer)
@@ -267,6 +269,8 @@ def test_two_workers_write_exactly_the_bytes_one_worker_writes(tmp_path: Path) -
                 assert a.read_bytes() == b.read_bytes()
 
 
+@pytest.mark.spawns_processes
+@pytest.mark.slow
 def test_a_dead_worker_loses_only_the_cells_in_flight_and_the_grid_resumes(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -309,6 +313,8 @@ def test_a_dead_worker_loses_only_the_cells_in_flight_and_the_grid_resumes(
                 assert a.read_bytes() == b.read_bytes()
 
 
+@pytest.mark.spawns_processes
+@pytest.mark.slow
 def test_a_pool_that_dies_before_finishing_a_cell_is_not_fed_again(tmp_path: Path) -> None:
     lines: list[Progress] = []
     with pytest.raises(IncompleteGridError) as caught:
@@ -323,6 +329,7 @@ def test_a_pool_that_dies_before_finishing_a_cell_is_not_fed_again(tmp_path: Pat
     assert plan_cells(grid_cells(GRID), tmp_path, trainer=fake_trainer).to_run == 0
 
 
+@pytest.mark.spawns_processes
 def test_a_cell_written_in_full_before_its_worker_died_is_kept(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -342,6 +349,7 @@ def test_a_cell_written_in_full_before_its_worker_died_is_kept(
     assert plan_cells(grid_cells(grid), tmp_path, runner=writes_then_dies).to_run == len(lost)
 
 
+@pytest.mark.spawns_processes
 def test_a_task_that_cannot_reach_a_worker_fails_its_cell(tmp_path: Path) -> None:
     def local(config: RunConfig) -> FakeLearned:  # a closure does not pickle
         return fake_trainer(config)
@@ -360,6 +368,7 @@ def test_workers_must_be_positive(tmp_path: Path) -> None:
 # -- the pilot ------------------------------------------------------------------- #
 
 
+@pytest.mark.slow
 def test_the_pilot_writes_the_contrast_the_budget_reads_and_its_control(tmp_path: Path) -> None:
     S, N = 3, 4
     grid = pilot_grid(SHORT, n_seeds=S, n_episodes=N, premium=1.0, train=TRAIN)
@@ -418,6 +427,7 @@ def test_a_grid_contrast_is_zero_at_zero_and_needs_the_null_world(tmp_path: Path
 # -- the commands ------------------------------------------------------------------ #
 
 
+@pytest.mark.slow
 def test_the_pilot_command_runs_resumes_and_writes_the_matrix(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
