@@ -4,17 +4,15 @@ drawdown and return on posted capital, and replay.
 Lane: Ilan Danial (machinery).
 
 Attribution (``optspread.attribution``) and capital are cached under the attribution root,
-never in a run directory; replay is ``optspread.replay``. ``Tasks`` runs the work on one
-thread of the server. Moved from ``optspread.webviews``, which re-exports it.
+never in a run directory; replay is ``optspread.replay``. The server runs the work on one
+thread with ``optspread.dashboard.tasks.Tasks``. Moved from ``optspread.webviews``, which
+re-exports it.
 """
 
 from __future__ import annotations
 
 import math
-import threading
-import time
-from collections.abc import Callable, Sequence
-from concurrent.futures import Future, ThreadPoolExecutor
+from collections.abc import Sequence
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -24,65 +22,12 @@ from pydantic import Field
 
 from optspread.api._base import Out, _f, _finite_json
 from optspread.api.launch import launch_estimate
+from optspread.dashboard.tasks import TaskState
 from optspread.dashboard_data import RunRow
 from optspread.jobs import available_arms
 from optspread.manifest import MANIFEST_FILENAME, RunManifest
 
 # -- background work: attribution, capital and replay ------------------------------- #
-
-
-class TaskState(Out):
-    state: str  # "idle" | "running" | "done" | "failed"
-    error: str = ""
-    seconds: float | None = None
-
-
-class Tasks:
-    """Work the API starts and the page polls: one thread, keyed by kind and run key.
-
-    Not ``optspread.jobs``: these read a run and write nowhere but the attribution root,
-    so they need no process pool and no run directory of their own.
-    """
-
-    def __init__(self, workers: int = 1) -> None:
-        self._pool = ThreadPoolExecutor(max_workers=workers, thread_name_prefix="optspread-task")
-        self._futures: dict[tuple[str, str], tuple[Future[Any], float]] = {}
-        self._finished: dict[tuple[str, str], float] = {}
-        self._lock = threading.RLock()  # a done future runs its callback inside submit
-
-    def submit(self, kind: str, key: str, work: Callable[[], Any]) -> None:
-        """Start ``work`` unless the same kind is already running for this key."""
-        with self._lock:
-            held = self._futures.get((kind, key))
-            if held is not None and not held[0].done():
-                return
-            start = time.perf_counter()
-            future = self._pool.submit(work)
-            future.add_done_callback(lambda _: self._finish((kind, key)))
-            self._futures[(kind, key)] = (future, start)
-
-    def _finish(self, task: tuple[str, str]) -> None:
-        with self._lock:
-            self._finished[task] = time.perf_counter()
-
-    def state(self, kind: str, key: str) -> tuple[TaskState, Any]:
-        with self._lock:
-            held = self._futures.get((kind, key))
-            end = self._finished.get((kind, key))
-        if held is None:
-            return TaskState(state="idle"), None
-        future, start = held
-        if not future.done():
-            return TaskState(state="running", seconds=time.perf_counter() - start), None
-        seconds = (end or time.perf_counter()) - start
-        exc = future.exception()
-        if exc is not None:
-            text = str(exc).splitlines()[0] if str(exc) else type(exc).__name__
-            return TaskState(state="failed", error=text, seconds=seconds), None
-        return TaskState(state="done", seconds=seconds), future.result()
-
-    def shutdown(self) -> None:
-        self._pool.shutdown(wait=False, cancel_futures=True)
 
 
 def _scripted(policy: str) -> bool:

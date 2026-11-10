@@ -84,8 +84,6 @@ from optspread.api.runwork import CapitalEpisodeOut as CapitalEpisodeOut
 from optspread.api.runwork import CapitalOut as CapitalOut
 from optspread.api.runwork import ReplayDone as ReplayDone
 from optspread.api.runwork import ReplayOut as ReplayOut
-from optspread.api.runwork import Tasks as Tasks
-from optspread.api.runwork import TaskState as TaskState
 from optspread.api.runwork import _ppo_reason as _ppo_reason
 from optspread.api.runwork import _read_attribution as _read_attribution
 from optspread.api.runwork import _read_capital as _read_capital
@@ -139,3 +137,5 @@ from optspread.api.study import measured_design as measured_design
 from optspread.api.study import study as study
 from optspread.api.study import sweep_core_hours as sweep_core_hours
 from optspread.api.study import vrp_mapping as vrp_mapping
+from optspread.dashboard.tasks import Tasks as Tasks
+from optspread.dashboard.tasks import TaskState as TaskState
