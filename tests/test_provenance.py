@@ -19,6 +19,7 @@ compare it (the machinery audit's M1, M2, M3 and m1 to m4):
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -193,6 +194,61 @@ def test_two_scripts_trainers_of_one_name_are_two_trainers() -> None:
     assert found[0] == "__main__.trainer@/one/train_a.py"
     assert callable_name(fake_trainer) == "fake_learner.fake_trainer"  # importable: plain
     assert REAL_TRAINER == "optspread.train.train_ppo"
+
+
+def test_a_scripts_trainer_has_the_same_name_in_a_spawned_worker() -> None:
+    # A spawned worker imports the script it was started from as __mp_main__.
+    found = []
+    for module in ("__main__", "__mp_main__"):
+        scope: dict[str, object] = {"__name__": module}
+        exec(compile("def trainer(config):\n    return None\n", "/one/train_a.py", "exec"), scope)
+        found.append(callable_name(scope["trainer"]))
+    assert found == ["__main__.trainer@/one/train_a.py"] * 2
+
+
+def test_a_scripts_own_trainer_runs_a_grid_on_two_workers_and_is_reused(tmp_path: Path) -> None:
+    script = tmp_path / "my_study.py"
+    script.write_text(
+        """
+import sys
+from pathlib import Path
+
+from fake_learner import fake_trainer
+
+from optspread.config import EnvConfig, MarketConfig, RunConfig, TrainConfig
+from optspread.orchestrate import GridConfig, grid_cells, plan_cells, run_grid
+
+
+def trainer(config):  # a researcher's own, at the top of the script
+    return fake_trainer(config)
+
+
+if __name__ == "__main__":
+    base = RunConfig(seed=100, n_episodes=2, market=MarketConfig(n_days=10, tenor_days=(5, 10)),
+                     env=EnvConfig(episode_days=10))
+    grid = GridConfig(base=base, premiums=(0.0,), arms=("delta_seller", "ppo"), n_seeds=2,
+                      train=TrainConfig(total_timesteps=64, seed=3))
+    run_grid(grid, Path(sys.argv[1]), workers=2, trainer=trainer)
+    print(plan_cells(grid_cells(grid), Path(sys.argv[1]), trainer=trainer).to_run)
+""",
+        encoding="utf-8",
+    )
+    root = tmp_path / "runs"
+    done = subprocess.run(
+        [sys.executable, str(script), str(root)],
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+        env={**os.environ, "PYTHONPATH": f"{REPO}{os.pathsep}{REPO / 'tests'}"},
+        check=False,
+    )
+    assert done.returncode == 0, done.stderr[-2000:]
+    assert done.stdout.split() == ["0"], "a rerun reuses every cell"
+    trainers = {
+        json.loads(m.read_text(encoding="utf-8")).get("trainer")
+        for m in root.glob(f"*/{MANIFEST_FILENAME}")
+    }
+    assert trainers == {None, f"__main__.trainer@{script.as_posix()}"}
 
 
 # -- m3: commits ------------------------------------------------------------------ #
