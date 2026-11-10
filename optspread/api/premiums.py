@@ -11,7 +11,7 @@ import json
 import math
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 
@@ -69,7 +69,8 @@ class PremiumGroupOut(Out):
     se: float | None
     ci_low: float | None  # two-sided 95%
     ci_high: float | None
-    interval: str  # "runs": t on the run means; "episodes": one run, t on its episodes
+    # "runs": t on the run means; "episodes": one run, t on its episodes (_group's two)
+    interval: Literal["runs", "episodes"]
     p5: float | None
     p25: float | None
     p50: float | None
@@ -96,7 +97,8 @@ class PremiumContrastOut(Out):
     ci_high: float | None
     lower_bound: float | None  # one-sided 95%, the pre-registered bound (D1)
     detected: bool
-    interval: str  # "runs" (the rule) or "episodes" (one pair: no between-run term)
+    # "runs" (the rule), "episodes" (one pair: no between-run term), or "" with a reason
+    interval: Literal["", "runs", "episodes"]
     reason: str = ""
 
 

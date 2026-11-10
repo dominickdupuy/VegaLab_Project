@@ -38,7 +38,10 @@ def _iso(values: NDArray[np.datetime64]) -> list[str]:
 
 
 class Out(BaseModel):
-    model_config = ConfigDict(frozen=True)
+    # A payload always carries every field, defaulted or not, so the serialization schema
+    # the site's types are generated from marks them all required. Pydantic reads the
+    # setting only when it writes that schema: validation and the JSON sent are as before.
+    model_config = ConfigDict(frozen=True, json_schema_serialization_defaults_required=True)
 
 
 def _inside(root: Path, key: str) -> Path | None:

@@ -7,12 +7,12 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import Field
 
 from optspread.api._base import Out
-from optspread.dashboard.jobs.queue import JobStatus
+from optspread.dashboard.jobs.queue import JobState, JobStatus
 from optspread.dashboard.jobs.spec import (
     LAUNCH_DIR,
     PRESETS,
@@ -25,17 +25,22 @@ from optspread.runs.rundir import SOURCES, source_root
 
 # -- jobs ------------------------------------------------------------------------- #
 
+# The input a knob takes, one per branch of _knob.
+KnobKind = Literal["number", "integer", "boolean", "choice", "tenors"]
+# The launch form's sections: the groups in _GROUPS, and "Run" for a knob it does not name.
+KnobGroup = Literal["Arm", "Market", "Costs", "Structure", "Account", "Run", "Training", "Data"]
+
 
 class KnobOut(Out):
     name: str
-    kind: str  # "number" | "integer" | "boolean" | "choice" | "tenors"
+    kind: KnobKind
     default: Any
     minimum: float | None = None
     maximum: float | None = None
     exclusive_minimum: float | None = None
     exclusive_maximum: float | None = None
     choices: list[str] = Field(default_factory=list)
-    group: str
+    group: KnobGroup
     help: str = ""
     label: str = ""  # what the form calls it; ``name`` is the JobSpec field
     synthetic_only: bool = False  # read by the generator only; a real chain ignores it
@@ -92,7 +97,7 @@ class JobOptionsOut(Out):
     ppo_preset: PresetOut | None = None  # listed whether or not the learner is installed
 
 
-_GROUPS: dict[str, tuple[str, str]] = {
+_GROUPS: dict[str, tuple[KnobGroup, str]] = {
     "policy": (
         "Arm",
         "Which policy runs: the scripted arms, or PPO when the learner is installed.",
@@ -125,10 +130,11 @@ _GROUPS: dict[str, tuple[str, str]] = {
         "trained on the dates before); not in the run id, recorded in the manifest.",
     ),
 }
+_UNGROUPED: tuple[KnobGroup, str] = ("Run", "")
 
 
 def _knob(name: str, info: Any, arms: Sequence[str]) -> KnobOut:
-    group, text = _GROUPS.get(name, ("Run", ""))
+    group, text = _GROUPS.get(name, _UNGROUPED)
     default = info.default
     annotation = str(info.annotation)
     bounds: dict[str, float | None] = {
@@ -147,6 +153,7 @@ def _knob(name: str, info: Any, arms: Sequence[str]) -> KnobOut:
             value = getattr(meta, attr, None)
             if value is not None:
                 bounds[key] = float(value)
+    kind: KnobKind
     if name == "policy":
         kind, choices = "choice", list(arms)
     elif name == "source":
@@ -199,7 +206,7 @@ def job_options() -> JobOptionsOut:
 
 class JobOut(Out):
     job_id: str
-    state: str
+    state: JobState
     phase: str
     done: int
     total: int

@@ -15,7 +15,7 @@ import math
 from collections.abc import Sequence
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 from pydantic import Field
@@ -39,7 +39,7 @@ def _scripted(policy: str) -> bool:
 
 
 class AttributionOut(Out):
-    state: str  # "cached" | "computing" | "absent" | "failed"
+    state: Literal["cached", "computing", "absent", "failed"]  # attribution_view's branches
     can_compute: bool
     reason: str
     file: str
@@ -192,7 +192,8 @@ class CapitalEpisodeOut(Out):
 
 
 class CapitalOut(Out):
-    state: str  # "done" | "computing" | "absent" | "failed"
+    # "done" from compute_capital (and so in every cached file); the rest from capital_view
+    state: Literal["done", "computing", "absent", "failed"]
     can_compute: bool
     reason: str
     initial_cash: float | None = None
@@ -408,10 +409,12 @@ SCRIPTED_RTOL = 1e-9
 
 
 class ReplayOut(Out):
-    state: str  # "idle" | "running" | "done" | "failed"
+    state: Literal["idle", "running", "done", "failed"]  # replay_view's branches
     can_replay: bool
     reason: str  # why it cannot run here; the failure; or, when done, what replay said
-    verdict: str = ""  # "IDENTICAL" | "AGREES" (within ``rtol``) | "DIFFERS"
+    # "" until done, then "IDENTICAL" | "AGREES" (within ``rtol``) | "DIFFERS", as
+    # replay_view maps replay's own verdict
+    verdict: Literal["", "IDENTICAL", "AGREES", "DIFFERS"] = ""
     rtol: float | None = None  # the tolerance asked for; None for bytes only (a PPO retrain)
     max_rel_diff: float | None = None  # the largest relative difference, with ``rtol``
     comparable: bool = True  # False: a retrained PPO run on another platform than its own

@@ -36,7 +36,7 @@ class SeedDiffOut(Out):
     seed: int
     a: float
     b: float
-    diff: float  # b - a
+    diff: float | None  # b - a; null when it is not finite (two P&Ls that overflow apart)
 
 
 class CompareOut(Out):
