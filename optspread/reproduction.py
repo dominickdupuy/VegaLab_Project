@@ -111,7 +111,7 @@ DEFAULT_CELLS = 3
 
 # The steps of a reproduction, in order. The first six are the gate commands as the
 # Makefile runs them (``make check`` is ruff, mypy and pytest); ``STEP_COMMANDS`` holds
-# them and tests/test_m3gate.py holds them to ``make -n``.
+# them and tests/gates/test_m3gate.py holds them to ``make -n``.
 STEPS = (
     "ruff",
     "mypy --strict",

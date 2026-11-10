@@ -8,7 +8,7 @@ moneyness widening in the project document. Slippage as a function of size is
 a planned extension; the ``CostModel`` interface does not change for it.
 
 Gate: a round trip in the null world loses exactly the modelled cost and
-nothing else (``tests/test_market_layer.py``).
+nothing else (``tests/core/test_market_layer.py``).
 """
 
 from __future__ import annotations

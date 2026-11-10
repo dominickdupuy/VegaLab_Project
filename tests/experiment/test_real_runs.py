@@ -248,7 +248,7 @@ def test_the_makefile_runs_one_run_with_its_args() -> None:
 
     if shutil.which("make") is None:
         pytest.skip("needs make")
-    repo = Path(__file__).resolve().parent.parent
+    repo = Path(__file__).resolve().parent.parent.parent
     out = subprocess.run(
         ["make", "-n", "-f", str(repo / "Makefile"), "run", "ARGS=--source optionmetrics", "PY=py"],
         cwd=repo,

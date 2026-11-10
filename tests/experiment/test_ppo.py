@@ -141,7 +141,7 @@ def test_mypy_strict_passes_with_the_learner_installed() -> None:
     import subprocess
     import sys
 
-    repo = Path(__file__).resolve().parent.parent
+    repo = Path(__file__).resolve().parent.parent.parent
     done = subprocess.run(
         [sys.executable, "-m", "mypy", "--strict", "optspread/train.py"],
         cwd=repo,
@@ -153,7 +153,9 @@ def test_mypy_strict_passes_with_the_learner_installed() -> None:
 
 
 def test_ci_type_checks_and_runs_the_ppo_tests_with_the_learner_installed() -> None:
-    ci = (Path(__file__).resolve().parent.parent / ".github" / "workflows" / "ci.yml").read_text()
+    ci = (
+        Path(__file__).resolve().parent.parent.parent / ".github" / "workflows" / "ci.yml"
+    ).read_text()
     job = ci.split("check-train:", 1)[1].split("\n  web:", 1)[0]
     assert 'pip install -e ".[dev,train]"' in job and "download.pytorch.org/whl/cpu" in job
-    assert "mypy --strict optspread scripts" in job and "tests/test_ppo.py" in job
+    assert "mypy --strict optspread scripts" in job and "tests/experiment/test_ppo.py" in job

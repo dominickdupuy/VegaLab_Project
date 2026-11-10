@@ -26,7 +26,7 @@ from optspread import webapi as w
 from optspread import webviews as v
 
 M = "\u2212"  # the typographic minus the sentences use
-REPO_DOCS = Path(__file__).resolve().parent.parent / "docs"
+REPO_DOCS = Path(__file__).resolve().parent.parent.parent / "docs"
 
 
 # -- the small helpers ------------------------------------------------------------- #

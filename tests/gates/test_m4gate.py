@@ -472,7 +472,7 @@ def test_the_vrp_item_needs_its_files_and_the_analysis(sweep: Sweep, tmp_path: P
 
 
 def test_the_committed_mapping_is_from_the_panel_the_data_manifest_records() -> None:
-    docs = Path(__file__).resolve().parent.parent / "docs"
+    docs = Path(__file__).resolve().parent.parent.parent / "docs"
     mapping, _ = m4gate.read_json(docs / m4gate.VRP_FILE)
     manifest, _ = m4gate.read_json(docs / m4gate.DATA_MANIFEST_FILE)
     assert mapping is not None and manifest is not None

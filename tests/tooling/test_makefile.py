@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-REPO = Path(__file__).resolve().parent.parent
+REPO = Path(__file__).resolve().parent.parent.parent
 
 pytestmark = pytest.mark.skipif(shutil.which("make") is None, reason="needs make")
 

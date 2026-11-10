@@ -10,7 +10,7 @@ exactly the modelled cost drag (plus any margin-breach liquidation).
     2. ALWAYS-ON reads ~0 without costs (|t| <= 3) and turns negative with them.
     3. RANDOM, which churns, bleeds faster than ALWAYS-ON.
 
-Break any one and the build fails (``tests/test_wave0_gate.py``).
+Break any one and the build fails (``tests/gates/test_wave0_gate.py``).
 """
 
 from __future__ import annotations

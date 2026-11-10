@@ -24,7 +24,7 @@ settings. Put such runs under a root of their own, and replay them through the s
 components. Everything below is for exploratory research and is not part of the
 pre-registered design.
 
-Every code block on this page runs in `tests/test_extending.py`, top to bottom in one
+Every code block on this page runs in `tests/experiment/test_extending.py`, top to bottom in one
 namespace, so the page cannot drift from the code. The blocks use small settings to
 keep the test fast.
 

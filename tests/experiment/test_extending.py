@@ -30,7 +30,7 @@ from optspread.replay import replay_run
 from optspread.scripted import cost_drag_check
 from optspread.types import Chain, OptionLeg
 
-REPO = Path(__file__).resolve().parent.parent
+REPO = Path(__file__).resolve().parent.parent.parent
 GUIDE = REPO / "docs" / "EXTENDING.md"
 SHORT = MarketConfig(n_days=15, tenor_days=(8, 15))
 
