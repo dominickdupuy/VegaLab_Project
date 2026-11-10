@@ -22,6 +22,7 @@ def make_chain(seed: int = 0, premium: float = 0.0) -> Chain:
 # -- pricing --------------------------------------------------------------- #
 
 
+@pytest.mark.invariant
 def test_put_call_parity_and_no_arb_bounds() -> None:
     S, r, sigma, T = 5000.0, 0.04, 0.2, 42 / 252
     K = np.linspace(4200, 5800, 33)
@@ -32,6 +33,7 @@ def test_put_call_parity_and_no_arb_bounds() -> None:
     assert np.all(K * disc >= P) and np.all(np.maximum(K * disc - S, 0.0) <= P)
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize("right", ["C", "P"])
 def test_greeks_match_finite_differences(right: str) -> None:
     S, K, r, sigma, T = 5000.0, 4900.0, 0.04, 0.2, 21 / 252
@@ -47,6 +49,7 @@ def test_greeks_match_finite_differences(right: str) -> None:
     assert theta == pytest.approx(-(p(T_=T + ht) - p(T_=T - ht)) / (2 * ht), rel=1e-4)
 
 
+@pytest.mark.invariant
 def test_expired_option_is_intrinsic_without_nan() -> None:
     assert float(bs_price("C", 5100.0, 5000.0, 0.04, 0.2, 0.0)) == 100.0
     assert float(bs_price("P", 5100.0, 5000.0, 0.04, 0.0, 0.1)) == 0.0
@@ -56,6 +59,7 @@ def test_expired_option_is_intrinsic_without_nan() -> None:
 # -- market ---------------------------------------------------------------- #
 
 
+@pytest.mark.invariant
 def test_same_seed_same_path_and_premium_lifts_iv() -> None:
     a = [make_chain(3).spot]
     prov = SyntheticChainProvider(MarketConfig())
@@ -70,6 +74,7 @@ def test_same_seed_same_path_and_premium_lifts_iv() -> None:
 # -- costs: the round-trip gate ------------------------------------------- #
 
 
+@pytest.mark.invariant
 def test_round_trip_loses_exactly_the_modelled_cost() -> None:
     chain = make_chain()
     pos = build_position(IRON_CONDOR, chain, EnvConfig())
@@ -89,6 +94,7 @@ def test_round_trip_loses_exactly_the_modelled_cost() -> None:
     assert free.equity(chain) == pytest.approx(1_000_000.0)
 
 
+@pytest.mark.invariant
 def test_settlement_at_expiry_is_cash_at_intrinsic() -> None:
     prov = SyntheticChainProvider(MarketConfig())
     chain = prov.reset(SeededStepRNG(5))
@@ -107,6 +113,7 @@ def test_settlement_at_expiry_is_cash_at_intrinsic() -> None:
 # -- margin ----------------------------------------------------------------- #
 
 
+@pytest.mark.invariant
 def test_defined_risk_margin_is_max_loss() -> None:
     chain = make_chain()
     ic = build_position(IRON_CONDOR, chain, EnvConfig())
@@ -120,6 +127,7 @@ def test_defined_risk_margin_is_max_loss() -> None:
     assert max_loss(ic.legs) == pytest.approx(width - credit)
 
 
+@pytest.mark.behaviour
 def test_undefined_risk_margin_exceeds_premium() -> None:
     chain = make_chain()
     strangle = build_position(SHORT_STRANGLE, chain, EnvConfig())
@@ -132,6 +140,7 @@ def test_undefined_risk_margin_exceeds_premium() -> None:
 # -- the pre-trade margin check --------------------------------------------- #
 
 
+@pytest.mark.behaviour
 def test_an_open_is_refused_one_dollar_under_the_line_and_made_one_dollar_over() -> None:
     chain = make_chain()
     pos = build_position(SHORT_STRANGLE, chain, EnvConfig())
@@ -152,6 +161,7 @@ def test_an_open_is_refused_one_dollar_under_the_line_and_made_one_dollar_over()
     assert enough.equity(chain) - enough.margin_used(chain) == pytest.approx(1.0)
 
 
+@pytest.mark.behaviour
 def test_switching_into_an_uncovered_structure_still_closes_what_was_held() -> None:
     chain = make_chain()
     condor = build_position(IRON_CONDOR, chain, EnvConfig())

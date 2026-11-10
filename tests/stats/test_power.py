@@ -54,11 +54,13 @@ def simulate(seed: int, tau2: float, sigma2: float, S: int, N: int) -> npt.NDArr
 # -- the formula and the estimator, exactly ---------------------------------- #
 
 
+@pytest.mark.invariant
 def test_var_grand_mean_is_the_pre_registered_formula() -> None:
     # 4/4 + 8/(4*2) = 1 + 1: exact in binary, so == rather than approx.
     assert var_grand_mean(tau2=4.0, sigma2=8.0, n_seeds=4, n_episodes=2) == 2.0
 
 
+@pytest.mark.invariant
 def test_zero_within_variance_gives_sigma_zero_and_tau_equal_to_the_seed_mean_variance() -> None:
     means = np.array([1.0, 2.0, 4.0, 7.0])
     outcomes = np.repeat(means[:, None], 3, axis=1)  # every episode in a seed identical
@@ -73,6 +75,7 @@ def test_zero_within_variance_gives_sigma_zero_and_tau_equal_to_the_seed_mean_va
     assert vc.var_grand_mean == pytest.approx(7.0 / 4, rel=1e-12)
 
 
+@pytest.mark.invariant
 def test_zero_between_variance_clamps_tau_at_zero_and_reports_it() -> None:
     rows = np.array([[1.0, 2.0, 3.0], [3.0, 1.0, 2.0], [2.0, 3.0, 1.0], [1.0, 3.0, 2.0]])
     vc = variance_components(rows)  # every seed mean is 2: MS_between is exactly 0
@@ -84,6 +87,7 @@ def test_zero_between_variance_clamps_tau_at_zero_and_reports_it() -> None:
     assert vc.var_grand_mean == pytest.approx(1.0 / 12, rel=1e-12)
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize("seed", range(14))
 def test_plug_in_variance_equals_the_seed_mean_variance_over_s_when_unclamped(seed: int) -> None:
     # Algebra: tau2 N + sigma2 = MS_between, so tau2/S + sigma2/(S N) = MS_between/(S N),
@@ -97,6 +101,7 @@ def test_plug_in_variance_equals_the_seed_mean_variance_over_s_when_unclamped(se
     assert vc.se_grand_mean == pytest.approx(np.sqrt(vc.var_grand_mean), rel=1e-12)
 
 
+@pytest.mark.invariant
 def test_the_estimator_recovers_planted_components_over_a_seed_sweep() -> None:
     tau2, sigma2, S, N = 4.0, 9.0, 40, 25
     seeds = range(20)
@@ -122,12 +127,14 @@ def test_the_estimator_recovers_planted_components_over_a_seed_sweep() -> None:
 # -- power and sample size -------------------------------------------------- #
 
 
+@pytest.mark.invariant
 def test_power_is_alpha_at_zero_effect() -> None:
     assert power(0.0, tau2=1.0, sigma2=1.0, n_seeds=5, n_episodes=10, alpha=ALPHA) == pytest.approx(
         ALPHA, abs=1e-12
     )
 
 
+@pytest.mark.invariant
 def test_power_is_monotone_in_effect_seeds_and_episodes() -> None:
     kw = {"tau2": 1.0, "sigma2": 4.0}
     by_delta = [power(d, n_seeds=8, n_episodes=10, **kw) for d in (0.1, 0.5, 1.0, 2.0)]
@@ -138,12 +145,14 @@ def test_power_is_monotone_in_effect_seeds_and_episodes() -> None:
     assert power(50.0, n_seeds=8, n_episodes=10, **kw) == pytest.approx(1.0, abs=1e-12)
 
 
+@pytest.mark.invariant
 def test_variance_budget_is_the_squared_effect_over_the_summed_quantiles() -> None:
     assert variance_budget(0.5, alpha=ALPHA, target_power=TARGET) == pytest.approx(
         (0.5 / Z) ** 2, rel=1e-12
     )
 
 
+@pytest.mark.invariant
 def test_the_normal_form_reduces_to_the_textbook_formula_when_tau_is_zero() -> None:
     # One seed, no seed effect: N >= ((z_0.95 + z_0.80) sigma / delta)^2 = 24.73, so 25.
     assert int(np.ceil((Z * 1.0 / 0.5) ** 2)) == 25
@@ -151,6 +160,7 @@ def test_the_normal_form_reduces_to_the_textbook_formula_when_tau_is_zero() -> N
     assert power(0.5, 0.0, 1.0, n_seeds=1, n_episodes=25) >= TARGET
 
 
+@pytest.mark.invariant
 def test_the_exact_sample_size_at_zero_tau_and_the_normal_form_short_of_it() -> None:
     # Five seeds, no seed effect: 1 / (5 N) <= (0.5 / 3.0398)^2 = 0.02706, N >= 7.39, so 8.
     assert variance_budget_t(0.5, 5) == pytest.approx(0.027056, rel=1e-4)
@@ -163,6 +173,7 @@ def test_the_exact_sample_size_at_zero_tau_and_the_normal_form_short_of_it() -> 
     assert power_t(0.5, 0.0, 1.0, n_seeds=5, n_episodes=5) == pytest.approx(0.660, abs=1e-3)
 
 
+@pytest.mark.invariant
 def test_an_infeasible_design_is_reported_not_rounded() -> None:
     # Exact budget at S = 10: (0.5 / 2.6969)^2 = 0.0344. With tau2 = 1 the seed term alone is
     # 0.1: no number of episodes can rescue the design, and the answer must say so.
@@ -183,6 +194,7 @@ def test_an_infeasible_design_is_reported_not_rounded() -> None:
     assert seeds_for(0.5, tau2=0.0, sigma2=0.0, n_episodes=5) == 2
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize("k", [3.25, 2.85])
 def test_the_last_episode_is_settled_on_the_test_not_on_the_closed_form(
     monkeypatch: pytest.MonkeyPatch, k: float
@@ -195,11 +207,13 @@ def test_the_last_episode_is_settled_on_the_test_not_on_the_closed_form(
     assert pw.episodes_for(0.5, tau2=0.0, sigma2=1.0, n_seeds=5) == 8
 
 
+@pytest.mark.behaviour
 def test_an_effect_no_seed_count_can_reach_is_refused() -> None:
     with pytest.raises(OverflowError, match="no seed count"):
         seeds_for(1e-300, tau2=1.0, sigma2=1.0, n_episodes=10)
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize(
     ("delta", "tau2", "sigma2"),
     [(0.5, 0.0, 1.0), (0.5, 0.01, 1.0), (824.3, 51_838.0, 105_996_836.0), (1.0, 0.2, 50.0)],
@@ -221,6 +235,7 @@ def test_the_planner_gives_the_fewest_episodes_and_seeds_the_exact_test_powers(
         assert s == 2 or power_t(delta, tau2, sigma2, s - 1, N) < TARGET
 
 
+@pytest.mark.behaviour
 def test_budget_arithmetic_is_exact() -> None:
     b = budget(
         n_seeds=10,
@@ -239,6 +254,7 @@ def test_budget_arithmetic_is_exact() -> None:
     assert b.total_hours == pytest.approx(b.train_hours + b.eval_hours, rel=1e-12)
 
 
+@pytest.mark.invariant
 def test_the_frontier_reports_each_seed_count_with_its_cheapest_episode_count() -> None:
     # The cases of the infeasible-design test above, by exact power.
     designs = frontier(
@@ -264,6 +280,7 @@ def test_the_frontier_reports_each_seed_count_with_its_cheapest_episode_count() 
     assert all(str(d.n_seeds) in rendered for d in designs)
 
 
+@pytest.mark.behaviour
 def test_degenerate_inputs_are_refused() -> None:
     with pytest.raises(ValueError, match="seeds"):
         variance_components(np.zeros((1, 5)))
@@ -311,6 +328,7 @@ def _power_by_quadrature(delta: float, se: float, S: int, alpha: float) -> float
     return float(value)
 
 
+@pytest.mark.invariant
 def test_the_critical_value_is_student_t_and_tends_to_the_normal_one() -> None:
     from scipy.stats import t as student_t
 
@@ -324,6 +342,7 @@ def test_the_critical_value_is_student_t_and_tends_to_the_normal_one() -> None:
         t_critical(10, alpha=1.0)
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize(
     ("delta", "tau2", "sigma2", "S", "N"),
     [
@@ -342,6 +361,7 @@ def test_exact_power_matches_the_noncentral_t_by_quadrature(
     )
 
 
+@pytest.mark.invariant
 def test_exact_power_is_alpha_at_zero_and_sits_below_the_normal_approximation() -> None:
     assert power_t(0.0, 4.0, 100.0, 10, 25, ALPHA) == ALPHA
     # At S = 10 the t test pays for estimating its variance; the normal form does not.
@@ -355,6 +375,7 @@ def test_exact_power_is_alpha_at_zero_and_sits_below_the_normal_approximation() 
     assert power_t(0.0, 0.0, 0.0, 5, 5) == ALPHA
 
 
+@pytest.mark.invariant
 def test_with_no_variance_a_negative_effect_is_never_detected() -> None:
     # The limit as se falls to 0 (#31): a one-sided test cannot reject on an effect of the
     # wrong sign, so the power is 0, not alpha; the normal form agrees.
@@ -365,6 +386,7 @@ def test_with_no_variance_a_negative_effect_is_never_detected() -> None:
     assert power_t(-1.0, 0.0, 1e-12, 5, 5) < 1e-12
 
 
+@pytest.mark.invariant
 def test_the_detectable_effect_is_the_effect_at_which_power_hits_the_target() -> None:
     mde = detectable_effect(tau2=1.0, sigma2=4.0, n_seeds=8, n_episodes=10)
     assert power(mde, 1.0, 4.0, n_seeds=8, n_episodes=10) == pytest.approx(TARGET, abs=1e-12)
@@ -376,6 +398,7 @@ def test_the_detectable_effect_is_the_effect_at_which_power_hits_the_target() ->
     assert ratio == pytest.approx(np.sqrt(10.0), rel=1e-12)
 
 
+@pytest.mark.invariant
 def test_the_exact_t_floor_inverts_power_t_and_sits_above_the_normal_one() -> None:
     for S in (2, 5, 50):
         floor = detectable_effect_t(1.0, 4.0, S, 10)
@@ -390,6 +413,7 @@ def test_the_exact_t_floor_inverts_power_t_and_sits_above_the_normal_one() -> No
         detectable_effect_t(1.0, 4.0, 5, 10, alpha=0.05, target_power=0.04)
 
 
+@pytest.mark.invariant
 def test_the_noncentrality_is_the_one_power_t_needs_by_quadrature() -> None:
     # Independent of scipy's nct: at the noncentrality the quadrature power is the target.
     for S in (2, 3, 5, 10, 50):
@@ -405,6 +429,7 @@ def test_the_noncentrality_is_the_one_power_t_needs_by_quadrature() -> None:
         t_noncentrality(1)
 
 
+@pytest.mark.invariant
 def test_the_audit_numbers_for_the_normal_floor() -> None:
     # Week 6 audit (#20). Tau^2 dominating makes the floor a pure function of S.
     def understated(S: int) -> float:
@@ -426,6 +451,7 @@ def test_the_audit_numbers_for_the_normal_floor() -> None:
     assert power_t(2.0, 4.0, 100.0, 10, 25) == pytest.approx(0.662, abs=1e-3)
 
 
+@pytest.mark.invariant
 def test_component_standard_errors_on_a_constructed_matrix_are_exact() -> None:
     rows = np.array([[1.0, 2.0, 3.0], [3.0, 1.0, 2.0], [2.0, 3.0, 1.0], [1.0, 3.0, 2.0]])
     vc = variance_components(rows)  # MS_within = 1, MS_between = 0, S = 4, N = 3
@@ -435,6 +461,7 @@ def test_component_standard_errors_on_a_constructed_matrix_are_exact() -> None:
     assert "se 0.5000" in vc.render()
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize("seed", range(6))
 def test_seed_mean_variance_is_the_sample_variance_of_seed_means_with_or_without_the_clamp(
     seed: int,
@@ -448,6 +475,7 @@ def test_seed_mean_variance_is_the_sample_variance_of_seed_means_with_or_without
         assert vc.seed_mean_variance / vc.n_seeds < vc.var_grand_mean
 
 
+@pytest.mark.invariant
 def test_the_component_standard_errors_track_the_sampling_spread() -> None:
     tau2, sigma2, S, N = 4.0, 9.0, 40, 25
     estimates = [variance_components(simulate(s, tau2, sigma2, S, N)) for s in range(200)]

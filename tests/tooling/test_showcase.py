@@ -12,6 +12,7 @@ from optspread.jobs import JobSpec
 from scripts import showcase
 
 
+@pytest.mark.behaviour
 def test_the_plan_covers_every_question_on_paired_paths() -> None:
     runs = showcase.plan()
     groups = Counter(g for g, _, _, _ in runs)
@@ -39,6 +40,7 @@ def test_the_plan_covers_every_question_on_paired_paths() -> None:
     assert len({label for _, _, label, _ in runs}) == len(runs)
 
 
+@pytest.mark.behaviour
 def test_dry_run_prints_the_plan_and_writes_nothing(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -48,6 +50,7 @@ def test_dry_run_prints_the_plan_and_writes_nothing(
     assert not (tmp_path / "show").exists()
 
 
+@pytest.mark.behaviour
 def test_a_run_writes_its_catalog_entry(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[str] = []
 

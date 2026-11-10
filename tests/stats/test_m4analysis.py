@@ -67,6 +67,7 @@ def tiny_record(root: Path) -> GridRecord:
 # -- the design ------------------------------------------------------------- #
 
 
+@pytest.mark.invariant
 def test_the_confirmatory_grid_is_the_a7_sweep_and_its_hash_has_not_moved() -> None:
     assert hash_of(m4.CONFIRMATORY_GRID) == m4.CONFIRMATORY_GRID_HASH == "7d9d53d340006f02"
     assert grid_filename(m4.CONFIRMATORY_GRID) == "grid-7d9d53d340006f02.json"
@@ -103,12 +104,14 @@ def fake_record(grid: GridConfig, grid_hash: str | None = None) -> GridRecord:
     return GridRecord(grid_hash=grid_hash or hash_of(grid), grid=grid, cells=cells)
 
 
+@pytest.mark.invariant
 def test_the_confirmatory_record_has_no_design_problem_and_any_other_grid_does() -> None:
     assert m4.design_problems(fake_record(m4.CONFIRMATORY_GRID)) == ([], [])
     hard, soft = m4.design_problems(fake_record(TINY))
     assert hard == [] and "not the confirmatory design" in soft[0]
 
 
+@pytest.mark.invariant
 def test_a_record_that_cannot_be_analysed_is_refused_whatever_the_flag(tmp_path: Path) -> None:
     hard, _ = m4.design_problems(fake_record(TINY, grid_hash="0" * 16))
     assert "is not its config's" in hard[0]
@@ -127,6 +130,7 @@ def test_a_record_that_cannot_be_analysed_is_refused_whatever_the_flag(tmp_path:
 # -- the noncentral t ------------------------------------------------------- #
 
 
+@pytest.mark.invariant
 def test_power_at_is_power_t_written_in_the_noncentrality() -> None:
     tau2, sigma2, S, N = 3.0e4, 1.0e8, 5, 500
     for delta in (100.0, 500.0, 1_500.0):
@@ -136,6 +140,7 @@ def test_power_at_is_power_t_written_in_the_noncentrality() -> None:
     assert (m4.power_at(math.inf, S), m4.power_at(-math.inf, S)) == (1.0, 0.0)
 
 
+@pytest.mark.invariant
 def test_lambda_80_is_where_the_power_is_80_percent() -> None:
     lam = m4.noncentrality_for_power(0.80, 5)
     assert m4.power_at(lam, 5) == pytest.approx(0.80, abs=1e-9)
@@ -144,6 +149,7 @@ def test_lambda_80_is_where_the_power_is_80_percent() -> None:
         m4.noncentrality_for_power(0.04, 5)
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize("t_obs", [-3.0, 0.0, 2.0, 40.0, 1e4])
 def test_the_noncentrality_interval_inverts_the_noncentral_t(t_obs: float) -> None:
     lo, mid, hi = m4.noncentrality_interval(t_obs, 5)
@@ -152,6 +158,7 @@ def test_the_noncentrality_interval_inverts_the_noncentral_t(t_obs: float) -> No
         assert nct.cdf(t_obs, 4, lam) == pytest.approx(q, abs=1e-6)
 
 
+@pytest.mark.behaviour
 def test_an_infinite_t_has_no_interval_and_a_bad_level_is_refused() -> None:
     assert m4.noncentrality_interval(math.inf, 5) == (m4.NONCENTRALITY_CAP,) * 3
     assert m4.noncentrality_interval(-math.inf, 5)[0] == -m4.NONCENTRALITY_CAP
@@ -159,6 +166,7 @@ def test_an_infinite_t_has_no_interval_and_a_bad_level_is_refused() -> None:
         m4.noncentrality_interval(1.0, 5, level=1.0)
 
 
+@pytest.mark.invariant
 def test_the_band_covers_and_the_point_is_median_unbiased() -> None:
     # The section 8 discipline on the curve's own interval: t from nct(4, lambda = 2).
     rng = np.random.default_rng(3)
@@ -196,6 +204,7 @@ def curve_of(lams: list[float], spread: float = 1.0) -> list[m4.CurvePoint]:
 LAM80 = m4.noncentrality_for_power(0.80, 5)
 
 
+@pytest.mark.invariant
 def test_the_floor_is_the_first_crossing_of_the_interpolated_noncentrality() -> None:
     floor = m4.detection_floor(curve_of([0.0, 0.5, 1.0, 2.0, 4.0, 8.0]), 5)
     assert floor.premium == pytest.approx(1.0 + (LAM80 - 2.0) / 2.0)
@@ -205,12 +214,14 @@ def test_the_floor_is_the_first_crossing_of_the_interpolated_noncentrality() -> 
     assert floor.max_power == pytest.approx(m4.power_at(8.0, 5))
 
 
+@pytest.mark.invariant
 def test_a_floor_under_the_first_sweep_point_rests_on_the_anchor() -> None:
     floor = m4.detection_floor(curve_of([0.0, 5.0, 6.0, 7.0, 8.0, 9.0]), 5)
     assert floor.premium == pytest.approx(0.25 * LAM80 / 5.0)
     assert floor.status == "below_grid" and floor.bracket == (0.0, 0.25)
 
 
+@pytest.mark.invariant
 def test_a_floor_never_reached_is_above_the_grid_and_a_dip_is_reported() -> None:
     never = m4.detection_floor(curve_of([0.0, 0.1, 0.2, 0.4, 0.8, 1.6], spread=0.5), 5)
     assert never.premium is None and never.status == "not_reached"
@@ -222,6 +233,7 @@ def test_a_floor_never_reached_is_above_the_grid_and_a_dip_is_reported() -> None
         m4.detection_floor(curve_of([0.0, 1.0, 2.0, 3.0, 4.0, 5.0])[:1], 5)
 
 
+@pytest.mark.behaviour
 def test_the_interpolated_curve_meets_the_knots() -> None:
     curve = curve_of([0.0, 0.5, 1.0, 2.0, 4.0, 8.0])
     dense = m4.interpolate(curve, 5)
@@ -233,6 +245,7 @@ def test_the_interpolated_curve_meets_the_knots() -> None:
     assert powers == sorted(powers)  # a rising noncentrality draws a rising curve
 
 
+@pytest.mark.invariant
 def test_the_gap_is_the_horizontal_distance_at_80_percent() -> None:
     oracle = m4.detection_floor(curve_of([0.0, 5.0, 6.0, 7.0, 8.0, 9.0]), 5)
     learned = m4.detection_floor(curve_of([0.0, 0.5, 1.0, 2.0, 4.0, 8.0]), 5)
@@ -260,6 +273,7 @@ def groups(sds: list[float], seed: int = 0) -> list[np.ndarray]:
     return [rng.normal(0.0, sd, size=(12, 1)) + rng.normal(0.0, 1e-3, size=(12, 4)) for sd in sds]
 
 
+@pytest.mark.invariant
 def test_brown_forsythe_sees_a_spread_that_moves_and_not_one_that_does_not() -> None:
     same = m4.brown_forsythe("contrast", [1.0, 2.0, 4.0], groups([5.0, 5.0, 5.0]))
     moved = m4.brown_forsythe("contrast", [1.0, 2.0, 4.0], groups([1.0, 5.0, 50.0]))
@@ -268,6 +282,7 @@ def test_brown_forsythe_sees_a_spread_that_moves_and_not_one_that_does_not() -> 
     assert moved.levels[2].seed_mean_variance > moved.levels[0].seed_mean_variance
 
 
+@pytest.mark.behaviour
 def test_brown_forsythe_without_spread_or_with_one_group_is_undefined() -> None:
     flat = [np.ones((4, 3)), np.ones((4, 3)) * 2.0]
     assert m4.brown_forsythe("arm", [0.0, 1.0], flat).p_value is None
@@ -278,6 +293,7 @@ def test_brown_forsythe_without_spread_or_with_one_group_is_undefined() -> None:
 # -- the bootstrap (#14) ------------------------------------------------------ #
 
 
+@pytest.mark.invariant
 def test_normal_seed_means_agree_with_the_t_test() -> None:
     means = np.random.default_rng(5).normal(1.0, 1.0, size=5)
     level = m4.bootstrap_level(1.0, list(means), 0.01, n_boot=2_000, replications=300)
@@ -290,6 +306,7 @@ def test_normal_seed_means_agree_with_the_t_test() -> None:
     assert again == level  # seeded, so the report rebuilds the same
 
 
+@pytest.mark.invariant
 def test_one_outlying_seed_is_a_divergence_normal_data_do_not_produce() -> None:
     level = m4.bootstrap_level(
         2.0, [0.0, 0.0, 0.0, 0.0, 10.0], 0.01, n_boot=4_000, replications=400
@@ -298,6 +315,7 @@ def test_one_outlying_seed_is_a_divergence_normal_data_do_not_produce() -> None:
     assert level.check.gap < level.reference[0]
 
 
+@pytest.mark.behaviour
 def test_a_decisive_level_agrees_trivially() -> None:
     level = m4.bootstrap_level(
         4.0, [100.0, 101.0, 99.0, 100.5, 99.5], 0.01, n_boot=500, replications=50
@@ -305,6 +323,7 @@ def test_a_decisive_level_agrees_trivially() -> None:
     assert level.check.rate == 1.0 and level.agrees and level.boot_detected
 
 
+@pytest.mark.invariant
 def test_the_bootstrap_rule_is_anticonservative_at_five_seeds() -> None:
     size = m4.bootstrap_rule_size(5, n_boot=1_000, replications=600)
     assert size.size > 0.05 + 3 * size.mc_se and size.n_seeds == 5
@@ -313,11 +332,13 @@ def test_the_bootstrap_rule_is_anticonservative_at_five_seeds() -> None:
 # -- end to end on a tiny grid ------------------------------------------------- #
 
 
+@pytest.mark.invariant
 def test_a_grid_that_is_not_the_confirmatory_design_is_refused(tiny_root: Path) -> None:
     with pytest.raises(m4.RefusedGridError, match="not the confirmatory design"):
         m4.analyse(tiny_record(tiny_root), tiny_root, **FAST)
 
 
+@pytest.mark.invariant
 def test_the_analysis_runs_the_preregistered_event_on_every_arm_and_premium(
     tiny_root: Path,
 ) -> None:
@@ -340,6 +361,7 @@ def test_the_analysis_runs_the_preregistered_event_on_every_arm_and_premium(
     assert result.sweep_git_shas and result.arm("ppo").role == "learned"
 
 
+@pytest.mark.behaviour
 def test_the_sidecar_is_strict_json_with_the_documented_shape(tiny_root: Path) -> None:
     result = m4.analyse(tiny_record(tiny_root), tiny_root, exploratory=True, **FAST)
     prov = m4.Provenance(date(2026, 11, 19), "$VEGALAB_DATA/runs", "grid-x.json", "abc", False, {})
@@ -367,6 +389,7 @@ def test_the_sidecar_is_strict_json_with_the_documented_shape(tiny_root: Path) -
     assert data["settings"]["df"] == 2 and data["bootstrap_rule_size"]["n_seeds"] == 3
 
 
+@pytest.mark.invariant
 def test_an_incomplete_grid_is_refused_and_analysed_on_its_whole_blocks_when_told(
     tiny_root: Path, tmp_path: Path
 ) -> None:
@@ -395,6 +418,7 @@ def test_an_incomplete_grid_is_refused_and_analysed_on_its_whole_blocks_when_tol
 # -- the command --------------------------------------------------------------- #
 
 
+@pytest.mark.behaviour
 def test_the_command_writes_a_labelled_exploratory_report_with_portable_roots(
     tiny_root: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -433,6 +457,7 @@ def test_the_command_writes_a_labelled_exploratory_report_with_portable_roots(
     assert "## Bootstrap validation (#14)" in capsys.readouterr().out
 
 
+@pytest.mark.behaviour
 def test_the_command_defaults_to_the_confirmatory_grid(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -442,6 +467,7 @@ def test_the_command_defaults_to_the_confirmatory_grid(
         m4_analysis.main(["--root", str(tmp_path), "--replications", "100"])
 
 
+@pytest.mark.behaviour
 def test_the_report_names_a_confirmatory_run_a_gap_and_a_divergence(tiny_root: Path) -> None:
     result = m4.analyse(tiny_record(tiny_root), tiny_root, exploratory=True, **FAST)
     prov = m4.Provenance(
@@ -481,6 +507,7 @@ def test_the_report_names_a_confirmatory_run_a_gap_and_a_divergence(tiny_root: P
 # -- the audit's fixes (S1, S3, S5, S7, N3, N5) ------------------------------------ #
 
 
+@pytest.mark.invariant
 def test_one_solver_for_the_80_percent_noncentrality_and_a_knot_on_it_is_the_floor() -> None:
     assert m4.noncentrality_for_power(0.80, 5) == t_noncentrality(5, 0.05, 0.80)
     on_knot = m4.detection_floor(curve_of([0.0, 1.0, LAM80, 5.0, 6.0, 7.0]), 5)
@@ -488,6 +515,7 @@ def test_one_solver_for_the_80_percent_noncentrality_and_a_knot_on_it_is_the_flo
     assert m4.crossing([0.0, 1.0], [0.0, 3.0], 3.0) == 1.0
 
 
+@pytest.mark.invariant
 def test_each_bootstrap_level_resamples_with_its_own_seed() -> None:
     seeds = {m4.level_seed(0, arm, p) for arm in ("delta_seller", "ppo") for p in PREMIUMS[1:]}
     assert len(seeds) == 10  # no two levels or arms share resample indices
@@ -502,6 +530,7 @@ def test_each_bootstrap_level_resamples_with_its_own_seed() -> None:
     )
 
 
+@pytest.mark.invariant
 def test_brown_forsythe_is_calibrated_at_the_analysis_s_and_has_little_power_at_five() -> None:
     cal = m4.brown_forsythe_calibration(5, 5, ratios=(25.0,), replications=1_000, seed=3)
     assert cal.groups == 5 and cal.per_group == 5 and cal.alpha == 0.05
@@ -514,6 +543,7 @@ def test_brown_forsythe_is_calibrated_at_the_analysis_s_and_has_little_power_at_
         m4.brown_forsythe_calibration(1, 5)
 
 
+@pytest.mark.invariant
 def test_the_plan_is_a7s_and_the_design_is_rechecked_on_the_sweeps_own_variances(
     tiny_root: Path,
 ) -> None:
@@ -537,6 +567,7 @@ def test_the_plan_is_a7s_and_the_design_is_rechecked_on_the_sweeps_own_variances
     assert "These are pilot estimates, not what the sweep achieved." in text
 
 
+@pytest.mark.invariant
 def test_the_report_and_the_sidecar_say_the_rules_were_written_after_the_sweep(
     tiny_root: Path,
 ) -> None:
@@ -563,6 +594,7 @@ def test_the_report_and_the_sidecar_say_the_rules_were_written_after_the_sweep(
     assert all(isinstance(b["seed"], int) for b in data["arms"]["ppo"]["bootstrap"]["levels"])
 
 
+@pytest.mark.behaviour
 def test_a_floor_below_the_grid_lists_the_noncentrality_per_vol_point(tiny_root: Path) -> None:
     result = m4.analyse(tiny_record(tiny_root), tiny_root, exploratory=True, **FAST)
     prov = m4.Provenance(date(2026, 11, 19), "r", "g", "a" * 40, False, {})

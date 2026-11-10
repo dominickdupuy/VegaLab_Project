@@ -27,6 +27,7 @@ SHORT = RunConfig(
 # -- the put credit spread joins the library -------------------------------- #
 
 
+@pytest.mark.behaviour
 def test_put_credit_spread_is_two_puts_and_defined_risk() -> None:
     chain = SyntheticChainProvider(SHORT.market).reset(SeededStepRNG(0))
     pos = build_position(PUT_CREDIT_SPREAD, chain, SHORT.env)
@@ -43,6 +44,7 @@ def test_put_credit_spread_is_two_puts_and_defined_risk() -> None:
 # -- check 1: costs change the accounting and nothing else ------------------ #
 
 
+@pytest.mark.invariant
 @pytest.mark.slow
 def test_cost_identity_holds_for_every_seller() -> None:
     report = cost_drag_check(n_episodes=6, seed=2000)
@@ -53,6 +55,7 @@ def test_cost_identity_holds_for_every_seller() -> None:
 # -- check 2: cash settlement carries no exit cost -------------------------- #
 
 
+@pytest.mark.invariant
 def test_a_settled_structure_is_never_charged_an_exit() -> None:
     audit = audit_episode(SHORT, make_seller(IRON_CONDOR, None), seed=2000)
     assert audit.n_settlements >= 1, "this config must reach at least one expiry"
@@ -62,6 +65,7 @@ def test_a_settled_structure_is_never_charged_an_exit() -> None:
     assert audit.settlement_crossings == 0
 
 
+@pytest.mark.behaviour
 def test_settlement_crossings_counts_an_overcharge() -> None:
     # Positive control for check 2: the arithmetic must notice a crossing that no
     # open or early close accounts for, which is what a charge at settlement is.
@@ -80,6 +84,7 @@ def test_settlement_crossings_counts_an_overcharge() -> None:
     assert clean.settlement_crossings == 0
 
 
+@pytest.mark.invariant
 def test_a_rolled_seller_pays_for_the_close_it_actually_makes() -> None:
     audit = audit_episode(SHORT, make_seller(IRON_CONDOR, 5), seed=2000)
     assert audit.n_early_closes >= 1
@@ -90,6 +95,7 @@ def test_a_rolled_seller_pays_for_the_close_it_actually_makes() -> None:
 # -- check 3: nothing leaves the book without paying ------------------------ #
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize("action_id", [IRON_CONDOR, PUT_CREDIT_SPREAD])
 def test_a_live_structure_at_the_horizon_is_closed_and_pays_its_exit(action_id: int) -> None:
     """The defect the drag check found, now fixed.
@@ -104,6 +110,7 @@ def test_a_live_structure_at_the_horizon_is_closed_and_pays_its_exit(action_id: 
     assert audit.n_early_closes >= 1, "the horizon close is a real trade"
 
 
+@pytest.mark.invariant
 @pytest.mark.slow
 def test_measured_drag_equals_the_predicted_drag() -> None:
     report = cost_drag_check(n_episodes=6, seed=2000)
@@ -114,6 +121,7 @@ def test_measured_drag_equals_the_predicted_drag() -> None:
         assert row.measured_drag > 0.0, "a seller in a fair-priced world loses its costs"
 
 
+@pytest.mark.invariant
 def test_the_episode_pnl_is_realisable() -> None:
     # Nothing is left marked at mid: the book is flat when the episode ends, so the
     # reported P&L is a figure the episode could have taken.

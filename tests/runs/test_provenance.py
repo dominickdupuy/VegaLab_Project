@@ -82,6 +82,7 @@ PPO_GRID = GridConfig(
 # -- M1: components of one's own --------------------------------------------- #
 
 
+@pytest.mark.invariant
 def test_a_component_identity_is_recorded_and_the_defaults_record_none() -> None:
     assert components_identity(run_episodes) is None
     assert components_identity(Components()) is None  # runs exactly what the harness runs
@@ -92,6 +93,7 @@ def test_a_component_identity_is_recorded_and_the_defaults_record_none() -> None
     assert Components(costs=make_cost_model, source=SyntheticSource).identity is None
 
 
+@pytest.mark.invariant
 def test_a_cell_of_ones_own_components_is_not_a_default_cell_nor_the_reverse(
     tmp_path: Path,
 ) -> None:
@@ -128,6 +130,7 @@ def test_a_cell_of_ones_own_components_is_not_a_default_cell_nor_the_reverse(
         execute_run(cells[1].config, default / cells[1].run_id, runner=SKEW)
 
 
+@pytest.mark.invariant
 def test_a_runner_of_ones_own_is_named_and_its_cells_are_its_own(tmp_path: Path) -> None:
     calls: list[RunConfig] = []
 
@@ -155,6 +158,7 @@ def test_a_runner_of_ones_own_is_named_and_its_cells_are_its_own(tmp_path: Path)
 # -- m1: run_sweep and another source's run ------------------------------------ #
 
 
+@pytest.mark.invariant
 def test_run_sweep_does_not_write_over_another_sources_run(tmp_path: Path) -> None:
     config = SHORT.model_copy(update={"policy": "delta_seller"})
     run_dir = tmp_path / run_id(config)
@@ -170,6 +174,7 @@ def test_run_sweep_does_not_write_over_another_sources_run(tmp_path: Path) -> No
 # -- m2: the trainer when a reader names none ------------------------------------ #
 
 
+@pytest.mark.invariant
 def test_a_reader_naming_no_trainer_still_holds_learned_cells_to_the_real_learner(
     tmp_path: Path,
 ) -> None:
@@ -184,6 +189,7 @@ def test_a_reader_naming_no_trainer_still_holds_learned_cells_to_the_real_learne
     assert plan_cells(grid_cells(PPO_GRID), tmp_path).to_run == 1
 
 
+@pytest.mark.invariant
 def test_two_scripts_trainers_of_one_name_are_two_trainers() -> None:
     found = []
     for path in ("/one/train_a.py", "/two/train_b.py"):
@@ -196,6 +202,7 @@ def test_two_scripts_trainers_of_one_name_are_two_trainers() -> None:
     assert REAL_TRAINER == "optspread.train.train_ppo"
 
 
+@pytest.mark.invariant
 def test_a_scripts_trainer_has_the_same_name_in_a_spawned_worker() -> None:
     # A spawned worker imports the script it was started from as __mp_main__.
     found = []
@@ -206,6 +213,7 @@ def test_a_scripts_trainer_has_the_same_name_in_a_spawned_worker() -> None:
     assert found == ["__main__.trainer@/one/train_a.py"] * 2
 
 
+@pytest.mark.invariant
 @pytest.mark.spawns_processes
 def test_a_scripts_own_trainer_runs_a_grid_on_two_workers_and_is_reused(tmp_path: Path) -> None:
     script = tmp_path / "my_study.py"
@@ -255,6 +263,7 @@ if __name__ == "__main__":
 # -- m3: commits ------------------------------------------------------------------ #
 
 
+@pytest.mark.invariant
 def test_a_reused_cell_from_another_commit_is_reused_and_reported(tmp_path: Path) -> None:
     record = run_grid(GRID, tmp_path)
     assert len(record.commits) == 1 and record.commits[0] != "unknown"
@@ -278,6 +287,7 @@ def test_a_reused_cell_from_another_commit_is_reused_and_reported(tmp_path: Path
 # -- M3 and m4: the platform and a dirty tree ---------------------------------------- #
 
 
+@pytest.mark.invariant
 def test_a_manifest_records_its_platform_and_an_old_one_reads_without(tmp_path: Path) -> None:
     episodes = run_episodes(SHORT)
     manifest = write_run(tmp_path, SHORT, summarize(episodes), episodes)
@@ -294,6 +304,7 @@ def _git(cwd: Path, *args: str) -> None:
     subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True)
 
 
+@pytest.mark.invariant
 def test_a_finder_ds_store_does_not_make_runs_dirty(tmp_path: Path) -> None:
     paths = [".DS_Store", "optspread/.DS_Store", "web/.DS_Store"]
     ignored = subprocess.run(
@@ -325,6 +336,7 @@ def test_a_finder_ds_store_does_not_make_runs_dirty(tmp_path: Path) -> None:
 WRITERS = ("manifest", "artifacts", "sweep", "orchestrate", "jobs", "replay")
 
 
+@pytest.mark.behaviour
 def test_the_run_writers_and_readers_name_their_encoding(tmp_path: Path) -> None:
     script = """
 import sys, warnings

@@ -44,12 +44,14 @@ RUN = RunConfig(
 )
 
 
+@pytest.mark.invariant
 def test_the_frozen_set_is_the_installed_librarys_defaults() -> None:
     record = frozen_hyperparameters()
     assert record.library_version is not None
     assert record.matches_library, record.render()
 
 
+@pytest.mark.invariant
 def test_the_model_is_built_with_the_frozen_set_and_trains_on_its_own_paths() -> None:
     model = train_ppo(RUN).model
     hp = RUN.train.hyperparameters if RUN.train else None
@@ -72,6 +74,7 @@ def test_the_model_is_built_with_the_frozen_set_and_trains_on_its_own_paths() ->
     assert wrapper.episodes >= 2048 // 21  # a fresh path every episode
 
 
+@pytest.mark.invariant
 def test_one_config_trains_one_policy_and_another_seed_trains_another() -> None:
     a, b = train_ppo(RUN), train_ppo(RUN)
     assert run_episodes(RUN, a) == run_episodes(RUN, b)
@@ -86,6 +89,7 @@ def test_one_config_trains_one_policy_and_another_seed_trains_another() -> None:
     )
 
 
+@pytest.mark.invariant
 def test_a_ppo_run_replays_bit_for_bit(tmp_path: Path) -> None:
     execute_run(RUN, tmp_path)
     assert (tmp_path / "policy.zip").stat().st_size > 0
@@ -95,6 +99,7 @@ def test_a_ppo_run_replays_bit_for_bit(tmp_path: Path) -> None:
     assert matches, reason
 
 
+@pytest.mark.invariant
 def test_a_checkpoint_is_the_policy_a_run_of_that_budget_trains() -> None:
     # The learning-curve check (#4) reads its curve from one training run per seed;
     # that is only the curve of the budget question if each checkpoint is the policy a
@@ -114,6 +119,7 @@ def test_a_checkpoint_is_the_policy_a_run_of_that_budget_trains() -> None:
     assert seen[4096] == tuple(e.pnl for e in run_episodes(longer, train_ppo(longer)))
 
 
+@pytest.mark.invariant
 def test_asking_whether_to_stop_trains_the_same_policy_and_stopping_ends_it() -> None:
     from optspread.train import STOP_CHECK_STEPS, TrainingStoppedError
 
@@ -136,6 +142,7 @@ def test_asking_whether_to_stop_trains_the_same_policy_and_stopping_ends_it() ->
         train_ppo(long, should_stop=lambda: True)
 
 
+@pytest.mark.behaviour
 def test_mypy_strict_passes_with_the_learner_installed() -> None:
     # The type: ignore on the checkpoint callback is needed only without Stable-Baselines3
     # (BaseCallback is Any there); with it installed it must not be an unused ignore.
@@ -154,6 +161,7 @@ def test_mypy_strict_passes_with_the_learner_installed() -> None:
     assert done.returncode == 0, done.stdout + done.stderr
 
 
+@pytest.mark.behaviour
 def test_ci_type_checks_and_runs_the_ppo_tests_with_the_learner_installed() -> None:
     ci = (
         Path(__file__).resolve().parent.parent.parent / ".github" / "workflows" / "ci.yml"

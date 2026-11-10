@@ -52,6 +52,7 @@ from optspread.sweep import SweepConfig
 # -- where things are read from ------------------------------------------------ #
 
 
+@pytest.mark.behaviour
 def test_roots_come_from_the_environment_or_the_repository(tmp_path: Path) -> None:
     assert runs_root({}) == REPO_ROOT / "runs"
     assert docs_dir({}) == REPO_ROOT / "docs"
@@ -63,6 +64,7 @@ def test_roots_come_from_the_environment_or_the_repository(tmp_path: Path) -> No
 # -- the run browser ------------------------------------------------------------ #
 
 
+@pytest.mark.invariant
 def test_every_run_directory_is_listed_including_the_broken_ones(
     run_root: Path, tiny_sweep: SweepConfig
 ) -> None:
@@ -77,6 +79,7 @@ def test_every_run_directory_is_listed_including_the_broken_ones(
     assert stamps == sorted(stamps, reverse=True)
 
 
+@pytest.mark.invariant
 def test_a_clean_cell_carries_its_provenance_and_headline(
     run_root: Path, tiny_sweep: SweepConfig
 ) -> None:
@@ -91,6 +94,7 @@ def test_a_clean_cell_carries_its_provenance_and_headline(
     assert row.digests_ok is True and row.problems == ()
 
 
+@pytest.mark.invariant
 def test_a_manifest_the_gate_refuses_is_listed_with_the_reason(run_root: Path) -> None:
     row = next(r for r in scan_runs(run_root) if r.run_id == "broken-run")
     assert row.status == "INVALID"
@@ -100,6 +104,7 @@ def test_a_manifest_the_gate_refuses_is_listed_with_the_reason(run_root: Path) -
     assert row.digests_ok is None  # nothing recorded, so nothing to check
 
 
+@pytest.mark.invariant
 def test_a_results_file_edited_after_its_manifest_is_caught(run_root: Path) -> None:
     row = next(r for r in scan_runs(run_root) if r.status == "DIGEST MISMATCH")
     assert row.mean_pnl == 1e9  # the edited number is shown, flagged
@@ -107,6 +112,7 @@ def test_a_results_file_edited_after_its_manifest_is_caught(run_root: Path) -> N
     assert [a.ok for a in detail.artifacts] == [False]
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize("artifacts", [{}, {"policy.zip": "0" * 64}])
 def test_a_run_whose_manifest_does_not_hash_its_results_is_unverified(
     run_root: Path, tmp_path: Path, artifacts: dict[str, str]
@@ -129,6 +135,7 @@ def test_a_run_whose_manifest_does_not_hash_its_results_is_unverified(
     assert premium_curve([row]) == {}
 
 
+@pytest.mark.invariant
 def test_every_run_names_its_data_source_and_old_manifests_read_as_synthetic(
     run_root: Path, tmp_path: Path
 ) -> None:
@@ -159,6 +166,7 @@ def test_every_run_names_its_data_source_and_old_manifests_read_as_synthetic(
     assert copy("worse", {"panel": 1}).source == "unreadable"
 
 
+@pytest.mark.invariant
 def test_unreadable_files_become_problems_not_exceptions(tmp_path: Path) -> None:
     run = tmp_path / "bad"
     run.mkdir()
@@ -173,6 +181,7 @@ def test_unreadable_files_become_problems_not_exceptions(tmp_path: Path) -> None
     assert detail.manifest == {} and detail.record is None and detail.pnl.size == 0
 
 
+@pytest.mark.invariant
 def test_the_pilot_matrix_manifest_is_not_listed_as_a_run(run_root: Path, tmp_path: Path) -> None:
     clean = next(r for r in scan_runs(run_root) if r.status == "OK")
     manifest = json.loads((clean.path / "manifest.json").read_text())
@@ -190,10 +199,12 @@ def test_the_pilot_matrix_manifest_is_not_listed_as_a_run(run_root: Path, tmp_pa
     assert {r.status for r in scan_runs(pilot)} == {"OK", "INVALID"}
 
 
+@pytest.mark.behaviour
 def test_a_missing_root_lists_nothing(tmp_path: Path) -> None:
     assert scan_runs(tmp_path / "absent") == ()
 
 
+@pytest.mark.behaviour
 def test_filters_narrow_by_every_facet(run_root: Path, tiny_sweep: SweepConfig) -> None:
     rows = scan_runs(run_root)
     facets = run_facets(rows)
@@ -214,6 +225,7 @@ def test_filters_narrow_by_every_facet(run_root: Path, tiny_sweep: SweepConfig) 
     assert filter_runs(rows, text=one.upper()) == filter_runs(rows, config_hashes=[one])
 
 
+@pytest.mark.behaviour
 def test_a_run_opens_with_its_manifest_and_episodes(
     run_root: Path, tiny_sweep: SweepConfig
 ) -> None:
@@ -228,6 +240,7 @@ def test_a_run_opens_with_its_manifest_and_episodes(
     assert all(a.ok for a in detail.artifacts) and detail.artifacts[0].path == "run.json"
 
 
+@pytest.mark.behaviour
 def test_risk_figures_on_a_hand_worked_sample() -> None:
     pnl = np.asarray([100.0, -50.0, 30.0, -200.0, 120.0])
     stats = risk_stats(pnl, np.asarray([2.0, 2.0, 4.0, 0.0, 2.0]))
@@ -244,6 +257,7 @@ def test_risk_figures_on_a_hand_worked_sample() -> None:
     assert risk_stats(np.asarray([])).mean is None
 
 
+@pytest.mark.behaviour
 def test_two_runs_compare_on_their_shared_seeds(run_root: Path) -> None:
     ok = [r for r in scan_runs(run_root) if r.status == "OK" and r.premium == 2.0]
     flat = load_run_detail(next(r for r in ok if r.policy == "flat").path)
@@ -260,6 +274,7 @@ def test_two_runs_compare_on_their_shared_seeds(run_root: Path) -> None:
     assert flatten_config(None) == {}
 
 
+@pytest.mark.invariant
 def test_the_premium_curve_uses_clean_runs_only(run_root: Path) -> None:
     curve = premium_curve(scan_runs(run_root))
     assert set(curve) == {"delta_seller", "flat"}
@@ -271,6 +286,7 @@ def test_the_premium_curve_uses_clean_runs_only(run_root: Path) -> None:
 # -- the gate board -------------------------------------------------------------- #
 
 
+@pytest.mark.behaviour
 def test_the_committed_m1_report_parses_from_markdown() -> None:
     md = REPO_ROOT / "docs" / "M1_GATE_REPORT.md"
     board = parse_gate_markdown(md.read_text(), md)
@@ -286,6 +302,7 @@ def test_the_committed_m1_report_parses_from_markdown() -> None:
     assert manifests.cited_runs == ("adddb0b7e5f604ad-s1",)
 
 
+@pytest.mark.behaviour
 def test_the_m1_sidecar_is_preferred_and_says_what_the_markdown_says() -> None:
     board = load_gate_board(REPO_ROOT / "docs", "M1")
     md = REPO_ROOT / "docs" / "M1_GATE_REPORT.md"
@@ -301,6 +318,7 @@ def test_the_m1_sidecar_is_preferred_and_says_what_the_markdown_says() -> None:
     ]
 
 
+@pytest.mark.behaviour
 def test_the_json_sidecar_wins_over_the_markdown(gate_docs: Path) -> None:
     assert gate_milestones(gate_docs) == ("M1", "M2")
     m2 = load_gate_board(gate_docs, "M2")
@@ -313,6 +331,7 @@ def test_the_json_sidecar_wins_over_the_markdown(gate_docs: Path) -> None:
     assert load_gate_board(gate_docs, "M9") is None
 
 
+@pytest.mark.behaviour
 def test_milestones_sort_numerically(tmp_path: Path) -> None:
     for name in ("M10", "M2", "M1"):
         (tmp_path / f"{name}_GATE_REPORT.md").write_text("")
@@ -321,6 +340,7 @@ def test_milestones_sort_numerically(tmp_path: Path) -> None:
     assert gate_milestones(tmp_path / "absent") == ()
 
 
+@pytest.mark.behaviour
 def test_a_failing_markdown_report_records_what_failed_first(tmp_path: Path) -> None:
     text = "\n".join(
         [
@@ -358,6 +378,7 @@ def _item(verdict: str, criterion: str = "a rule", evidence: str = "observed") -
     }
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize(
     "items",
     [
@@ -377,6 +398,7 @@ def test_a_stated_pass_the_items_do_not_support_is_not_cleared(
     assert board.verdict == "NOT CLEARED" and board.verdict_mismatch
 
 
+@pytest.mark.invariant
 def test_a_hand_edited_markdown_verdict_is_flagged(tmp_path: Path) -> None:
     text = "\n".join(
         [
@@ -402,6 +424,7 @@ def test_a_hand_edited_markdown_verdict_is_flagged(tmp_path: Path) -> None:
     assert clean.verdict == "PASS" and not clean.verdict_mismatch
 
 
+@pytest.mark.behaviour
 @pytest.mark.parametrize(
     "text",
     [
@@ -414,6 +437,7 @@ def test_an_unparseable_markdown_report_is_an_error(text: str, tmp_path: Path) -
         parse_gate_markdown(text, tmp_path / "M1_GATE_REPORT.md")
 
 
+@pytest.mark.behaviour
 @pytest.mark.parametrize("text", ["{", json.dumps({"milestone": "M2"}), json.dumps([1])])
 def test_an_unparseable_json_report_is_an_error(text: str, tmp_path: Path) -> None:
     with pytest.raises(GateReportFormatError):
@@ -423,6 +447,7 @@ def test_an_unparseable_json_report_is_an_error(text: str, tmp_path: Path) -> No
 # -- the poisoned-environment demo ----------------------------------------------- #
 
 
+@pytest.mark.invariant
 def test_the_demo_passes_the_clean_world_and_catches_the_poisoned_one() -> None:
     demo = run_leak_demo(eps=0.5, n_seeds=5)
     assert not demo.clean.flagged and demo.clean_past_unchanged
@@ -432,6 +457,7 @@ def test_the_demo_passes_the_clean_world_and_catches_the_poisoned_one() -> None:
     assert demo.criterion == PASS_CRITERION
 
 
+@pytest.mark.behaviour
 def test_the_demo_refuses_a_poison_of_zero() -> None:
     with pytest.raises(ValueError, match="eps > 0"):
         run_leak_demo(eps=0.0)
@@ -440,6 +466,7 @@ def test_the_demo_refuses_a_poison_of_zero() -> None:
 # -- the landing page --------------------------------------------------------------- #
 
 
+@pytest.mark.behaviour
 def test_the_summary_is_the_readme_opening_without_self_references(tmp_path: Path) -> None:
     paras = readme_summary(REPO_ROOT / "README.md")
     assert paras[0].startswith("A leak-tested SPX options simulator")
@@ -450,6 +477,7 @@ def test_the_summary_is_the_readme_opening_without_self_references(tmp_path: Pat
     assert readme_summary(tmp_path / "absent.md") == ()
 
 
+@pytest.mark.behaviour
 def test_one_unreadable_sidecar_does_not_take_the_boards_down(tmp_path: Path) -> None:
     docs = tmp_path / "docs"
     docs.mkdir()

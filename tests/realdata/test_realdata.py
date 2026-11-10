@@ -93,6 +93,7 @@ def _quotes(day: date, spot: float, sigma: float = SIGMA, *, root: str = "SPXW")
 # -- carry and IV ------------------------------------------------------------ #
 
 
+@pytest.mark.invariant
 def test_parity_recovers_the_forward_and_the_discount_factor() -> None:
     q = _quotes(DAY0, SPOT)
     q["mid"] = 0.5 * (q["bid"] + q["ask"])
@@ -107,6 +108,7 @@ def test_parity_recovers_the_forward_and_the_discount_factor() -> None:
     np.testing.assert_allclose(short["discount"], np.exp(-RATE * short["tau"]), atol=5e-4)
 
 
+@pytest.mark.invariant
 def test_the_solver_recovers_the_vol_on_both_rights() -> None:
     T = np.full(6, 0.25)
     K = np.array([4500.0, 5000.0, 5500.0] * 2)
@@ -116,6 +118,7 @@ def test_the_solver_recovers_the_vol_on_both_rights() -> None:
     np.testing.assert_allclose(implied_vol(is_call, S, K, r, T, price), 0.23, atol=1e-8)
 
 
+@pytest.mark.invariant
 def test_a_price_outside_the_bounds_has_no_vol() -> None:
     iv = implied_vol(
         np.array([True, False]),
@@ -128,6 +131,7 @@ def test_a_price_outside_the_bounds_has_no_vol() -> None:
     assert np.isnan(iv).all()
 
 
+@pytest.mark.invariant
 def test_the_priced_surface_is_flat_where_the_chain_was_priced_flat() -> None:
     s = price_surface(_quotes(DAY0, SPOT))
     s["k"] = np.log(s["strike"] / s["forward"])
@@ -136,6 +140,7 @@ def test_the_priced_surface_is_flat_where_the_chain_was_priced_flat() -> None:
     assert float((band["iv"] - SIGMA).abs().quantile(0.95)) < 0.005
 
 
+@pytest.mark.invariant
 def test_am_settled_contracts_stop_at_the_open() -> None:
     tau = time_to_expiry(
         pd.Series([DAY0, DAY0]), pd.Series([DAY0 + timedelta(days=7)] * 2), pd.Series([1, 0])
@@ -146,6 +151,7 @@ def test_am_settled_contracts_stop_at_the_open() -> None:
 # -- vendor schemas ------------------------------------------------------------ #
 
 
+@pytest.mark.invariant
 def test_osi_symbols_split_into_their_fields() -> None:
     out = parse_osi(pd.Series(["SPXW  250709C05500000", "SPX   251219P00255000", "junk"]))
     assert out["root"].iloc[0] == "SPXW" and out["root"].iloc[1] == "SPX"
@@ -155,6 +161,7 @@ def test_osi_symbols_split_into_their_fields() -> None:
     assert pd.isna(out["strike"].iloc[2])
 
 
+@pytest.mark.invariant
 def test_the_closing_bar_is_the_first_and_other_roots_are_dropped() -> None:
     idx = pd.DatetimeIndex(
         ["2025-07-09 19:59", "2025-07-09 19:59", "2025-07-09 19:59", "2025-07-09 20:00"], tz="UTC"
@@ -196,6 +203,7 @@ def _bars(stamps: list[str], symbols: list[str], bids: list[float]) -> pd.DataFr
     )
 
 
+@pytest.mark.invariant
 def test_a_contract_missing_from_the_closing_bar_keeps_its_next_bar_in_the_window() -> None:
     # cbbo-1m writes a bar only when the book changed: the SPX put had no update at
     # 15:59, so the 16:00 bar is its first quote in the window; 16:01 is past it.
@@ -216,6 +224,7 @@ def test_a_contract_missing_from_the_closing_bar_keeps_its_next_bar_in_the_windo
     assert set(q["date"]) == {date(2025, 7, 9)}
 
 
+@pytest.mark.invariant
 def test_on_an_early_close_the_window_opens_at_the_first_bar() -> None:
     # 12:59 New York is 16:59 UTC in July: the close is still the file's first bar.
     frame = _bars(
@@ -228,6 +237,7 @@ def test_on_an_early_close_the_window_opens_at_the_first_bar() -> None:
     assert set(q["date"]) == {date(2025, 7, 3)}
 
 
+@pytest.mark.behaviour
 def test_batch_metadata_reads_nanosecond_and_iso_starts() -> None:
     info = parse_metadata(
         {
@@ -248,6 +258,7 @@ def test_batch_metadata_reads_nanosecond_and_iso_starts() -> None:
     assert info.is_spx_close and info.as_row()["symbols"] == "SPX.OPT,SPY.OPT"
 
 
+@pytest.mark.invariant
 def test_pre_osi_vendor_symbols_take_their_root_from_settlement() -> None:
     raw = pd.DataFrame(
         {
@@ -273,6 +284,7 @@ def test_pre_osi_vendor_symbols_take_their_root_from_settlement() -> None:
     assert q["am_settled"].tolist() == [True, False, False]
 
 
+@pytest.mark.invariant
 def test_saturday_am_expiries_settle_on_the_friday() -> None:
     raw = pd.DataFrame(
         {
@@ -313,6 +325,7 @@ def _vendor_rows(**cols: list[object]) -> pd.DataFrame:
     return pd.DataFrame(base | cols)
 
 
+@pytest.mark.invariant
 def test_a_saturday_expiry_after_good_friday_settles_on_the_thursday() -> None:
     # The April 2014 monthly: the vendor dates it Saturday 2014-04-19, the market
     # was shut on Good Friday 2014-04-18, so it settled at Thursday's open.
@@ -328,6 +341,7 @@ def test_a_saturday_expiry_after_good_friday_settles_on_the_thursday() -> None:
     assert tau[0] == pytest.approx((16 - 6.5 / 24) / 365), "tau runs to Thursday's open"
 
 
+@pytest.mark.invariant
 def test_the_other_vendor_roots_map_to_spx_or_spxw_by_settlement() -> None:
     raw = _vendor_rows(
         date=[date(2012, 3, 1)] * 6,
@@ -362,6 +376,7 @@ def test_the_other_vendor_roots_map_to_spx_or_spxw_by_settlement() -> None:
     assert q["am_settled"].tolist() == [False, False, True, True, False]
 
 
+@pytest.mark.invariant
 def test_a_year_of_listed_roots_is_unchanged_by_the_mapping() -> None:
     raw = _vendor_rows(
         date=[date(2016, 3, 1)] * 2,
@@ -401,6 +416,7 @@ def built() -> tuple[pd.DataFrame, pd.Series, pd.DataFrame]:
     return panel, spots, atm_term(panel)
 
 
+@pytest.mark.invariant
 def test_finalise_keeps_the_schema_and_the_band(built: tuple[pd.DataFrame, ...]) -> None:
     panel = built[0]
     assert {"source", "dte", "iv_vendor", "volume"} <= set(panel.columns)
@@ -409,6 +425,7 @@ def test_finalise_keeps_the_schema_and_the_band(built: tuple[pd.DataFrame, ...])
     assert (panel["source"] == "optionmetrics").all()
 
 
+@pytest.mark.invariant
 def test_atm_iv_and_the_30_day_interpolation_recover_the_flat_vol(
     built: tuple[pd.DataFrame, pd.Series, pd.DataFrame],
 ) -> None:
@@ -419,6 +436,7 @@ def test_atm_iv_and_the_30_day_interpolation_recover_the_flat_vol(
     assert float((series - SIGMA).abs().max()) < 0.003
 
 
+@pytest.mark.invariant
 def test_iv30_takes_spxw_where_both_roots_list_the_same_expiry() -> None:
     # A third Friday listed by both roots: the AM row is 6.5 hours shorter. Only the
     # SPXW row's vol (0.30) brackets 30 days with the far expiry here.
@@ -435,6 +453,7 @@ def test_iv30_takes_spxw_where_both_roots_list_the_same_expiry() -> None:
     assert float(iv30(term).iloc[0]) == pytest.approx(0.30)
 
 
+@pytest.mark.invariant
 def test_daily_table_realised_vol_and_vrp(
     built: tuple[pd.DataFrame, pd.Series, pd.DataFrame],
 ) -> None:
@@ -454,6 +473,7 @@ def test_daily_table_realised_vol_and_vrp(
     assert "carry30" not in daily, "the carry against the close is gone (panel version 4)"
 
 
+@pytest.mark.invariant
 def test_carry_is_read_at_the_expiry_nearest_thirty_days() -> None:
     term = pd.DataFrame(
         {
@@ -468,6 +488,7 @@ def test_carry_is_read_at_the_expiry_nearest_thirty_days() -> None:
     assert out["carry30_parity"].item() == pytest.approx(np.log(5010 / 5000) / (31 / 365))
 
 
+@pytest.mark.invariant
 def test_the_surface_grid_is_flat_inside_the_quoted_range(
     built: tuple[pd.DataFrame, pd.Series, pd.DataFrame],
 ) -> None:
@@ -483,6 +504,7 @@ def test_the_surface_grid_is_flat_inside_the_quoted_range(
     assert at_30["iv"].notna().all(), "a tenor on a listed expiry reads that expiry alone"
 
 
+@pytest.mark.invariant
 def test_the_calendar_refuses_a_date_past_its_holiday_list() -> None:
     vendor = pd.Index([date(2025, 8, 29)])
     cal = trading_calendar(vendor, date(2027, 7, 9))
@@ -491,6 +513,7 @@ def test_the_calendar_refuses_a_date_past_its_holiday_list() -> None:
         trading_calendar(vendor, date(2028, 1, 3))
 
 
+@pytest.mark.invariant
 def test_coverage_lists_every_missing_day() -> None:
     vendor = pd.Index([date(2025, 8, 27), date(2025, 8, 28), date(2025, 8, 29)])
     cal = trading_calendar(vendor, date(2025, 9, 5))
@@ -504,6 +527,7 @@ def test_coverage_lists_every_missing_day() -> None:
     assert cov.loc[cov["missing"], "source"].item() == "none"
 
 
+@pytest.mark.invariant
 def test_the_seam_of_two_identical_vendors_is_zero(
     built: tuple[pd.DataFrame, pd.Series, pd.DataFrame],
 ) -> None:
@@ -526,6 +550,7 @@ def _store(built: tuple[pd.DataFrame, pd.Series, pd.DataFrame]) -> SurfaceStore:
     return SurfaceStore.from_frames(surface_grid(panel), daily, "eval", FIXTURE)
 
 
+@pytest.mark.invariant
 def test_the_store_fills_every_grid_gap(
     built: tuple[pd.DataFrame, pd.Series, pd.DataFrame],
 ) -> None:
@@ -535,6 +560,7 @@ def test_the_store_fills_every_grid_gap(
     assert np.isfinite(store.ivs).all()
 
 
+@pytest.mark.invariant
 def test_the_historical_provider_conforms(
     built: tuple[pd.DataFrame, pd.Series, pd.DataFrame], tmp_path: Path
 ) -> None:
@@ -570,6 +596,7 @@ def test_the_historical_provider_conforms(
         HistoricalChainProvider(MarketConfig(n_days=500), store)
 
 
+@pytest.mark.invariant
 def test_the_provider_interpolates_total_variance_across_tenors() -> None:
     n_days = 30
     grid_t = np.asarray(TENOR_GRID, dtype=np.float64)
@@ -608,6 +635,7 @@ def _sloped_store(n_days: int, dates: tuple[str, ...] | None = None) -> SurfaceS
 TERM = MarketConfig(n_days=24, tenor_days=(10, 30))
 
 
+@pytest.mark.invariant
 def test_a_held_leg_marks_continuously_between_listed_tenors() -> None:
     p = HistoricalChainProvider(TERM, _sloped_store(40))
     chain = p.reset(SeededStepRNG(0))
@@ -643,6 +671,7 @@ def test_a_held_leg_marks_continuously_between_listed_tenors() -> None:
     assert chain.iv_at(int(chain.expiry_days[-1]) + 5, K) == float(chain.ivs[-1, 16])
 
 
+@pytest.mark.invariant
 def test_the_book_marks_a_held_structure_through_the_interpolated_vol() -> None:
     """Equity under a held condor moves smoothly; under the nearest-tenor lookup it steps."""
 
@@ -663,6 +692,7 @@ def test_the_book_marks_a_held_structure_through_the_interpolated_vol() -> None:
     assert float(np.abs(np.diff(smooth)).max()) < jump / 5
 
 
+@pytest.mark.invariant
 def test_the_synthetic_world_keeps_the_plain_chain() -> None:
     chain = SyntheticChainProvider(MarketConfig()).reset(SeededStepRNG(0))
     assert type(chain) is Chain
@@ -677,6 +707,7 @@ def _window(p: HistoricalChainProvider, seed: int) -> set[str]:
     return set(p.store.dates[i : i + p.n_days + 1])
 
 
+@pytest.mark.invariant
 def test_a_surface_of_your_own_cuts_its_splits_on_its_own_ranges() -> None:
     grid, daily = _frames(_business_days(date(2022, 5, 2), date(2022, 9, 30)))
     cfg = MarketConfig(n_days=10, tenor_days=(5, 10))
@@ -690,6 +721,7 @@ def test_a_surface_of_your_own_cuts_its_splits_on_its_own_ranges() -> None:
     assert train.n_starts == 44 - 10 and test.n_starts == 39 - 10
 
 
+@pytest.mark.invariant
 def test_other_ranges_are_for_a_root_of_your_own_never_the_team_panel(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -725,6 +757,7 @@ def test_other_ranges_are_for_a_root_of_your_own_never_the_team_panel(
     assert provider.store.dates[0] == "2022-07-01" and provider.store.dates[-1] == "2022-08-24"
 
 
+@pytest.mark.invariant
 def test_no_window_runs_across_days_dropped_from_the_store(
     built: tuple[pd.DataFrame, pd.Series, pd.DataFrame],
 ) -> None:
@@ -748,6 +781,7 @@ def test_no_window_runs_across_days_dropped_from_the_store(
         assert window[-1] - window[0] == cfg.n_days, "consecutive trading days"
 
 
+@pytest.mark.behaviour
 def test_the_source_is_available_once_the_panel_files_exist(tmp_path: Path) -> None:
     src = OptionMetricsSource(root=tmp_path)
     assert not src.available
@@ -757,6 +791,7 @@ def test_the_source_is_available_once_the_panel_files_exist(tmp_path: Path) -> N
     assert src.available
 
 
+@pytest.mark.behaviour
 def test_the_data_root_follows_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("VEGALAB_DATA", "/tmp/somewhere")
     assert data_root() == Path("/tmp/somewhere")
@@ -767,6 +802,7 @@ def test_the_data_root_follows_the_environment(monkeypatch: pytest.MonkeyPatch) 
 # -- strike units: the vendor's x 1000, or already divided out ----------------- #
 
 
+@pytest.mark.invariant
 def test_the_strike_unit_is_read_from_the_data() -> None:
     close = pd.Series([4000.0, 4100.0, 4200.0])
     points = pd.Series([3000.0, 4000.0, 5000.0])
@@ -776,6 +812,7 @@ def test_the_strike_unit_is_read_from_the_data() -> None:
         strike_divisor(points * 30.0, close)
 
 
+@pytest.mark.invariant
 def test_a_copy_already_in_index_points_is_not_divided_again() -> None:
     raw = pd.DataFrame(
         {
@@ -820,6 +857,7 @@ def _business_days(start: date, end: date) -> list[date]:
     return [d.date() for d in pd.bdate_range(start, end)]
 
 
+@pytest.mark.invariant
 def test_train_and_eval_are_disjoint_and_neither_reaches_the_holdout() -> None:
     days = _business_days(date(2018, 12, 1), date(2018, 12, 31))
     days += _business_days(date(2022, 8, 1), date(2022, 9, 30))
@@ -837,6 +875,7 @@ def test_train_and_eval_are_disjoint_and_neither_reaches_the_holdout() -> None:
     assert set(SPLITS) == {"train", "eval"}, "no split serves the holdout"
 
 
+@pytest.mark.invariant
 def test_a_window_never_spans_a_day_dropped_as_unusable() -> None:
     days = _business_days(date(2019, 3, 1), date(2019, 3, 29))
     grid, daily = _frames(days)
@@ -857,6 +896,7 @@ def test_a_window_never_spans_a_day_dropped_as_unusable() -> None:
         assert not p.start_date < str(hole) < end
 
 
+@pytest.mark.invariant
 def test_the_provider_refuses_a_surface_with_no_whole_window() -> None:
     days = _business_days(date(2019, 3, 1), date(2019, 3, 29))
     grid, daily = _frames(days)
@@ -878,6 +918,7 @@ def _write_panel(root: Path, days: list[date]) -> Path:
     return root / "panel"
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize("split", [None, "holdout", "EVAL", ""])
 def test_a_split_outside_splits_is_refused_everywhere(split: object, tmp_path: Path) -> None:
     from optspread.config import RunConfig
@@ -911,6 +952,7 @@ def test_a_split_outside_splits_is_refused_everywhere(split: object, tmp_path: P
         DataRecord.of(OptionMetricsSource(root=tmp_path / "mine", split=split))  # type: ignore[arg-type]
 
 
+@pytest.mark.invariant
 def test_every_date_is_a_market_surface_no_provider_takes() -> None:
     days = _business_days(date(2018, 12, 3), date(2023, 1, 31))
     grid, daily = _frames(days)
@@ -941,6 +983,7 @@ def _team(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return team
 
 
+@pytest.mark.invariant
 def test_ranges_are_refused_on_a_symlink_or_a_copy_of_the_team_panel(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -969,6 +1012,7 @@ def test_ranges_are_refused_on_a_symlink_or_a_copy_of_the_team_panel(
     assert OptionMetricsSource(root=linked, split="eval").ranges is None
 
 
+@pytest.mark.invariant
 def test_the_team_panel_is_known_by_the_repository_manifest_too(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -988,6 +1032,7 @@ def test_the_team_panel_is_known_by_the_repository_manifest_too(
         OptionMetricsSource(root=team, split="eval", ranges=OWN)
 
 
+@pytest.mark.invariant
 def test_the_default_root_is_refused_wherever_vegalab_data_points(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -998,6 +1043,7 @@ def test_the_default_root_is_refused_wherever_vegalab_data_points(
         OptionMetricsSource(root=DEFAULT_ROOT, split="eval", ranges=OWN)
 
 
+@pytest.mark.invariant
 def test_load_store_and_the_provider_refuse_ranges_on_the_team_panel(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1027,6 +1073,7 @@ def test_load_store_and_the_provider_refuse_ranges_on_the_team_panel(
 # -- the data audit: carry against the parity spot (MINOR-3) ---------------------- #
 
 
+@pytest.mark.invariant
 def test_the_carry_ignores_a_close_that_disagrees_with_the_option_snapshot(
     built: tuple[pd.DataFrame, pd.Series, pd.DataFrame],
 ) -> None:
@@ -1053,6 +1100,7 @@ def test_the_carry_ignores_a_close_that_disagrees_with_the_option_snapshot(
     assert engine_forward == pytest.approx(float(row["forward"]), rel=1e-12)
 
 
+@pytest.mark.invariant
 def test_a_daily_table_from_before_version_4_keeps_its_own_pair() -> None:
     days = _business_days(date(2019, 3, 1), date(2019, 3, 29))
     grid, daily = _frames(days)
@@ -1086,6 +1134,7 @@ def _wing_day(day: date) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+@pytest.mark.invariant
 def test_the_real_provider_serves_no_calendar_arbitrage() -> None:
     from optspread.leaks import calendar_violations
 
@@ -1106,6 +1155,7 @@ def test_the_real_provider_serves_no_calendar_arbitrage() -> None:
     np.testing.assert_allclose(store.ivs[0][:, atm], quoted.iloc[:, atm].to_numpy())
 
 
+@pytest.mark.invariant
 def test_the_fill_runs_along_tenor_in_total_variance() -> None:
     from optspread.realdata.provider import calendar_free
 
@@ -1126,6 +1176,7 @@ def test_the_fill_runs_along_tenor_in_total_variance() -> None:
 # -- the data audit: stale expiries, roots, closures and the calendar (MINOR-5..8) - #
 
 
+@pytest.mark.invariant
 def test_an_expiry_off_the_day_forward_curve_is_stale_and_dropped(
     built: tuple[pd.DataFrame, pd.Series, pd.DataFrame],
 ) -> None:
@@ -1155,6 +1206,7 @@ def test_an_expiry_off_the_day_forward_curve_is_stale_and_dropped(
     assert int(dropped.loc[day]) == int((one["expiry"] == stale).sum())
 
 
+@pytest.mark.invariant
 def test_the_2010_pm_weeklies_under_spx_are_spxw() -> None:
     raw = _vendor_rows(
         date=[date(2010, 5, 21)] * 4,
@@ -1174,6 +1226,7 @@ def test_the_2010_pm_weeklies_under_spx_are_spxw() -> None:
     assert q["am_settled"].tolist() == [False, True, False]
 
 
+@pytest.mark.invariant
 def test_an_expiry_on_an_unscheduled_closure_settles_the_day_before() -> None:
     from optspread.realdata.panel import NYSE_HOLIDAYS, UNSCHEDULED_CLOSURES
 
@@ -1188,6 +1241,7 @@ def test_an_expiry_on_an_unscheduled_closure_settles_the_day_before() -> None:
     assert q["expiry"].tolist() == [date(2018, 12, 4), date(2025, 1, 8), date(2018, 12, 7)]
 
 
+@pytest.mark.invariant
 def test_the_nyse_calendar_counts_every_year() -> None:
     from optspread.realdata.panel import nyse_trading_days
 
@@ -1201,6 +1255,7 @@ def test_the_nyse_calendar_counts_every_year() -> None:
     assert nyse_trading_days(date(2009, 1, 1), date(2009, 12, 31)) == []
 
 
+@pytest.mark.invariant
 def test_a_day_missing_from_both_tables_is_a_gap() -> None:
     days = _business_days(date(2019, 3, 1), date(2019, 3, 29))
     hole = date(2019, 3, 15)
@@ -1212,6 +1267,7 @@ def test_a_day_missing_from_both_tables_is_a_gap() -> None:
         assert not window[0] < str(hole) < window[-1], f"window {window} spans {hole}"
 
 
+@pytest.mark.behaviour
 def test_the_build_check_runs_the_chain_checks_on_both_splits(tmp_path: Path) -> None:
     from scripts.build_spx_panel import calendar_check
 

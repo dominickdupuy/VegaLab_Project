@@ -32,6 +32,7 @@ from optspread.manifest import (
 )
 
 
+@pytest.mark.invariant
 def test_hash_is_stable_and_content_addressed() -> None:
     a = RunConfig()
     b = RunConfig(market=MarketConfig(), cost=CostConfig())  # same content, built differently
@@ -41,6 +42,7 @@ def test_hash_is_stable_and_content_addressed() -> None:
     assert len(config_hash(a)) == 16
 
 
+@pytest.mark.invariant
 def test_manifest_round_trip(tmp_path: Path) -> None:
     cfg = RunConfig(policy="always_on", seed=7)
     m = RunManifest.create(cfg)
@@ -68,6 +70,7 @@ def _complete(tmp_path: Path) -> RunManifest:
     return m
 
 
+@pytest.mark.behaviour
 def test_a_complete_manifest_validates_and_writes(tmp_path: Path) -> None:
     m = _complete(tmp_path)
     m.validate_complete()
@@ -75,6 +78,7 @@ def test_a_complete_manifest_validates_and_writes(tmp_path: Path) -> None:
     assert m.schema_version == SCHEMA_VERSION
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize("field", REQUIRED_FIELDS)
 def test_every_required_field_blocks_the_write(tmp_path: Path, field: str) -> None:
     m = _complete(tmp_path)
@@ -84,6 +88,7 @@ def test_every_required_field_blocks_the_write(tmp_path: Path, field: str) -> No
     assert not (tmp_path / MANIFEST_FILENAME).exists(), "nothing may be written on a failure"
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize("library", REQUIRED_VERSIONS)
 def test_a_missing_library_version_blocks_the_write(tmp_path: Path, library: str) -> None:
     m = _complete(tmp_path)
@@ -92,6 +97,7 @@ def test_a_missing_library_version_blocks_the_write(tmp_path: Path, library: str
         m.write(tmp_path)
 
 
+@pytest.mark.invariant
 def test_a_hash_that_drifted_from_its_config_is_caught(tmp_path: Path) -> None:
     # The quiet failure: two runs that look alike but differ in one setting. If the
     # hash and the config disagree, the record identifies neither.
@@ -101,6 +107,7 @@ def test_a_hash_that_drifted_from_its_config_is_caught(tmp_path: Path) -> None:
         m.write(tmp_path)
 
 
+@pytest.mark.invariant
 def test_unidentified_code_blocks_the_write(tmp_path: Path) -> None:
     m = _complete(tmp_path)
     m.git_sha = "unknown"
@@ -108,6 +115,7 @@ def test_unidentified_code_blocks_the_write(tmp_path: Path) -> None:
         m.write(tmp_path)
 
 
+@pytest.mark.invariant
 def test_reading_an_incomplete_manifest_raises_rather_than_returning_it(tmp_path: Path) -> None:
     m = _complete(tmp_path)
     m.write(tmp_path)
@@ -118,6 +126,7 @@ def test_reading_an_incomplete_manifest_raises_rather_than_returning_it(tmp_path
         RunManifest.read(tmp_path)
 
 
+@pytest.mark.invariant
 def test_the_optional_versions_are_recorded_when_installed() -> None:
     # The learner, gymnasium and the panel's reader can each move a number; each is
     # recorded where it is installed and is not required (#31).
@@ -132,6 +141,7 @@ def test_the_optional_versions_are_recorded_when_installed() -> None:
     assert versions["gymnasium"] == importlib.metadata.version("gymnasium")  # a core dependency
 
 
+@pytest.mark.invariant
 def test_a_manifest_without_the_optional_versions_still_validates(tmp_path: Path) -> None:
     # What every manifest written before #31 records: no gymnasium, no pandas.
     m = _complete(tmp_path)
@@ -143,6 +153,7 @@ def test_a_manifest_without_the_optional_versions_still_validates(tmp_path: Path
 # -- the data source: recorded beside the config, never in it (GH-21) ------------ #
 
 
+@pytest.mark.invariant
 def test_the_trainer_is_recorded_only_when_a_policy_was_trained(tmp_path: Path) -> None:
     m = _complete(tmp_path)
     assert m.trainer is None
@@ -155,6 +166,7 @@ def test_the_trainer_is_recorded_only_when_a_policy_was_trained(tmp_path: Path) 
     assert callable_name(functools.partial(_complete)) == "functools.partial"
 
 
+@pytest.mark.invariant
 def test_a_new_manifest_records_its_data_source(tmp_path: Path) -> None:
     m = _complete(tmp_path)
     assert m.data == DataRecord() and m.data_record.source == "synthetic"
@@ -165,6 +177,7 @@ def test_a_new_manifest_records_its_data_source(tmp_path: Path) -> None:
     assert RunManifest.read(tmp_path).data == DataRecord()
 
 
+@pytest.mark.invariant
 def test_a_manifest_from_before_the_data_record_still_reads_and_keeps_its_keys(
     tmp_path: Path,
 ) -> None:
@@ -179,6 +192,7 @@ def test_a_manifest_from_before_the_data_record_still_reads_and_keeps_its_keys(
     assert json.loads((tmp_path / MANIFEST_FILENAME).read_text()).keys() == old.keys()
 
 
+@pytest.mark.invariant
 def test_the_real_source_records_the_panel_files_it_reads(tmp_path: Path) -> None:
     source = OptionMetricsSource(root=tmp_path)
     with pytest.raises(DataUnavailableError, match="no SPX panel"):
@@ -197,12 +211,14 @@ def test_the_real_source_records_the_panel_files_it_reads(tmp_path: Path) -> Non
     assert DataRecord.of(source).panel_id != record.panel_id
 
 
+@pytest.mark.invariant
 def test_the_generator_and_the_stub_read_no_panel() -> None:
     for name in ("synthetic", "optionmetrics_stub"):
         record = DataRecord.of(make_source(name))
         assert record.source == name and record.panel == {} and record.panel_id == ""
 
 
+@pytest.mark.invariant
 def test_the_commit_is_the_code_checkouts_from_any_working_directory(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

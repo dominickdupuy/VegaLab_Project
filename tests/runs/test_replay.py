@@ -53,6 +53,7 @@ def _rewrite(run_dir: Path, record: RunRecord, *, update_digest: bool) -> None:
         (run_dir / MANIFEST_FILENAME).write_text(json.dumps(manifest))
 
 
+@pytest.mark.invariant
 def test_a_scripted_run_reproduces_bit_for_bit(tmp_path: Path) -> None:
     execute_run(SCRIPTED, tmp_path)
     before = (tmp_path / RUN_FILENAME).read_bytes()
@@ -63,11 +64,13 @@ def test_a_scripted_run_reproduces_bit_for_bit(tmp_path: Path) -> None:
     assert replay_run(tmp_path).render().startswith("IDENTICAL")
 
 
+@pytest.mark.invariant
 def test_a_learned_run_reproduces_by_retraining_from_its_config(tmp_path: Path) -> None:
     execute_run(LEARNED, tmp_path, fake_trainer)
     assert replay_matches(tmp_path, fake_trainer)[0]
 
 
+@pytest.mark.invariant
 def test_a_learner_that_lands_elsewhere_is_caught_at_the_first_episode(tmp_path: Path) -> None:
     execute_run(LEARNED, tmp_path, fake_trainer)
     # A manifest from before the trainer was recorded names none, so the replay retrains.
@@ -80,6 +83,7 @@ def test_a_learner_that_lands_elsewhere_is_caught_at_the_first_episode(tmp_path:
     assert outcome.render().startswith("DIFFERS")
 
 
+@pytest.mark.invariant
 def test_a_run_is_retrained_only_by_the_trainer_its_manifest_names(tmp_path: Path) -> None:
     execute_run(LEARNED, tmp_path, fake_trainer)
     outcome = replay_run(tmp_path)  # the real learner was asked for; a stand-in made it
@@ -99,6 +103,7 @@ def _scaled(run_dir: Path, factor: float, *, trades: int = 0) -> None:
     _rewrite(run_dir, moved, update_digest=True)
 
 
+@pytest.mark.invariant
 def test_a_tolerance_replay_says_identical_within_or_differs(tmp_path: Path) -> None:
     from scripts import replay as script
 
@@ -123,6 +128,7 @@ def test_a_tolerance_replay_says_identical_within_or_differs(tmp_path: Path) -> 
     assert counted.verdict == "DIFFERS" and "n_trades" in counted.reason
 
 
+@pytest.mark.behaviour
 def test_the_platform_a_run_was_recorded_on_is_named_when_it_differs(tmp_path: Path) -> None:
     execute_run(SCRIPTED, tmp_path)
     assert "recorded on" not in replay_run(tmp_path).reason
@@ -137,6 +143,7 @@ def test_the_platform_a_run_was_recorded_on_is_named_when_it_differs(tmp_path: P
     assert "platform not recorded" in replay_run(tmp_path).reason
 
 
+@pytest.mark.invariant
 def test_a_results_file_edited_after_its_manifest_is_a_failure_of_the_run(
     tmp_path: Path,
 ) -> None:
@@ -147,6 +154,7 @@ def test_a_results_file_edited_after_its_manifest_is_a_failure_of_the_run(
     assert not matches and "digest" in reason
 
 
+@pytest.mark.invariant
 def test_a_replay_that_lands_on_a_different_number_says_which(tmp_path: Path) -> None:
     # The digest is consistent, so this is what a nondeterministic run would look like.
     execute_run(SCRIPTED, tmp_path)
@@ -166,6 +174,7 @@ def test_a_replay_that_lands_on_a_different_number_says_which(tmp_path: Path) ->
     assert replay_matches(tmp_path)[1].startswith("2 episodes saved, 4 replayed")
 
 
+@pytest.mark.behaviour
 def test_provenance_that_moved_is_reported_beside_the_verdict(tmp_path: Path) -> None:
     execute_run(SCRIPTED, tmp_path)
     manifest = json.loads((tmp_path / MANIFEST_FILENAME).read_text())
@@ -179,6 +188,7 @@ def test_provenance_that_moved_is_reported_beside_the_verdict(tmp_path: Path) ->
     assert "numpy 0.0.1 ->" in reason and "dirty tree" in reason
 
 
+@pytest.mark.invariant
 def test_a_manifest_from_before_gymnasium_and_pandas_were_recorded_replays(
     tmp_path: Path,
 ) -> None:
@@ -193,6 +203,7 @@ def test_a_manifest_from_before_gymnasium_and_pandas_were_recorded_replays(
     assert "gymnasium" not in reason and "pandas" not in reason  # unrecorded is not "moved"
 
 
+@pytest.mark.invariant
 def test_what_is_not_a_reproducible_run_says_so(tmp_path: Path) -> None:
     assert replay_matches(tmp_path)[1].startswith("not a readable run")
 
@@ -203,6 +214,7 @@ def test_what_is_not_a_reproducible_run_says_so(tmp_path: Path) -> None:
     assert "does not belong" in replay_matches(tmp_path / "a")[1]
 
 
+@pytest.mark.behaviour
 def test_a_learned_run_without_the_learner_names_the_extra(tmp_path: Path) -> None:
     execute_run(LEARNED, tmp_path, fake_trainer)
     manifest = json.loads((tmp_path / MANIFEST_FILENAME).read_text())
@@ -216,6 +228,7 @@ def test_a_learned_run_without_the_learner_names_the_extra(tmp_path: Path) -> No
     assert not matches and "install the train extra" in reason
 
 
+@pytest.mark.behaviour
 def test_the_replay_command_takes_runs_or_folders_of_runs(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -236,6 +249,7 @@ def test_the_replay_command_takes_runs_or_folders_of_runs(
     assert replay.main([str(tmp_path / "empty")]) == 1
 
 
+@pytest.mark.behaviour
 def test_the_replay_command_refuses_to_replay_nothing(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -252,6 +266,7 @@ def test_the_replay_command_refuses_to_replay_nothing(
     assert replay.main([str(tmp_path / "r0" / RUN_FILENAME)]) == 1  # a file, not a run
 
 
+@pytest.mark.invariant
 def test_a_swapped_policy_fails_the_replay_and_the_resume(tmp_path: Path) -> None:
     execute_run(LEARNED, tmp_path, fake_trainer)
     fake = callable_name(fake_trainer)
@@ -264,6 +279,7 @@ def test_a_swapped_policy_fails_the_replay_and_the_resume(tmp_path: Path) -> Non
     assert not replay_matches(tmp_path, fake_trainer)[0]
 
 
+@pytest.mark.invariant
 def test_a_manifest_that_does_not_record_the_results_is_not_replayed(tmp_path: Path) -> None:
     execute_run(SCRIPTED, tmp_path)
     manifest = json.loads((tmp_path / MANIFEST_FILENAME).read_text())
@@ -277,6 +293,7 @@ def test_a_manifest_that_does_not_record_the_results_is_not_replayed(tmp_path: P
 # -- the data source a run read (GH-21) --------------------------------------------- #
 
 
+@pytest.mark.invariant
 def test_a_run_from_before_the_data_record_replays_on_the_generator(tmp_path: Path) -> None:
     execute_run(SCRIPTED, tmp_path)
     manifest = json.loads((tmp_path / MANIFEST_FILENAME).read_text())
@@ -317,6 +334,7 @@ def _flat_panel(root: Path, n_days: int = 40) -> Path:
     return root
 
 
+@pytest.mark.invariant
 def test_a_run_on_the_real_panel_records_it_and_replays_only_against_it(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

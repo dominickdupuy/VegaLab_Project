@@ -154,6 +154,7 @@ def _manifest(run_dir: Path) -> dict[str, object]:
 # -- the single-run command -------------------------------------------------------- #
 
 
+@pytest.mark.invariant
 def test_a_scripted_real_run_from_the_command_records_its_source_and_replays(
     data: Path, served: Served, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -196,6 +197,7 @@ def test_a_scripted_real_run_from_the_command_records_its_source_and_replays(
     assert read_run(synthetic).episodes != read_run(run_dir).episodes
 
 
+@pytest.mark.invariant
 def test_the_dates_are_a8s_not_a_flag_and_a_record_of_other_dates_is_another_run(
     data: Path, served: Served, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -230,6 +232,7 @@ def test_the_dates_are_a8s_not_a_flag_and_a_record_of_other_dates_is_another_run
     assert not matches and "A8" in reason
 
 
+@pytest.mark.behaviour
 def test_the_real_source_without_a_panel_is_refused_before_anything_runs(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -242,6 +245,7 @@ def test_the_real_source_without_a_panel_is_refused_before_anything_runs(
     assert not (tmp_path / "runs").exists()
 
 
+@pytest.mark.behaviour
 def test_the_makefile_runs_one_run_with_its_args() -> None:
     import shutil
     import subprocess
@@ -263,6 +267,7 @@ def test_the_makefile_runs_one_run_with_its_args() -> None:
 # -- the learned arm trains on training dates and is scored on evaluation dates ---- #
 
 
+@pytest.mark.invariant
 def test_a_learned_real_cell_trains_and_evaluates_on_disjoint_dates(
     data: Path, served: Served, tmp_path: Path
 ) -> None:
@@ -308,6 +313,7 @@ def test_a_learned_real_cell_trains_and_evaluates_on_disjoint_dates(
     assert RunManifest.read(root / ppo.run_id).data_record.source == "optionmetrics"
 
 
+@pytest.mark.invariant
 def test_a_trainer_that_takes_no_source_is_refused_on_real_data(data: Path, tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="takes no source"):
         train_on(fake_trainer, LEARNED, "optionmetrics")
@@ -317,6 +323,7 @@ def test_a_trainer_that_takes_no_source_is_refused_on_real_data(data: Path, tmp_
     assert not (tmp_path / "run" / RUN_FILENAME).exists()
 
 
+@pytest.mark.invariant
 @pytest.mark.needs_torch
 def test_the_learner_builds_its_training_environment_on_the_training_range(
     data: Path, served: Served, monkeypatch: pytest.MonkeyPatch
@@ -344,6 +351,7 @@ def test_the_learner_builds_its_training_environment_on_the_training_range(
 # -- a different trainer's cell is not reused (#31) ------------------------------- #
 
 
+@pytest.mark.invariant
 def test_a_cell_is_reused_only_for_the_trainer_that_made_it(tmp_path: Path) -> None:
     run_dir = tmp_path / run_id(LEARNED)
     execute_run(LEARNED, run_dir, fake_trainer)
@@ -378,6 +386,7 @@ def test_a_cell_is_reused_only_for_the_trainer_that_made_it(tmp_path: Path) -> N
     assert recorded_trainer(run_dir, RunManifest.read(run_dir)) is None
 
 
+@pytest.mark.invariant
 def test_run_single_reads_back_its_own_and_recomputes_another_trainers(tmp_path: Path) -> None:
     run_dir, _, reused = run_single(LEARNED, tmp_path, trainer=fake_trainer)
     assert not reused and run_dir == tmp_path / run_id(LEARNED)
@@ -389,6 +398,7 @@ def test_run_single_reads_back_its_own_and_recomputes_another_trainers(tmp_path:
 # -- old manifests, other orchestrators, the job runner -------------------------- #
 
 
+@pytest.mark.invariant
 def test_a_real_manifest_from_before_the_split_was_recorded_reads_as_the_default(
     data: Path, tmp_path: Path
 ) -> None:
@@ -406,6 +416,7 @@ def test_a_real_manifest_from_before_the_split_was_recorded_reads_as_the_default
     assert DataRecord().effective_split is None  # the generator has no dates
 
 
+@pytest.mark.invariant
 def test_the_scripted_sweep_runs_on_the_source_it_is_given(data: Path, tmp_path: Path) -> None:
     sweep = SweepConfig(
         base=SMALL.model_copy(update={"n_episodes": 2}), premiums=(0.0,), arms=("flat",)
@@ -425,6 +436,7 @@ def test_the_scripted_sweep_runs_on_the_source_it_is_given(data: Path, tmp_path:
         )
 
 
+@pytest.mark.invariant
 def test_the_pilot_and_the_sweep_take_the_source_and_land_in_its_folder(
     data: Path, served: Served, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -451,6 +463,7 @@ def test_the_pilot_and_the_sweep_take_the_source_and_land_in_its_folder(
     assert not list((data / "runs").glob("grid-*.json"))  # nothing in the synthetic root
 
 
+@pytest.mark.invariant
 def test_a_directory_holding_another_sources_run_is_not_written(data: Path, tmp_path: Path) -> None:
     run_dir = tmp_path / run_id(SMALL)
     execute_run(SMALL, run_dir, source="optionmetrics")
@@ -469,6 +482,7 @@ def test_a_directory_holding_another_sources_run_is_not_written(data: Path, tmp_
     assert "ran under the split train, not eval" in foreign_run(run_dir, SMALL, "optionmetrics")
 
 
+@pytest.mark.behaviour
 def test_a_job_on_the_real_source_lands_in_its_folder_and_reports_it(
     data: Path, tmp_path: Path
 ) -> None:
@@ -512,6 +526,7 @@ def test_a_job_on_the_real_source_lands_in_its_folder_and_reports_it(
         manager.shutdown()
 
 
+@pytest.mark.behaviour
 def test_a_job_on_a_source_whose_data_is_absent_is_refused_at_submission(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -533,6 +548,7 @@ def test_a_job_on_a_source_whose_data_is_absent_is_refused_at_submission(
 # -- the panel a cell read, and components over the real chains ---------------------- #
 
 
+@pytest.mark.invariant
 def test_a_real_cell_from_a_panel_since_rebuilt_is_not_reused(
     panel: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -567,6 +583,7 @@ def _surface(market: MarketConfig, *, root: Path) -> OptionMetricsSource:
     return OptionMetricsSource(market, root=root, split="eval")
 
 
+@pytest.mark.invariant
 def test_components_over_the_real_chains_record_the_real_source_not_synthetic(
     panel: Path, tmp_path: Path
 ) -> None:

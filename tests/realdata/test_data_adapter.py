@@ -31,6 +31,7 @@ SHORT = MarketConfig(n_days=15, tenor_days=(8, 15))
 # -- the boundary holds for every source we can serve ----------------------- #
 
 
+@pytest.mark.invariant
 def test_every_available_source_conforms() -> None:
     reports = conformance_suite(SHORT)
     by_name = {r.source: r for r in reports}
@@ -38,6 +39,7 @@ def test_every_available_source_conforms() -> None:
     assert by_name["optionmetrics_stub"].passed
 
 
+@pytest.mark.invariant
 def test_the_real_source_without_data_is_skipped_not_passed(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -49,6 +51,7 @@ def test_the_real_source_without_data_is_skipped_not_passed(
     assert "SKIPPED" in report.render()
 
 
+@pytest.mark.behaviour
 def test_the_real_source_without_data_refuses_loudly(tmp_path: Path) -> None:
     source = OptionMetricsSource(SHORT, root=tmp_path)
     assert not source.available
@@ -56,12 +59,14 @@ def test_the_real_source_without_data_refuses_loudly(tmp_path: Path) -> None:
         source.provider()
 
 
+@pytest.mark.behaviour
 def test_make_source_returns_the_named_source() -> None:
     assert isinstance(make_source("synthetic", SHORT), SyntheticSource)
     assert isinstance(make_source("optionmetrics_stub", SHORT), OptionMetricsStubSource)
     assert isinstance(make_source("optionmetrics", SHORT), OptionMetricsSource)
 
 
+@pytest.mark.invariant
 def test_the_stub_never_claims_to_be_real_data() -> None:
     assert OptionMetricsStubSource(SHORT).name == "optionmetrics_stub"
 
@@ -140,20 +145,24 @@ def _violations(provider: ChainProvider) -> tuple[str, ...]:
     return report.violations
 
 
+@pytest.mark.invariant
 def test_a_provider_that_starts_late_is_caught() -> None:
     violations = _violations(_LateStart(SHORT))
     assert any("t=0" in v for v in violations), violations
 
 
+@pytest.mark.invariant
 def test_a_provider_that_ignores_its_seed_is_caught() -> None:
     violations = _violations(_Drifting(SHORT))
     assert any("reproduce" in v for v in violations), violations
 
 
+@pytest.mark.invariant
 def test_a_clean_provider_has_no_violations() -> None:
     assert _violations(SyntheticChainProvider(SHORT)) == ()
 
 
+@pytest.mark.invariant
 def test_determinism_check_is_not_fooled_by_a_shared_provider() -> None:
     # Same provider object returned twice: the replay pass must still line up,
     # which is what makes the _Drifting failure above meaningful.

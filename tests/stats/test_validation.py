@@ -55,6 +55,7 @@ from optspread.validation import (
 R = 4_000  # per effect: MC se 0.0034 at alpha, 0.0079 at power 0.5
 
 
+@pytest.mark.invariant
 def test_the_pipeline_recovers_the_closed_form_on_the_default_case() -> None:
     result = validate_pipeline(replications=R, seed=11)
     assert result.passed, result.render()
@@ -65,6 +66,7 @@ def test_the_pipeline_recovers_the_closed_form_on_the_default_case() -> None:
     assert "PASS" in result.render()
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize(
     "case",
     [
@@ -86,6 +88,7 @@ def test_the_pipeline_passes_where_the_sweep_will_go(case: AnalyticCase) -> None
 CONFIRMATORY_S = AnalyticCase(tau2=4.0, sigma2=100.0, n_seeds=5, n_episodes=500, path_sigma2=400.0)
 
 
+@pytest.mark.invariant
 def test_the_null_world_and_the_closed_form_hold_at_the_confirmatory_df() -> None:
     null = validate_null_world(CONFIRMATORY_S, replications=R, event=PREREGISTERED_EVENT[1])
     assert null.within(), null
@@ -95,6 +98,7 @@ def test_the_null_world_and_the_closed_form_hold_at_the_confirmatory_df() -> Non
     assert result.points[-1].analytic == pytest.approx(0.80, abs=2e-3)  # 3.04 se: lambda_80
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize("label", list(POISONED_PIPELINES))
 def test_every_poisoned_rule_is_refused(label: str) -> None:
     result = validate_pipeline(replications=R, seed=5, pipeline=POISONED_PIPELINES[label])
@@ -103,6 +107,7 @@ def test_every_poisoned_rule_is_refused(label: str) -> None:
     assert "FAIL" in result.render()
 
 
+@pytest.mark.invariant
 def test_a_clamped_variance_inside_the_test_is_refused_where_the_clamp_bites() -> None:
     def clamped(treated: np.ndarray, control: np.ndarray, alpha: float) -> Decision:
         d = decide(treated, control, alpha)
@@ -115,6 +120,7 @@ def test_a_clamped_variance_inside_the_test_is_refused_where_the_clamp_bites() -
     assert all(p.empirical < p.analytic for p in result.points)
 
 
+@pytest.mark.invariant
 def test_the_gate_is_a_function_of_its_seed() -> None:
     a = validate_pipeline(replications=500, seed=7)
     b = validate_pipeline(replications=500, seed=7)
@@ -122,6 +128,7 @@ def test_the_gate_is_a_function_of_its_seed() -> None:
     assert a.sigma2 == b.sigma2
 
 
+@pytest.mark.invariant
 def test_the_path_term_is_the_only_thing_pairing_removes() -> None:
     # Same draws, path variance 0 against 1e4: the contrast must not move.
     quiet = dataclasses.replace(DEFAULT_CASE, path_sigma2=0.0)
@@ -132,6 +139,7 @@ def test_the_path_term_is_the_only_thing_pairing_removes() -> None:
     assert np.var(c1) > 100 * np.var(c0)
 
 
+@pytest.mark.invariant
 def test_the_simulated_contrast_has_the_hand_specified_components() -> None:
     rng = np.random.default_rng(1)
     case = AnalyticCase(tau2=4.0, sigma2=9.0, n_seeds=400, n_episodes=10, path_sigma2=50.0)
@@ -145,6 +153,7 @@ def test_the_simulated_contrast_has_the_hand_specified_components() -> None:
     assert between == pytest.approx(4.0 + 9.0 / 10, abs=4 * 0.35)
 
 
+@pytest.mark.behaviour
 def test_check_arithmetic() -> None:
     assert Check("x", 1.0, 1.0, 0.0).within()
     assert not Check("x", 1.1, 1.0, 0.0).within()
@@ -152,6 +161,7 @@ def test_check_arithmetic() -> None:
     assert not Check("x", 1.5, 1.0, 0.1).within(k=4.0)
 
 
+@pytest.mark.behaviour
 def test_degenerate_cases_are_refused() -> None:
     with pytest.raises(ValueError, match="negative"):
         AnalyticCase(tau2=-1.0, sigma2=1.0, n_seeds=5, n_episodes=5)
@@ -166,6 +176,7 @@ def test_degenerate_cases_are_refused() -> None:
 # -- section 5.3: the bootstrap on seed means -------------------------------- #
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize("seed", range(5))
 def test_the_bootstrap_agrees_with_the_analytic_rate_on_normal_seed_means(seed: int) -> None:
     m = np.random.default_rng(seed).normal(0.3, 1.0, size=50)
@@ -176,12 +187,14 @@ def test_the_bootstrap_agrees_with_the_analytic_rate_on_normal_seed_means(seed: 
     assert check.n_seeds == 50 and check.mc_se < 0.006
 
 
+@pytest.mark.behaviour
 def test_the_bootstrap_on_identical_seed_means_always_fires() -> None:
     check = bootstrap_detection(np.full(10, 2.0), n_boot=100)
     assert check.rate == 1.0 and check.analytic == 1.0 and check.gap == 0.0
     assert check.se == 0.0
 
 
+@pytest.mark.behaviour
 def test_the_bootstrap_refuses_what_it_cannot_resample() -> None:
     with pytest.raises(ValueError, match="at least 2"):
         bootstrap_detection(np.array([1.0]))
@@ -192,6 +205,7 @@ def test_the_bootstrap_refuses_what_it_cannot_resample() -> None:
 # -- the null world (#26) ---------------------------------------------------- #
 
 
+@pytest.mark.invariant
 def test_the_null_world_has_the_case_components_and_the_drag() -> None:
     arms = simulate_null_world(DEFAULT_CASE, NULL_WORLD_DRAG, np.random.default_rng(0))
     assert set(arms) == {(a, w) for a in ("learner", "control") for w in ("premium", "null")}
@@ -207,22 +221,26 @@ def test_the_null_world_has_the_case_components_and_the_drag() -> None:
     assert float(gap.mean()) == pytest.approx(NULL_WORLD_DRAG, abs=0.5)
 
 
+@pytest.mark.invariant
 def test_the_preregistered_event_fires_at_alpha_with_nothing_planted() -> None:
     check = validate_null_world(replications=R, event=PREREGISTERED_EVENT[1])
     assert check.expected == ALPHA and check.within(), check
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize("label", list(REJECTED_EVENTS))
 def test_the_event_it_replaced_detects_the_cost_drag(label: str) -> None:
     check = validate_null_world(replications=R, event=REJECTED_EVENTS[label])
     assert check.observed > 0.9 and not check.within(), check
 
 
+@pytest.mark.behaviour
 def test_the_null_world_needs_replications() -> None:
     with pytest.raises(ValueError, match="at least 2 replications"):
         validate_null_world(replications=1)
 
 
+@pytest.mark.invariant
 def test_decide_premium_is_the_paired_rule_on_one_arm_in_two_worlds() -> None:
     arms = simulate_null_world(DEFAULT_CASE, NULL_WORLD_DRAG, np.random.default_rng(2))
     at_p, at_0 = arms[("learner", "premium")], arms[("learner", "null")]
@@ -257,6 +275,7 @@ def pilot_on_disk(tmp_path_factory: pytest.TempPathFactory) -> tuple[GridRecord,
     return read_grid(root / grid_filename(grid)), root
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize("arm", ["ppo", "delta_seller"])
 def test_every_route_from_a_grid_on_disk_reaches_one_decision(
     pilot_on_disk: tuple[GridRecord, Path], arm: ArmName
@@ -272,6 +291,7 @@ def test_every_route_from_a_grid_on_disk_reaches_one_decision(
     assert np.array_equal(at_p, np.load(root / f"matrix_{arm}_p{PILOT_PREMIUM:g}.npy"))
 
 
+@pytest.mark.invariant
 def test_at_zero_premium_the_grid_decision_is_the_known_answer(
     pilot_on_disk: tuple[GridRecord, Path],
 ) -> None:
@@ -284,6 +304,7 @@ def test_at_zero_premium_the_grid_decision_is_the_known_answer(
         assert not any(r.rejected for r in check.routes)
 
 
+@pytest.mark.invariant
 def test_the_grid_check_refuses_a_file_that_drifted_from_its_runs(
     pilot_on_disk: tuple[GridRecord, Path], tmp_path: Path
 ) -> None:
@@ -302,6 +323,7 @@ def test_the_grid_check_refuses_a_file_that_drifted_from_its_runs(
     assert [f.split(":")[0] for f in check.failures] == ["matrix_delta_seller_p<p>.npy"]
 
 
+@pytest.mark.invariant
 def test_the_grid_check_refuses_blocks_that_ran_different_paths(
     pilot_on_disk: tuple[GridRecord, Path],
 ) -> None:

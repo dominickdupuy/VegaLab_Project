@@ -48,6 +48,7 @@ def alternating(n: int, step: float) -> vrp.Floats:
 # -- the forward-realised series --------------------------------------------- #
 
 
+@pytest.mark.invariant
 def test_forward_rv_is_the_rms_of_the_next_window_annualised_at_252() -> None:
     s = 0.01
     rv = vrp.forward_realised(alternating(60, s))
@@ -57,6 +58,7 @@ def test_forward_rv_is_the_rms_of_the_next_window_annualised_at_252() -> None:
     np.testing.assert_allclose(unbiased[:5], s * math.sqrt(252.0) / vrp.vol_bias(21))
 
 
+@pytest.mark.invariant
 def test_forward_rv_at_t_uses_only_the_returns_after_t() -> None:
     spot = np.full(80, 100.0)
     spot[40:] = 110.0  # the one move: r[40]
@@ -68,6 +70,7 @@ def test_forward_rv_at_t_uses_only_the_returns_after_t() -> None:
     assert np.flatnonzero(trailing > 0).tolist() == list(range(40, 40 + vrp.WINDOW))
 
 
+@pytest.mark.invariant
 def test_the_demeaned_rv_is_the_panels_rv21_fwd() -> None:
     pd = pytest.importorskip("pandas")
     spot = gbm(300, seed=3)
@@ -76,6 +79,7 @@ def test_the_demeaned_rv_is_the_panels_rv21_fwd() -> None:
     np.testing.assert_allclose(vrp.forward_realised(spot, demean=True), panel, equal_nan=True)
 
 
+@pytest.mark.invariant
 def test_a_window_across_a_hole_in_the_dates_is_dropped() -> None:
     dates = business_days(80)
     dates[50:] += np.timedelta64(30, "D")  # a month missing after day 49
@@ -85,6 +89,7 @@ def test_a_window_across_a_hole_in_the_dates_is_dropped() -> None:
     assert np.isfinite(rv[50 : 80 - vrp.WINDOW]).all()
 
 
+@pytest.mark.invariant
 def test_the_calendar_rv_sums_the_returns_of_the_next_30_days_over_365() -> None:
     dates = business_days(60)
     s = 0.01
@@ -102,12 +107,14 @@ def test_the_calendar_rv_sums_the_returns_of_the_next_30_days_over_365() -> None
     assert vrp.forward_realised_calendar(np.array([]), np.array([], "datetime64[D]")).size == 0
 
 
+@pytest.mark.invariant
 def test_short_series_have_no_window() -> None:
     assert np.isnan(vrp.forward_realised(np.full(10, 100.0))).all()
     assert np.isnan(vrp.trailing_realised(np.full(10, 100.0))).all()
     assert np.isnat(vrp.window_end(business_days(10))).all()
 
 
+@pytest.mark.invariant
 def test_vol_bias_is_the_mean_of_a_gaussian_rms() -> None:
     assert vrp.vol_bias(21) == pytest.approx(0.98817, abs=1e-5)
     assert vrp.vol_bias(21) == pytest.approx(1.0 - 1.0 / 84.0, abs=5e-4)
@@ -115,6 +122,7 @@ def test_vol_bias_is_the_mean_of_a_gaussian_rms() -> None:
     assert np.sqrt((draws**2).mean(axis=1)).mean() == pytest.approx(vrp.vol_bias(21), abs=1e-3)
 
 
+@pytest.mark.invariant
 def test_the_variance_conversion_inverts_the_simulators_premium() -> None:
     v = (SIGMA + P / 100.0) ** 2 - SIGMA**2
     assert vrp.variance_to_vol_pts(v, SIGMA) == pytest.approx(P)
@@ -130,6 +138,7 @@ def planted(n: int = 3000, seed: int = 0) -> tuple[vrp.Floats, vrp.Dates, vrp.Fl
     return spot, business_days(n), np.full(n, SIGMA + P / 100.0)
 
 
+@pytest.mark.invariant
 def test_a_planted_premium_is_recovered_and_covered() -> None:
     spot, dates, iv = planted()
     rv = vrp.forward_realised(spot, dates, unbiased=True)
@@ -146,6 +155,7 @@ def test_a_planted_premium_is_recovered_and_covered() -> None:
     assert biased.mean - e.mean == pytest.approx(gap, rel=0.05)
 
 
+@pytest.mark.invariant
 def test_the_variance_route_recovers_the_premium_without_a_correction() -> None:
     spot, dates, iv = planted(seed=1)
     v = vrp.variance_premium(iv, vrp.forward_realised(spot, dates))
@@ -154,6 +164,7 @@ def test_the_variance_route_recovers_the_premium_without_a_correction() -> None:
     assert e.mean_low < P < e.mean_high and e.mean_low < e.mean < e.mean_high
 
 
+@pytest.mark.invariant
 def test_the_interval_covers_a_known_mean_under_heavy_dependence() -> None:
     """AR(1) at 0.97 around 0.8: an iid bootstrap would be far too narrow here."""
     rng = np.random.default_rng(7)
@@ -168,6 +179,7 @@ def test_the_interval_covers_a_known_mean_under_heavy_dependence() -> None:
     assert (e.mean_high - e.mean_low) > 3.0 * (iid.mean_high - iid.mean_low)
 
 
+@pytest.mark.invariant
 def test_the_estimate_is_reproducible_and_skips_nan_days() -> None:
     x = np.random.default_rng(2).standard_normal(400)
     x[::50] = np.nan
@@ -179,6 +191,7 @@ def test_the_estimate_is_reproducible_and_skips_nan_days() -> None:
     assert empty.n_days == 0 and math.isnan(empty.mean) and empty.first is None
 
 
+@pytest.mark.invariant
 def test_the_block_length_rises_with_dependence_and_never_drops_below_the_window() -> None:
     rng = np.random.default_rng(4)
     iid = rng.standard_normal(4000)
@@ -193,6 +206,7 @@ def test_the_block_length_rises_with_dependence_and_never_drops_below_the_window
     assert vrp.politis_white_block(np.arange(400.0)) <= math.ceil(3 * math.sqrt(400))  # capped
 
 
+@pytest.mark.invariant
 def test_the_block_length_matches_its_closed_form_on_an_ar1() -> None:
     """For AR(1) at phi the optimal mean block is ``(2 phi / (1 - phi^2))^(2/3) n^(1/3)``."""
     from scipy.signal import lfilter
@@ -203,6 +217,7 @@ def test_the_block_length_matches_its_closed_form_on_an_ar1() -> None:
     assert vrp.politis_white_block(x) == pytest.approx(want, rel=0.15)
 
 
+@pytest.mark.invariant
 def test_stationary_indices_wrap_and_have_the_mean_block() -> None:
     rng = np.random.default_rng(0)
     idx = vrp.stationary_indices(1000, 25.0, 200, rng)
@@ -214,6 +229,7 @@ def test_stationary_indices_wrap_and_have_the_mean_block() -> None:
 # -- sub-periods -------------------------------------------------------------- #
 
 
+@pytest.mark.invariant
 def test_a_split_shares_no_return_between_its_halves() -> None:
     dates = business_days(200, start=date(2019, 11, 1))
     ends = vrp.window_end(dates)
@@ -233,6 +249,7 @@ AXIS = np.array([0.0, 0.25, 0.5, 1.0, 2.0, 4.0])
 CURVE = 0.05 + 0.95 / (1.0 + np.exp(-(AXIS - 1.5) * 2.5)) - 0.95 / (1.0 + np.exp(3.75))
 
 
+@pytest.mark.invariant
 def test_power_at_hits_the_grid_and_brackets_the_point() -> None:
     m = vrp.power_at(AXIS, CURVE, 1.0, (0.5, 2.0))
     assert m.power == pytest.approx(CURVE[3]) and m.power_low == pytest.approx(CURVE[2])
@@ -242,6 +259,7 @@ def test_power_at_hits_the_grid_and_brackets_the_point() -> None:
     assert m.power_low < mid.power_low < mid.power < mid.power_high
 
 
+@pytest.mark.invariant
 def test_power_at_is_monotone_between_points() -> None:
     grid = np.linspace(0.0, 4.0, 401)
     reads = [vrp.power_at(AXIS, CURVE, p, (p, p)).power for p in grid]
@@ -251,12 +269,14 @@ def test_power_at_is_monotone_between_points() -> None:
     assert np.all(np.diff(reads) >= -1e-12) and max(reads) <= 0.9 and min(reads) >= 0.05
 
 
+@pytest.mark.invariant
 def test_power_at_holds_the_ends_outside_the_grid() -> None:
     m = vrp.power_at(AXIS, CURVE, -0.3, (-1.0, 6.0))
     assert m.clipped
     assert m.power == pytest.approx(CURVE[0]) and m.power_high == pytest.approx(CURVE[-1])
 
 
+@pytest.mark.behaviour
 @pytest.mark.parametrize(
     ("premiums", "power"),
     [
@@ -272,6 +292,7 @@ def test_power_at_refuses_a_curve_it_cannot_read(premiums: list[float], power: l
         vrp.power_at(premiums, power, 1.0, (0.5, 1.5))
 
 
+@pytest.mark.invariant
 def test_power_at_reads_a_curve_that_dips_as_it_is() -> None:
     # The real PPO curve's knots (0.475 at 0.25 vol points, 0.346 at 0.5): a dip by
     # sampling noise at S = 5, which the reader used to refuse.
@@ -292,6 +313,7 @@ def _knots() -> tuple[list[float], list[float]]:
     return [0.0, 0.25, 0.5, 1.0, 2.0, 4.0], [0.0, 1.911, 1.4996, 3.5307, 6.9226, 5.0256]
 
 
+@pytest.mark.invariant
 def test_power_at_noncentrality_is_the_analysis_interpolation_exactly() -> None:
     from optspread import m4analysis as m4
 
@@ -311,6 +333,7 @@ def test_power_at_noncentrality_is_the_analysis_interpolation_exactly() -> None:
     assert (vrp.noncentral_power(np.inf, 5), vrp.noncentral_power(-np.inf, 5)) == (1.0, 0.0)
 
 
+@pytest.mark.invariant
 def test_power_at_noncentrality_reads_the_real_ppo_curve_over_its_interval() -> None:
     xs, lam = _knots()
     m = vrp.power_at_noncentrality(xs, lam, 5, 0.6395, (-0.344, 1.474))
@@ -326,6 +349,7 @@ def test_power_at_noncentrality_reads_the_real_ppo_curve_over_its_interval() -> 
         vrp.power_at_noncentrality([0.0, 1.0], [0.0, float("nan")], 5, 0.5, (0.0, 1.0))
 
 
+@pytest.mark.behaviour
 def test_bracket() -> None:
     assert vrp.bracket(0.8, AXIS.tolist()) == (0.5, 1.0)
     assert vrp.bracket(1.0, AXIS.tolist()) == (1.0, 2.0)
@@ -358,6 +382,7 @@ def write_daily(path: Path, n: int = 1500) -> None:
     frame.to_parquet(path, index=False)
 
 
+@pytest.mark.invariant
 def test_the_report_recovers_the_planted_premium(tmp_path: Path) -> None:
     from scripts import vrp_mapping
 
@@ -378,6 +403,7 @@ def test_the_report_recovers_the_planted_premium(tmp_path: Path) -> None:
     assert "not the build docs/DATA_MANIFEST.json records" in md  # a constructed file
 
 
+@pytest.mark.behaviour
 def test_the_report_refuses_a_date_twice() -> None:
     from scripts import vrp_mapping
 
@@ -387,6 +413,7 @@ def test_the_report_refuses_a_date_twice() -> None:
         vrp_mapping.series(cols)
 
 
+@pytest.mark.behaviour
 def test_reading_retries_a_timed_out_placeholder(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

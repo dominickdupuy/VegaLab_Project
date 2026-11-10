@@ -52,12 +52,14 @@ from optspread.policies import make_policy
 SMALL = JobSpec(n_days=21, tenor_days=(7, 14), n_episodes=3, seed=11)
 
 
+@pytest.mark.invariant
 def test_default_knobs_are_the_config_defaults() -> None:
     config = to_run_config(JobSpec(policy="flat"))
     assert config == RunConfig(policy="flat")
     assert config_hash(config) == config_hash(RunConfig(policy="flat"))
 
 
+@pytest.mark.behaviour
 def test_knobs_map_onto_every_config_field() -> None:
     spec = JobSpec(
         policy="always_on",
@@ -92,6 +94,7 @@ def test_knobs_map_onto_every_config_field() -> None:
     assert spec.steps == 5 * 42
 
 
+@pytest.mark.behaviour
 @pytest.mark.parametrize(
     ("knobs", "message"),
     [
@@ -112,6 +115,7 @@ def test_inconsistent_knobs_are_refused(knobs: dict[str, object], message: str) 
         JobSpec.model_validate(knobs)
 
 
+@pytest.mark.behaviour
 def test_a_ppo_job_trains_on_a_seed_its_config_accepts() -> None:
     """The training seed is the first seed and must be below 2**15: the largest one builds,
     one past it is refused at the spec with the reason, not by the worker part way in."""
@@ -123,6 +127,7 @@ def test_a_ppo_job_trains_on_a_seed_its_config_accepts() -> None:
     assert JobSpec(seed=200_000).seed == 200_000  # the scripted arms keep the whole range
 
 
+@pytest.mark.behaviour
 def test_every_preset_builds_a_config() -> None:
     names = [p.name for p in PRESETS]
     assert len(set(names)) == len(names) and "null_world" in names
@@ -132,12 +137,14 @@ def test_every_preset_builds_a_config() -> None:
     assert null.iv_premium_vol_pts == 0.0 and null.costs_enabled
 
 
+@pytest.mark.behaviour
 def test_ppo_is_hidden_without_the_learner() -> None:
     assert ppo_available() is (("ppo") in available_arms())
     if not ppo_available():
         assert available_arms() == ("flat", "always_on", "random", "delta_seller")
 
 
+@pytest.mark.invariant
 def test_the_traced_episode_is_the_harness_episode() -> None:
     config = to_run_config(SMALL)
     policy = make_policy("delta_seller")
@@ -148,6 +155,7 @@ def test_the_traced_episode_is_the_harness_episode() -> None:
     assert len(path) == plain.steps + 1
 
 
+@pytest.mark.invariant
 def test_a_launched_run_is_an_ordinary_hashed_run(tmp_path: Path) -> None:
     (tmp_path / ".jobs").mkdir()
     rel = execute_job("j1", SMALL.model_dump_json(), str(tmp_path))
@@ -192,6 +200,7 @@ def _settled(manager: JobManager, job_id: str) -> JobStatus:
     raise AssertionError(f"job {job_id} was relaunched more than once")
 
 
+@pytest.mark.behaviour
 def test_the_manager_reports_progress_and_failures(tmp_path: Path) -> None:
     manager = JobManager(tmp_path, executor=ThreadPoolExecutor(1))
     try:
@@ -220,6 +229,7 @@ def test_the_manager_reports_progress_and_failures(tmp_path: Path) -> None:
         manager.shutdown()
 
 
+@pytest.mark.behaviour
 @pytest.mark.spawns_processes
 def test_jobs_run_in_a_separate_process(tmp_path: Path) -> None:
     manager = JobManager(tmp_path, executor=ProcessPoolExecutor(1))
@@ -230,6 +240,7 @@ def test_jobs_run_in_a_separate_process(tmp_path: Path) -> None:
         manager.shutdown()
 
 
+@pytest.mark.behaviour
 @pytest.mark.spawns_processes
 def test_a_dead_worker_fails_its_job_and_the_pool_is_rebuilt(tmp_path: Path) -> None:
     manager = JobManager(tmp_path, workers=1)
@@ -254,6 +265,7 @@ def test_a_dead_worker_fails_its_job_and_the_pool_is_rebuilt(tmp_path: Path) -> 
         manager.shutdown()
 
 
+@pytest.mark.behaviour
 def test_a_pool_found_broken_at_launch_is_rebuilt_from_the_factory(tmp_path: Path) -> None:
     class Broken(ThreadPoolExecutor):
         def submit(self, *args: object, **kwargs: object) -> Future[str]:
@@ -267,6 +279,7 @@ def test_a_pool_found_broken_at_launch_is_rebuilt_from_the_factory(tmp_path: Pat
         manager.shutdown()
 
 
+@pytest.mark.behaviour
 @pytest.mark.spawns_processes
 @pytest.mark.slow
 def test_a_job_that_kills_its_worker_on_start_is_relaunched_once(tmp_path: Path) -> None:
@@ -282,6 +295,7 @@ def test_a_job_that_kills_its_worker_on_start_is_relaunched_once(tmp_path: Path)
         manager.shutdown()
 
 
+@pytest.mark.behaviour
 def test_the_queue_is_capped_and_a_job_can_be_cancelled(tmp_path: Path) -> None:
     STUBBORN = 21  # a job that finishes whatever its cancel flag says
     started = {11: threading.Event(), STUBBORN: threading.Event()}
@@ -338,6 +352,7 @@ def test_the_queue_is_capped_and_a_job_can_be_cancelled(tmp_path: Path) -> None:
 # -- the machinery audit: the pool's start method, a killed write, a cancelled training -- #
 
 
+@pytest.mark.internal
 def test_the_job_pool_spawns_its_workers_as_the_orchestrator_does(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -369,6 +384,7 @@ def test_the_job_pool_spawns_its_workers_as_the_orchestrator_does(
         manager.shutdown()
 
 
+@pytest.mark.invariant
 def test_a_job_killed_before_its_equity_paths_is_recomputed_not_reused(tmp_path: Path) -> None:
     from optspread.artifacts import write_run
     from optspread.harness import run_episodes, summarize
@@ -389,6 +405,7 @@ def test_a_job_killed_before_its_equity_paths_is_recomputed_not_reused(tmp_path:
     assert json.loads((tmp_path / ".jobs" / "j2.json").read_text())["phase"] == "reused"
 
 
+@pytest.mark.behaviour
 @pytest.mark.needs_torch
 def test_cancelling_a_training_job_stops_the_training(tmp_path: Path) -> None:
     pytest.importorskip("stable_baselines3")
@@ -426,6 +443,7 @@ def _fake_ppo(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(train, "train_ppo", trainer)
 
 
+@pytest.mark.invariant
 def test_a_launched_ppo_run_saves_its_policy_as_the_orchestrator_does(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -450,6 +468,7 @@ def test_a_launched_ppo_run_saves_its_policy_as_the_orchestrator_does(
     assert RunManifest.read(cli).artifacts[POLICY_FILENAME] == manifest.artifacts[POLICY_FILENAME]
 
 
+@pytest.mark.behaviour
 def test_a_scripted_job_saves_no_policy(tmp_path: Path) -> None:
     from optspread.train import POLICY_FILENAME
 
@@ -458,6 +477,7 @@ def test_a_scripted_job_saves_no_policy(tmp_path: Path) -> None:
     assert not (run_dir / POLICY_FILENAME).exists()
 
 
+@pytest.mark.invariant
 @pytest.mark.needs_torch
 def test_a_launched_ppo_run_is_resimulated_with_the_policy_it_saved(tmp_path: Path) -> None:
     pytest.importorskip("stable_baselines3")
@@ -487,6 +507,7 @@ def test_a_launched_ppo_run_is_resimulated_with_the_policy_it_saved(tmp_path: Pa
     assert POLICY_FILENAME in RunManifest.read(run_dir).artifacts
 
 
+@pytest.mark.internal
 def test_a_progress_write_waits_out_a_reader_holding_the_file(tmp_path: Path) -> None:
     """The server reads a worker's progress file to answer a status poll. Windows refuses
     to replace a file another handle has open (PermissionError), so a poll landing on a

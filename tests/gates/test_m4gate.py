@@ -136,6 +136,7 @@ def edited(data: dict[str, Any], edit: Callable[[dict[str, Any]], None]) -> dict
 # -- the analysis every analysis item reads ------------------------------------- #
 
 
+@pytest.mark.invariant
 def test_the_real_sidecar_of_the_stand_in_grid_is_the_analysis_the_items_accept(
     sweep: Sweep,
 ) -> None:
@@ -146,6 +147,7 @@ def test_the_real_sidecar_of_the_stand_in_grid_is_the_analysis_the_items_accept(
     assert hash_of(RunConfig()) == "17c15aa74ce473a9"
 
 
+@pytest.mark.behaviour
 def test_read_json_refuses_what_strict_json_does_not_allow(tmp_path: Path) -> None:
     assert m4gate.read_json(tmp_path / "absent.json") == (None, f"no {tmp_path / 'absent.json'}")
     (tmp_path / "nan.json").write_text('{"x": NaN}')
@@ -157,6 +159,7 @@ def test_read_json_refuses_what_strict_json_does_not_allow(tmp_path: Path) -> No
 # -- 1. the power curve ----------------------------------------------------------- #
 
 
+@pytest.mark.invariant
 def test_the_power_curve_item_passes_on_the_confirmatory_analysis(
     sweep: Sweep, tmp_path: Path
 ) -> None:
@@ -171,6 +174,7 @@ def test_the_power_curve_item_passes_on_the_confirmatory_analysis(
     assert "60 of 60" in m4gate.CURVE_CRITERION and "7d9d53d340006f02" in m4gate.CURVE_CRITERION
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize(
     ("edit", "why"),
     [
@@ -192,6 +196,7 @@ def test_the_power_curve_item_names_what_is_wrong_with_the_analysis(
     blocked(m4gate.power_curve_item(write_docs(tmp_path, edited(sweep.analysis, edit)), TINY), why)
 
 
+@pytest.mark.invariant
 def test_the_power_curve_item_refuses_a_missing_or_exploratory_analysis(
     sweep: Sweep, tmp_path: Path
 ) -> None:
@@ -205,6 +210,7 @@ def test_the_power_curve_item_refuses_a_missing_or_exploratory_analysis(
 # -- 2. the bootstrap ------------------------------------------------------------- #
 
 
+@pytest.mark.invariant
 def test_the_bootstrap_item_reports_the_rule_in_force_per_arm(sweep: Sweep, tmp_path: Path) -> None:
     item = m4gate.bootstrap_item(write_docs(tmp_path / "t", sweep.analysis), TINY)
     passes(item)
@@ -229,6 +235,7 @@ def _level(arm: str, k: int, **fields: Any) -> Callable[[dict[str, Any]], None]:
     return lambda d: d["arms"][arm]["bootstrap"]["levels"][k].update(**fields)
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize(
     ("edit", "why"),
     [
@@ -250,6 +257,7 @@ def test_the_bootstrap_item_refuses_a_rule_not_the_pre_stated_one(
     blocked(m4gate.bootstrap_item(write_docs(tmp_path, edited(sweep.analysis, edit)), TINY), why)
 
 
+@pytest.mark.invariant
 def test_the_bootstrap_item_needs_the_confirmatory_analysis(sweep: Sweep, tmp_path: Path) -> None:
     item = m4gate.bootstrap_item(write_docs(tmp_path, sweep.exploratory), TINY)
     blocked(item, "the M4 analysis is not usable: the analysis is exploratory")
@@ -258,6 +266,7 @@ def test_the_bootstrap_item_needs_the_confirmatory_analysis(sweep: Sweep, tmp_pa
 # -- 3. tau^2 homogeneity ---------------------------------------------------------- #
 
 
+@pytest.mark.invariant
 def test_the_homogeneity_item_passes_on_the_test_being_run_whatever_it_finds(
     sweep: Sweep, tmp_path: Path
 ) -> None:
@@ -283,6 +292,7 @@ def _homog(arm: str, on: str, **fields: Any) -> Callable[[dict[str, Any]], None]
     return lambda d: d["arms"][arm]["homogeneity"][on].update(**fields)
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize(
     ("edit", "why"),
     [
@@ -303,6 +313,7 @@ def test_the_homogeneity_item_refuses_a_test_not_run_or_misreported(
     blocked(m4gate.homogeneity_item(write_docs(tmp_path, edited(sweep.analysis, edit)), TINY), why)
 
 
+@pytest.mark.behaviour
 def test_the_homogeneity_item_needs_an_analysis(tmp_path: Path) -> None:
     blocked(m4gate.homogeneity_item(write_docs(tmp_path, None), TINY), "not usable: no ")
 
@@ -317,6 +328,7 @@ def _exact(points: list[dict[str, Any]], key: str, at: float) -> float:
     return m4.power_at(lam, TINY.n_seeds)
 
 
+@pytest.mark.invariant
 def test_the_vrp_item_reads_every_arms_curve_at_the_point_and_the_interval(
     sweep: Sweep, tmp_path: Path
 ) -> None:
@@ -343,6 +355,7 @@ def test_the_vrp_item_reads_every_arms_curve_at_the_point_and_the_interval(
     assert "held at the curve's end value" not in item.evidence
 
 
+@pytest.mark.behaviour
 def test_the_vrp_item_says_when_an_interval_end_lies_off_the_curve(
     sweep: Sweep, tmp_path: Path
 ) -> None:
@@ -386,6 +399,7 @@ def _real_curve(edit: dict[str, Any], S: int = 5) -> None:
     ]
 
 
+@pytest.mark.invariant
 def test_the_vrp_item_reads_a_curve_that_dips_as_it_is(sweep: Sweep, tmp_path: Path) -> None:
     data = edited(sweep.analysis, _real_curve)
     points = data["arms"]["ppo"]["curve"]["points"]
@@ -409,6 +423,7 @@ def test_the_vrp_item_reads_a_curve_that_dips_as_it_is(sweep: Sweep, tmp_path: P
     assert "ppo power " in item.evidence and "held at the curve's end value" in item.evidence
 
 
+@pytest.mark.invariant
 def test_the_vrp_item_refuses_a_sidecar_that_is_not_one_curve(sweep: Sweep, tmp_path: Path) -> None:
     def dense_off(d: dict[str, Any]) -> None:
         d["arms"]["ppo"]["curve"]["interpolated"][-1]["power"] -= 0.01
@@ -431,11 +446,13 @@ def test_the_vrp_item_refuses_a_sidecar_that_is_not_one_curve(sweep: Sweep, tmp_
     blocked(item, "premiums must be strictly increasing")
 
 
+@pytest.mark.internal
 def test_the_linear_reading_says_when_there_is_no_curve_to_read() -> None:
     assert m4gate._linear([], (1.0,)) == "--"
     assert m4gate._linear([{"premium": 0.0, "power": None}], (1.0,)) == "--"
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize(
     ("mapping", "manifest", "why"),
     [
@@ -462,6 +479,7 @@ def test_the_vrp_item_refuses_a_mapping_not_from_the_recorded_panel_or_unreadabl
     blocked(m4gate.vrp_item(docs, TINY), why)
 
 
+@pytest.mark.behaviour
 def test_the_vrp_item_needs_its_files_and_the_analysis(sweep: Sweep, tmp_path: Path) -> None:
     docs = write_docs(tmp_path / "a", None)
     blocked(m4gate.vrp_item(docs, TINY), "the M4 analysis is not usable: no ")
@@ -471,6 +489,7 @@ def test_the_vrp_item_needs_its_files_and_the_analysis(sweep: Sweep, tmp_path: P
     blocked(m4gate.vrp_item(docs, TINY), f"no {docs / m4gate.VRP_FILE}")
 
 
+@pytest.mark.invariant
 def test_the_committed_mapping_is_from_the_panel_the_data_manifest_records() -> None:
     docs = Path(__file__).resolve().parent.parent.parent / "docs"
     mapping, _ = m4gate.read_json(docs / m4gate.VRP_FILE)
@@ -524,6 +543,7 @@ def built_site(web: Path, *calls: str) -> Path:
 ROUTES = ("/api/health", "/api/runs/attribution", "/api/m4", "/api/power")
 
 
+@pytest.mark.behaviour
 def test_the_dashboard_item_matches_the_views_by_name_and_finds_them_called(
     server: Callable[..., None], tmp_path: Path
 ) -> None:
@@ -537,6 +557,7 @@ def test_the_dashboard_item_matches_the_views_by_name_and_finds_them_called(
     assert "/api/m4 from _next/static/chunks/app/sweep/page-1a2b.js" in item.evidence
 
 
+@pytest.mark.behaviour
 def test_the_power_curve_view_is_an_m4_segment_or_a_power_curve_not_the_power_lab() -> None:
     match = m4gate.POWER_CURVE_ROUTE.search
     assert all(
@@ -547,6 +568,7 @@ def test_the_power_curve_view_is_an_m4_segment_or_a_power_curve_not_the_power_la
     assert m4gate.ATTRIBUTION_ROUTE.search("/api/runs/{key}/attribution")
 
 
+@pytest.mark.behaviour
 @pytest.mark.parametrize(
     ("routes", "why"),
     [
@@ -563,6 +585,7 @@ def test_the_dashboard_item_names_the_view_with_no_route(
     blocked(item, why)
 
 
+@pytest.mark.behaviour
 def test_the_dashboard_item_needs_the_built_site_to_call_both_views(
     server: Callable[..., None], tmp_path: Path
 ) -> None:
@@ -575,6 +598,7 @@ def test_the_dashboard_item_needs_the_built_site_to_call_both_views(
     passes(m4gate.dashboard_item(tmp_path, tmp_path, built_site(web, "/api/runs/", "/api/m4")))
 
 
+@pytest.mark.behaviour
 def test_the_dashboard_item_without_a_server_or_with_a_broken_one(
     server: Callable[..., None], tmp_path: Path
 ) -> None:
@@ -584,6 +608,7 @@ def test_the_dashboard_item_without_a_server_or_with_a_broken_one(
     blocked(m4gate.dashboard_item(tmp_path, tmp_path, tmp_path), "half wired")
 
 
+@pytest.mark.behaviour
 def test_the_dashboard_item_builds_the_real_app(tmp_path: Path) -> None:
     pytest.importorskip("fastapi")
     from optspread.server import Settings, create_app
@@ -598,6 +623,7 @@ def test_the_dashboard_item_builds_the_real_app(tmp_path: Path) -> None:
 # -- 6. the collaboration report ---------------------------------------------------- #
 
 
+@pytest.mark.behaviour
 def test_the_collaboration_report_must_exist_and_hold_something(tmp_path: Path) -> None:
     blocked(m4gate.collaboration_item(tmp_path), "no COLLABORATION.md or COLLABORATION_REPORT.md")
     (tmp_path / "COLLABORATION_REPORT.md").write_text("  \n\n")
@@ -632,6 +658,7 @@ def attributed(sweep: Sweep, tmp_path_factory: pytest.TempPathFactory) -> Path:
     return out
 
 
+@pytest.mark.behaviour
 def test_the_residual_item_reads_one_reproducing_attribution_per_arm(
     sweep: Sweep, attributed: Path
 ) -> None:
@@ -647,6 +674,7 @@ def test_the_residual_item_reads_one_reproducing_attribution_per_arm(
     assert "no other attribution under the root exercises vega" in item.evidence
 
 
+@pytest.mark.behaviour
 def test_the_residual_item_passes_a_cell_that_agrees_without_reproducing(
     sweep: Sweep, attributed: Path, tmp_path: Path
 ) -> None:
@@ -667,6 +695,7 @@ def test_the_residual_item_passes_a_cell_that_agrees_without_reproducing(
     )
 
 
+@pytest.mark.behaviour
 def test_the_residual_item_says_what_exercises_vega(
     sweep: Sweep, attributed: Path, tmp_path: Path
 ) -> None:
@@ -698,6 +727,7 @@ def _rewrite(root: Path, edit: Callable[[dict[str, Any]], None], match: str = ""
     raise AssertionError("nothing to rewrite")
 
 
+@pytest.mark.invariant
 def test_the_residual_item_refuses_what_is_not_evidence(
     sweep: Sweep, attributed: Path, tmp_path: Path
 ) -> None:
@@ -731,6 +761,7 @@ def test_the_residual_item_refuses_what_is_not_evidence(
 # -- the report command ------------------------------------------------------------ #
 
 
+@pytest.mark.behaviour
 def test_the_report_names_every_root_portably_and_round_trips(
     sweep: Sweep, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -757,6 +788,7 @@ def test_the_report_names_every_root_portably_and_round_trips(
     assert "exploratory, not confirmatory" in sidecar["items"][0]["failed_first"]
 
 
+@pytest.mark.behaviour
 def test_the_report_clears_when_every_item_does(
     sweep: Sweep,
     attributed: Path,

@@ -26,6 +26,7 @@ def arms(seed: int, delta: float, S: int = 8, N: int = 12) -> tuple[np.ndarray, 
     return treated, control
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize("seed", range(12))
 def test_the_rule_is_the_one_sided_t_test_on_seed_means(seed: int) -> None:
     treated, control = arms(seed, delta=1.0)
@@ -37,6 +38,7 @@ def test_the_rule_is_the_one_sided_t_test_on_seed_means(seed: int) -> None:
     assert d.estimate == pytest.approx(float((treated - control).mean()), rel=1e-12)
 
 
+@pytest.mark.invariant
 def test_the_shared_path_cancels_exactly() -> None:
     treated, control = arms(0, delta=1.0)
     shift = np.random.default_rng(99).normal(0.0, 1e3, size=treated.shape)
@@ -45,12 +47,14 @@ def test_the_shared_path_cancels_exactly() -> None:
     assert b.se == pytest.approx(a.se, rel=1e-9)
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize("seed", range(20))
 def test_the_lower_bound_is_positive_exactly_when_the_rule_fires(seed: int) -> None:
     d = decide(*arms(seed, delta=0.8))
     assert (d.lower_bound > 0.0) == d.rejected
 
 
+@pytest.mark.invariant
 def test_the_test_uses_the_unclamped_seed_mean_variance() -> None:
     # Every seed mean equal: MS_between = 0 < MS_within, so the clamp engages.
     rows = np.array([[1.0, 2.0, 3.0], [3.0, 1.0, 2.0], [2.0, 3.0, 1.0], [1.0, 3.0, 2.0]])
@@ -64,6 +68,7 @@ def test_the_test_uses_the_unclamped_seed_mean_variance() -> None:
     assert decide_contrast(rows - 5.0).t_stat == -np.inf
 
 
+@pytest.mark.behaviour
 def test_unpaired_inputs_are_refused() -> None:
     with pytest.raises(ValueError, match="one shape"):
         paired_contrast(np.zeros((3, 4)), np.zeros((3, 5)))
@@ -71,6 +76,7 @@ def test_unpaired_inputs_are_refused() -> None:
         paired_contrast(np.zeros(4), np.zeros(4))
 
 
+@pytest.mark.internal
 def test_the_rendering_carries_the_verdict_and_the_interval() -> None:
     text = decide(*arms(1, delta=50.0)).render()
     assert "detected" in text and "not detected" not in text

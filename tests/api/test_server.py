@@ -67,6 +67,7 @@ def bare(tmp_path: Path, gate_docs: Path) -> Iterator[TestClient]:
     yield from _client(settings, JobManager(runs, executor=ThreadPoolExecutor(1)))
 
 
+@pytest.mark.behaviour
 def test_health_and_the_site(client: TestClient) -> None:
     health = client.get("/api/health").json()
     assert health["ok"] and health["version"]
@@ -77,6 +78,7 @@ def test_health_and_the_site(client: TestClient) -> None:
 PAGES = ("/", "/runs/", "/launch/", "/power/", "/data/", "/leaks/", "/sweep/", "/attribution/")
 
 
+@pytest.mark.behaviour
 @pytest.mark.skipif(not (WEB_DIR / "index.html").is_file(), reason="needs `make web` first")
 def test_every_page_of_the_built_site_is_served(tmp_path: Path, gate_docs: Path) -> None:
     settings = Settings(tmp_path / "runs", gate_docs, tmp_path, WEB_DIR, REPO_ROOT / "README.md")
@@ -90,11 +92,13 @@ def test_every_page_of_the_built_site_is_served(tmp_path: Path, gate_docs: Path)
         assert route in chunks, route
 
 
+@pytest.mark.behaviour
 def test_without_a_built_site_the_root_says_how_to_build_it(bare: TestClient) -> None:
     assert "make web" in bare.get("/").json()["detail"]
     assert bare.get("/api/runs").json()["rows"] == []
 
 
+@pytest.mark.behaviour
 def test_runs_list_filter_detail_and_compare(client: TestClient) -> None:
     listed = client.get("/api/runs").json()
     assert listed["trials"]["n_runs"] == 6
@@ -115,6 +119,7 @@ def test_runs_list_filter_detail_and_compare(client: TestClient) -> None:
     assert client.get("/api/runs/compare", params={"a": key, "b": "nope"}).status_code == 404
 
 
+@pytest.mark.behaviour
 def test_the_checks_panel_is_the_one_route_to_the_reports(client: TestClient) -> None:
     # the board's own routes went with the board: no page read them
     for path in ("/api/gates", "/api/gates/m2"):
@@ -129,6 +134,7 @@ def test_the_checks_panel_is_the_one_route_to_the_reports(client: TestClient) ->
     )
 
 
+@pytest.mark.behaviour
 def test_an_unknown_api_path_is_a_json_404_not_the_site(client: TestClient) -> None:
     for method in ("get", "post"):
         response = getattr(client, method)("/api/nope/really")
@@ -140,6 +146,7 @@ def test_an_unknown_api_path_is_a_json_404_not_the_site(client: TestClient) -> N
     assert wrong.status_code == 405 and "GET" in wrong.headers["allow"]
 
 
+@pytest.mark.invariant
 def test_payloads_name_roots_not_where_they_are(client: TestClient, tmp_path: Path) -> None:
     """``root``, ``file`` and ``run_dir`` fields read ``<runs root>/...``, never a home."""
     bodies = [
@@ -161,6 +168,7 @@ def test_payloads_name_roots_not_where_they_are(client: TestClient, tmp_path: Pa
     )
 
 
+@pytest.mark.behaviour
 def test_a_job_launched_over_http_lands_as_a_listed_run(
     client: TestClient, jobs: JobManager
 ) -> None:
@@ -182,6 +190,7 @@ def test_a_job_launched_over_http_lands_as_a_listed_run(
     assert client.get("/api/jobs/nope").status_code == 404
 
 
+@pytest.mark.behaviour
 @pytest.mark.parametrize(
     "knobs",
     [{"n_episodes": 0}, {"tenor_days": [42, 21]}, {"bogus": 1}, {"policy": "ppo"}],
@@ -193,6 +202,7 @@ def test_bad_knobs_are_refused_with_the_reason(
     assert response.status_code == 422 and response.json()["detail"]
 
 
+@pytest.mark.behaviour
 def test_ppo_without_the_learner_is_refused(client: TestClient) -> None:
     if client.get("/api/jobs/options").json()["ppo_available"]:
         pytest.skip("the learner is installed here")
@@ -200,12 +210,14 @@ def test_ppo_without_the_learner_is_refused(client: TestClient) -> None:
     assert response.status_code == 422 and "PPO" in response.json()["detail"]
 
 
+@pytest.mark.behaviour
 def test_the_power_lab(client: TestClient) -> None:
     out = client.get("/api/power", params={"n_seeds": 5, "n_episodes": 50}).json()
     assert out["design"]["n_seeds"] == 5 and len(out["curve"]["delta"]) == 81
     assert client.get("/api/power", params={"alpha": 0.9}).status_code == 422
 
 
+@pytest.mark.behaviour
 def test_an_undefined_figure_is_sent_as_null_never_a_500(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -249,12 +261,14 @@ def test_an_undefined_figure_is_sent_as_null_never_a_500(
     assert got.status_code == 409 and got.json() == {"detail": {"value": None}}
 
 
+@pytest.mark.behaviour
 def test_the_leak_demo(client: TestClient) -> None:
     out = client.post("/api/leaks/demo", json={"eps": 0.5, "n_seeds": 4}).json()
     assert out["caught"] and out["poisoned"]["worst_feature"] == "ret_1d"
     assert client.post("/api/leaks/demo", json={"eps": 0}).status_code == 422
 
 
+@pytest.mark.behaviour
 def test_sweeps(client: TestClient) -> None:
     listed = client.get("/api/sweeps").json()
     assert [s["key"] for s in listed["sweeps"]] == ["sweeps/tiny"]
@@ -263,6 +277,7 @@ def test_sweeps(client: TestClient) -> None:
     assert client.get("/api/sweeps/detail", params={"key": "nope"}).status_code == 404
 
 
+@pytest.mark.behaviour
 def test_the_panel_routes(client: TestClient) -> None:
     assert client.get("/api/data/status").json()["built"]
     assert client.get("/api/data/coverage").json()["overlap"] == ["2025-07-01", "2025-07-03", 2]
@@ -284,6 +299,7 @@ def test_the_panel_routes(client: TestClient) -> None:
     assert client.get("/api/overview").json()["overlap"] == ["2025-07-01", "2025-07-03", 2]
 
 
+@pytest.mark.behaviour
 def test_the_3d_routes(client: TestClient) -> None:
     dates = client.get("/api/data/grid/dates").json()
     assert dates[0] == "2025-06-27" and "2025-07-08" in dates
@@ -303,6 +319,7 @@ def test_the_3d_routes(client: TestClient) -> None:
     assert client.get("/api/data/grid", params={"date": "2025-07-04"}).status_code == 404
 
 
+@pytest.mark.behaviour
 def test_an_unbuilt_panel_is_a_404_that_names_the_missing_files(bare: TestClient) -> None:
     response = bare.get("/api/data/coverage")
     assert response.status_code == 404
@@ -313,6 +330,7 @@ def test_an_unbuilt_panel_is_a_404_that_names_the_missing_files(bare: TestClient
     assert bare.get("/api/overview").json()["coverage"] == []
 
 
+@pytest.mark.behaviour
 @pytest.mark.parametrize(
     ("path", "params"),
     [
@@ -346,6 +364,7 @@ def test_bad_input_is_a_4xx_with_a_reason_never_a_500(
     assert 400 <= response.status_code < 500 and response.json()["detail"]
 
 
+@pytest.mark.behaviour
 def test_a_full_queue_is_a_429_and_a_job_can_be_cancelled(
     client: TestClient, jobs: JobManager
 ) -> None:
@@ -378,11 +397,13 @@ def test_a_full_queue_is_a_429_and_a_job_can_be_cancelled(
     assert client.post("/api/jobs", json={**knobs, "seed": 5}).status_code == 201
 
 
+@pytest.mark.behaviour
 def test_a_job_whose_implied_vol_is_not_positive_is_refused(client: TestClient) -> None:
     response = client.post("/api/jobs", json={"sigma": 0.01, "iv_premium_vol_pts": -10.0})
     assert response.status_code == 422 and "implied vol" in str(response.json()["detail"])
 
 
+@pytest.mark.behaviour
 def test_a_foreign_host_header_is_refused(client: TestClient) -> None:
     rebound = client.get("/api/health", headers={"host": "attacker.example"})
     assert rebound.status_code == 400
@@ -392,6 +413,7 @@ def test_a_foreign_host_header_is_refused(client: TestClient) -> None:
     assert allowed_hosts("fe80::1")[-2:] == ["fe80::1", "[fe80::1]"]
 
 
+@pytest.mark.behaviour
 def test_the_servers_default_runs_root_is_the_orchestrators(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -413,6 +435,7 @@ def _until_done(client: TestClient, path: str, key: str, states: tuple[str, ...]
     raise AssertionError(f"{path} never reached {states}")
 
 
+@pytest.mark.behaviour
 def test_the_study_its_checks_and_its_documents(client: TestClient) -> None:
     study = client.get("/api/study").json()
     assert (study["n_seeds"], study["n_episodes"]) == (5, 500) and study["doc"]
@@ -430,6 +453,7 @@ def test_the_study_its_checks_and_its_documents(client: TestClient) -> None:
     assert not m4["available"] and "make m4" in m4["waiting_for"]
 
 
+@pytest.mark.invariant
 def test_attribution_capital_and_replay_start_and_are_polled(client: TestClient) -> None:
     rows = client.get("/api/runs", params={"policy": "delta_seller", "sweep": "tiny"}).json()
     key = rows["rows"][0]["key"]
@@ -453,6 +477,7 @@ def test_attribution_capital_and_replay_start_and_are_polled(client: TestClient)
     assert client.get("/api/runs/replay", params={"key": "nope"}).status_code == 404
 
 
+@pytest.mark.behaviour
 def test_the_leak_floor_and_field_routes(client: TestClient) -> None:
     fields = client.get("/api/leaks/fields").json()
     assert "ret_1d" in fields and len(fields) == 14
@@ -465,6 +490,7 @@ def test_the_leak_floor_and_field_routes(client: TestClient) -> None:
     assert client.post("/api/leaks/field", json={"field": "nope"}).status_code == 422
 
 
+@pytest.mark.behaviour
 def test_the_seller_on_a_real_close_and_the_launch_extras(client: TestClient) -> None:
     seller = client.get("/api/data/seller", params={"date": "2025-07-01"}).json()
     assert seller["structure"] == "IRON_CONDOR" and len(seller["legs"]) == 4
@@ -484,6 +510,7 @@ def test_the_seller_on_a_real_close_and_the_launch_extras(client: TestClient) ->
 # -- hardening: bounded windows, no pilot as a run, no absolute paths --------- #
 
 
+@pytest.mark.behaviour
 def test_the_largest_windows_are_served_and_one_past_them_is_a_422(client: TestClient) -> None:
     from optspread.webapi import MAX_DATES, MAX_FRAMES
 
@@ -496,6 +523,7 @@ def test_the_largest_windows_are_served_and_one_past_them_is_a_422(client: TestC
     assert over.status_code == 422 and str(MAX_DATES) in over.json()["detail"]
 
 
+@pytest.mark.behaviour
 def test_the_pilots_matrix_manifest_is_not_served_as_a_run(
     client: TestClient, jobs: JobManager
 ) -> None:
@@ -521,6 +549,7 @@ def test_the_pilots_matrix_manifest_is_not_served_as_a_run(
     assert all(r["key"] != "pilot" for r in client.get("/api/runs").json()["rows"])
 
 
+@pytest.mark.invariant
 def test_errors_and_health_name_no_absolute_path(
     client: TestClient, bare: TestClient, tmp_path: Path
 ) -> None:
@@ -547,6 +576,7 @@ def test_errors_and_health_name_no_absolute_path(
         assert str(REPO_ROOT) not in text, text
 
 
+@pytest.mark.invariant
 def test_a_redacted_path_reads_with_forward_slashes_on_every_platform(tmp_path: Path) -> None:
     """After a root's name the path is written as Linux writes it, also where the
     separator is a backslash (Windows); a path under no root is left as it is."""
@@ -559,6 +589,7 @@ def test_a_redacted_path_reads_with_forward_slashes_on_every_platform(tmp_path: 
     assert redact(elsewhere) == elsewhere
 
 
+@pytest.mark.behaviour
 def test_the_data_pages_question_routes(client: TestClient, bare: TestClient) -> None:
     premium = client.get("/api/data/premium").json()
     assert len(premium["date"]) == len(premium["premium"]) and premium["reading"].startswith("From")
@@ -579,6 +610,7 @@ def test_the_data_pages_question_routes(client: TestClient, bare: TestClient) ->
     assert bare.get("/api/data/quality").json()["checked"] == []
 
 
+@pytest.mark.invariant
 def test_the_run_pages_new_routes(client: TestClient) -> None:
     """Premiums, the catalog (absent here), capital cached, the mix view and the preview."""
     prem = client.get("/api/runs/premiums", params={"sweep": "tiny"}).json()

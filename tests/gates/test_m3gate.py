@@ -70,6 +70,7 @@ sweep = partial(m3gate.sweep_item, grid=TINY, tag=TAG)
 # -- 1. the sweep ------------------------------------------------------------------- #
 
 
+@pytest.mark.behaviour
 def test_the_sweep_item_passes_on_a_complete_valid_grid(world: World) -> None:
     item = sweep(world.root, world.repo)
     passes(item)
@@ -86,6 +87,7 @@ def replay_line(root: Path, run_id: str, *, sha: str | None = None, ok: bool = T
     return f"IDENTICAL  {run_id}  (17.5s)  run.json sha256 {digest[:16]} reproduced"
 
 
+@pytest.mark.invariant
 def test_the_sweep_item_reads_the_replay_log_and_holds_it_to_the_files(
     world: World, tmp_path: Path
 ) -> None:
@@ -106,6 +108,7 @@ def test_the_sweep_item_reads_the_replay_log_and_holds_it_to_the_files(
     blocked(sweep(root, world.repo), "(none named)")
 
 
+@pytest.mark.invariant
 def test_the_sweep_item_replays_a_sample_here_when_asked(world: World) -> None:
     calls: list[str] = []
 
@@ -137,6 +140,7 @@ def _written_elsewhere(run_dir: Path, platform: dict[str, str] | None) -> None:
 WINDOWS = {"os": "Windows", "arch": "AMD64", "python": "3.12.0", "numpy": "2.5.3"}
 
 
+@pytest.mark.invariant
 def test_cells_written_on_another_platform_replay_within_the_tolerance_ppo_not_at_all(
     world: World, tmp_path: Path
 ) -> None:
@@ -170,6 +174,7 @@ def test_cells_written_on_another_platform_replay_within_the_tolerance_ppo_not_a
     assert m3gate.replay_here(root / seller.run_id).rtol == rp.SELLER_REL_TOL
 
 
+@pytest.mark.behaviour
 def test_the_replay_sample_is_fixed_and_takes_the_arms_in_turn() -> None:
     cells = grid_cells(TINY)
     first = m3gate.replay_sample(cells, 4)
@@ -179,6 +184,7 @@ def test_the_replay_sample_is_fixed_and_takes_the_arms_in_turn() -> None:
     assert len(m3gate.replay_sample(cells, 99)) == len(cells)
 
 
+@pytest.mark.invariant
 def test_the_sweep_item_without_a_sweep_or_with_another_grid(world: World, tmp_path: Path) -> None:
     blocked(sweep(tmp_path, world.repo), "the sweep has not run")
     other = TINY.model_copy(update={"n_seeds": 2})
@@ -189,6 +195,7 @@ def test_the_sweep_item_without_a_sweep_or_with_another_grid(world: World, tmp_p
     blocked(sweep(root, world.repo), "is refused")
 
 
+@pytest.mark.invariant
 def test_the_sweep_item_needs_every_cell_listed(world: World, tmp_path: Path) -> None:
     root = copy_root(world, tmp_path)
     record = json.loads((root / grid_filename(TINY)).read_text())
@@ -198,6 +205,7 @@ def test_the_sweep_item_needs_every_cell_listed(world: World, tmp_path: Path) ->
     assert dropped["run_id"] in sweep(root, world.repo).failed_first
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize(
     ("damage", "why"),
     [
@@ -229,6 +237,7 @@ def test_the_sweep_item_names_the_first_invalid_cell(
     assert why in item.failed_first and cell.run_id in item.failed_first
 
 
+@pytest.mark.invariant
 def test_why_invalid_names_the_key_the_run_id_and_the_trainer(
     world: World, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -249,6 +258,7 @@ def test_why_invalid_names_the_key_the_run_id_and_the_trainer(
     assert "ran on optionmetrics" in m3gate.why_invalid(root / seller.run_id, seller)
 
 
+@pytest.mark.invariant
 def test_the_sweep_item_needs_clean_cells_written_at_or_after_the_tag(
     world: World, tmp_path: Path
 ) -> None:
@@ -286,6 +296,7 @@ def measured_floor() -> float:
     return floor
 
 
+@pytest.mark.invariant
 @pytest.mark.slow
 def test_the_floor_item_measures_the_floor_and_matches_m1(
     tmp_path: Path, measured_floor: float
@@ -300,6 +311,7 @@ def test_the_floor_item_measures_the_floor_and_matches_m1(
     blocked(m3gate.floor_item(tmp_path / "none", seeds=SEEDS), "no ")
 
 
+@pytest.mark.invariant
 def test_the_committed_m1_sidecar_states_the_readme_floor() -> None:
     assert m3gate.m1_floor(Path(__file__).resolve().parent.parent.parent / "docs") == (
         0.1,
@@ -319,6 +331,7 @@ def _only_middle(eps: float) -> Any:
     return default_env(0.5 if eps == 0.25 else 0.0)
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize(
     ("make_env", "why"),
     [
@@ -412,6 +425,7 @@ def built_site(web: Path, *calls: str, page: str | None = "leaks/index.html") ->
     return web
 
 
+@pytest.mark.behaviour
 def test_the_demo_item_calls_the_route_and_finds_the_page(
     server: Callable[..., None], tmp_path: Path
 ) -> None:
@@ -424,6 +438,7 @@ def test_the_demo_item_calls_the_route_and_finds_the_page(
     assert "has leaks/index.html and calls /api/leaks/demo from _next/static" in item.evidence
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize(
     ("override", "why"),
     [
@@ -442,6 +457,7 @@ def test_the_demo_item_fails_unless_poisoned_fails_and_clean_passes(
     blocked(m3gate.demo_item(tmp_path, tmp_path, built_site(tmp_path / "web")), why)
 
 
+@pytest.mark.behaviour
 def test_the_demo_item_needs_the_route_answering_and_the_site(
     server: Callable[..., None], tmp_path: Path
 ) -> None:
@@ -460,6 +476,7 @@ def test_the_demo_item_needs_the_route_answering_and_the_site(
     )
 
 
+@pytest.mark.behaviour
 def test_the_demo_item_without_a_server_or_with_a_broken_one(
     server: Callable[..., None], tmp_path: Path
 ) -> None:
@@ -469,6 +486,7 @@ def test_the_demo_item_without_a_server_or_with_a_broken_one(
     blocked(m3gate.demo_item(tmp_path, tmp_path, tmp_path), "half wired")
 
 
+@pytest.mark.invariant
 def test_the_demo_item_calls_the_real_app(tmp_path: Path) -> None:
     pytest.importorskip("fastapi")
     pytest.importorskip("httpx")
@@ -532,6 +550,7 @@ def partner(docs: Path, world: World, root: Path | None = None) -> GateItem:
     return m3gate.partner_item(docs, root or world.root, world.repo, grid=TINY, tag=TAG)
 
 
+@pytest.mark.behaviour
 def test_the_partner_item_passes_on_a_complete_record(world: World, tmp_path: Path) -> None:
     item = partner(send(tmp_path, partner_record(world)), world)
     passes(item)
@@ -544,6 +563,7 @@ def test_the_partner_item_passes_on_a_complete_record(world: World, tmp_path: Pa
     )
 
 
+@pytest.mark.behaviour
 def test_the_partner_item_without_a_record_or_an_unreadable_one(
     world: World, tmp_path: Path
 ) -> None:
@@ -554,6 +574,7 @@ def test_the_partner_item_without_a_record_or_an_unreadable_one(
     blocked(partner(tmp_path, world), "schema 2, not 1")
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize(
     ("override", "why"),
     [
@@ -569,6 +590,7 @@ def test_the_partner_item_refuses_a_record_that_is_not_the_repository(
     blocked(partner(send(tmp_path, partner_record(world, **override)), world), why)
 
 
+@pytest.mark.invariant
 def test_the_partner_item_needs_a_commit_at_or_after_the_tag_with_the_expected_file(
     world: World, tmp_path: Path
 ) -> None:
@@ -582,6 +604,7 @@ def test_the_partner_item_needs_a_commit_at_or_after_the_tag_with_the_expected_f
     blocked(item, "no nope tag")
 
 
+@pytest.mark.invariant
 def test_the_partner_item_needs_every_step_passed(world: World, tmp_path: Path) -> None:
     good = partner_record(world)
     fewer = good.model_copy(update={"steps": good.steps[:-1]})
@@ -595,6 +618,7 @@ def test_the_partner_item_needs_every_step_passed(world: World, tmp_path: Path) 
     blocked(item, "ppo cell failed: exit None")
 
 
+@pytest.mark.invariant
 def test_the_partner_item_holds_every_cell_to_the_grid_and_the_tolerance(
     world: World, tmp_path: Path
 ) -> None:
@@ -622,6 +646,7 @@ def test_the_partner_item_holds_every_cell_to_the_grid_and_the_tolerance(
     assert "(2 delta_seller, 1 ppo; premiums 0, 4)" in item.evidence and "3e-07" in item.evidence
 
 
+@pytest.mark.behaviour
 def test_a_windows_checkout_with_crlf_hashes_the_expected_file_as_the_gate_does(
     world: World, tmp_path: Path
 ) -> None:
@@ -634,6 +659,7 @@ def test_a_windows_checkout_with_crlf_hashes_the_expected_file_as_the_gate_does(
     passes(partner(send(tmp_path, record), world))
 
 
+@pytest.mark.behaviour
 def test_the_committed_json_keeps_lf_in_every_checkout() -> None:
     repo = Path(__file__).resolve().parent.parent.parent
     done = subprocess.run(
@@ -648,6 +674,7 @@ def test_the_committed_json_keeps_lf_in_every_checkout() -> None:
     assert "eol: lf" in done.stdout and "text: set" in done.stdout
 
 
+@pytest.mark.invariant
 def test_the_partner_item_ties_the_expected_file_to_the_sweep(world: World, tmp_path: Path) -> None:
     docs = send(tmp_path / "docs", partner_record(world))
     blocked(partner(docs, world, tmp_path / "nosweep"), "no sweep at")
@@ -659,6 +686,7 @@ def test_the_partner_item_ties_the_expected_file_to_the_sweep(world: World, tmp_
     assert "is of grid" in m3gate.expected_problem(world.expected, world.root, other)
 
 
+@pytest.mark.invariant
 def test_expected_problem_needs_exactly_the_grids_cells(world: World) -> None:
     fewer = world.expected.model_copy(update={"cells": world.expected.cells[:-1]})
     assert "does not list exactly" in m3gate.expected_problem(fewer, world.root, TINY)
@@ -668,6 +696,7 @@ def test_expected_problem_needs_exactly_the_grids_cells(world: World) -> None:
 # -- the report command ------------------------------------------------------------ #
 
 
+@pytest.mark.behaviour
 @pytest.mark.slow
 def test_the_report_names_every_root_portably_and_round_trips(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -700,6 +729,7 @@ def test_the_report_names_every_root_portably_and_round_trips(
         m3_gate_report.main(["--replay", "-1"])
 
 
+@pytest.mark.behaviour
 def test_the_report_clears_when_every_item_does(
     world: World,
     tmp_path: Path,
@@ -749,6 +779,7 @@ def _make_dry_run(target: str, *args: str) -> str:
     return out.stdout.strip()
 
 
+@pytest.mark.behaviour
 @pytest.mark.skipif(shutil.which("make") is None, reason="needs make")
 def test_the_m3gate_and_reproduce_targets_pass_their_args_through() -> None:
     line = _make_dry_run("m3gate", "ARGS=--runs-root /tmp/r", "PY=py")

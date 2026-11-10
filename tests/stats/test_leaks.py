@@ -60,6 +60,7 @@ def make_env(eps: float = 0.0) -> SpreadEnv:
 # -- perturbation property: no future stream reaches the present ----------- #
 
 
+@pytest.mark.invariant
 @settings(max_examples=30, deadline=None)
 @given(
     seed=st.integers(0, 2**31 - 1),
@@ -75,6 +76,7 @@ def test_chain_at_t_is_independent_of_streams_after_t(seed: int, other: int, t: 
 # -- structural invariants -------------------------------------------------- #
 
 
+@pytest.mark.invariant
 def test_clean_sequence_has_no_violations() -> None:
     provider = make_provider()
     chains = [provider.reset(SeededStepRNG(9))]
@@ -82,6 +84,7 @@ def test_clean_sequence_has_no_violations() -> None:
     assert sequence_violations(chains) == []
 
 
+@pytest.mark.invariant
 def test_invariants_catch_a_corrupted_chain() -> None:
     c = make_provider().reset(SeededStepRNG(0))
     bad = Chain(c.t, c.spot, c.r, c.strikes[::-1].copy(), c.expiry_days, -c.ivs)
@@ -93,6 +96,7 @@ def test_invariants_catch_a_corrupted_chain() -> None:
 # -- calendar arbitrage: total variance must not fall with tenor (#29) ------- #
 
 
+@pytest.mark.invariant
 def test_the_issue_surface_passes_bounds_and_parity_but_not_the_calendar_check() -> None:
     clean = make_provider().reset(SeededStepRNG(0))
     bad = calendar_control(clean)  # 60% at 21 days over 15% at 42
@@ -111,6 +115,7 @@ def test_the_issue_surface_passes_bounds_and_parity_but_not_the_calendar_check()
     assert calendar_violations(clean) == []
 
 
+@pytest.mark.invariant
 def test_the_calendar_check_runs_in_the_conformance_suite() -> None:
     class _Inverted(SyntheticChainProvider):
         def _chain(self, spot: float) -> Chain:
@@ -166,6 +171,7 @@ def _historical(store: SurfaceStore, tenors: tuple[int, ...]) -> HistoricalChain
     return HistoricalChainProvider(MarketConfig(n_days=10, tenor_days=tenors), store)
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize("carry", [0.04, 0.0, -0.02])
 @pytest.mark.parametrize("atm_vol", [contango, legal_inversion])
 def test_a_legal_term_structure_passes_through_the_real_provider(
@@ -181,6 +187,7 @@ def test_a_legal_term_structure_passes_through_the_real_provider(
         assert sequence_violations(chains) == [], (tenors, carry)
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize("carry", [0.04, 0.0, -0.02])
 def test_an_inverted_real_term_structure_is_caught(carry: float) -> None:
     store = _smile_store(arb_inversion, carry)
@@ -211,6 +218,7 @@ def _boundary_chain(r: float, curvature: float, far_scale: float = 1.0) -> Chain
     return Chain(base.t, base.spot, r, base.strikes, base.t + tenors, ivs)
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize("curvature", [30.0, -10.0], ids=["smile", "frown"])
 @pytest.mark.parametrize("r", [0.05, 0.0, -0.03])
 def test_flat_total_variance_is_legal_and_one_percent_below_it_is_not(
@@ -223,6 +231,7 @@ def test_flat_total_variance_is_legal_and_one_percent_below_it_is_not(
     ], caught
 
 
+@pytest.mark.internal
 def test_the_interpolation_allowance_is_what_keeps_the_boundary_legal(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -236,6 +245,7 @@ def test_the_interpolation_allowance_is_what_keeps_the_boundary_legal(
     assert calendar_violations(_boundary_chain(0.0, -10.0)) == []
 
 
+@pytest.mark.invariant
 def test_the_rounding_allowance_is_far_below_any_real_violation() -> None:
     bad = calendar_control(make_provider().reset(SeededStepRNG(0)))
     w = total_variance(bad)
@@ -244,6 +254,7 @@ def test_the_rounding_allowance_is_far_below_any_real_violation() -> None:
     assert calendar_violations(bad, atol=0.03) == []
 
 
+@pytest.mark.behaviour
 def test_a_chain_too_narrow_to_bend_is_still_checked() -> None:
     # Two strikes show no slope change to allow for; one expiry has nothing to compare.
     c = make_provider().reset(SeededStepRNG(0))
@@ -254,6 +265,7 @@ def test_a_chain_too_narrow_to_bend_is_still_checked() -> None:
     assert calendar_violations(single) == []
 
 
+@pytest.mark.behaviour
 def test_the_leak_report_runs_the_invariants_and_their_control(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -272,12 +284,14 @@ def test_the_leak_report_runs_the_invariants_and_their_control(
 SEEDS = range(20)
 
 
+@pytest.mark.invariant
 def test_clean_environment_is_not_flagged() -> None:
     report = detect_leak(make_env, SEEDS)
     assert not report.flagged, report
     assert report.n_pairs == len(SEEDS) * MARKET.n_days
 
 
+@pytest.mark.invariant
 def test_poisoned_environment_is_flagged() -> None:
     # exact detector: the chain at t now moves when stream t+1 is resampled
     past_same, _ = perturbation_check(lambda: PoisonedChainProvider(MARKET, 1.0), 1, 2, t=10)
@@ -288,6 +302,7 @@ def test_poisoned_environment_is_flagged() -> None:
     assert report.worst_feature == "ret_1d"
 
 
+@pytest.mark.invariant
 @pytest.mark.slow
 def test_leak_floor_is_recorded() -> None:
     report = leak_floor(make_env, eps_grid=(1.0, 0.5, 0.25, 0.1, 0.05), seeds=SEEDS)
@@ -302,6 +317,7 @@ def test_leak_floor_is_recorded() -> None:
 COVERAGE_SEEDS = range(8)
 
 
+@pytest.mark.invariant
 def test_the_probe_exercises_all_but_the_constant_fields() -> None:
     # A flat book leaves every inventory, greek and margin slot at zero, so a
     # flat-only probe would report a pass for nine fields it never tested.
@@ -312,6 +328,7 @@ def test_the_probe_exercises_all_but_the_constant_fields() -> None:
     assert reason, "an untested field must say why"
 
 
+@pytest.mark.invariant
 def test_a_flat_probe_would_have_left_most_fields_untested() -> None:
     # The defect this week's work fixed, kept as a test so it cannot come back.
     report = detect_leak(make_env, COVERAGE_SEEDS, policy=FlatPolicy())
@@ -319,6 +336,7 @@ def test_a_flat_probe_would_have_left_most_fields_untested() -> None:
     assert report.covers_every_field, "even a weak probe must still report every field"
 
 
+@pytest.mark.invariant
 @pytest.mark.slow
 def test_every_field_has_a_working_positive_control() -> None:
     report = field_coverage(make_env, COVERAGE_SEEDS)
@@ -328,6 +346,7 @@ def test_every_field_has_a_working_positive_control() -> None:
     assert report.misattributed == (), "a leak must be attributed to the field it is in"
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize("field", ["time_frac", "has_position", "margin_frac", "theta_frac"])
 def test_a_leak_planted_in_one_field_is_found_in_that_field(field: str) -> None:
     scales = field_scales(make_env, COVERAGE_SEEDS)
@@ -338,16 +357,19 @@ def test_a_leak_planted_in_one_field_is_found_in_that_field(field: str) -> None:
     assert report.worst_feature == field
 
 
+@pytest.mark.invariant
 def test_an_unplanted_field_leaves_the_world_quiet() -> None:
     report = detect_leak(lambda: poison_field(make_env(), "margin_frac", 0.0), COVERAGE_SEEDS)
     assert not report.flagged, "eps=0 is the clean env and must not fire"
 
 
+@pytest.mark.behaviour
 def test_poisoning_an_unknown_field_is_refused() -> None:
     with pytest.raises(ValueError, match="not an observation field"):
         poison_field(make_env(), "not_a_field", 1.0)
 
 
+@pytest.mark.internal
 def test_the_pass_criterion_is_written_down() -> None:
     # The gap the gate report exposed: this suite had no rule anyone else could
     # check, so it read as a pass every time it ran.
