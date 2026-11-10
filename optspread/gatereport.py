@@ -24,7 +24,9 @@ lives only in its author's head reads as a pass every time it runs.
 Every report is written twice from one build: the Markdown the slides are made
 from, and a JSON sidecar beside it (``M1_GATE_REPORT.json`` next to
 ``M1_GATE_REPORT.md``) that the dashboard's gate board reads, so the board never
-parses prose. The sidecar's shape is fixed by ``to_dict``:
+parses prose. The sidecar's shape is defined once, by ``GateReportSidecar`` and
+``GateItemSidecar``, which both write it (``GateReport.sidecar``) and read it
+(``GateReportSidecar.parse``, what the board uses):
 
     {"milestone": "M1", "report_date": "YYYY-MM-DD", "verdict": "PASS" | "NOT CLEARED",
      "items": [{"name", "owner", "verdict", "criterion", "evidence", "failed_first"}]}
@@ -43,11 +45,75 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
+
+from pydantic import BaseModel, BeforeValidator, ConfigDict
 
 _HEADER = "| Item | Owner | Verdict | Criterion | Evidence | What failed first |"
+_RULE = "| --- | --- | --- | --- | --- | --- |"
 _TITLE = " gate report"
 _DATE = "Report date: "
+_VERDICT = "**Verdict: "
+
+
+# -- the JSON sidecar ----------------------------------------------------------- #
+#
+# The reader is as forgiving as the board has always been: any JSON value in a text
+# field reads as its ``str()`` (a number as "3", null as "None"), a null or other
+# falsy ``failed_first`` reads as empty, and an empty string or object under
+# ``items`` reads as no items. Extra keys are ignored. For the strings ``GateReport``
+# writes, every one of these is the identity, so writing through the model changes
+# no byte of the file.
+
+
+def _text(value: object) -> str:
+    return str(value)
+
+
+def _text_or_empty(value: object) -> str:
+    return str(value or "")
+
+
+def _item_list(value: object) -> object:
+    return [] if isinstance(value, str | dict) and not value else value
+
+
+_Text = Annotated[str, BeforeValidator(_text)]
+
+
+class GateItemSidecar(BaseModel):
+    """One item as the sidecar records it: a ``GateItem`` with its verdict spelt out."""
+
+    model_config = ConfigDict(frozen=True)
+
+    name: _Text
+    owner: _Text = ""
+    verdict: _Text
+    criterion: _Text = ""
+    evidence: _Text = ""
+    failed_first: Annotated[str, BeforeValidator(_text_or_empty)] = ""
+
+
+class GateReportSidecar(BaseModel):
+    """The JSON sidecar beside a gate report's Markdown: the one definition of its shape."""
+
+    model_config = ConfigDict(frozen=True)
+
+    milestone: _Text
+    report_date: _Text = ""
+    verdict: _Text
+    items: Annotated[list[GateItemSidecar], BeforeValidator(_item_list)]
+
+    @classmethod
+    def parse(cls, text: str) -> GateReportSidecar:
+        """Read a sidecar's text. Decoded by ``json.loads``, so the JSON it accepts
+        (NaN, duplicate keys) is what it always was; raises ``ValueError`` (pydantic's
+        ``ValidationError`` is one) for text that is not a sidecar."""
+        return cls.model_validate(json.loads(text))
+
+    def render(self) -> str:
+        """The sidecar file's exact text."""
+        return json.dumps(self.model_dump(), indent=2) + "\n"
 
 
 @dataclass(frozen=True, slots=True)
@@ -112,27 +178,31 @@ class GateReport:
     def verdict(self) -> str:
         return "PASS" if self.passed else "NOT CLEARED"
 
-    def to_dict(self) -> dict[str, Any]:
-        """The JSON sidecar's schema. The dashboard reads it; change the two together."""
-        return {
-            "milestone": self.milestone,
-            "report_date": self.report_date.isoformat(),
-            "verdict": self.verdict,
-            "items": [
-                {
-                    "name": i.name,
-                    "owner": i.owner,
-                    "verdict": i.verdict,
-                    "criterion": i.criterion,
-                    "evidence": i.evidence,
-                    "failed_first": i.failed_first,
-                }
+    def sidecar(self) -> GateReportSidecar:
+        """This report as its JSON sidecar records it (the context lines are not in it)."""
+        return GateReportSidecar(
+            milestone=self.milestone,
+            report_date=self.report_date.isoformat(),
+            verdict=self.verdict,
+            items=[
+                GateItemSidecar(
+                    name=i.name,
+                    owner=i.owner,
+                    verdict=i.verdict,
+                    criterion=i.criterion,
+                    evidence=i.evidence,
+                    failed_first=i.failed_first,
+                )
                 for i in self.items
             ],
-        }
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        """The sidecar as plain data, in ``GateReportSidecar``'s shape."""
+        return self.sidecar().model_dump()
 
     def render_json(self) -> str:
-        return json.dumps(self.to_dict(), indent=2) + "\n"
+        return self.sidecar().render()
 
     def write(self, path: Path) -> tuple[Path, Path]:
         """The Markdown at ``path`` and the JSON sidecar beside it, from this one build."""
@@ -156,7 +226,7 @@ class GateReport:
         if _HEADER not in lines:
             raise ValueError("no item table in the report")
         at = lines.index(dated[0]) + 1
-        verdict_at = next((i for i, ln in enumerate(lines) if ln.startswith("**Verdict: ")), at)
+        verdict_at = next((i for i, ln in enumerate(lines) if ln.startswith(_VERDICT)), at)
         context = tuple(ln for ln in lines[at:verdict_at] if ln)
         items: list[GateItem] = []
         for row in lines[lines.index(_HEADER) + 2 :]:
@@ -181,17 +251,17 @@ class GateReport:
 
     def render(self) -> str:
         lines = [
-            f"# {self.milestone} gate report",
+            f"# {self.milestone}{_TITLE}",
             "",
-            f"Report date: {self.report_date.isoformat()}",
+            f"{_DATE}{self.report_date.isoformat()}",
             "",
             *(line for c in self.context for line in (c, "")),
-            f"**Verdict: {'PASS' if self.passed else 'NOT CLEARED'}** "
+            f"{_VERDICT}{self.verdict}** "
             f"({len(self.items)} items, {len(self.failures)} failed, "
             f"{len(self.without_criterion)} without a stated criterion)",
             "",
-            "| Item | Owner | Verdict | Criterion | Evidence | What failed first |",
-            "| --- | --- | --- | --- | --- | --- |",
+            _HEADER,
+            _RULE,
         ]
         for item in self.items:
             lines.append(
