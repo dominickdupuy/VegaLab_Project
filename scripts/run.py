@@ -41,6 +41,7 @@ from optspread.experiment.cli import (
     runs_root,
 )
 from optspread.experiment.schedule import run_single
+from optspread.runs.rundir import RootInUseError
 from optspread.train import Trainer, train_ppo
 
 ARM_NAMES: tuple[str, ...] = get_args(ArmName)
@@ -98,7 +99,7 @@ def main(argv: Sequence[str] | None = None, trainer: Trainer = train_ppo) -> int
     print(f"{policy} on {describe(source)}", flush=True)
     try:
         run_dir, record, reused = run_single(config, root, trainer=trainer, source=source)
-    except (FileExistsError, ValueError) as exc:
+    except (FileExistsError, ValueError, RootInUseError) as exc:
         print(exc, file=sys.stderr)
         return 1
     print(

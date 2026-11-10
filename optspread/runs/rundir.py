@@ -22,6 +22,16 @@ under the current directory), and under it ``source_root``, a real-data run's ow
 because the source is not in a run id. ``JobSource`` names the sources a run can be
 launched on.
 
+``root_lock`` is the rule the orchestrators share about writers: one at a time computes
+runs under a results root, holding ``<root>/.optspread.lock`` (``LOCK_FILENAME``); a
+second one waits ``LOCK_TIMEOUT`` seconds and then stops with ``RootInUseError``, which
+names the lock file. The lock is the operating system's, so it goes with its holder
+however that exits, killed included. The file is a plain file named like no run artifact,
+so nothing that looks for runs (``run.json``, ``manifest.json``, ``sweep.json``,
+``grid-*.json``) takes it for one. On Windows it is removed on release; on Linux and macOS
+the empty file stays. The worker processes of an orchestrator write under the lock their
+parent holds and never take it.
+
 Moved from ``optspread.sweep`` (the run-directory rules), ``optspread.orchestrate``
 (the runs roots) and ``optspread.jobs`` (the sources), which re-export it.
 """
@@ -30,10 +40,13 @@ from __future__ import annotations
 
 import os
 import zipfile
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterator, Mapping
+from contextlib import contextmanager
 from functools import partial
 from pathlib import Path
 from typing import Any, Literal, get_args
+
+from filelock import FileLock, Timeout
 
 from optspread.artifacts import RUN_FILENAME, RunRecord, read_run
 from optspread.config import RunConfig, config_hash
@@ -308,3 +321,34 @@ def source_root(root: Path, source: SourceName) -> Path:
 # The data a job can run on: the generator, or the real SPX panel (optspread.data).
 JobSource = Literal["synthetic", "optionmetrics"]
 SOURCES: tuple[JobSource, ...] = get_args(JobSource)
+
+
+LOCK_FILENAME = ".optspread.lock"
+LOCK_TIMEOUT = 5.0  # seconds a second orchestrator on the same root waits before it stops
+
+
+class RootInUseError(TimeoutError):
+    """Another orchestrator holds the results root's lock (``root_lock``)."""
+
+
+@contextmanager
+def root_lock(root: Path, timeout: float = LOCK_TIMEOUT) -> Iterator[None]:
+    """Hold ``root``'s lock, ``<root>/.optspread.lock``, for the body.
+
+    Raises ``RootInUseError``, naming the lock file, when another process still holds it
+    after ``timeout`` seconds. Released when the body ends, however it ends (an exception
+    or an interrupt included); a holder that is killed releases it with its process.
+    Worker processes write under the lock their parent holds and never take it.
+    """
+    lock = FileLock(root / LOCK_FILENAME, timeout=timeout)
+    try:
+        lock.acquire()
+    except Timeout as exc:
+        raise RootInUseError(
+            f"could not lock {root / LOCK_FILENAME} within {timeout:g}s: another run is "
+            f"computing cells under {root}. Let it finish, or use another root."
+        ) from exc
+    try:
+        yield
+    finally:
+        lock.release()
