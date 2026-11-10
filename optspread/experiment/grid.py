@@ -46,10 +46,13 @@ from pydantic import (
 )
 
 from optspread.analysis import NULL_PREMIUM, paired_contrast
-from optspread.artifacts import RunRecord, SchemaVersionError, read_run
+from optspread.artifacts import RunRecord, read_run
+
+# Used here before read_grid's check moved to sweep.check_schema; still importable from here.
+from optspread.artifacts import SchemaVersionError as SchemaVersionError
 from optspread.config import ArmName, CostConfig, RunConfig, TrainConfig, config_hash
 from optspread.data import SourceName
-from optspread.experiment.sweep import block_seed, distinct, premium_market
+from optspread.experiment.sweep import block_seed, check_schema, distinct, premium_market
 from optspread.harness import run_episodes
 from optspread.manifest import RunManifest, callable_name
 from optspread.runs.rundir import Runner, run_id, valid_run
@@ -294,8 +297,5 @@ def grid_filename(grid: GridConfig) -> str:
 
 def read_grid(path: Path) -> GridRecord:
     record = GridRecord.model_validate_json(path.read_text(encoding="utf-8"))
-    if record.schema_version != SCHEMA_VERSION:
-        raise SchemaVersionError(
-            f"{path.name} is schema v{record.schema_version}, this build reads v{SCHEMA_VERSION}"
-        )
+    check_schema(path.name, record.schema_version, SCHEMA_VERSION)
     return record

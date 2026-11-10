@@ -91,6 +91,13 @@ def block_seed(first: int, block: int, n_episodes: int) -> int:
     return first + block * n_episodes
 
 
+def check_schema(name: str, found: int, expected: int) -> None:
+    """Raise ``SchemaVersionError`` when the record read from the file ``name`` is of
+    schema ``found`` and this build reads ``expected``."""
+    if found != expected:
+        raise SchemaVersionError(f"{name} is schema v{found}, this build reads v{expected}")
+
+
 class SweepConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -243,10 +250,7 @@ def run_sweep(
 
 def read_sweep(root: Path) -> SweepRecord:
     record = SweepRecord.model_validate_json((root / SWEEP_FILENAME).read_text(encoding="utf-8"))
-    if record.schema_version != SCHEMA_VERSION:
-        raise SchemaVersionError(
-            f"sweep.json is schema v{record.schema_version}, this build reads v{SCHEMA_VERSION}"
-        )
+    check_schema(SWEEP_FILENAME, record.schema_version, SCHEMA_VERSION)
     return record
 
 

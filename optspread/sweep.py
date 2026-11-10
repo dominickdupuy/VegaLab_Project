@@ -14,6 +14,7 @@ from optspread.experiment.sweep import SweepConfig as SweepConfig
 from optspread.experiment.sweep import SweepRecord as SweepRecord
 from optspread.experiment.sweep import block_seed as block_seed
 from optspread.experiment.sweep import cell_config as cell_config
+from optspread.experiment.sweep import check_schema as check_schema
 from optspread.experiment.sweep import distinct as distinct
 from optspread.experiment.sweep import pilot_matrix as pilot_matrix
 from optspread.experiment.sweep import pilot_seeds as pilot_seeds

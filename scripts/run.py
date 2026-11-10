@@ -32,13 +32,17 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import cast, get_args
 
-from optspread.config import ArmName, CostConfig, MarketConfig, RunConfig, TrainConfig
+from optspread.config import ArmName, CostConfig, MarketConfig, RunConfig
+
+# Imported here before the TrainConfig came from cli.train_config; still importable from here.
+from optspread.config import TrainConfig as TrainConfig
 from optspread.experiment.cli import (
     add_source_arguments,
     chosen_source,
     describe,
     premium_note,
     runs_root,
+    train_config,
 )
 from optspread.experiment.schedule import run_single
 from optspread.runs.rundir import RootInUseError
@@ -82,9 +86,7 @@ def main(argv: Sequence[str] | None = None, trainer: Trainer = train_ppo) -> int
     source = chosen_source(parser, args)
     train = None
     if args.timesteps is not None:
-        train = TrainConfig(
-            total_timesteps=int(args.timesteps), seed=int(args.train_seed), device=args.device
-        )
+        train = train_config(args)
     config = RunConfig(
         market=MarketConfig(iv_premium_vol_pts=float(args.premium)),
         cost=CostConfig(enabled=not args.no_costs),

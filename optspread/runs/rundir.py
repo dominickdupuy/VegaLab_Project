@@ -51,7 +51,7 @@ from optspread.artifacts import RUN_FILENAME, RunRecord, read_run
 from optspread.config import RunConfig, config_hash
 from optspread.data import ChainSource, DataUnavailableError, SourceName, make_source
 from optspread.extend import describe
-from optspread.fileio import env_path
+from optspread.fileio import changed_files, env_path
 from optspread.harness import EpisodeResult, run_episodes
 from optspread.manifest import (
     MANIFEST_FILENAME,
@@ -87,11 +87,7 @@ def changed_artifacts(run_dir: Path, manifest: RunManifest) -> tuple[str, ...]:
     """
     recorded = dict(manifest.artifacts)
     recorded.setdefault(RUN_FILENAME, "")
-    return tuple(
-        rel
-        for rel, digest in sorted(recorded.items())
-        if not (run_dir / rel).is_file() or file_sha256(run_dir / rel) != digest
-    )
+    return changed_files(run_dir, recorded)
 
 
 def recorded_trainer(cell_dir: Path, manifest: RunManifest) -> str | None:
@@ -276,10 +272,10 @@ def valid_run(
         manifest = RunManifest.read(cell_dir)
     except (OSError, ValueError):  # unreadable, wrong schema, incomplete, or malformed JSON
         return None
-    expected = config_hash(config)
+    expected, rid = config_hash(config), run_id(config)
     if record.config_hash != expected or manifest.config_hash != expected:
         return None
-    if record.run_id != run_id(config) or manifest.run_id != run_id(config):
+    if record.run_id != rid or manifest.run_id != rid:
         return None
     try:
         want = expected_data(runner, config, source)
