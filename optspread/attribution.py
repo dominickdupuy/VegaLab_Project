@@ -132,7 +132,7 @@ from optspread.manifest import MANIFEST_FILENAME, DataRecord, RunManifest
 from optspread.market import SyntheticChainProvider
 from optspread.policies import Policy, make_policy
 from optspread.rng import StepRNG
-from optspread.sweep import changed_artifacts
+from optspread.runs.rundir import changed_artifacts
 from optspread.train import POLICY_FILENAME, TORCH_THREADS, SB3Policy
 from optspread.types import MULTIPLIER, Chain, ChainProvider, OptionLeg, Position
 

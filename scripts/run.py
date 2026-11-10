@@ -32,15 +32,15 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import cast, get_args
 
-from optspread.cli import (
+from optspread.config import ArmName, CostConfig, MarketConfig, RunConfig, TrainConfig
+from optspread.experiment.cli import (
     add_source_arguments,
     chosen_source,
     describe,
     premium_note,
     runs_root,
 )
-from optspread.config import ArmName, CostConfig, MarketConfig, RunConfig, TrainConfig
-from optspread.orchestrate import run_single
+from optspread.experiment.schedule import run_single
 from optspread.train import Trainer, train_ppo
 
 ARM_NAMES: tuple[str, ...] = get_args(ArmName)

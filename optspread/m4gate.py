@@ -60,9 +60,9 @@ from optspread import m4analysis as m4
 from optspread import vrp
 from optspread.attribution import RunAttribution, read_attribution
 from optspread.config import config_hash
+from optspread.experiment.grid import GridConfig, grid_cells, grid_filename, read_grid
 from optspread.gatereport import GateItem
 from optspread.m2gate import DOMINICK, HEMDUTT, ILAN, _load, _not_cleared
-from optspread.orchestrate import GridConfig, grid_cells, grid_filename, read_grid
 
 ANALYSIS_FILE = "M4_ANALYSIS.json"
 VRP_FILE = "VRP_MAPPING.json"

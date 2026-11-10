@@ -30,11 +30,11 @@ from collections.abc import Sequence
 from datetime import date
 from pathlib import Path
 
+from optspread.experiment.grid import grid_filename
 from optspread.gatereport import build_report
 from optspread.m3gate import FLOOR_SEEDS, demo_item, floor_item, partner_item, sweep_item
 from optspread.m4analysis import CONFIRMATORY_GRID
 from optspread.manifest import git_dirty, git_sha
-from optspread.orchestrate import grid_filename
 from scripts.m2_gate_report import default_roots, portable, portable_items
 from scripts.m4_gate_report import default_web
 

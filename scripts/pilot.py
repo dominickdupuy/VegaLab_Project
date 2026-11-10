@@ -35,22 +35,17 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from optspread.cli import (
+from optspread.config import CostConfig, RunConfig, TrainConfig
+from optspread.experiment.cli import (
     add_source_arguments,
     chosen_source,
     describe,
     premium_note,
     runs_root,
 )
-from optspread.config import CostConfig, RunConfig, TrainConfig
-from optspread.orchestrate import (
-    IncompleteGridError,
-    grid_cells,
-    pilot_grid,
-    plan_cells,
-    run_grid,
-    write_pilot_matrices,
-)
+from optspread.experiment.grid import grid_cells
+from optspread.experiment.pilot import pilot_grid, write_pilot_matrices
+from optspread.experiment.schedule import IncompleteGridError, plan_cells, run_grid
 from optspread.power import variance_components
 from optspread.train import Trainer, train_ppo
 
