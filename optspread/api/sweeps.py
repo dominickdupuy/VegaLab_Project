@@ -16,8 +16,12 @@ from optspread.analysis import NULL_PREMIUM, decide_premium, paired_contrast
 from optspread.api._base import Out, _f, _fl, _inside
 from optspread.artifacts import SchemaVersionError
 from optspread.config import ArmName
+from optspread.dashboard.jobs.spec import JOBS_DIR
+
+# an orchestrated grid's record, as the run index finds it (re-exported for optspread.webapi)
+from optspread.dashboard.runindex import GRID_PATTERN as GRID_PATTERN
 from optspread.experiment.grid import GridRecord, read_grid
-from optspread.experiment.sweep import SWEEP_FILENAME, read_sweep
+from optspread.experiment.sweep import SWEEP_FILENAME, SweepRecord, read_sweep
 from optspread.manifest import MANIFEST_FILENAME, RunManifest
 
 # -- sweeps ----------------------------------------------------------------------- #
@@ -115,9 +119,6 @@ class SweepListOut(Out):
     sweeps: list[SweepSummaryOut]
 
 
-GRID_PATTERN = "grid-*.json"
-
-
 def _sweep_dirs(root: Path) -> list[Path]:
     return sorted(p.parent for p in root.rglob(SWEEP_FILENAME)) if root.is_dir() else []
 
@@ -126,7 +127,22 @@ def _grid_files(root: Path) -> list[Path]:
     """Every orchestrated grid record under the root, the job queue's bookkeeping aside."""
     if not root.is_dir():
         return []
-    return sorted(p for p in root.rglob(GRID_PATTERN) if ".jobs" not in p.parts and p.is_file())
+    return sorted(p for p in root.rglob(GRID_PATTERN) if JOBS_DIR not in p.parts and p.is_file())
+
+
+def _sweep_summary(key: str, rec: SweepRecord, n_present: int = 0) -> SweepSummaryOut:
+    """A scripted sweep's summary. The list passes ``n_present``; the detail leaves it at
+    its default, as each did before they shared this."""
+    return SweepSummaryOut(
+        key=key,
+        sweep_hash=rec.sweep_hash,
+        premiums=list(rec.premiums),
+        arms=list(rec.arms),
+        n_cells=len(rec.cells),
+        seed=rec.seed,
+        n_episodes=rec.n_episodes,
+        n_present=n_present,
+    )
 
 
 def _grid_summary(path: Path, root: Path, record: GridRecord) -> SweepSummaryOut:
@@ -153,18 +169,7 @@ def sweeps(root: Path) -> SweepListOut:
             rec = read_sweep(d)
         except (OSError, ValueError, SchemaVersionError):
             continue
-        out.append(
-            SweepSummaryOut(
-                key=d.relative_to(root).as_posix(),
-                sweep_hash=rec.sweep_hash,
-                premiums=list(rec.premiums),
-                arms=list(rec.arms),
-                n_cells=len(rec.cells),
-                seed=rec.seed,
-                n_episodes=rec.n_episodes,
-                n_present=len(rec.cells),
-            )
-        )
+        out.append(_sweep_summary(d.relative_to(root).as_posix(), rec, n_present=len(rec.cells)))
     for path in _grid_files(root):
         try:
             record = read_grid(path)
@@ -322,15 +327,7 @@ def sweep_detail(root: Path, key: str) -> SweepOut:
             for c in (rec.cell(p, arm) for p in rec.premiums)
         ]
     return SweepOut(
-        summary=SweepSummaryOut(
-            key=key,
-            sweep_hash=rec.sweep_hash,
-            premiums=list(rec.premiums),
-            arms=list(rec.arms),
-            n_cells=len(rec.cells),
-            seed=rec.seed,
-            n_episodes=rec.n_episodes,
-        ),
+        summary=_sweep_summary(key, rec),
         oracle=oracle,
         source=str(target / SWEEP_FILENAME),
     )

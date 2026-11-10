@@ -33,6 +33,8 @@ from collections.abc import Callable, Iterable, Mapping
 from pathlib import Path
 from typing import Any
 
+from optspread.fileio import atomic_write_bytes
+
 Stamp = tuple[tuple[str, int, int], ...]
 
 
@@ -136,9 +138,9 @@ class Answers:
         if path is not None:
             try:
                 path.parent.mkdir(parents=True, exist_ok=True)
-                tmp = path.with_suffix(f".{os.getpid()}.{threading.get_ident()}.tmp")
-                tmp.write_bytes(body)
-                tmp.replace(path)
+                # one try: a file another reader holds open on Windows is left as it is,
+                # and the request is not kept waiting on a retry
+                atomic_write_bytes(path, body, attempts=1)
             except OSError:
                 pass  # the disk tier is a convenience; the answer stands without it
         return body, f'"{key}"'

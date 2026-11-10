@@ -225,9 +225,10 @@ def _day_zero(config: Any, source: str) -> DayZeroOut:
 def _peers(spec: JobSpec, config: Any, runs_root: Path, rows: Sequence[RunRow]) -> list[PeerOut]:
     from optspread.api.premiums import _world
     from optspread.api.runs import row_out, run_source
+    from optspread.runs.rundir import run_id as run_id_of
 
     world, _ = _world(config.model_dump(mode="json"), spec.source)
-    run_id = f"{config_hash_of(config)}-s{config.seed}"
+    run_id = run_id_of(config)
     found: list[tuple[int, PeerOut]] = []
     for row in rows:
         if row.status != "OK":
@@ -294,6 +295,7 @@ def launch_preview(raw: dict[str, Any], runs_root: Path, rows: Sequence[RunRow])
     from pydantic import ValidationError
 
     from optspread.dashboard.jobs.spec import LAUNCH_DIR, to_run_config
+    from optspread.runs.rundir import run_id as run_id_of
     from optspread.runs.rundir import source_root
 
     try:
@@ -302,7 +304,7 @@ def launch_preview(raw: dict[str, Any], runs_root: Path, rows: Sequence[RunRow])
         return PreviewOut(ok=False, errors=[_clean(str(e["msg"])) for e in exc.errors()])
     config = to_run_config(spec)
     h = config_hash_of(config)
-    run_id = f"{h}-s{config.seed}"
+    run_id = run_id_of(config)
     run_dir = source_root(runs_root, spec.source) / LAUNCH_DIR / run_id
     real = spec.source != "synthetic"
     if real:

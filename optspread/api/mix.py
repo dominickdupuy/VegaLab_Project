@@ -13,7 +13,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from optspread import actionmix as am
-from optspread.api._base import Out, _f
+from optspread.api._base import Out, _f, _source_suffix
 from optspread.api.runwork import _ppo_reason, real_data_reason
 from optspread.dashboard.runindex import RunRow
 from optspread.dashboard.tasks import TaskState
@@ -53,7 +53,7 @@ def action_mix(
     if source not in ("synthetic", "optionmetrics_stub", "optionmetrics"):
         raise ValueError(f"unknown source {source!r}")
     folder = root if root is not None else am.default_root()
-    suffix = "" if source == "synthetic" else f".{source}"
+    suffix = _source_suffix(source)
     if run is not None:
         rid = run.rstrip("/").rsplit("/", 1)[-1]
         if not _RUN_ID.fullmatch(rid):
@@ -124,8 +124,7 @@ class MixViewOut(Out):
 
 def mix_file(root: Path, row: RunRow) -> Path:
     """``<attribution root>/actionmix/<run_id>[.<source>].json``."""
-    suffix = "" if row.source in ("", "synthetic") else f".{row.source}"
-    return root / MIX_DIR / f"{row.run_id}{suffix}.json"
+    return root / MIX_DIR / f"{row.run_id}{_source_suffix(row.source)}.json"
 
 
 def mix_reason(row: RunRow) -> str:
@@ -207,8 +206,7 @@ def mix_view(root: Path, row: RunRow, task: TaskState, lean_root: Path | None = 
         return MixViewOut(state="cached", **base, mix=mix, detail=detail)
     lean = None
     folder = lean_root if lean_root is not None else am.default_root()
-    suffix = "" if row.source in ("", "synthetic") else f".{row.source}"
-    lean_path = folder / f"{row.run_id}{suffix}.json"
+    lean_path = folder / f"{row.run_id}{_source_suffix(row.source)}.json"
     if lean_path.is_file():
         with contextlib.suppress(OSError, ValueError):
             lean = am.read_mix(lean_path).lean()

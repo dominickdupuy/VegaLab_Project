@@ -19,7 +19,8 @@ from numpy.typing import NDArray
 from pydantic import Field
 
 from optspread.api._base import Out, _f, _inside
-from optspread.dashboard.jobs.spec import EQUITY_FILENAME
+from optspread.artifacts import RUN_FILENAME
+from optspread.dashboard.jobs.spec import EQUITY_FILENAME, JOBS_DIR
 from optspread.dashboard.runindex import (
     RiskStats,
     RunDetail,
@@ -310,7 +311,7 @@ def run_detail(detail: RunDetail, root: Path, index: Sequence[RunRow]) -> RunDet
         provenance=ProvenanceOut(
             run_dir=str(row.path),
             manifest=str(row.path / MANIFEST_FILENAME),
-            results=str(row.path / "run.json"),
+            results=str(row.path / RUN_FILENAME),
             replicas=sum(r.config_hash == row.config_hash for r in index if row.config_hash),
             sweep_cells=sum(
                 r.sweep == row.sweep and r.path.parent == row.path.parent for r in index
@@ -327,4 +328,4 @@ def load_detail(root: Path, key: str) -> RunDetail:
 
 def index(root: Path) -> tuple[RunRow, ...]:
     """Every run under the root except the job queue's own bookkeeping."""
-    return tuple(r for r in scan_runs(root) if ".jobs" not in r.path.parts)
+    return tuple(r for r in scan_runs(root) if JOBS_DIR not in r.path.parts)
