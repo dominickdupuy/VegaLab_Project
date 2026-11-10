@@ -93,6 +93,12 @@ def test_make_reproduce_bootstraps_with_a_python_new_enough_for_the_project(
     bin_dir.mkdir()
     _fake_python(bin_dir, "python3", (3, 9))  # macOS's system python3
     _fake_python(bin_dir, "python3.12", (3, 12))
+    # The probe tries python3.14 and python3.13 before python3.12, and the machine may have
+    # real ones in /usr/bin (the CI image now does). Shadow them with ones that fail the
+    # probe, so the test decides what is on the path, not the machine.
+    for newer in ("python3.14", "python3.13"):
+        (bin_dir / newer).write_text("#!/bin/sh\nexit 1\n")
+        (bin_dir / newer).chmod(0o755)
     env = {"PATH": f"{bin_dir}{os.pathsep}/usr/bin{os.pathsep}/bin"}
     make = shutil.which("make")
     assert make is not None
