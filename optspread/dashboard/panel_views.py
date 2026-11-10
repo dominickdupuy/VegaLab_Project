@@ -28,7 +28,7 @@ re-exports both.
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -617,22 +617,21 @@ class SeamReport:
         return len(self.date)
 
     def median(self, name: str) -> float:
-        values = self.stats.get(name)
-        if values is None or not np.isfinite(values).any():
-            return float("nan")
-        return float(np.nanmedian(values))
+        return self._over_days(name, np.nanmedian)
 
     def mean(self, name: str) -> float:
-        values = self.stats.get(name)
-        if values is None or not np.isfinite(values).any():
-            return float("nan")
-        return float(np.nanmean(values))
+        return self._over_days(name, np.nanmean)
 
     def worst(self, name: str) -> float:
+        return self._over_days(name, np.nanmax)
+
+    def _over_days(self, name: str, reduce: Callable[[NDArray[np.float64]], Any]) -> float:
+        """``reduce``, a NaN-skipping numpy reduction, over the statistic's days; NaN when
+        the file does not carry the statistic or it has no finite day."""
         values = self.stats.get(name)
         if values is None or not np.isfinite(values).any():
             return float("nan")
-        return float(np.nanmax(values))
+        return float(reduce(values))
 
 
 # The seam's headline, one definition for the page and docs/DATA.md: each overlap day's

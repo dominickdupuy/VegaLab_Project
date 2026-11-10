@@ -26,6 +26,7 @@ import json
 import os
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
+from fnmatch import fnmatchcase
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -221,9 +222,7 @@ def _row_stamp(run_dir: Path) -> tuple[tuple[str, int, int], ...]:
         except OSError:
             continue
         for e in entries:
-            beside = e.name == SWEEP_FILENAME or (
-                e.name.startswith("grid-") and e.name.endswith(".json")
-            )
+            beside = e.name == SWEEP_FILENAME or fnmatchcase(e.name, GRID_PATTERN)
             if keep and not beside:
                 continue
             try:
