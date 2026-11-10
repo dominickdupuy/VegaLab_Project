@@ -12,8 +12,10 @@ from optspread.api._base import Out
 from optspread.api.panel import DataStatusOut, PanelReader, SpanOut
 from optspread.api.runs import RunRowOut, row_out
 from optspread.api.sweeps import _grid_files, _sweep_dirs
-from optspread.dashboard_data import RunRow, load_gate_boards, readme_summary
-from optspread.jobs import available_arms
+from optspread.dashboard.gateboard import load_gate_boards
+from optspread.dashboard.jobs.spec import available_arms
+from optspread.dashboard.landing import readme_summary
+from optspread.dashboard.runindex import RunRow
 
 # -- the overview ------------------------------------------------------------------ #
 

@@ -23,7 +23,7 @@ from optspread.api.runs import (
     run_detail,
     run_source,
 )
-from optspread.dashboard_data import RunDetail, RunRow, compare_runs
+from optspread.dashboard.runindex import RunDetail, RunRow, compare_runs
 
 
 class DiffOut(Out):

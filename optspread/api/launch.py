@@ -15,8 +15,8 @@ from pydantic import Field
 from optspread.api._base import Out, _f
 from optspread.api.jobs import JobOptionsOut, PresetOut, job_options
 from optspread.api.study import A7_EVAL_RATE, A7_TRAIN_RATE
-from optspread.dashboard_data import RunRow
-from optspread.jobs import JobSpec
+from optspread.dashboard.jobs.spec import JobSpec
+from optspread.dashboard.runindex import RunRow
 from optspread.manifest import MANIFEST_FILENAME, RunManifest
 
 # -- launch: a PPO preset, and the estimate with training in it ---------------------- #
@@ -293,8 +293,8 @@ def launch_preview(raw: dict[str, Any], runs_root: Path, rows: Sequence[RunRow])
     world in a sentence, what it opens on day 0, its wall time and the runs it meets."""
     from pydantic import ValidationError
 
-    from optspread.jobs import LAUNCH_DIR, to_run_config
-    from optspread.orchestrate import source_root
+    from optspread.dashboard.jobs.spec import LAUNCH_DIR, to_run_config
+    from optspread.runs.rundir import source_root
 
     try:
         spec = JobSpec.model_validate(raw)

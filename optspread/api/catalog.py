@@ -18,8 +18,8 @@ from optspread.api._base import Out, _f
 from optspread.api.premiums import _interval
 from optspread.api.runs import row_out, run_source
 from optspread.artifacts import SchemaVersionError, read_run
-from optspread.dashboard_data import RunRow
-from optspread.jobs import JobSpec
+from optspread.dashboard.jobs.spec import JobSpec
+from optspread.dashboard.runindex import RunRow
 
 # -- a designed matrix of runs: <runs root>/catalog.json, optional ------------------- #
 

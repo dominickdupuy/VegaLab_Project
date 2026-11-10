@@ -47,24 +47,24 @@ from optspread import __version__
 from optspread.api import builders as w
 from optspread.api.cache import Answers, file_stamp, tree_stamp
 from optspread.attribution import default_root
-from optspread.dashboard_data import (
+from optspread.dashboard.jobs.queue import (
+    MAX_PENDING,
+    JobManager,
+    JobNotCancellableError,
+    QueueFullError,
+)
+from optspread.dashboard.jobs.spec import JobSpec
+from optspread.dashboard.leakdemo import run_leak_demo
+from optspread.dashboard.panel_views import data_root
+from optspread.dashboard.runindex import (
     REPO_ROOT,
     RUNS_ENV,
     RunRow,
     docs_dir,
-    run_leak_demo,
     runs_root,
 )
-from optspread.dashboard_panel import data_root
-from optspread.jobs import (
-    MAX_PENDING,
-    JobManager,
-    JobNotCancellableError,
-    JobSpec,
-    QueueFullError,
-)
 from optspread.manifest import git_sha
-from optspread.orchestrate import default_runs_root
+from optspread.runs.rundir import default_runs_root
 
 WEB_DIR = REPO_ROOT / "web" / "out"
 CACHE_ENV = "OPTSPREAD_CACHE"
@@ -246,7 +246,7 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
     def queue() -> JobManager:
         return jobs["manager"]
 
-    # -- kept answers (optspread.webcache) ----------------------------------- #
+    # -- kept answers (optspread.api.cache) ---------------------------------- #
 
     answers = Answers(cfg.cache)
     code = code_stamp()

@@ -22,9 +22,9 @@ from pydantic import Field
 
 from optspread.api._base import Out, _f, _finite_json
 from optspread.api.launch import launch_estimate
+from optspread.dashboard.jobs.spec import available_arms
+from optspread.dashboard.runindex import RunRow
 from optspread.dashboard.tasks import TaskState
-from optspread.dashboard_data import RunRow
-from optspread.jobs import available_arms
 from optspread.manifest import MANIFEST_FILENAME, RunManifest
 
 # -- background work: attribution, capital and replay ------------------------------- #
@@ -260,7 +260,7 @@ def compute_capital(run_dir: Path, out: Path | None = None) -> CapitalOut:
         env = build_env(config)
     else:  # the panel and split it recorded, refused when the panel was rebuilt since
         from optspread.attribution import recorded_provider
-        from optspread.sweep import changed_artifacts
+        from optspread.runs.rundir import changed_artifacts
 
         changed = changed_artifacts(run_dir, manifest)
         if changed:
