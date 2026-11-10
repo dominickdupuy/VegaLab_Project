@@ -29,6 +29,7 @@ from optspread.dashboard.jobs.spec import JobSpec as JobSpec
 from optspread.dashboard.jobs.spec import Preset as Preset
 from optspread.dashboard.jobs.spec import available_arms as available_arms
 from optspread.dashboard.jobs.spec import available_sources as available_sources
+from optspread.dashboard.jobs.spec import launched_run_dir as launched_run_dir
 from optspread.dashboard.jobs.spec import ppo_available as ppo_available
 from optspread.dashboard.jobs.spec import to_run_config as to_run_config
 from optspread.dashboard.jobs.worker import JobCancelledError as JobCancelledError

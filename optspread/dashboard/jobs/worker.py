@@ -56,17 +56,22 @@ from optspread.config import PolicyName, RunConfig, config_hash
 from optspread.dashboard.jobs.spec import (
     EQUITY_FILENAME,
     JOBS_DIR,
-    LAUNCH_DIR,
     MAX_EQUITY_PATHS,
     JobSpec,
+    launched_run_dir,
     to_run_config,
 )
+
+# The ``name as name`` imports: what this module used before the launched run's directory
+# came from spec.launched_run_dir, still importable from here.
+from optspread.dashboard.jobs.spec import LAUNCH_DIR as LAUNCH_DIR
 from optspread.data import SourceName
 from optspread.fileio import atomic_write_text
 from optspread.harness import EpisodeResult, build_env, summarize
 from optspread.manifest import RunManifest, callable_name
 from optspread.policies import Policy, make_policy
-from optspread.runs.rundir import source_root, valid_run
+from optspread.runs.rundir import run_id, valid_run
+from optspread.runs.rundir import source_root as source_root
 from optspread.train import POLICY_FILENAME, TrainedPolicy, TrainingStoppedError, check_disjoint
 
 # -- the worker ----------------------------------------------------------------- #
@@ -169,17 +174,17 @@ def execute_job(job_id: str, spec_json: str, runs_root: str) -> str:
     progress = _Progress(root / JOBS_DIR, job_id)
     spec = JobSpec.model_validate_json(spec_json)
     config = to_run_config(spec)
-    run_id = f"{config_hash(config)}-s{config.seed}"
-    run_dir = source_root(root, spec.source) / LAUNCH_DIR / run_id
+    rid = run_id(config)
+    run_dir = launched_run_dir(root, config, spec.source)
     rel = str(run_dir.relative_to(root).as_posix())
     total = config.n_episodes
-    progress.write(done=0, total=total, phase="starting", run_id=run_id, key=rel)
+    progress.write(done=0, total=total, phase="starting", run_id=rid, key=rel)
     progress.log(
         f"config {config_hash(config)} seed {config.seed}: {total} episodes on {spec.source}"
     )
     if _existing(run_dir, config, spec.source):
         progress.log("this run is already on disk and matches its manifest; not recomputed")
-        progress.write(done=total, total=total, phase="reused", run_id=run_id, key=rel)
+        progress.write(done=total, total=total, phase="reused", run_id=rid, key=rel)
         return rel
     progress.check_cancelled()
     try:
@@ -200,7 +205,7 @@ def execute_job(job_id: str, spec_json: str, runs_root: str) -> str:
             paths.append(path)
         now = time.perf_counter()
         if now - last > 0.25 or i + 1 == total:
-            progress.write(done=i + 1, total=total, phase="evaluating", run_id=run_id, key=rel)
+            progress.write(done=i + 1, total=total, phase="evaluating", run_id=rid, key=rel)
             last = now
     elapsed = time.perf_counter() - start
     episodes = tuple(results)
@@ -225,5 +230,5 @@ def execute_job(job_id: str, spec_json: str, runs_root: str) -> str:
         f"mean P&L {summary.mean_pnl:,.0f} (se {summary.se_pnl:,.0f}); "
         f"{steps:,} steps in {elapsed:.1f}s"
     )
-    progress.write(done=total, total=total, phase="written", run_id=run_id, key=rel)
+    progress.write(done=total, total=total, phase="written", run_id=rid, key=rel)
     return rel
