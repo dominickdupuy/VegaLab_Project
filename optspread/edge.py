@@ -147,8 +147,8 @@ from optspread.attribution import (
     load_sb3_policy,
 )
 from optspread.attribution import default_root as attribution_root
+from optspread.experiment.grid import GridCell, read_grid
 from optspread.manifest import MANIFEST_FILENAME
-from optspread.orchestrate import GridCell, read_grid
 from optspread.power import t_critical
 
 SCHEMA_VERSION = 1

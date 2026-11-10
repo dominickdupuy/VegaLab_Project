@@ -19,9 +19,10 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
+from optspread.experiment.grid import grid_filename, read_grid
 from optspread.m4analysis import CONFIRMATORY_GRID
-from optspread.orchestrate import default_runs_root, grid_filename, read_grid
 from optspread.reproduction import EXPECTED_FILE, build_expected, render_expected
+from optspread.runs.rundir import default_runs_root
 
 DOC = Path("docs") / EXPECTED_FILE
 

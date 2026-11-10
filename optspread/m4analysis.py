@@ -206,8 +206,8 @@ from scipy.stats import t as student_t
 
 from optspread.analysis import ALPHA, NULL_PREMIUM, Decision, decide_premium
 from optspread.config import ArmName, CostConfig, RunConfig, TrainConfig, config_hash
+from optspread.experiment.grid import GridConfig, GridRecord, grid_cells, grid_filename
 from optspread.manifest import RunManifest
-from optspread.orchestrate import GridConfig, GridRecord, grid_cells, grid_filename
 from optspread.power import (
     VarianceComponents,
     detectable_effect_t,
@@ -216,7 +216,7 @@ from optspread.power import (
     t_noncentrality,
     variance_components,
 )
-from optspread.sweep import valid_run
+from optspread.runs.rundir import valid_run
 from optspread.validation import BootstrapCheck, bootstrap_detection
 
 SCHEMA_VERSION = 1

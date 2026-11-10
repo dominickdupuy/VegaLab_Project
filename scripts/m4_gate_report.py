@@ -34,6 +34,7 @@ from pathlib import Path
 
 from optspread.attribution import default_root
 from optspread.dashboard_data import REPO_ROOT
+from optspread.experiment.grid import grid_filename
 from optspread.gatereport import build_report
 from optspread.m4analysis import CONFIRMATORY_GRID
 from optspread.m4gate import (
@@ -46,7 +47,6 @@ from optspread.m4gate import (
     vrp_item,
 )
 from optspread.manifest import git_dirty, git_sha
-from optspread.orchestrate import grid_filename
 from scripts.m2_gate_report import default_roots, portable, portable_items
 
 DOC = Path("docs/M4_GATE_REPORT.md")

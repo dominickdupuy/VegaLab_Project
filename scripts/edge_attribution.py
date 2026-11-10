@@ -30,7 +30,7 @@ from optspread.actionmix import LearnerUnavailableError
 from optspread.attribution import COMPONENTS
 from optspread.config import ArmName
 from optspread.edge import GridEdge, carriers, default_root, edge_grid, write_edge
-from optspread.orchestrate import GridCell
+from optspread.experiment.grid import GridCell
 
 
 def render(result: GridEdge) -> str:

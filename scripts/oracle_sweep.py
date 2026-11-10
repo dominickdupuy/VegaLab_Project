@@ -22,10 +22,10 @@ import sys
 from pathlib import Path
 from typing import cast, get_args
 
-from optspread.cli import add_source_arguments, chosen_source, describe
 from optspread.config import CostConfig, PolicyName, RunConfig, config_hash
-from optspread.orchestrate import source_root
-from optspread.sweep import SweepConfig, run_sweep
+from optspread.experiment.cli import add_source_arguments, chosen_source, describe
+from optspread.experiment.sweep import SweepConfig, run_sweep
+from optspread.runs.rundir import source_root
 
 POLICY_NAMES: tuple[str, ...] = get_args(PolicyName)
 

@@ -30,12 +30,8 @@ from pathlib import Path
 import numpy as np
 
 from optspread.config import EnvConfig
-from optspread.orchestrate import (
-    PILOT_MATRIX,
-    PILOT_ORACLE_MATRIX,
-    PRIMARY_ARMS,
-    SWEEP_PREMIUMS,
-)
+from optspread.experiment.grid import PRIMARY_ARMS, SWEEP_PREMIUMS
+from optspread.experiment.pilot import PILOT_MATRIX, PILOT_ORACLE_MATRIX
 from optspread.power import (
     VarianceComponents,
     detectable_effect_t,

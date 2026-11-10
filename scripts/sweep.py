@@ -35,24 +35,22 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import cast, get_args
 
-from optspread.cli import (
+from optspread.config import ArmName, CostConfig, RunConfig, TrainConfig
+from optspread.experiment.cli import (
     add_source_arguments,
     chosen_source,
     describe,
     premium_note,
     runs_root,
 )
-from optspread.config import ArmName, CostConfig, RunConfig, TrainConfig
-from optspread.orchestrate import (
+from optspread.experiment.grid import (
     PRIMARY_ARMS,
     SWEEP_PREMIUMS,
     GridConfig,
-    IncompleteGridError,
     grid_cells,
     grid_filename,
-    plan_cells,
-    run_grid,
 )
+from optspread.experiment.schedule import IncompleteGridError, plan_cells, run_grid
 from optspread.train import Trainer, train_ppo
 
 ARM_NAMES: tuple[str, ...] = get_args(ArmName)

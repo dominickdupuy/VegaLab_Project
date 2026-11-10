@@ -43,7 +43,7 @@ from optspread.m2gate import (
     prereg_item,
     replay_item,
 )
-from optspread.orchestrate import default_runs_root
+from optspread.runs.rundir import default_runs_root
 
 DOC = Path("docs/M2_GATE_REPORT.md")
 

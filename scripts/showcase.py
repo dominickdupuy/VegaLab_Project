@@ -38,7 +38,8 @@ import time
 from pathlib import Path
 from typing import Any
 
-from optspread.jobs import JobSpec, execute_job
+from optspread.dashboard.jobs.spec import JobSpec
+from optspread.dashboard.jobs.worker import execute_job
 
 SEED = 20_000
 EPISODES = 200

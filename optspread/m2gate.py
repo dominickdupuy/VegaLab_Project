@@ -39,16 +39,17 @@ from numpy.typing import NDArray
 
 from optspread.artifacts import RUN_FILENAME
 from optspread.data import conformance_suite
+from optspread.experiment.grid import GridRecord, read_grid
+from optspread.experiment.pilot import PILOT_MATRIX, PILOT_ORACLE_MATRIX
 from optspread.gatereport import GateItem
 from optspread.manifest import MANIFEST_FILENAME, IncompleteManifestError, RunManifest, file_sha256
-from optspread.orchestrate import PILOT_MATRIX, PILOT_ORACLE_MATRIX, GridRecord, read_grid
 from optspread.power import (
     VarianceComponents,
     detectable_effect_t,
     frontier,
     variance_components,
 )
-from optspread.sweep import changed_artifacts
+from optspread.runs.rundir import changed_artifacts
 from optspread.train import POLICY_FILENAME
 from optspread.validation import (
     DEFAULT_CASE,

@@ -24,6 +24,7 @@ from collections.abc import Sequence
 from datetime import date
 from pathlib import Path
 
+from optspread.experiment.grid import grid_filename, read_grid
 from optspread.m4analysis import (
     AGREEMENT_ALPHA,
     BOOT_SEED,
@@ -35,7 +36,6 @@ from optspread.m4analysis import (
     analyse,
 )
 from optspread.manifest import git_dirty, git_sha, library_versions
-from optspread.orchestrate import grid_filename, read_grid
 from scripts.m2_gate_report import default_roots, portable
 
 OUT = Path("docs/M4_ANALYSIS")

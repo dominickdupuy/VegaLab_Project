@@ -73,7 +73,7 @@ from optspread.power import power, power_t, t_critical, var_grand_mean
 
 if TYPE_CHECKING:  # orchestrate pulls in the training stack; only the grid check needs it
     from optspread.config import ArmName
-    from optspread.orchestrate import GridRecord
+    from optspread.experiment.grid import GridRecord
 
 K_SE = 4.0  # tolerance, in Monte Carlo standard errors, at every check
 
@@ -522,7 +522,7 @@ def validate_grid_decision(
       them from the same episodes, not the analysis, so they are an independent
       sum; ``critical`` is the same ``t_{1-alpha, S-1}``.
     """
-    from optspread.orchestrate import PILOT_MATRIX, PILOT_ORACLE_MATRIX
+    from optspread.experiment.pilot import PILOT_MATRIX, PILOT_ORACLE_MATRIX
 
     at_p = record.matrix(root, premium, arm)
     at_0 = record.matrix(root, NULL_PREMIUM, arm)
