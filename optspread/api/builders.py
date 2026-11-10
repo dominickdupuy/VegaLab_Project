@@ -91,7 +91,6 @@ from optspread.api.runs import run_list as run_list
 from optspread.api.runwork import AttributionOut as AttributionOut
 from optspread.api.runwork import CapitalOut as CapitalOut
 from optspread.api.runwork import ReplayOut as ReplayOut
-from optspread.api.runwork import Tasks as Tasks
 from optspread.api.runwork import attribution_file as attribution_file
 from optspread.api.runwork import attribution_reason as attribution_reason
 from optspread.api.runwork import attribution_view as attribution_view
@@ -116,3 +115,4 @@ from optspread.api.sweeps import SweepListOut as SweepListOut
 from optspread.api.sweeps import SweepOut as SweepOut
 from optspread.api.sweeps import sweep_detail as sweep_detail
 from optspread.api.sweeps import sweeps as sweeps
+from optspread.dashboard.tasks import Tasks as Tasks

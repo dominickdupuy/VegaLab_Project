@@ -14,7 +14,8 @@ from pathlib import Path
 
 from optspread import actionmix as am
 from optspread.api._base import Out, _f
-from optspread.api.runwork import TaskState, _ppo_reason, real_data_reason
+from optspread.api.runwork import _ppo_reason, real_data_reason
+from optspread.dashboard.tasks import TaskState
 from optspread.dashboard_data import RunRow
 
 # -- the action mix ---------------------------------------------------------------- #
