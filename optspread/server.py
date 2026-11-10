@@ -133,6 +133,8 @@ def redactor(named: Sequence[tuple[Path, str]]) -> Callable[[object], object]:
 
     An error the browser sees says which root a file is missing from, never where that
     root is on the serving machine: ``<runs root>/grid-1a2b.json``, not a home directory.
+    A NaN or infinite float becomes None: an undefined figure is sent as null, as pydantic
+    writes it, where the strict JSON encoder of every response would refuse it (a 500).
     """
     pairs: dict[str, str] = {}
     for path, name in named:
@@ -146,6 +148,8 @@ def redactor(named: Sequence[tuple[Path, str]]) -> Callable[[object], object]:
             for form, name in ordered:
                 value = value.replace(form, name)
             return value
+        if isinstance(value, float) and not math.isfinite(value):
+            return None
         if isinstance(value, list | tuple):
             return [redact(v) for v in value]
         if isinstance(value, dict):
