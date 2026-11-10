@@ -94,7 +94,7 @@ ignore_missing_imports = true
 # Without the dashboard extra FastAPI is untyped, and its route decorators with it.
 # Installed, they are typed and this changes nothing; the routes themselves are typed.
 [[tool.mypy.overrides]]
-module = ["optspread.server"]
+module = ["optspread.server", "optspread.api.server"]
 disallow_untyped_decorators = false
 
 [tool.pytest.ini_options]
