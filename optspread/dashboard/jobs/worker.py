@@ -178,13 +178,17 @@ def execute_job(job_id: str, spec_json: str, runs_root: str) -> str:
     run_dir = launched_run_dir(root, config, spec.source)
     rel = str(run_dir.relative_to(root).as_posix())
     total = config.n_episodes
-    progress.write(done=0, total=total, phase="starting", run_id=rid, key=rel)
+
+    def report(done: int, phase: str) -> None:
+        progress.write(done=done, total=total, phase=phase, run_id=rid, key=rel)
+
+    report(0, "starting")
     progress.log(
         f"config {config_hash(config)} seed {config.seed}: {total} episodes on {spec.source}"
     )
     if _existing(run_dir, config, spec.source):
         progress.log("this run is already on disk and matches its manifest; not recomputed")
-        progress.write(done=total, total=total, phase="reused", run_id=rid, key=rel)
+        report(total, "reused")
         return rel
     progress.check_cancelled()
     try:
@@ -205,7 +209,7 @@ def execute_job(job_id: str, spec_json: str, runs_root: str) -> str:
             paths.append(path)
         now = time.perf_counter()
         if now - last > 0.25 or i + 1 == total:
-            progress.write(done=i + 1, total=total, phase="evaluating", run_id=rid, key=rel)
+            report(i + 1, "evaluating")
             last = now
     elapsed = time.perf_counter() - start
     episodes = tuple(results)
@@ -230,5 +234,5 @@ def execute_job(job_id: str, spec_json: str, runs_root: str) -> str:
         f"mean P&L {summary.mean_pnl:,.0f} (se {summary.se_pnl:,.0f}); "
         f"{steps:,} steps in {elapsed:.1f}s"
     )
-    progress.write(done=total, total=total, phase="written", run_id=rid, key=rel)
+    report(total, "written")
     return rel

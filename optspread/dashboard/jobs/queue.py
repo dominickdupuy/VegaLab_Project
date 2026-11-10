@@ -26,7 +26,6 @@ Moved from ``optspread.jobs``, which re-exports it.
 
 from __future__ import annotations
 
-import json
 import multiprocessing as mp
 import secrets
 import threading
@@ -47,6 +46,7 @@ from optspread.dashboard.jobs.spec import (
     to_run_config,
 )
 from optspread.dashboard.jobs.worker import _Progress, execute_job
+from optspread.fileio import read_json
 
 MAX_PENDING = 8  # jobs queued or running at once; a launch past it is refused, not queued
 
@@ -219,10 +219,7 @@ class JobManager:
             job = self.jobs[job_id]
             future = job.future
         progress = _Progress(self.jobs_dir, job_id)
-        try:
-            state: dict[str, Any] = json.loads(progress.state.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            state = {}
+        state: dict[str, Any] = read_json(progress.state, {})
         try:
             lines = progress.log_path.read_text(encoding="utf-8").splitlines()[-tail:]
         except OSError:
