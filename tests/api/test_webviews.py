@@ -394,7 +394,7 @@ def test_attribution_is_computed_outside_the_run_and_read_back(
 def test_attribution_says_why_a_run_cannot_be_attributed_here(
     run_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(v, "available_arms", _scripted_only)  # as without the train extra
+    monkeypatch.setattr("optspread.api.runwork.available_arms", _scripted_only)  # no train extra
     row = _ok_row(run_root, "flat")
     from dataclasses import replace
 
@@ -527,7 +527,7 @@ def test_capital_counts_the_episodes_beyond_the_tolerance(run_root: Path, tmp_pa
 def test_replay_reports_identical_with_the_reason(
     run_root: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(v, "available_arms", _scripted_only)  # as without the train extra
+    monkeypatch.setattr("optspread.api.runwork.available_arms", _scripted_only)  # no train extra
     row = _ok_row(run_root, "delta_seller")
     out = v.run_replay(row.path)
     assert out.verdict == "IDENTICAL" and "reproduced" in out.reason and out.seconds >= 0.0
