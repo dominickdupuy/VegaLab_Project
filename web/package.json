@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "next dev --port 3000",
     "build": "next build",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "api-types": "openapi-typescript node_modules/.cache/optspread/openapi.json --output lib/schema.d.ts"
   },
   "dependencies": {
     "echarts": "6.0.0",
@@ -20,6 +21,7 @@
     "@types/node": "20.19.43",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
+    "openapi-typescript": "7.13.0",
     "typescript": "5.9.3"
   }
 }

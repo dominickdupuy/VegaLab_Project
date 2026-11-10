@@ -138,8 +138,15 @@ train-smoke:
 # The dashboard: `make web` builds the static site into web/out, `make serve` serves
 # it beside the JSON API (needs the dashboard extra), `make web-dev` runs the site with
 # hot reload against a `make serve` already running on $(PORT).
+#
+# Before the build, `make web` writes the server's OpenAPI document (needs the dashboard
+# extra) and regenerates the site's API types from it into web/lib/schema.d.ts, so the
+# build and the typecheck fail when a page no longer fits the API. The file is committed:
+# commit it again whenever this changes it.
 web:
-	cd web && $(NPM) ci && $(NPM) run build && $(NPM) run typecheck
+	cd web && $(NPM) ci
+	$(PY) -m scripts.write_openapi web/node_modules/.cache/optspread/openapi.json
+	cd web && $(NPM) run api-types && $(NPM) run build && $(NPM) run typecheck
 
 serve:
 	$(PY) -m optspread.server --port $(PORT)
