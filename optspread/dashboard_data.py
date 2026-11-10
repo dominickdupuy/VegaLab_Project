@@ -28,11 +28,13 @@ from optspread.dashboard.gateboard import VERDICTS as VERDICTS
 from optspread.dashboard.gateboard import GateBoard as GateBoard
 from optspread.dashboard.gateboard import GateReportFormatError as GateReportFormatError
 from optspread.dashboard.gateboard import GateRow as GateRow
+from optspread.dashboard.gateboard import GateScan as GateScan
 from optspread.dashboard.gateboard import gate_milestones as gate_milestones
 from optspread.dashboard.gateboard import load_gate_board as load_gate_board
 from optspread.dashboard.gateboard import load_gate_boards as load_gate_boards
 from optspread.dashboard.gateboard import parse_gate_json as parse_gate_json
 from optspread.dashboard.gateboard import parse_gate_markdown as parse_gate_markdown
+from optspread.dashboard.gateboard import scan_gate_reports as scan_gate_reports
 from optspread.dashboard.gateboard import unreadable_gate_reports as unreadable_gate_reports
 from optspread.dashboard.landing import readme_summary as readme_summary
 from optspread.dashboard.leakdemo import LeakDemo as LeakDemo
