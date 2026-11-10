@@ -340,8 +340,16 @@ def test_the_job_pool_spawns_its_workers_as_the_orchestrator_does(
     import multiprocessing.context
 
     # The platform default as Linux has it: fork, from a multithreaded server process.
-    fork = multiprocessing.get_context("fork")
-    monkeypatch.setattr(multiprocessing.context._default_context, "_actual_context", fork)
+    # Windows has no fork, so there a start method that is not spawn stands in for it.
+    if "fork" in multiprocessing.get_all_start_methods():
+        default: multiprocessing.context.BaseContext = multiprocessing.get_context("fork")
+    else:
+
+        class NotSpawn(multiprocessing.context.BaseContext):
+            _name = "not-spawn"
+
+        default = NotSpawn()
+    monkeypatch.setattr(multiprocessing.context._default_context, "_actual_context", default)
     manager = JobManager(tmp_path, workers=1)
     try:
         from multiprocessing.context import SpawnContext
