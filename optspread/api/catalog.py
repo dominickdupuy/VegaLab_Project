@@ -9,14 +9,14 @@ import json
 import math
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 from pydantic import Field
 
 from optspread.api._base import Out, _f
 from optspread.api.premiums import _interval
-from optspread.api.runs import row_out, run_source
+from optspread.api.runs import RunStatus, row_out, run_source
 from optspread.artifacts import SchemaVersionError, read_run
 from optspread.dashboard.jobs.spec import JobSpec
 from optspread.dashboard.runindex import RunRow
@@ -32,7 +32,7 @@ class CatalogRunOut(Out):
     label: str
     settings: dict[str, Any]
     present: bool  # the run is in the index under this key
-    status: str
+    status: RunStatus | Literal["MISSING"]  # the run's status, or MISSING when not present
     policy: str
     premium: float | None
     source: str

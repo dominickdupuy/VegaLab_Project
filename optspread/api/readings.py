@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import math
 from datetime import date
+from typing import Literal
 
 import numpy as np
 from pydantic import Field
@@ -27,7 +28,9 @@ SIGMA_FROM = ("config", "rv21", "atm")
 class RegionOut(Out):
     """Real less simulated over the simulator's contracts in one moneyness region."""
 
-    name: str  # "put" (ln(K/F) < -0.03), "atm" or "call"
+    # "put" (ln(K/F) < -0.03), "atm" or "call": dashboard.readings.REGIONS, the regions
+    # sim_regions reads, which alone give a RegionOut its name
+    name: Literal["put", "atm", "call"]
     label: str
     mean_diff: float | None  # vol points
     n: int

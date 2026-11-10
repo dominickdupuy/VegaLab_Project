@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import Field
 
@@ -116,7 +116,7 @@ class PeerOut(Out):
     source: str
     n_episodes: int | None
     mean_pnl: float | None
-    relation: str  # "same run" | "control" | "same arm" | "other arm"
+    relation: Literal["same run", "control", "same arm", "other arm"]  # _peers' four ranks
     paired: bool  # starts on the same first seed: its episodes pair with this run's
     note: str
 

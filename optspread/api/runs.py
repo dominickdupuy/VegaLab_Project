@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 from numpy.typing import NDArray
@@ -35,6 +35,9 @@ from optspread.dashboard.runindex import (
 from optspread.manifest import MANIFEST_FILENAME
 
 MAX_EQUITY_SENT = 60  # equity paths sent to the browser; the file keeps up to 200
+
+# The four values RunRow.status returns, one per branch.
+RunStatus = Literal["OK", "UNVERIFIED", "INVALID", "DIGEST MISMATCH"]
 
 
 # -- runs ------------------------------------------------------------------------ #
@@ -61,7 +64,7 @@ class RunRowOut(Out):
     mean_cost: float | None
     mean_trades: float | None
     sweep: str
-    status: str
+    status: RunStatus
     digests_ok: bool | None
     problems: list[str]
 
@@ -218,7 +221,7 @@ def risk_out(stats: RiskStats) -> RiskOut:
 
 
 class HistogramOut(Out):
-    edges: list[float]
+    edges: list[float | None]  # null where a value is not finite (an overflowing difference)
     counts: list[int]
 
 
@@ -246,7 +249,7 @@ class EpisodeOut(Out):
 class EquityOut(Out):
     file: str
     seeds: list[int]
-    paths: list[list[float]]
+    paths: list[list[float | None]]  # null where the file holds a value that is not finite
     n_recorded: int
 
 

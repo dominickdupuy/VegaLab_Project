@@ -303,8 +303,8 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
     # -- meta -------------------------------------------------------------- #
 
     @app.get("/api/health")
-    def health() -> dict[str, object]:
-        return {"ok": True, "version": __version__, "git_sha": git_sha(REPO_ROOT)}
+    def health() -> w.HealthOut:
+        return w.HealthOut(ok=True, version=__version__, git_sha=git_sha(REPO_ROOT))
 
     @app.get("/api/overview", response_model=w.OverviewOut)
     def overview(request: Request) -> Response:

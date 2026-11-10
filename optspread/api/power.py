@@ -55,7 +55,9 @@ class FloorOut(Out):
     floor: list[float]
     floor_s5: float
     floor_s50: float
-    ratio: float  # floor at S=5 over S=50: 3.8 when tau^2 dominates, sqrt(10) by the normal form
+    # floor at S=5 over S=50: 3.8 when tau^2 dominates, sqrt(10) by the normal form; NaN,
+    # sent as null, when the floor at S=50 is zero (no variance at all)
+    ratio: float | None
 
 
 class DesignOut(Out):

@@ -11,6 +11,7 @@ import contextlib
 import re
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from optspread import actionmix as am
 from optspread.api._base import Out, _f, _source_suffix
@@ -31,7 +32,7 @@ class ActionMixOut(Out):
     a ppo run's re-simulation needs its learner, and a cell of 500 episodes takes
     half a minute."""
 
-    kind: str  # "run" or "grid"
+    kind: Literal["run", "grid"]  # the two branches of action_mix
     path: str
     run: am.RunActionMix | None = None
     grid: am.GridActionMix | None = None
@@ -86,7 +87,7 @@ class HoldingOut(Out):
     open_day: int
     exit_day: int
     days: int
-    exit: str  # "policy" | "expiry" | "margin" | "horizon"
+    exit: am.Exit  # how the structure left the book, as actionmix.Holding.exit records it
     tenor_days: int
     short_delta: float | None  # mean |delta| of the short legs at the open
     long_delta: float | None  # of the long wings; None without any
@@ -113,7 +114,9 @@ class MixDetailOut(Out):
 
 
 class MixViewOut(Out):
-    state: str  # "cached" (full) | "lean" (summary only) | "computing" | "absent" | "failed"
+    # "cached" (full) | "lean" (summary only) | "computing" | "absent" | "failed": the
+    # branches of mix_view, which alone builds one
+    state: Literal["cached", "lean", "computing", "absent", "failed"]
     can_compute: bool
     reason: str
     file: str

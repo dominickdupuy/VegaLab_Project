@@ -1,4 +1,4 @@
-"""API payload for the landing page: the study at a glance.
+"""API payloads for the landing page (the study at a glance) and the health check.
 
 Lane: Ilan Danial (machinery). Moved from ``optspread.webapi``, which re-exports it.
 """
@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
+from typing import Literal
 
 from optspread.api._base import Out
 from optspread.api.panel import DataStatusOut, PanelReader, SpanOut
@@ -20,9 +21,17 @@ from optspread.dashboard.runindex import RunRow
 # -- the overview ------------------------------------------------------------------ #
 
 
+class HealthOut(Out):
+    ok: bool
+    version: str
+    git_sha: str  # HEAD of the checkout the server runs from, "unknown" without git
+
+
 class GateTileOut(Out):
     milestone: str
-    verdict: str
+    # The two verdicts GateBoard.verdict derives from a board's items; what the report
+    # file states is not shown here.
+    verdict: Literal["PASS", "NOT CLEARED"]
     verdict_mismatch: bool
     report_date: str
     n_items: int

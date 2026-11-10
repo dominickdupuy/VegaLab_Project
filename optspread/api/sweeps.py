@@ -9,6 +9,7 @@ import contextlib
 import math
 from collections.abc import Sequence
 from pathlib import Path
+from typing import Literal
 
 import numpy as np
 
@@ -27,6 +28,11 @@ from optspread.manifest import MANIFEST_FILENAME, RunManifest
 # -- sweeps ----------------------------------------------------------------------- #
 
 
+# "sweep": a scripted sweep.json; "grid": an orchestrated grid-*.json. The two record
+# kinds the summaries and the details are built for; nothing else sets it.
+SweepKind = Literal["sweep", "grid"]
+
+
 class SweepSummaryOut(Out):
     key: str
     sweep_hash: str
@@ -35,16 +41,18 @@ class SweepSummaryOut(Out):
     n_cells: int
     seed: int
     n_episodes: int
-    kind: str = "sweep"  # "sweep": a scripted sweep.json; "grid": an orchestrated grid-*.json
+    kind: SweepKind = "sweep"
     n_seeds: int = 1  # seed blocks; a scripted sweep is one block on shared seeds
     n_present: int = 0  # cells whose run directory is under the root
 
 
 class OraclePointOut(Out):
+    # A scripted sweep's cell figures as its sweep.json records them: null where the
+    # file holds a value that is not finite.
     premium: float
-    mean_pnl: float
-    se_pnl: float
-    lift: float  # against the first premium for the same arm: a paired difference
+    mean_pnl: float | None
+    se_pnl: float | None
+    lift: float | None  # against the first premium for the same arm: a paired difference
     run_id: str
 
 
@@ -110,7 +118,7 @@ class SweepOut(Out):
     summary: SweepSummaryOut
     oracle: dict[str, list[OraclePointOut]]
     source: str
-    kind: str = "sweep"
+    kind: SweepKind = "sweep"
     grid: GridDetailOut | None = None
 
 

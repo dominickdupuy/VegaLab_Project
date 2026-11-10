@@ -42,6 +42,8 @@ from optspread.api.jobs import KNOB_LABELS as KNOB_LABELS
 from optspread.api.jobs import SYNTHETIC_ONLY as SYNTHETIC_ONLY
 from optspread.api.jobs import JobOptionsOut as JobOptionsOut
 from optspread.api.jobs import JobOut as JobOut
+from optspread.api.jobs import KnobGroup as KnobGroup
+from optspread.api.jobs import KnobKind as KnobKind
 from optspread.api.jobs import KnobOut as KnobOut
 from optspread.api.jobs import PresetOut as PresetOut
 from optspread.api.jobs import _knob as _knob
@@ -59,6 +61,7 @@ from optspread.api.mix import _RUN_ID as _RUN_ID
 from optspread.api.mix import ActionMixOut as ActionMixOut
 from optspread.api.mix import action_mix as action_mix
 from optspread.api.overview import GateTileOut as GateTileOut
+from optspread.api.overview import HealthOut as HealthOut
 from optspread.api.overview import OverviewOut as OverviewOut
 from optspread.api.overview import overview as overview
 from optspread.api.panel import DATA_MANIFEST_FILE as DATA_MANIFEST_FILE
@@ -141,6 +144,7 @@ from optspread.api.runs import RunDetailOut as RunDetailOut
 from optspread.api.runs import RunFilters as RunFilters
 from optspread.api.runs import RunListOut as RunListOut
 from optspread.api.runs import RunRowOut as RunRowOut
+from optspread.api.runs import RunStatus as RunStatus
 from optspread.api.runs import TrialsOut as TrialsOut
 from optspread.api.runs import _equity as _equity
 from optspread.api.runs import _filtered as _filtered
@@ -159,6 +163,7 @@ from optspread.api.sweeps import ContrastOut as ContrastOut
 from optspread.api.sweeps import GridCellOut as GridCellOut
 from optspread.api.sweeps import GridDetailOut as GridDetailOut
 from optspread.api.sweeps import OraclePointOut as OraclePointOut
+from optspread.api.sweeps import SweepKind as SweepKind
 from optspread.api.sweeps import SweepListOut as SweepListOut
 from optspread.api.sweeps import SweepOut as SweepOut
 from optspread.api.sweeps import SweepSummaryOut as SweepSummaryOut
