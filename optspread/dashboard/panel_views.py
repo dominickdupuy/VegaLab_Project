@@ -28,7 +28,7 @@ re-exports both.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -210,6 +210,13 @@ def take(columns: Columns, mask: NDArray[np.bool_]) -> Columns:
 
 def n_rows(columns: Columns) -> int:
     return len(next(iter(columns.values()))) if columns else 0
+
+
+def _floats(columns: Columns, name: str, order: NDArray[Any]) -> NDArray[np.float64]:
+    """Column ``name`` taken in ``order`` as floats; all NaN when the column is absent."""
+    if name not in columns or not len(order):
+        return np.full(len(order), np.nan)
+    return np.asarray(columns[name][order], dtype=np.float64)
 
 
 # -- coverage ---------------------------------------------------------------- #
@@ -398,25 +405,35 @@ def _curve(otm: Columns) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     return grid, sums / counts
 
 
+def _expiry_curves(
+    chain: Columns, min_quotes: int, dte_range: tuple[int, int] | None = None
+) -> Iterator[tuple[Expiry, NDArray[np.float64], NDArray[np.float64]]]:
+    """Each expiry, nearest first, with at least ``min_quotes`` usable quotes (and its DTE
+    within ``dte_range`` when given), and its OTM curve as ``_curve`` gives it."""
+    otm = otm_quotes(chain)
+    for e in expiries(chain):
+        if dte_range is not None and not (dte_range[0] <= e.dte <= dte_range[1]):
+            continue
+        mine = take(otm, otm["expiry"] == np.datetime64(e.expiry, "D"))
+        if n_rows(mine) < min_quotes:
+            continue
+        m, iv = _curve(mine)
+        yield e, m, iv
+
+
 def smile(chain: Columns, expiry: date) -> Smile:
     otm = otm_quotes(chain)
     if n_rows(otm):
         otm = take(otm, otm["expiry"] == np.datetime64(expiry, "D"))
     order = np.argsort(otm["strike"], kind="stable") if n_rows(otm) else np.asarray([], int)
     n = len(order)
-
-    def col(name: str) -> NDArray[np.float64]:
-        if name not in otm or not n:
-            return np.full(n, np.nan)
-        return np.asarray(otm[name][order], dtype=np.float64)
-
     return Smile(
         expiry=expiry,
         dte=int(otm["dte"][order][0]) if n else 0,
-        moneyness=col("moneyness"),
-        strike=col("strike"),
-        iv=col("iv"),
-        iv_vendor=col("iv_vendor"),
+        moneyness=_floats(otm, "moneyness", order),
+        strike=_floats(otm, "strike", order),
+        iv=_floats(otm, "iv", order),
+        iv_vendor=_floats(otm, "iv_vendor", order),
         cp=np.asarray(otm["cp"][order], dtype=str) if n else np.asarray([], dtype=str),
     )
 
@@ -434,15 +451,10 @@ def term_structure(chain: Columns, min_quotes: int = 3) -> TermStructure:
     An expiry whose quotes do not straddle the forward has no ATM point and is left
     out rather than extrapolated.
     """
-    otm = otm_quotes(chain)
     exps: list[date] = []
     dtes: list[int] = []
     ivs: list[float] = []
-    for e in expiries(chain):
-        mine = take(otm, otm["expiry"] == np.datetime64(e.expiry, "D"))
-        if n_rows(mine) < min_quotes:
-            continue
-        m, iv = _curve(mine)
+    for e, m, iv in _expiry_curves(chain, min_quotes):
         if m[0] > 1.0 or m[-1] < 1.0:
             continue
         exps.append(e.expiry)
@@ -471,16 +483,9 @@ def iv_surface(
     strikes: the surface is what was quoted, gridded, with holes where nothing was.
     """
     grid = moneyness_grid if moneyness_grid is not None else np.linspace(0.8, 1.2, 41)
-    otm = otm_quotes(chain)
     dtes: list[int] = []
     rows: list[NDArray[np.float64]] = []
-    for e in expiries(chain):
-        if not (min_dte <= e.dte <= max_dte):
-            continue
-        mine = take(otm, otm["expiry"] == np.datetime64(e.expiry, "D"))
-        if n_rows(mine) < min_quotes:
-            continue
-        m, iv = _curve(mine)
+    for e, m, iv in _expiry_curves(chain, min_quotes, (min_dte, max_dte)):
         row = np.interp(grid, m, iv)
         row[(grid < m[0]) | (grid > m[-1])] = np.nan
         dtes.append(e.dte)
@@ -516,22 +521,16 @@ def vrp_series(daily: Columns, source: str | None = None) -> VrpSeries:
     if source is not None and "source" in daily and n_rows(daily):
         rows = take(daily, daily["source"] == source)
     order = np.argsort(rows["date"], kind="stable") if n_rows(rows) else np.asarray([], int)
-
-    def col(name: str) -> NDArray[np.float64]:
-        if name not in rows or not len(order):
-            return np.full(len(order), np.nan)
-        return np.asarray(rows[name][order], dtype=np.float64)
-
     dates = rows["date"][order] if "date" in rows else np.asarray([], "datetime64[D]")
     return VrpSeries(
         source=source or "",
         date=dates.astype("datetime64[D]"),
-        spot=col("spot"),
-        spot_parity=col("spot_parity"),
-        iv30=col("iv30_atm"),
-        rv21=col("rv21"),
-        rv21_fwd=col("rv21_fwd"),
-        vrp30=col("vrp30"),
+        spot=_floats(rows, "spot", order),
+        spot_parity=_floats(rows, "spot_parity", order),
+        iv30=_floats(rows, "iv30_atm", order),
+        rv21=_floats(rows, "rv21", order),
+        rv21_fwd=_floats(rows, "rv21_fwd", order),
+        vrp30=_floats(rows, "vrp30", order),
     )
 
 
