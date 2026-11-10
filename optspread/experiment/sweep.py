@@ -31,13 +31,14 @@ components, and on the real panel its digests, so a cell read from a panel since
 is recomputed rather than mixed into a grid with cells of the new build.
 
 The run-directory rules a sweep shares with the grid (``run_id``, ``valid_run``,
-``foreign_run``, ``expected_data``) are in ``optspread.runs.rundir``. Moved from
-``optspread.sweep``, which re-exports it.
+``foreign_run``, ``expected_data``) are in ``optspread.runs.rundir``; ``distinct``,
+``premium_market`` and ``block_seed`` are shared with ``optspread.experiment.grid``.
+Moved from ``optspread.sweep``, which re-exports it.
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Hashable, Sequence
 from functools import partial
 from pathlib import Path
 
@@ -46,7 +47,7 @@ from numpy.typing import NDArray
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from optspread.artifacts import RunRecord, SchemaVersionError, read_run, write_run
-from optspread.config import PolicyName, RunConfig, config_hash
+from optspread.config import MarketConfig, PolicyName, RunConfig, config_hash
 from optspread.data import SourceName
 from optspread.harness import run_episodes, summarize
 from optspread.policies import Policy
@@ -54,6 +55,33 @@ from optspread.runs.rundir import Runner, expected_data, foreign_run, run_id, va
 
 SCHEMA_VERSION = 1
 SWEEP_FILENAME = "sweep.json"
+
+
+# -- shared with the grid ------------------------------------------------------ #
+
+
+def distinct[T: Hashable](value: tuple[T, ...], empty: str, repeated: str) -> tuple[T, ...]:
+    """``value`` when it lists at least one item and none twice.
+
+    Raises ``ValueError(empty)`` for an empty tuple, else ``ValueError(repeated)`` for a
+    repeat: the rule the sweep and the grid apply to their premiums and arms, each in its
+    own words."""
+    if not value:
+        raise ValueError(empty)
+    if len(set(value)) != len(value):
+        raise ValueError(repeated)
+    return value
+
+
+def premium_market(base: RunConfig, premium: float) -> MarketConfig:
+    """``base``'s market with only the planted premium changed."""
+    return base.market.model_copy(update={"iv_premium_vol_pts": premium})
+
+
+def block_seed(first: int, block: int, n_episodes: int) -> int:
+    """The first path seed of seed block ``block``, when blocks of ``n_episodes`` seeds
+    each follow one another from ``first``."""
+    return first + block * n_episodes
 
 
 class SweepConfig(BaseModel):
@@ -66,25 +94,19 @@ class SweepConfig(BaseModel):
     @field_validator("premiums")
     @classmethod
     def _premiums_distinct(cls, value: tuple[float, ...]) -> tuple[float, ...]:
-        if not value:
-            raise ValueError("premiums must list at least one planted premium")
-        if len(set(value)) != len(value):
-            raise ValueError("premiums must be distinct")
-        return value
+        return distinct(
+            value, "premiums must list at least one planted premium", "premiums must be distinct"
+        )
 
     @field_validator("arms")
     @classmethod
     def _arms_distinct(cls, value: tuple[PolicyName, ...]) -> tuple[PolicyName, ...]:
-        if not value:
-            raise ValueError("arms must list at least one policy")
-        if len(set(value)) != len(value):
-            raise ValueError("arms must be distinct")
-        return value
+        return distinct(value, "arms must list at least one policy", "arms must be distinct")
 
 
 def cell_config(sweep: SweepConfig, premium: float, arm: PolicyName) -> RunConfig:
     """The base config with only the planted premium and the policy changed."""
-    market = sweep.base.market.model_copy(update={"iv_premium_vol_pts": premium})
+    market = premium_market(sweep.base, premium)
     return sweep.base.model_copy(update={"market": market, "policy": arm})
 
 
@@ -241,7 +263,7 @@ def pilot_matrix(
     rows: list[list[float]] = []
     for i in range(n_seeds):
         config = base.model_copy(
-            update={"seed": base.seed + i * n_episodes, "n_episodes": n_episodes}
+            update={"seed": block_seed(base.seed, i, n_episodes), "n_episodes": n_episodes}
         )
         rows.append([episode.pnl for episode in runner(config, make_policy(i))])
     return np.asarray(rows, dtype=np.float64)
@@ -250,5 +272,6 @@ def pilot_matrix(
 def pilot_seeds(base: RunConfig, n_seeds: int, n_episodes: int) -> Sequence[Sequence[int]]:
     """The path seeds each block of ``pilot_matrix`` runs on, for reports and audits."""
     return [
-        range(base.seed + i * n_episodes, base.seed + (i + 1) * n_episodes) for i in range(n_seeds)
+        range(block_seed(base.seed, i, n_episodes), block_seed(base.seed, i + 1, n_episodes))
+        for i in range(n_seeds)
     ]
