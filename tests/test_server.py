@@ -26,7 +26,7 @@ from fastapi.testclient import TestClient
 
 from optspread.dashboard_data import REPO_ROOT
 from optspread.jobs import JobManager, execute_job
-from optspread.server import WEB_DIR, Settings, allowed_hosts, create_app
+from optspread.server import WEB_DIR, Settings, allowed_hosts, create_app, redactor
 
 HANG = 600.0  # seconds: bounds a job that never ends, never a slow one
 
@@ -545,6 +545,18 @@ def test_errors_and_health_name_no_absolute_path(
         assert response.status_code >= 400 or response.request.url.path == "/", text
         assert str(tmp_path) not in text and str(Path.home()) not in text, text
         assert str(REPO_ROOT) not in text, text
+
+
+def test_a_redacted_path_reads_with_forward_slashes_on_every_platform(tmp_path: Path) -> None:
+    """After a root's name the path is written as Linux writes it, also where the
+    separator is a backslash (Windows); a path under no root is left as it is."""
+    redact = redactor([(tmp_path / "runs", "<runs root>")])
+    cell = tmp_path / "runs" / "sweeps" / "tiny" / "run.json"
+    assert redact(str(cell)) == "<runs root>/sweeps/tiny/run.json"
+    assert redact(f"no file {cell}: gone") == "no file <runs root>/sweeps/tiny/run.json: gone"
+    assert redact([str(tmp_path / "runs")]) == ["<runs root>"]
+    elsewhere = str(tmp_path / "elsewhere" / "run.json")
+    assert redact(elsewhere) == elsewhere
 
 
 def test_the_data_pages_question_routes(client: TestClient, bare: TestClient) -> None:

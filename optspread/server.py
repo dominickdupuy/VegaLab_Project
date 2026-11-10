@@ -21,6 +21,7 @@ import argparse
 import contextlib
 import math
 import os
+import re
 import threading
 from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import asynccontextmanager
@@ -142,11 +143,23 @@ def redactor(named: Sequence[tuple[Path, str]]) -> Callable[[object], object]:
             if len(form) > 1:
                 pairs.setdefault(form, name)
     ordered = sorted(pairs.items(), key=lambda kv: len(kv[0]), reverse=True)
+    # Where the separator is not "/" (Windows), the rest of a path after a root's name is
+    # written with "/", as Linux writes it: <runs root>/sweeps/tiny, not <runs root>\sweeps.
+    # It runs up to a character no Windows path holds. Linux is left as it is: there a
+    # backslash is part of a name.
+    names = sorted({re.escape(name) for name in pairs.values()}, key=len, reverse=True)
+    native = (
+        re.compile("(" + "|".join(names) + r')((?:\\[^\\<>:"|?*\r\n]*)+)')
+        if os.sep != "/" and names
+        else None
+    )
 
     def redact(value: object) -> object:
         if isinstance(value, str):
             for form, name in ordered:
                 value = value.replace(form, name)
+            if native is not None:
+                value = native.sub(lambda m: m[1] + m[2].replace("\\", "/"), value)
             return value
         if isinstance(value, float) and not math.isfinite(value):
             return None
