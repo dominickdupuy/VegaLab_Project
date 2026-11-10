@@ -19,13 +19,14 @@ from __future__ import annotations
 import importlib
 import importlib.util
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from optspread.config import CostConfig, EnvConfig, MarketConfig, RunConfig
-from optspread.data import make_source
-from optspread.runs.rundir import SOURCES, JobSource
+from optspread.data import SourceName, make_source
+from optspread.runs.rundir import SOURCES, JobSource, run_id, source_root
 
 EQUITY_FILENAME = "equity.json"
 LAUNCH_DIR = "launched"
@@ -158,6 +159,13 @@ def to_run_config(spec: JobSpec) -> RunConfig:
     if spec.policy == "ppo":
         payload["train"] = {"total_timesteps": spec.total_timesteps, "seed": spec.seed}
     return RunConfig.model_validate(payload)
+
+
+def launched_run_dir(runs_root: Path, config: RunConfig, source: SourceName) -> Path:
+    """Where a launched run of ``config`` on ``source`` lives under the runs root:
+    ``launched/<run id>`` under the source's folder (``rundir.source_root``), since the
+    source is not in a run id."""
+    return source_root(runs_root, source) / LAUNCH_DIR / run_id(config)
 
 
 @dataclass(frozen=True, slots=True)
