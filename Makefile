@@ -29,6 +29,32 @@ typecheck:
 test:
 	$(PY) -m pytest tests/ --cov=optspread --cov-report=term-missing --cov-fail-under=85
 
+# Parallel runs, beside `test`. optspread/reproduction.py's STEP_COMMANDS must match what
+# `make -n test` prints, so `test` stays one serial command and these are targets of their
+# own. Each of the TEST_WORKERS xdist workers imports the whole suite.
+TEST_WORKERS ?= 4
+XDIST = -n $(TEST_WORKERS) --dist loadfile --no-loadscope-reorder
+.PHONY: test-par test-fast
+
+# Everything, with the coverage floor on the combined result, in two phases. First the
+# suite on $(TEST_WORKERS) workers, one file to a worker at a time (--dist loadfile, so a
+# file's module fixtures are built once), without the tests that start processes of their
+# own; then those (spawns_processes) in one process, appending to the same coverage data.
+# tests/conftest.py keeps them out of any run under -n, and sends the slow files first.
+test-par:
+	$(PY) -m pytest tests/ $(XDIST) -m "not spawns_processes" --cov=optspread --cov-report=
+	$(PY) -m pytest tests/ -m spawns_processes --cov=optspread --cov-append --cov-report=term-missing --cov-fail-under=85
+
+# The quick loop: parallel, without the slow and the process-spawning tests, no coverage.
+test-fast:
+	$(PY) -m pytest tests/ $(XDIST) -m "not slow and not spawns_processes"
+
+# One BLAS thread per test process: the parallelism is the workers', and every idle
+# OpenBLAS thread pool commits memory a test run never uses.
+test-par test-fast: export OPENBLAS_NUM_THREADS = 1
+test-par test-fast: export OMP_NUM_THREADS = 1
+test-par test-fast: export MKL_NUM_THREADS = 1
+
 # As modules, so the scripts import this checkout's optspread, not whichever one an
 # editable install in a shared venv points at.
 bench:
