@@ -28,7 +28,6 @@ re-exports both.
 
 from __future__ import annotations
 
-import os
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date
@@ -38,14 +37,12 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
+from optspread.fileio import env_path
+from optspread.realdata import DEFAULT_ROOT
+
 DATA_ENV = "VEGALAB_DATA"
-DEFAULT_DATA_ROOT = (
-    Path.home()
-    / "Library"
-    / "CloudStorage"
-    / "OneDrive-UniversityofFlorida"
-    / "Dupuy, Dominick's files - wrds_optionmetrics"
-)
+# The team's shared folder, as ``optspread.realdata.data_root`` falls back to it.
+DEFAULT_DATA_ROOT = DEFAULT_ROOT
 
 Columns = dict[str, NDArray[Any]]
 
@@ -68,9 +65,12 @@ CHAIN_COLUMNS = (
 
 
 def data_root(env: Mapping[str, str] | None = None) -> Path:
-    """``$VEGALAB_DATA`` if set, else the team's shared OneDrive folder."""
-    value = (os.environ if env is None else env).get(DATA_ENV, "")
-    return Path(value).expanduser() if value else DEFAULT_DATA_ROOT
+    """``$VEGALAB_DATA`` if set, else the team's shared OneDrive folder.
+
+    The same path ``optspread.realdata.data_root()`` gives for the same environment;
+    ``env`` replaces ``os.environ``, which that function has no way to take.
+    """
+    return env_path(DATA_ENV, DEFAULT_DATA_ROOT, env)
 
 
 @dataclass(frozen=True, slots=True)
