@@ -16,9 +16,9 @@ from optspread.analysis import NULL_PREMIUM, decide_premium, paired_contrast
 from optspread.api._base import Out, _f, _fl, _inside
 from optspread.artifacts import SchemaVersionError
 from optspread.config import ArmName
+from optspread.experiment.grid import GridRecord, read_grid
+from optspread.experiment.sweep import SWEEP_FILENAME, read_sweep
 from optspread.manifest import MANIFEST_FILENAME, RunManifest
-from optspread.orchestrate import GridRecord, read_grid
-from optspread.sweep import SWEEP_FILENAME, read_sweep
 
 # -- sweeps ----------------------------------------------------------------------- #
 

@@ -20,7 +20,6 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from optspread import dashboard_panel as panel
 from optspread.api._base import Out, _f, _fl, _iso
 from optspread.api.readings import (
     SIGMA_FROM,
@@ -34,6 +33,19 @@ from optspread.api.readings import (
     simulated_surface,
 )
 from optspread.config import MarketConfig
+from optspread.dashboard import panel_views as panel
+from optspread.dashboard.readings import (
+    SMOOTH_DAYS,
+    PremiumSeries,
+    ShapeHistory,
+    premium_now,
+    premium_reading,
+    premium_series,
+    quality_reading,
+    shape_history,
+    shape_on,
+    shape_reading,
+)
 
 # -- the SPX panel ---------------------------------------------------------------- #
 
@@ -157,7 +169,7 @@ class SeamOut(Out):
     date: list[str]
     stats: dict[str, list[float | None]]
     medians: dict[str, float | None]
-    # the headline (dashboard_panel.SEAM_HEADLINE): each day's 95th-percentile |IV gap|,
+    # the headline (panel_views.SEAM_HEADLINE): each day's 95th-percentile |IV gap|,
     # averaged over the overlap days, and the worst day; what docs/DATA.md quotes
     p95_mean: float | None = None
     p95_worst: float | None = None
@@ -621,10 +633,10 @@ class PanelReader:
     def premium_out(self, mapping: dict[str, Any] | None = None) -> PremiumOut:
         """The premium day by day; the headline and interval from ``mapping`` when given."""
         daily = self.daily()
-        s: panel.PremiumSeries = self._derived(
-            "premium", self.layout.daily, lambda: panel.premium_series(daily)
+        s: PremiumSeries = self._derived(
+            "premium", self.layout.daily, lambda: premium_series(daily)
         )
-        now = panel.premium_now(s)
+        now = premium_now(s)
         ok = np.isfinite(s.premium)
         head = (mapping or {}).get("headline") or {}
         mean = head.get("mean", float(s.premium[ok].mean()) if ok.any() else None)
@@ -636,7 +648,7 @@ class PanelReader:
         first = head.get("first") or (str(s.date[ok][0]) if ok.any() else "")
         last = head.get("last") or (str(s.date[ok][-1]) if ok.any() else "")
         reading = (
-            panel.premium_reading(mean, low, high, first, last, bracket, axis, now)
+            premium_reading(mean, low, high, first, last, bracket, axis, now)
             if mean is not None
             else "The daily table has no day with a complete forward window yet."
         )
@@ -652,7 +664,7 @@ class PanelReader:
             iv30=pts(s.iv30 * 100.0),
             rv_fwd=pts(s.rv_fwd * 100.0),
             rv_trailing=pts(s.rv_trailing * 100.0),
-            smooth_days=panel.SMOOTH_DAYS,
+            smooth_days=SMOOTH_DAYS,
             now=PremiumNowOut(
                 date=now.day.isoformat(),
                 iv30=_f(now.iv30 * 100.0),
@@ -676,10 +688,10 @@ class PanelReader:
 
     def shape_out(self, day: date) -> ShapeOut:
         grid = self.surface_grid()
-        h: panel.ShapeHistory = self._derived(
-            "shape", self.layout.surface_grid, lambda: panel.shape_history(grid)
+        h: ShapeHistory = self._derived(
+            "shape", self.layout.surface_grid, lambda: shape_history(grid)
         )
-        sd = panel.shape_on(h, day)
+        sd = shape_on(h, day)
         if sd is None:
             raise PanelNotBuiltError(f"no gridded surface on {day} in {self.layout.surface_grid}")
         return ShapeOut(
@@ -698,7 +710,7 @@ class PanelReader:
             put_k=sd.put_k,
             call_k=sd.call_k,
             long_tenor=sd.long_tenor,
-            reading=panel.shape_reading(sd),
+            reading=shape_reading(sd),
             source=str(self.layout.surface_grid),
         )
 
@@ -754,7 +766,7 @@ class PanelReader:
             cov = panel.coverage_summary(self.coverage())
             days = panel.available_dates(self.coverage())
             report = panel.seam_report(self.seam())
-            reading = panel.quality_reading(
+            reading = quality_reading(
                 n_days=len(days),
                 first=str(days[0]) if len(days) else "",
                 last=str(days[-1]) if len(days) else "",

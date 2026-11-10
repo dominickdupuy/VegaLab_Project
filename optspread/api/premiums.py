@@ -20,7 +20,7 @@ from optspread.analysis import ALPHA, NULL_PREMIUM, decide_contrast
 from optspread.api._base import Out, _f
 from optspread.api.runs import RunFilters, _filtered, row_out, run_source
 from optspread.artifacts import SchemaVersionError, read_run
-from optspread.dashboard_data import RunRow, flatten_config
+from optspread.dashboard.runindex import RunRow, flatten_config
 from optspread.manifest import RunManifest
 
 # -- the runs list: P&L by planted premium, per arm, and each arm against itself at zero -- #

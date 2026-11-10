@@ -14,10 +14,10 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from optspread import dashboard_panel as panel
 from optspread.api._base import Out
 from optspread.api.panel import PanelNotBuiltError, PanelReader
 from optspread.config import MarketConfig
+from optspread.dashboard.readings import seller_reading
 
 # -- what the fixed-delta seller opens on a real day -------------------------------- #
 
@@ -152,7 +152,7 @@ def seller_on(chain: Any, day: date, cfg: MarketConfig) -> SellerOut:
     capped, naked = capped_loss(legs)
     margin = float(margin_requirement(legs, chain))
     reading = (
-        panel.seller_reading(
+        seller_reading(
             day.isoformat(),
             float(chain.spot),
             tenor,

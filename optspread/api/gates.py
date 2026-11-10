@@ -15,7 +15,7 @@ import re
 from pathlib import Path
 
 from optspread.api._base import Out
-from optspread.dashboard_data import GateBoard, load_gate_boards
+from optspread.dashboard.gateboard import GateBoard, load_gate_boards
 
 # -- gates ------------------------------------------------------------------------ #
 

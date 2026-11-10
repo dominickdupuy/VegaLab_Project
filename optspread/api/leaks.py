@@ -12,7 +12,7 @@ from typing import Any
 from pydantic import ConfigDict, Field
 
 from optspread.api._base import Out, _f
-from optspread.dashboard_data import LeakDemo
+from optspread.dashboard.leakdemo import LeakDemo
 from optspread.leaks import LeakReport
 
 # -- the leak demo ---------------------------------------------------------------- #

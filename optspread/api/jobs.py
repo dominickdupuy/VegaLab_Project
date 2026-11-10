@@ -12,17 +12,16 @@ from typing import Any
 from pydantic import Field
 
 from optspread.api._base import Out
-from optspread.jobs import (
+from optspread.dashboard.jobs.queue import JobStatus
+from optspread.dashboard.jobs.spec import (
     LAUNCH_DIR,
     PRESETS,
-    SOURCES,
     JobSpec,
-    JobStatus,
     available_arms,
     available_sources,
 )
-from optspread.orchestrate import source_root
 from optspread.realdata import SPLITS
+from optspread.runs.rundir import SOURCES, source_root
 
 # -- jobs ------------------------------------------------------------------------- #
 

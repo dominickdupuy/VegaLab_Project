@@ -19,7 +19,8 @@ from numpy.typing import NDArray
 from pydantic import Field
 
 from optspread.api._base import Out, _f, _inside
-from optspread.dashboard_data import (
+from optspread.dashboard.jobs.spec import EQUITY_FILENAME
+from optspread.dashboard.runindex import (
     RiskStats,
     RunDetail,
     RunRow,
@@ -30,7 +31,6 @@ from optspread.dashboard_data import (
     run_facets,
     scan_runs,
 )
-from optspread.jobs import EQUITY_FILENAME
 from optspread.manifest import MANIFEST_FILENAME
 
 MAX_EQUITY_SENT = 60  # equity paths sent to the browser; the file keeps up to 200

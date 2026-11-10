@@ -14,9 +14,10 @@ from datetime import date
 import numpy as np
 from pydantic import Field
 
-from optspread import dashboard_panel as panel
 from optspread.api._base import Out, _f, _fl
 from optspread.config import MarketConfig
+from optspread.dashboard.panel_views import GridSurface
+from optspread.dashboard.readings import sim_reading, sim_regions
 from optspread.market import SyntheticChainProvider
 from optspread.rng import SeededStepRNG
 
@@ -76,7 +77,7 @@ class SimulatedOut(Out):
 
 
 def simulated_surface(
-    day: date, cfg: MarketConfig, real: panel.GridSurface, spot_from: str, sigma_from: str
+    day: date, cfg: MarketConfig, real: GridSurface, spot_from: str, sigma_from: str
 ) -> SimulatedOut:
     """The chain ``SyntheticChainProvider`` lists at its first step, against the real grid.
 
@@ -92,7 +93,7 @@ def simulated_surface(
     diff = np.asarray(real_at) - chain.ivs
     ok = np.isfinite(diff)
     k_all = np.asarray(ks)
-    regions, widest = panel.sim_regions(k_all, np.asarray(real_at), np.asarray(chain.ivs))
+    regions, widest = sim_regions(k_all, np.asarray(real_at), np.asarray(chain.ivs))
     widest_out = (
         WidestOut(
             strike=float(chain.strikes[widest.col]),
@@ -133,7 +134,7 @@ def simulated_surface(
             RegionOut(name=r.name, label=r.label, mean_diff=_f(r.mean_diff), n=r.n) for r in regions
         ],
         widest=widest_out,
-        reading=panel.sim_reading(
+        reading=sim_reading(
             level,
             regions,
             widest,
