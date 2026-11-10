@@ -40,6 +40,7 @@ from optspread.jobs import (
     JobSpec,
     JobStatus,
     QueueFullError,
+    _Progress,
     available_arms,
     execute_job,
     ppo_available,
@@ -470,3 +471,34 @@ def test_a_launched_ppo_run_is_resimulated_with_the_policy_it_saved(tmp_path: Pa
     assert execute_job("j3", spec.model_dump_json(), str(tmp_path)) == rel
     assert json.loads((tmp_path / ".jobs" / "j3.json").read_text())["phase"] == "written"
     assert POLICY_FILENAME in RunManifest.read(run_dir).artifacts
+
+
+def test_a_progress_write_waits_out_a_reader_holding_the_file(tmp_path: Path) -> None:
+    """The server reads a worker's progress file to answer a status poll. Windows refuses
+    to replace a file another handle has open (PermissionError), so a poll landing on a
+    write used to fail the job although the run was fine. Here a reader holds the file
+    open, for a bounded time, across the whole write: the write must wait it out and land
+    whole. Linux allows the replace, so there this passes trivially."""
+    import time
+
+    progress = _Progress(tmp_path, "j1")
+    progress.write(done=0, total=3, phase="starting")
+    opened, hold = threading.Event(), 0.2
+
+    def reader() -> None:
+        # as JobManager.status opens it (read_text): no delete sharing on Windows
+        with progress.state.open(encoding="utf-8") as fh:
+            fh.read()
+            opened.set()
+            time.sleep(hold)
+
+    holder = threading.Thread(target=reader)
+    holder.start()
+    try:
+        assert opened.wait(10.0), "the reader never opened the progress file"
+        progress.write(done=1, total=3, phase="evaluating")
+    finally:
+        holder.join()
+    state = json.loads(progress.state.read_text(encoding="utf-8"))
+    assert state == {"done": 1, "total": 3, "phase": "evaluating"}
+    assert not progress.state.with_suffix(".tmp").exists()
