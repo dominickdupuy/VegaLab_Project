@@ -38,7 +38,6 @@ Moved from ``optspread.sweep`` (the run-directory rules), ``optspread.orchestrat
 
 from __future__ import annotations
 
-import os
 import zipfile
 from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
@@ -52,6 +51,7 @@ from optspread.artifacts import RUN_FILENAME, RunRecord, read_run
 from optspread.config import RunConfig, config_hash
 from optspread.data import ChainSource, DataUnavailableError, SourceName, make_source
 from optspread.extend import describe
+from optspread.fileio import env_path
 from optspread.harness import EpisodeResult, run_episodes
 from optspread.manifest import (
     MANIFEST_FILENAME,
@@ -307,8 +307,7 @@ def default_runs_root(env: Mapping[str, str] | None = None) -> Path:
     ``scripts/sweep.py`` here, and ``make m2`` and ``make m4`` read the same places,
     so a run started without ``--root`` lands where its report looks.
     """
-    data = (os.environ if env is None else env).get(DATA_ENV, "")
-    return Path(data).expanduser() / "runs" if data else Path("runs")
+    return env_path(DATA_ENV, Path(), env) / "runs"
 
 
 def source_root(root: Path, source: SourceName) -> Path:
