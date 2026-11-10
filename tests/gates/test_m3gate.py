@@ -286,6 +286,7 @@ def measured_floor() -> float:
     return floor
 
 
+@pytest.mark.slow
 def test_the_floor_item_measures_the_floor_and_matches_m1(
     tmp_path: Path, measured_floor: float
 ) -> None:
@@ -667,6 +668,7 @@ def test_expected_problem_needs_exactly_the_grids_cells(world: World) -> None:
 # -- the report command ------------------------------------------------------------ #
 
 
+@pytest.mark.slow
 def test_the_report_names_every_root_portably_and_round_trips(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

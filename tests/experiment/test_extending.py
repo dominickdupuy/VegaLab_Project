@@ -42,6 +42,7 @@ def guide_blocks() -> list[str]:
     return re.findall(r"^```python\n(.*?)^```", GUIDE.read_text(), flags=re.DOTALL | re.MULTILINE)
 
 
+@pytest.mark.slow
 def test_every_block_in_the_guide_runs(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -147,6 +148,8 @@ def test_components_of_ones_own_run_through_the_grid_and_replay_only_through_the
         assert not replay_run(cell, trainer=fake_trainer).matches
 
 
+@pytest.mark.spawns_processes
+@pytest.mark.slow
 def test_components_pickle_into_parallel_workers(tmp_path: Path) -> None:
     one = run_grid(GRID, tmp_path / "one", trainer=fake_trainer, runner=SKEW_WORLD)
     two = run_grid(GRID, tmp_path / "two", workers=2, trainer=fake_trainer, runner=SKEW_WORLD)

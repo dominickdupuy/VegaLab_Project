@@ -246,6 +246,7 @@ def test_ppo_harness_refuses_a_stand_in_learners_run(
     assert callable_name(train_ppo) == "optspread.train.train_ppo"
 
 
+@pytest.mark.slow
 def test_a_pilot_from_before_the_trainer_was_recorded_is_judged_by_its_cells(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -558,6 +559,7 @@ def test_the_pilot_item_reports_the_contrast_and_the_control(tmp_path: Path) -> 
     assert "no design up to 64 seeds is feasible" in hopeless.evidence
 
 
+@pytest.mark.slow
 def test_the_pilot_item_on_a_real_pilot_checks_the_grid(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -589,6 +591,7 @@ def test_the_pilot_item_on_a_real_pilot_checks_the_grid(
     blocked(m2gate.pilot_item(tmp_path), "S = 6 seeds, the grid record 5")
 
 
+@pytest.mark.slow
 def test_the_analysis_item_passes_live_and_names_its_numbers() -> None:
     item = m2gate.analysis_item(replications=4_000)
     passes(item)
@@ -600,6 +603,7 @@ def test_the_analysis_item_passes_live_and_names_its_numbers() -> None:
     assert "cost drag" in item.criterion
 
 
+@pytest.mark.slow
 def test_the_analysis_item_fails_when_the_event_fires_in_the_null_world(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -610,6 +614,7 @@ def test_the_analysis_item_fails_when_the_event_fires_in_the_null_world(
     blocked(m2gate.analysis_item(replications=2_000), "fires at 0.99")
 
 
+@pytest.mark.slow
 def test_the_analysis_item_fails_when_the_null_world_accepts_a_replaced_event(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -626,6 +631,7 @@ def test_the_analysis_item_fails_when_the_gate_would_accept_a_wrong_rule(
     blocked(m2gate.analysis_item(replications=500), "accepted a wrong rule: not actually wrong")
 
 
+@pytest.mark.slow
 def test_the_analysis_item_fails_when_the_pipeline_misses_the_closed_form(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

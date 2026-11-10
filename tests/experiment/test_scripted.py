@@ -43,6 +43,7 @@ def test_put_credit_spread_is_two_puts_and_defined_risk() -> None:
 # -- check 1: costs change the accounting and nothing else ------------------ #
 
 
+@pytest.mark.slow
 def test_cost_identity_holds_for_every_seller() -> None:
     report = cost_drag_check(n_episodes=6, seed=2000)
     for row in report.rows:
@@ -103,6 +104,7 @@ def test_a_live_structure_at_the_horizon_is_closed_and_pays_its_exit(action_id: 
     assert audit.n_early_closes >= 1, "the horizon close is a real trade"
 
 
+@pytest.mark.slow
 def test_measured_drag_equals_the_predicted_drag() -> None:
     report = cost_drag_check(n_episodes=6, seed=2000)
     assert report.passed, chr(10) + report.render()

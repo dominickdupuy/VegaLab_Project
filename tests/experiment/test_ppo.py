@@ -31,6 +31,8 @@ from optspread.orchestrate import execute_run
 from optspread.replay import replay_matches
 from optspread.train import TrainingPaths, frozen_hyperparameters, train_ppo
 
+pytestmark = pytest.mark.needs_torch
+
 RUN = RunConfig(
     policy="ppo",
     seed=9000,

@@ -568,6 +568,7 @@ def test_a_leak_planted_in_one_field_is_caught_on_that_field() -> None:
         v.leak_field_out(v.LeakFieldParams(field="nope"))
 
 
+@pytest.mark.slow
 def test_field_coverage_runs_every_field() -> None:
     out = v.leak_coverage_out(1.0, 4)
     assert [c.field for c in out.controls] == v.leak_fields()

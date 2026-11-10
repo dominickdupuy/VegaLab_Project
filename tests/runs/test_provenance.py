@@ -206,6 +206,7 @@ def test_a_scripts_trainer_has_the_same_name_in_a_spawned_worker() -> None:
     assert found == ["__main__.trainer@/one/train_a.py"] * 2
 
 
+@pytest.mark.spawns_processes
 def test_a_scripts_own_trainer_runs_a_grid_on_two_workers_and_is_reused(tmp_path: Path) -> None:
     script = tmp_path / "my_study.py"
     script.write_text(
