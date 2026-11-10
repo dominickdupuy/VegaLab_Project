@@ -330,9 +330,11 @@ def test_run_process_reports_what_it_could_not_start(tmp_path: Path) -> None:
 
 
 def test_the_child_environment_tests_this_clone() -> None:
-    env = rp.child_env(Path("/clone"), {"MAKEFLAGS": "-j", "PYTHONPATH": "/elsewhere"})
-    assert "MAKEFLAGS" not in env and env["PYTHONPATH"] == os.pathsep.join(["/clone", "/elsewhere"])
-    assert rp.child_env(Path("/clone"), {})["PYTHONPATH"] == "/clone"
+    clone = Path("/clone")  # \clone on Windows: the path as this OS writes it
+    env = rp.child_env(clone, {"MAKEFLAGS": "-j", "PYTHONPATH": "/elsewhere"})
+    assert "MAKEFLAGS" not in env
+    assert env["PYTHONPATH"] == os.pathsep.join([str(clone), "/elsewhere"])
+    assert rp.child_env(clone, {})["PYTHONPATH"] == str(clone)
 
 
 def test_the_poisoned_demo_step_is_the_dashboards_demo(monkeypatch: pytest.MonkeyPatch) -> None:
