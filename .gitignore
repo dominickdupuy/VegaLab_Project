@@ -17,3 +17,4 @@ web/out/
 web/*.tsbuildinfo
 !web/app/runs/
 !web/app/attribution/
+!tests/runs/

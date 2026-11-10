@@ -91,7 +91,7 @@ def test_a_pass_must_show_its_evidence() -> None:
 
 # -- the JSON sidecar and reading a committed report back (week 6) ----------- #
 
-DOCS = Path(__file__).resolve().parent.parent / "docs"
+DOCS = Path(__file__).resolve().parent.parent.parent / "docs"
 FAILED_NO_CRITERION = GateItem("Pilot", "Dominick Dupuy", "", "a matrix", False, "not run")
 
 

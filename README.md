@@ -205,7 +205,7 @@ second crosses the spread.
 
 ## Proving the world is clean
 
-`optspread.leaks` is the detector, and `tests/test_leaks.py` is the gate.
+`optspread.leaks` is the detector, and `tests/stats/test_leaks.py` is the gate.
 
 **Perturbation property.** Generate a path, resample every RNG stream after step
 `t`, and assert the chain at `t` is unchanged. This is a direct machine check
@@ -691,7 +691,7 @@ cost within 1e-9 relative, the same trades; bit-for-bit reproduction is reported
 it, since a cell attributed on another platform agrees without reproducing) and stay
 under 5% of gross. On the flat synthetic surface the vega term is zero, so that residual
 checks delta, gamma and theta, not vega, and the item says so; vega is tested on a
-moving surface in `tests/test_attribution.py`. Until #34 lands the analysis, the report reads NOT CLEARED and says why.
+moving surface in `tests/resim/test_attribution.py`. Until #34 lands the analysis, the report reads NOT CLEARED and says why.
 
 ## Attribution, the edge and the action mix
 

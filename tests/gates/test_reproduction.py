@@ -27,7 +27,7 @@ from optspread import reproduction as rp
 from optspread.m4analysis import CONFIRMATORY_GRID
 from optspread.orchestrate import grid_cells, grid_filename, read_grid
 
-REPO = Path(__file__).resolve().parent.parent
+REPO = Path(__file__).resolve().parent.parent.parent
 COMMITTED = REPO / "docs" / rp.EXPECTED_FILE
 
 

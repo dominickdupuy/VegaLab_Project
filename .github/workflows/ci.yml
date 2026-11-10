@@ -36,7 +36,7 @@ jobs:
       - run: pip install torch --index-url https://download.pytorch.org/whl/cpu
       - run: pip install -e ".[dev,train]"
       - run: mypy --strict optspread scripts
-      - run: pytest tests/test_ppo.py tests/test_train.py tests/test_jobs.py
+      - run: pytest tests/experiment/test_ppo.py tests/experiment/test_train.py tests/dashboard/test_jobs.py
   web:
     runs-on: ubuntu-latest
     defaults:

@@ -300,7 +300,7 @@ def test_the_floor_item_measures_the_floor_and_matches_m1(
 
 
 def test_the_committed_m1_sidecar_states_the_readme_floor() -> None:
-    assert m3gate.m1_floor(Path(__file__).resolve().parent.parent / "docs") == (
+    assert m3gate.m1_floor(Path(__file__).resolve().parent.parent.parent / "docs") == (
         0.1,
         "2026-09-28",
     )
@@ -634,7 +634,7 @@ def test_a_windows_checkout_with_crlf_hashes_the_expected_file_as_the_gate_does(
 
 
 def test_the_committed_json_keeps_lf_in_every_checkout() -> None:
-    repo = Path(__file__).resolve().parent.parent
+    repo = Path(__file__).resolve().parent.parent.parent
     done = subprocess.run(
         ["git", "check-attr", "eol", "text", "--", f"docs/{rp.EXPECTED_FILE}"],
         cwd=repo,
@@ -735,7 +735,7 @@ def _make_dry_run(target: str, *args: str) -> str:
 
     env = {k: v for k, v in os.environ.items() if k not in ("MAKEFLAGS", "MFLAGS", "MAKELEVEL")}
     env.pop("PY", None)
-    repo = Path(__file__).resolve().parent.parent
+    repo = Path(__file__).resolve().parent.parent.parent
     out = subprocess.run(
         ["make", "-n", "-f", str(repo / "Makefile"), target, *args],
         cwd=repo,

@@ -60,7 +60,7 @@ from optspread.sweep import (
     valid_run,
 )
 
-REPO = Path(__file__).resolve().parent.parent
+REPO = Path(__file__).resolve().parent.parent.parent
 SHORT = RunConfig(
     seed=100,
     n_episodes=3,
