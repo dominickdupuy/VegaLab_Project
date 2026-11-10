@@ -49,6 +49,7 @@ from optspread.analysis import NULL_PREMIUM, paired_contrast
 from optspread.artifacts import RunRecord, SchemaVersionError, read_run
 from optspread.config import ArmName, CostConfig, RunConfig, TrainConfig, config_hash
 from optspread.data import SourceName
+from optspread.experiment.sweep import block_seed, distinct, premium_market
 from optspread.harness import run_episodes
 from optspread.manifest import RunManifest, callable_name
 from optspread.runs.rundir import Runner, run_id, valid_run
@@ -80,16 +81,14 @@ class GridConfig(BaseModel):
     @field_validator("premiums")
     @classmethod
     def _premiums_distinct(cls, value: tuple[float, ...]) -> tuple[float, ...]:
-        if not value or len(set(value)) != len(value):
-            raise ValueError("premiums must list at least one premium, each once")
-        return value
+        message = "premiums must list at least one premium, each once"
+        return distinct(value, message, message)
 
     @field_validator("arms")
     @classmethod
     def _arms_distinct(cls, value: tuple[ArmName, ...]) -> tuple[ArmName, ...]:
-        if not value or len(set(value)) != len(value):
-            raise ValueError("arms must list at least one arm, each once")
-        return value
+        message = "arms must list at least one arm, each once"
+        return distinct(value, message, message)
 
     @model_validator(mode="after")
     def _consistent(self) -> GridConfig:
@@ -126,11 +125,11 @@ def block_config(grid: GridConfig, premium: float, arm: ArmName, block: int) -> 
     if arm == "ppo" and grid.train is not None:
         train = grid.train.model_copy(update={"seed": grid.train.seed + block})
     return RunConfig(
-        market=base.market.model_copy(update={"iv_premium_vol_pts": premium}),
+        market=premium_market(base, premium),
         cost=base.cost,
         env=base.env,
         policy=arm,
-        seed=base.seed + block * n,
+        seed=block_seed(base.seed, block, n),
         n_episodes=n,
         train=train,
     )

@@ -12,9 +12,12 @@ from optspread.experiment.sweep import SWEEP_FILENAME as SWEEP_FILENAME
 from optspread.experiment.sweep import CellRecord as CellRecord
 from optspread.experiment.sweep import SweepConfig as SweepConfig
 from optspread.experiment.sweep import SweepRecord as SweepRecord
+from optspread.experiment.sweep import block_seed as block_seed
 from optspread.experiment.sweep import cell_config as cell_config
+from optspread.experiment.sweep import distinct as distinct
 from optspread.experiment.sweep import pilot_matrix as pilot_matrix
 from optspread.experiment.sweep import pilot_seeds as pilot_seeds
+from optspread.experiment.sweep import premium_market as premium_market
 from optspread.experiment.sweep import read_sweep as read_sweep
 from optspread.experiment.sweep import run_sweep as run_sweep
 from optspread.runs.rundir import REAL_TRAINER as REAL_TRAINER
