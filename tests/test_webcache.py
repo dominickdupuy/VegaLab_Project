@@ -124,9 +124,9 @@ def test_a_kept_run_row_is_read_again_when_a_file_changes(run_root: Path, tmp_pa
 
     runs = tmp_path / "runs"
     shutil.copytree(run_root, runs)
-    run_dir = next(
-        p.parent for p in runs.rglob("run.json") if (p.parent / "manifest.json").is_file()
-    )
+    # A cell of the fixture's sweep, a clean run. Not the first run.json in directory order:
+    # that order is the filesystem's, and it can be the tampered copy under adhoc/.
+    run_dir = sorted((runs / "sweeps" / "tiny").glob("*-s7"))[0]
     row = load_run_row(run_dir)
     assert row.status == "OK" and load_run_row(run_dir) is row  # kept
     (run_dir / "run.json").write_text((run_dir / "run.json").read_text() + " ")
