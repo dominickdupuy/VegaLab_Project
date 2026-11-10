@@ -41,8 +41,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from optspread import __version__
-from optspread import webapi as w
-from optspread import webviews as v
+from optspread.api import builders as w
 from optspread.attribution import default_root
 from optspread.dashboard_data import (
     REPO_ROOT,
@@ -176,7 +175,7 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
     cfg = settings if settings is not None else Settings.from_env()
     reader = w.PanelReader(cfg.data)
     jobs: dict[str, JobManager] = {}
-    tasks = v.Tasks()
+    tasks = w.Tasks()
     attribution_root = cfg.attribution if cfg.attribution is not None else default_root()
     redact = redactor(
         [
@@ -682,7 +681,7 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
         return from_panel(
             request,
             "data/premium",
-            lambda: reader.premium_out(v.vrp_mapping(cfg.docs).mapping),
+            lambda: reader.premium_out(w.vrp_mapping(cfg.docs).mapping),
             docs_stamp(),
         )
 
@@ -711,47 +710,47 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
 
     # -- the study, its checks and its analyses ------------------------------ #
 
-    @app.get("/api/study", response_model=v.StudyOut)
+    @app.get("/api/study", response_model=w.StudyOut)
     def study(request: Request) -> Response:
-        return answer(request, "study", docs_stamp(), lambda: v.study(cfg.docs))
+        return answer(request, "study", docs_stamp(), lambda: w.study(cfg.docs))
 
-    @app.get("/api/checks", response_model=list[v.CheckOut])
+    @app.get("/api/checks", response_model=list[w.CheckOut])
     def checks(request: Request) -> Response:
-        return answer(request, "checks", docs_stamp(), lambda: v.checks(cfg.docs))
+        return answer(request, "checks", docs_stamp(), lambda: w.checks(cfg.docs))
 
     @app.get("/api/docs/{name}")
     def doc(name: str) -> FileResponse:
         try:
-            path = v.doc_file(cfg.docs, name)
+            path = w.doc_file(cfg.docs, name)
         except KeyError as exc:
             raise HTTPException(404, f"no {name!r} under docs/") from exc
         kind = "application/json" if path.suffix == ".json" else "text/plain; charset=utf-8"
         return FileResponse(path, media_type=kind)
 
-    @app.get("/api/vrp", response_model=v.VrpOut)
+    @app.get("/api/vrp", response_model=w.VrpOut)
     def vrp(request: Request) -> Response:
-        return answer(request, "vrp", docs_stamp(), lambda: v.vrp_mapping(cfg.docs))
+        return answer(request, "vrp", docs_stamp(), lambda: w.vrp_mapping(cfg.docs))
 
-    @app.get("/api/m4", response_model=v.M4Out)
+    @app.get("/api/m4", response_model=w.M4Out)
     def m4(request: Request) -> Response:
-        return answer(request, "m4", docs_stamp(), lambda: v.m4_analysis(cfg.docs))
+        return answer(request, "m4", docs_stamp(), lambda: w.m4_analysis(cfg.docs))
 
     # -- the edge of a grid, by component and structure (optspread.edge) ------- #
 
     def edge_stamp() -> tuple[str, str]:
         return runs_stamp(), tree_stamp(attribution_root, skip=(CACHE_DIR,))
 
-    @app.get("/api/edge", response_model=v.EdgeListOut)
+    @app.get("/api/edge", response_model=w.EdgeListOut)
     def edge_list(request: Request) -> Response:
         return answer(
-            request, "edge", edge_stamp(), lambda: v.edge_list(attribution_root, cfg.runs)
+            request, "edge", edge_stamp(), lambda: w.edge_list(attribution_root, cfg.runs)
         )
 
-    @app.get("/api/edge/detail", response_model=v.EdgeOut)
+    @app.get("/api/edge/detail", response_model=w.EdgeOut)
     def edge_detail(request: Request, grid: str, first: int | None = None) -> Response:
-        def build() -> v.EdgeOut:
+        def build() -> w.EdgeOut:
             try:
-                return v.edge_detail(attribution_root, cfg.runs, grid, first)
+                return w.edge_detail(attribution_root, cfg.runs, grid, first)
             except KeyError as exc:
                 raise HTTPException(
                     404, f"no edge for grid {exc.args[0]!r} yet; make edge writes it"
@@ -771,119 +770,119 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
         return detail.row.path, detail.row
 
     @app.get("/api/runs/attribution")
-    def attribution(key: str, seed: int | None = None) -> v.AttributionOut:
+    def attribution(key: str, seed: int | None = None) -> w.AttributionOut:
         _, row = run_row(key)
         state, _ = tasks.state("attribution", key)
-        return v.attribution_view(attribution_root, row, state, seed)
+        return w.attribution_view(attribution_root, row, state, seed)
 
     @app.post("/api/runs/attribution", status_code=202)
-    def attribute(key: str) -> v.AttributionOut:
+    def attribute(key: str) -> w.AttributionOut:
         run_dir, row = run_row(key)
-        reason = v.attribution_reason(row)
+        reason = w.attribution_reason(row)
         if reason:
             raise HTTPException(422, reason)
-        target = v.attribution_file(attribution_root, row)
+        target = w.attribution_file(attribution_root, row)
         if not target.is_file():
-            tasks.submit("attribution", key, partial(v.compute_attribution, run_dir, target))
+            tasks.submit("attribution", key, partial(w.compute_attribution, run_dir, target))
         state, _ = tasks.state("attribution", key)
-        return v.attribution_view(attribution_root, row, state)
+        return w.attribution_view(attribution_root, row, state)
 
     @app.get("/api/runs/capital")
-    def capital(key: str) -> v.CapitalOut:
+    def capital(key: str) -> w.CapitalOut:
         _, row = run_row(key)
-        return v.capital_view(row, *tasks.state("capital", key), attribution_root)
+        return w.capital_view(row, *tasks.state("capital", key), attribution_root)
 
     @app.post("/api/runs/capital", status_code=202)
-    def capital_start(key: str) -> v.CapitalOut:
+    def capital_start(key: str) -> w.CapitalOut:
         run_dir, row = run_row(key)
-        reason = v.capital_reason(row)
+        reason = w.capital_reason(row)
         if reason:
             raise HTTPException(422, reason)
-        target = v.capital_file(attribution_root, row)
-        if v.read_capital(target) is None:
-            tasks.submit("capital", key, partial(v.compute_capital, run_dir, target))
-        return v.capital_view(row, *tasks.state("capital", key), attribution_root)
+        target = w.capital_file(attribution_root, row)
+        if w.read_capital(target) is None:
+            tasks.submit("capital", key, partial(w.compute_capital, run_dir, target))
+        return w.capital_view(row, *tasks.state("capital", key), attribution_root)
 
     @app.get("/api/runs/mixview")
-    def mix_view(key: str) -> v.MixViewOut:
+    def mix_view(key: str) -> w.MixViewOut:
         _, row = run_row(key)
         state, _ = tasks.state("mix", key)
-        return v.mix_view(attribution_root, row, state, cfg.actionmix)
+        return w.mix_view(attribution_root, row, state, cfg.actionmix)
 
     @app.post("/api/runs/mixview", status_code=202)
-    def mix_start(key: str) -> v.MixViewOut:
+    def mix_start(key: str) -> w.MixViewOut:
         run_dir, row = run_row(key)
-        reason = v.mix_reason(row)
+        reason = w.mix_reason(row)
         if reason:
             raise HTTPException(422, reason)
-        target = v.mix_file(attribution_root, row)
+        target = w.mix_file(attribution_root, row)
         if not target.is_file():
-            tasks.submit("mix", key, partial(v.compute_mix, run_dir, target))
+            tasks.submit("mix", key, partial(w.compute_mix, run_dir, target))
         state, _ = tasks.state("mix", key)
-        return v.mix_view(attribution_root, row, state, cfg.actionmix)
+        return w.mix_view(attribution_root, row, state, cfg.actionmix)
 
     @app.get("/api/runs/replay")
-    def replay(key: str) -> v.ReplayOut:
+    def replay(key: str) -> w.ReplayOut:
         _, row = run_row(key)
-        return v.replay_view(row, *tasks.state("replay", key))
+        return w.replay_view(row, *tasks.state("replay", key))
 
     @app.post("/api/runs/replay", status_code=202)
-    def replay_start(key: str) -> v.ReplayOut:
+    def replay_start(key: str) -> w.ReplayOut:
         run_dir, row = run_row(key)
-        reason = v.replay_reason(row)
+        reason = w.replay_reason(row)
         if reason:
             raise HTTPException(422, reason)
-        tasks.submit("replay", key, partial(v.run_replay, run_dir))
-        return v.replay_view(row, *tasks.state("replay", key))
+        tasks.submit("replay", key, partial(w.run_replay, run_dir))
+        return w.replay_view(row, *tasks.state("replay", key))
 
     # -- the leak detector's floor and fields --------------------------------- #
 
     @app.get("/api/leaks/fields")
     def leak_fields() -> list[str]:
-        return v.leak_fields()
+        return w.leak_fields()
 
     @app.post("/api/leaks/floor")
-    def leak_floor(params: v.LeakFloorParams) -> v.LeakFloorOut:
+    def leak_floor(params: w.LeakFloorParams) -> w.LeakFloorOut:
         try:
-            return v.leak_floor_out(params)
+            return w.leak_floor_out(params)
         except ValueError as exc:
             raise HTTPException(422, str(exc)) from exc
 
     @app.post("/api/leaks/field")
-    def leak_field(params: v.LeakFieldParams) -> v.LeakFieldOut:
+    def leak_field(params: w.LeakFieldParams) -> w.LeakFieldOut:
         try:
-            return v.leak_field_out(params)
+            return w.leak_field_out(params)
         except ValueError as exc:
             raise HTTPException(422, str(exc)) from exc
 
     @app.post("/api/leaks/coverage")
-    def leak_coverage(params: v.LeakFieldParams) -> v.LeakCoverageOut:
-        return v.leak_coverage_out(params.eps, params.n_seeds)
+    def leak_coverage(params: w.LeakFieldParams) -> w.LeakCoverageOut:
+        return w.leak_coverage_out(params.eps, params.n_seeds)
 
     # -- the seller on a real close, and launch ------------------------------- #
 
-    @app.get("/api/data/seller", response_model=v.SellerOut)
+    @app.get("/api/data/seller", response_model=w.SellerOut)
     def seller(request: Request, date: str) -> Response:
         day = _day(date)
-        return from_panel(request, "data/seller", lambda: v.seller_out(reader, day))
+        return from_panel(request, "data/seller", lambda: w.seller_out(reader, day))
 
     @app.get("/api/launch/options")
     def launch_options() -> w.JobOptionsOut:
-        return v.launch_options()
+        return w.launch_options()
 
     @app.get("/api/launch/estimate")
     def launch_estimate(
         n_episodes: int, n_days: int, total_timesteps: int | None = None
-    ) -> v.EstimateOut:
+    ) -> w.EstimateOut:
         if n_episodes < 1 or n_days < 1 or (total_timesteps is not None and total_timesteps < 0):
             raise HTTPException(422, "episodes and days must be positive, steps not negative")
-        return v.launch_estimate(n_episodes, n_days, total_timesteps)
+        return w.launch_estimate(n_episodes, n_days, total_timesteps)
 
     @app.post("/api/launch/preview")
-    def launch_preview(spec: dict[str, object]) -> v.PreviewOut:
+    def launch_preview(spec: dict[str, object]) -> w.PreviewOut:
         """What a spec would run, or every reason it would be refused: never a 422, so the
         form can show the reasons as the knobs change."""
-        return v.launch_preview(spec, cfg.runs, w.index(cfg.runs))
+        return w.launch_preview(spec, cfg.runs, w.index(cfg.runs))
 
     # An /api path no route serves is a JSON 404, not the site's HTML page; a route asked
     # with a method it does not take is still a 405 that names the ones it does. Left out

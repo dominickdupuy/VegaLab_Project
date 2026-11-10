@@ -242,7 +242,7 @@ def test_an_undefined_figure_is_sent_as_null_never_a_500(
         eval_rate=2.5,
         source="synthetic",
     )
-    monkeypatch.setattr(v, "launch_estimate", lambda *_: estimate)
+    monkeypatch.setattr("optspread.api.builders.launch_estimate", lambda *_: estimate)
     got = client.get("/api/launch/estimate", params={"n_episodes": 1, "n_days": 1})
     assert got.status_code == 200
     assert got.json() == {
@@ -256,7 +256,7 @@ def test_an_undefined_figure_is_sent_as_null_never_a_500(
     def refuse(*_: object) -> None:
         raise HTTPException(409, {"value": float("nan")})
 
-    monkeypatch.setattr(v, "launch_estimate", refuse)
+    monkeypatch.setattr("optspread.api.builders.launch_estimate", refuse)
     got = client.get("/api/launch/estimate", params={"n_episodes": 1, "n_days": 1})
     assert got.status_code == 409 and got.json() == {"detail": {"value": None}}
 
