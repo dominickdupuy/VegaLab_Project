@@ -206,6 +206,49 @@ def test_the_power_lab(client: TestClient) -> None:
     assert client.get("/api/power", params={"alpha": 0.9}).status_code == 422
 
 
+def test_an_undefined_figure_is_sent_as_null_never_a_500(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """NaN and infinity reach the browser as null on every path a body takes: the answer
+    cache, a returned model and an error's detail."""
+    from fastapi import HTTPException
+
+    from optspread import webviews as v
+
+    # kept by the answer cache: with no variance at all the floor ratio is NaN by design
+    power = client.get("/api/power", params={"tau2": 0, "sigma2": 0})
+    assert power.status_code == 200 and power.json()["floor_vs_seeds"]["ratio"] is None
+    # a model the route returns, rendered by the app's response class
+    inf = float("inf")
+    estimate = v.EstimateOut(
+        eval_steps=1,
+        train_steps=0,
+        eval_hours=float("nan"),
+        train_hours=inf,
+        total_hours=-inf,
+        train_rate=1.0,
+        eval_rate=2.5,
+        source="synthetic",
+    )
+    monkeypatch.setattr(v, "launch_estimate", lambda *_: estimate)
+    got = client.get("/api/launch/estimate", params={"n_episodes": 1, "n_days": 1})
+    assert got.status_code == 200
+    assert got.json() == {
+        **estimate.model_dump(),
+        "eval_hours": None,
+        "train_hours": None,
+        "total_hours": None,
+    }
+
+    # an error whose detail holds one
+    def refuse(*_: object) -> None:
+        raise HTTPException(409, {"value": float("nan")})
+
+    monkeypatch.setattr(v, "launch_estimate", refuse)
+    got = client.get("/api/launch/estimate", params={"n_episodes": 1, "n_days": 1})
+    assert got.status_code == 409 and got.json() == {"detail": {"value": None}}
+
+
 def test_the_leak_demo(client: TestClient) -> None:
     out = client.post("/api/leaks/demo", json={"eps": 0.5, "n_seeds": 4}).json()
     assert out["caught"] and out["poisoned"]["worst_feature"] == "ret_1d"
