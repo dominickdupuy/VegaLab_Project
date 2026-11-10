@@ -342,6 +342,9 @@ WRITERS = (
     "replay",
     "runs/rundir",
     "experiment/sweep",
+    "experiment/grid",
+    "experiment/schedule",
+    "experiment/pilot",
 )
 
 
