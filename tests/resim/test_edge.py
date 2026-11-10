@@ -92,6 +92,7 @@ def _scale(*values: float) -> float:
 # -- the identity -------------------------------------------------------------- #
 
 
+@pytest.mark.invariant
 def test_the_components_edges_sum_to_the_pnl_edge(result: GridEdge) -> None:
     assert len(result.edges) == 2 * 3  # premiums 2 and 4, three arms
     assert result.reproduction == "reproduces" and result.reproduces and result.agrees
@@ -108,6 +109,7 @@ def test_the_components_edges_sum_to_the_pnl_edge(result: GridEdge) -> None:
         assert e.pnl_saved == e.pnl
 
 
+@pytest.mark.invariant
 def test_the_structures_split_each_component_and_add_back_to_it(result: GridEdge) -> None:
     for e in result.edges:
         pnls = [e.by_structure[s]["pnl"].estimate for s in STRUCTURES]
@@ -124,6 +126,7 @@ def test_the_structures_split_each_component_and_add_back_to_it(result: GridEdge
         assert abs(explained - cell.mean.pnl) <= 1e-9 * _scale(cell.mean.pnl, cell.gross)
 
 
+@pytest.mark.invariant
 def test_each_structure_gets_its_own_steps_and_a_close_is_charged_to_what_it_closed(
     result: GridEdge,
 ) -> None:
@@ -152,6 +155,7 @@ def test_each_structure_gets_its_own_steps_and_a_close_is_charged_to_what_it_clo
 # -- the pairing --------------------------------------------------------------- #
 
 
+@pytest.mark.invariant
 def test_a_component_equal_at_p_and_at_zero_has_an_edge_of_exactly_zero(
     result: GridEdge,
 ) -> None:
@@ -191,6 +195,7 @@ def _parts(seeds: tuple[int, ...], n: int = 3) -> CellParts:
     )
 
 
+@pytest.mark.invariant
 def test_cells_that_are_not_paired_are_refused(grid_root: Path) -> None:
     record = read_grid(grid_root / grid_filename(GRID))
     c1 = [record.cell(2.0, "ppo", b) for b in range(2)]
@@ -211,6 +216,7 @@ def test_cells_that_are_not_paired_are_refused(grid_root: Path) -> None:
 # -- the test against a hand computation -------------------------------------------- #
 
 
+@pytest.mark.invariant
 def test_the_se_and_interval_are_a2s_on_the_block_means_by_hand(
     grid_root: Path, result: GridEdge
 ) -> None:
@@ -246,6 +252,7 @@ def test_the_se_and_interval_are_a2s_on_the_block_means_by_hand(
 # -- the grid, the files and the command --------------------------------------------- #
 
 
+@pytest.mark.invariant
 @pytest.mark.spawns_processes
 @pytest.mark.slow
 def test_the_grid_keeps_arms_reads_a_prefix_and_runs_on_workers(grid_root: Path) -> None:
@@ -260,6 +267,7 @@ def test_the_grid_keeps_arms_reads_a_prefix_and_runs_on_workers(grid_root: Path)
         edge_grid(grid_root, arms=["flat"], first=1)
 
 
+@pytest.mark.behaviour
 def test_the_json_round_trips_and_is_never_written_into_a_sweep(
     tmp_path: Path, grid_root: Path, result: GridEdge
 ) -> None:
@@ -282,11 +290,13 @@ def test_the_json_round_trips_and_is_never_written_into_a_sweep(
         read_edge(path)
 
 
+@pytest.mark.behaviour
 def test_the_default_root_is_under_the_attribution_folder(tmp_path: Path) -> None:
     assert default_root({}).parts[-2:] == ("attribution", "edge")
     assert default_root({"OPTSPREAD_ATTRIBUTION": str(tmp_path)}) == tmp_path / "edge"
 
 
+@pytest.mark.behaviour
 def test_the_command_writes_the_edge_and_says_no(
     tmp_path: Path, grid_root: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

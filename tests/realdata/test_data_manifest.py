@@ -48,6 +48,7 @@ def _sha(body: bytes) -> str:
     return hashlib.sha256(body).hexdigest()
 
 
+@pytest.mark.invariant
 def test_the_raw_inputs_are_sized_always_and_hashed_on_request(
     tree: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -77,6 +78,7 @@ def test_the_raw_inputs_are_sized_always_and_hashed_on_request(
     assert (tree / "MANIFEST.json").read_text() == copy.read_text()
 
 
+@pytest.mark.behaviour
 def test_the_manifest_stage_takes_the_flag(tree: Path, tmp_path: Path) -> None:
     copy = tmp_path / "m.json"
     args = ["manifest", "--repo-copy", str(copy)]

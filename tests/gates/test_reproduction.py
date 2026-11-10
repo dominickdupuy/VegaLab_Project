@@ -39,6 +39,7 @@ def world(tmp_path_factory: pytest.TempPathFactory) -> World:
 # -- the expected file ---------------------------------------------------------------- #
 
 
+@pytest.mark.invariant
 def test_the_reference_cells_are_a_seller_per_premium_and_the_replayed_ppo_cell() -> None:
     refs = rp.reference_cells(CONFIRMATORY_GRID)
     sellers = [c for c in refs if c.arm == rp.SELLER]
@@ -47,11 +48,13 @@ def test_the_reference_cells_are_a_seller_per_premium_and_the_replayed_ppo_cell(
     assert [c.run_id for c in refs if c.arm == rp.PPO] == ["e608f959c816fc46-s102000"]
 
 
+@pytest.mark.behaviour
 def test_spread_takes_both_ends_and_the_middle_first() -> None:
     assert rp.spread([0.0, 0.25, 0.5, 1.0, 2.0, 4.0]) == [0.0, 4.0, 1.0, 0.25, 0.5, 2.0]
     assert rp.spread([0.0, 1.0]) == [0.0, 1.0]
 
 
+@pytest.mark.invariant
 def test_the_committed_expected_file_is_the_whole_confirmatory_grid_and_small() -> None:
     expected = rp.read_expected(COMMITTED)
     assert COMMITTED.stat().st_size < 400_000
@@ -65,6 +68,7 @@ def test_the_committed_expected_file_is_the_whole_confirmatory_grid_and_small() 
     assert len(expected.sellers(99)) == 30 and expected.ppo_reference() is not None
 
 
+@pytest.mark.invariant
 @pytest.mark.slow
 def test_one_confirmatory_seller_cell_regenerates_within_the_tolerance(tmp_path: Path) -> None:
     """The freeze, checked on whatever machine runs the suite: about 40 seconds."""
@@ -75,6 +79,7 @@ def test_one_confirmatory_seller_cell_regenerates_within_the_tolerance(tmp_path:
     assert result.episodes_compared == 500 and result.max_rel_diff < 1e-11
 
 
+@pytest.mark.invariant
 def test_build_expected_round_trips_and_refuses_an_invalid_cell(
     world: World, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -101,6 +106,7 @@ def test_build_expected_round_trips_and_refuses_an_invalid_cell(
         rp.build_expected(fewer, root)
 
 
+@pytest.mark.behaviour
 def test_the_expected_script_writes_the_file_and_refuses_a_missing_grid(
     world: World, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -129,6 +135,7 @@ def edited(text: bytes, edit: Any) -> bytes:
     return json.dumps(data, indent=2).encode()
 
 
+@pytest.mark.invariant
 def test_the_saved_bytes_compare_identical_and_within(world: World) -> None:
     cell, text = saved(world)
     result = rp.compare_run(cell, text, rp.SELLER_REL_TOL)
@@ -136,6 +143,7 @@ def test_the_saved_bytes_compare_identical_and_within(world: World) -> None:
     assert result.episodes_compared == 3 and result.values_compared == 5 + 3 * 2
 
 
+@pytest.mark.invariant
 def test_last_digit_noise_differs_in_bytes_and_passes_the_tolerance(world: World) -> None:
     cell, text = saved(world)
 
@@ -148,6 +156,7 @@ def test_last_digit_noise_differs_in_bytes_and_passes_the_tolerance(world: World
     assert 1e-13 < result.max_rel_diff < 1e-12
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize(
     ("edit", "why"),
     [
@@ -168,6 +177,7 @@ def test_a_difference_the_model_could_make_is_outside_the_tolerance(
     assert not result.within_tolerance and why in result.first_difference
 
 
+@pytest.mark.invariant
 def test_a_regeneration_that_is_not_a_run_is_refused(world: World) -> None:
     cell, _ = saved(world)
     assert "not JSON" in rp.compare_run(cell, b"raised", 1e-9).first_difference
@@ -176,6 +186,7 @@ def test_a_regeneration_that_is_not_a_run_is_refused(world: World) -> None:
     assert rp.relative_difference(0.0, 0.0) == 0.0
 
 
+@pytest.mark.invariant
 def test_a_tiny_seller_cell_regenerates_byte_identically_here(world: World, tmp_path: Path) -> None:
     lines: list[str] = []
     cells = world.expected.sellers(1)
@@ -214,6 +225,7 @@ def _ppo_run(world: World, tmp_path: Path, **update: Any) -> tuple[rp.ExpectedCe
     return ppo, run_dir
 
 
+@pytest.mark.invariant
 def test_a_retrained_ppo_cell_is_compared_statistically_not_by_its_numbers(
     world: World, tmp_path: Path
 ) -> None:
@@ -242,6 +254,7 @@ def test_a_retrained_ppo_cell_is_compared_statistically_not_by_its_numbers(
     assert "not bit-reproducible across platforms" in step.detail
 
 
+@pytest.mark.behaviour
 @pytest.mark.needs_torch
 def test_the_ppo_structure_is_read_off_the_policy_the_cell_saved(tmp_path: Path) -> None:
     pytest.importorskip("stable_baselines3")
@@ -265,6 +278,7 @@ def test_the_ppo_structure_is_read_off_the_policy_the_cell_saved(tmp_path: Path)
     assert all("refused" in p or "residual" in p for p in problems)
 
 
+@pytest.mark.behaviour
 def test_a_cell_that_cannot_be_regenerated_is_a_finding(world: World, tmp_path: Path) -> None:
     cell = world.expected.sellers(1)[0]
     other = TINY.model_copy(update={"premiums": (1.0,), "arms": ("delta_seller",), "train": None})
@@ -289,6 +303,7 @@ def _make_n(target: str) -> list[list[str]]:
     return [line.split() for line in out.stdout.splitlines() if line.strip()]
 
 
+@pytest.mark.behaviour
 @pytest.mark.skipif(shutil.which("make") is None, reason="needs make")
 def test_the_steps_run_what_the_makefile_runs() -> None:
     targets = {
@@ -305,6 +320,7 @@ def test_the_steps_run_what_the_makefile_runs() -> None:
     assert _make_n("check") == [c for s in ("lint", "typecheck", "test") for c in _make_n(s)]
 
 
+@pytest.mark.behaviour
 def test_a_step_runs_each_command_under_the_interpreter_and_stops_at_a_failure(
     tmp_path: Path,
 ) -> None:
@@ -324,6 +340,7 @@ def test_a_step_runs_each_command_under_the_interpreter_and_stops_at_a_failure(
     assert rp.run_step("mypy --strict", tmp_path, "py", lambda c, d, e: (0, "ok")).passed
 
 
+@pytest.mark.behaviour
 def test_run_process_reports_what_it_could_not_start(tmp_path: Path) -> None:
     code, text = rp.run_process([sys.executable, "-c", "print('hi')"], tmp_path, os.environ)
     assert (code, text.strip()) == (0, "hi")
@@ -331,6 +348,7 @@ def test_run_process_reports_what_it_could_not_start(tmp_path: Path) -> None:
     assert code == 127 and "cannot run" in text
 
 
+@pytest.mark.behaviour
 def test_the_child_environment_tests_this_clone() -> None:
     clone = Path("/clone")  # \clone on Windows: the path as this OS writes it
     env = rp.child_env(clone, {"MAKEFLAGS": "-j", "PYTHONPATH": "/elsewhere"})
@@ -339,6 +357,7 @@ def test_the_child_environment_tests_this_clone() -> None:
     assert rp.child_env(clone, {})["PYTHONPATH"] == str(clone)
 
 
+@pytest.mark.behaviour
 def test_the_poisoned_demo_step_is_the_dashboards_demo(monkeypatch: pytest.MonkeyPatch) -> None:
     step = rp.poisoned_demo_step()
     assert step.passed and "poisoned flagged True" in step.detail
@@ -352,6 +371,7 @@ def test_the_poisoned_demo_step_is_the_dashboards_demo(monkeypatch: pytest.Monke
     assert not step.passed and "no detector" in step.detail
 
 
+@pytest.mark.behaviour
 def test_run_steps_runs_every_step_whatever_the_others_do(world: World, tmp_path: Path) -> None:
     def runner(command: Any, cwd: Path, env: Any) -> tuple[int, str]:
         return (2 if "mypy" in command else 0), "out"
@@ -404,6 +424,7 @@ def record(**override: Any) -> rp.PartnerRecord:
     return rp.PartnerRecord(**{**fields, **override})
 
 
+@pytest.mark.invariant
 def test_the_record_passes_only_clean_complete_and_passed() -> None:
     assert record().passed
     assert not record(dirty=True).passed and not record(tag_commit="").passed
@@ -415,6 +436,7 @@ def test_the_record_passes_only_clean_complete_and_passed() -> None:
     )
 
 
+@pytest.mark.behaviour
 def test_the_summary_is_one_screen_saying_what_to_send_back(world: World, tmp_path: Path) -> None:
     cells = rp.check_cells(TINY, world.expected.sellers(1), rp.SELLER_REL_TOL, tmp_path)
     text = rp.render_summary(record(cells=cells, steps=record().steps[:-1]), "docs/R.json")
@@ -424,6 +446,7 @@ def test_the_summary_is_one_screen_saying_what_to_send_back(world: World, tmp_pa
     assert len(text.splitlines()) < 40
 
 
+@pytest.mark.behaviour
 def test_git_facts_reads_the_commit_the_tag_and_changes_but_the_record(tmp_path: Path) -> None:
     git(tmp_path, "init", "-q")
     (tmp_path / "a.txt").write_text("a\n")
@@ -439,6 +462,7 @@ def test_git_facts_reads_the_commit_the_tag_and_changes_but_the_record(tmp_path:
     assert facts.after_tag and not rp.git_facts(tmp_path, "t2").after_tag
 
 
+@pytest.mark.invariant
 def test_git_facts_says_whether_head_is_at_or_after_the_tag(tmp_path: Path) -> None:
     git(tmp_path, "init", "-q")
     for name in ("a", "b", "c"):
@@ -453,6 +477,7 @@ def test_git_facts_says_whether_head_is_at_or_after_the_tag(tmp_path: Path) -> N
     assert early.tag_commit and not early.after_tag, "the record must not pass before the tag"
 
 
+@pytest.mark.behaviour
 def test_the_expected_files_digest_is_the_same_from_an_lf_and_a_crlf_checkout() -> None:
     text = COMMITTED.read_bytes()
     assert b"\r\n" not in text
@@ -479,6 +504,7 @@ class Calls:
         return subprocess.CompletedProcess(command, 3 if failed else self.code)
 
 
+@pytest.mark.behaviour
 def test_the_bootstrap_makes_the_venv_installs_and_runs_itself_inside_it(tmp_path: Path) -> None:
     from scripts import reproduce
 
@@ -506,6 +532,7 @@ def test_the_bootstrap_makes_the_venv_installs_and_runs_itself_inside_it(tmp_pat
     assert all(env["PIP_USER"] == "0" and env["HOME"] == "/h" for env in calls.envs)
 
 
+@pytest.mark.behaviour
 def test_the_bootstrap_on_windows_and_linux_and_with_a_venv_already_there(tmp_path: Path) -> None:
     from scripts import reproduce
 
@@ -526,6 +553,7 @@ def test_the_bootstrap_on_windows_and_linux_and_with_a_venv_already_there(tmp_pa
     assert len(calls.commands) == 2  # install and re-run, no new venv
 
 
+@pytest.mark.behaviour
 def test_the_bootstrap_stops_at_a_failure_and_refuses_an_old_python(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -546,6 +574,7 @@ def test_the_bootstrap_stops_at_a_failure_and_refuses_an_old_python(
     assert len(calls.commands) == 1
 
 
+@pytest.mark.behaviour
 def test_main_bootstraps_unless_told_to_run_here(monkeypatch: pytest.MonkeyPatch) -> None:
     from scripts import reproduce
 
@@ -559,6 +588,7 @@ def test_main_bootstraps_unless_told_to_run_here(monkeypatch: pytest.MonkeyPatch
         reproduce.main(["--cells", "0"])
 
 
+@pytest.mark.behaviour
 def test_the_run_writes_the_record_and_its_summary(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

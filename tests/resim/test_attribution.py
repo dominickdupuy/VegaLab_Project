@@ -113,6 +113,7 @@ def one_leg_chains(spot1: float = 101.0, vol1: float = 0.21) -> tuple[Chain, Cha
     return chain(0, 100.0, 0.20), chain(1, spot1, vol1)
 
 
+@pytest.mark.invariant
 def test_one_long_call_over_one_day_matches_the_hand_calculation() -> None:
     # S = K = 100, r = 0, sigma = 0.20, T = 63/252 = 0.25: d1 = 0.5 sigma sqrt(T) = 0.05,
     # N(d1) = 0.5199388, phi(d1) = 0.3984439. Per share: Delta = N(d1);
@@ -137,6 +138,7 @@ def test_one_long_call_over_one_day_matches_the_hand_calculation() -> None:
         assert getattr(short, name) == pytest.approx(-2 * getattr(t, name), rel=1e-12)
 
 
+@pytest.mark.invariant
 def test_a_step_adds_its_legs_then_charges_its_cost() -> None:
     before, after = one_leg_chains(spot1=99.0, vol1=0.20)
     legs = (
@@ -159,6 +161,7 @@ def test_a_step_adds_its_legs_then_charges_its_cost() -> None:
 # -- the identity and the residual on full episodes --------------------------- #
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize("premium", [0.0, 2.0])
 @pytest.mark.parametrize("arm", SCRIPTED)
 def test_the_identity_holds_and_the_residual_is_small_for_scripted_arms(
@@ -180,11 +183,13 @@ def test_the_identity_holds_and_the_residual_is_small_for_scripted_arms(
     assert result.totals.theta > 0 > result.totals.gamma  # a short-vol book's sign pattern
 
 
+@pytest.mark.invariant
 def test_the_flat_arm_decomposes_to_nothing() -> None:
     result = attribute_config(RunConfig(policy="flat", n_episodes=2))
     assert result.totals == Terms() and result.gross == 0.0 and result.residual_share == 0.0
 
 
+@pytest.mark.invariant
 @pytest.mark.slow
 def test_the_residual_is_a_remainder_it_shrinks_as_the_step_gets_relatively_smaller() -> None:
     # One trading day against a longer tenor is a smaller step in sigma sqrt(tau), so
@@ -210,6 +215,7 @@ class MovingSurface(SyntheticChainProvider):
         )
 
 
+@pytest.mark.invariant
 def test_vega_takes_the_surface_move_and_the_residual_stays_small() -> None:
     config = RunConfig(policy="delta_seller", n_episodes=6)
     result = attribute_config(config, provider=MovingSurface(config.market))
@@ -219,6 +225,7 @@ def test_vega_takes_the_surface_move_and_the_residual_stays_small() -> None:
     assert result.residual_share < RESIDUAL_SHARE_TOL
 
 
+@pytest.mark.invariant
 def test_a_real_shaped_surface_runs_through_the_historical_provider() -> None:
     # Skew, a level random walk and a daily rate change: vanna and rho now leave the
     # expansion too, so the bound is looser than on the flat synthetic surface
@@ -250,6 +257,7 @@ def snapshot(run_dir: Path) -> dict[str, bytes]:
     return {p.name: p.read_bytes() for p in sorted(run_dir.iterdir())}
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize("arm", SCRIPTED)
 def test_a_run_directory_is_reproduced_episode_for_episode_and_left_alone(
     arm: PolicyName, tmp_path: Path
@@ -264,6 +272,7 @@ def test_a_run_directory_is_reproduced_episode_for_episode_and_left_alone(
     assert snapshot(run_dir) == before
 
 
+@pytest.mark.invariant
 def test_a_subset_of_seeds_reproduces_on_its_own(tmp_path: Path) -> None:
     run_dir = write_scripted(SMALL.model_copy(update={"policy": "random"}), tmp_path / "run")
     result = attribute_run(run_dir, seeds=[SMALL.seed + 2])
@@ -272,6 +281,7 @@ def test_a_subset_of_seeds_reproduces_on_its_own(tmp_path: Path) -> None:
         attribute_run(run_dir, seeds=[SMALL.seed + SMALL.n_episodes])
 
 
+@pytest.mark.invariant
 def test_an_edited_run_is_refused_and_a_different_run_does_not_reproduce(tmp_path: Path) -> None:
     run_dir = write_scripted(SMALL, tmp_path / "run")
     rows = {row.seed: row for row in read_run(run_dir).episodes}
@@ -286,6 +296,7 @@ def test_an_edited_run_is_refused_and_a_different_run_does_not_reproduce(tmp_pat
         attribute_run(run_dir)
 
 
+@pytest.mark.invariant
 def test_a_run_from_another_platform_agrees_without_reproducing(tmp_path: Path) -> None:
     """The last digits a different libm rounds differently: agrees, not bit for bit."""
     from scripts.attribution import render
@@ -325,6 +336,7 @@ def fake_loader(path: Path, config: RunConfig) -> Policy:
     return FakeLearned(config.train.seed)
 
 
+@pytest.mark.invariant
 def test_a_learned_run_is_attributed_with_its_saved_policy(tmp_path: Path) -> None:
     execute_run(LEARNED, tmp_path, fake_trainer)
     result = attribute_run(tmp_path, load_policy=fake_loader)
@@ -339,6 +351,7 @@ def test_a_learned_run_is_attributed_with_its_saved_policy(tmp_path: Path) -> No
         attribute_run(tmp_path, load_policy=fake_loader)
 
 
+@pytest.mark.behaviour
 def test_a_learned_arm_needs_its_policy() -> None:
     with pytest.raises(ValueError, match="trained policy"):
         attribute_config(LEARNED)
@@ -346,6 +359,7 @@ def test_a_learned_arm_needs_its_policy() -> None:
     assert result.reproduces is None and len(result.episodes) == LEARNED.n_episodes
 
 
+@pytest.mark.internal
 def test_the_tap_must_be_bound_before_the_path_moves() -> None:
     from optspread.attribution import _Tap
     from optspread.rng import SeededStepRNG
@@ -360,6 +374,7 @@ def test_the_tap_must_be_bound_before_the_path_moves() -> None:
 # -- the JSON the dashboard reads --------------------------------------------- #
 
 
+@pytest.mark.behaviour
 def test_the_json_round_trips_and_can_leave_the_steps_out(tmp_path: Path) -> None:
     result = attribute_config(SMALL)
     path = write_attribution(result, tmp_path / "out" / output_name(result))
@@ -372,12 +387,14 @@ def test_the_json_round_trips_and_can_leave_the_steps_out(tmp_path: Path) -> Non
     assert lean["totals"] == raw["totals"] and lean["episodes"][0]["steps"] == []
 
 
+@pytest.mark.behaviour
 def test_attribution_is_never_written_into_a_run_directory(tmp_path: Path) -> None:
     run_dir = write_scripted(SMALL, tmp_path / "run")
     with pytest.raises(ValueError, match="run directory"):
         write_attribution(attribute_run(run_dir), run_dir / "attribution.json")
 
 
+@pytest.mark.behaviour
 def test_another_schema_version_is_refused(tmp_path: Path) -> None:
     result = attribute_config(RunConfig(policy="flat", n_episodes=1))
     path = tmp_path / "a.json"
@@ -386,6 +403,7 @@ def test_another_schema_version_is_refused(tmp_path: Path) -> None:
         read_attribution(path)
 
 
+@pytest.mark.behaviour
 def test_the_default_root_is_outside_every_run_and_can_be_moved(tmp_path: Path) -> None:
     assert default_root({}) == REPO_ROOT / "attribution"
     assert default_root({ATTRIBUTION_ENV: str(tmp_path)}) == tmp_path
@@ -394,6 +412,7 @@ def test_the_default_root_is_outside_every_run_and_can_be_moved(tmp_path: Path) 
 # -- the command ------------------------------------------------------------- #
 
 
+@pytest.mark.behaviour
 def test_the_command_attributes_runs_and_configs(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -417,6 +436,7 @@ def test_the_command_attributes_runs_and_configs(
     assert from_config.reproduces is None and from_config.run_dir is None  # no run compared
 
 
+@pytest.mark.behaviour
 def test_the_command_says_no(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:

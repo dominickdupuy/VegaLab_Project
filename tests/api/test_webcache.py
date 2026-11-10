@@ -23,6 +23,7 @@ def _touch(path: Path, text: str, ns: int) -> None:
     os.utime(path, ns=(ns, ns))
 
 
+@pytest.mark.behaviour
 def test_a_stamp_changes_with_any_file_under_the_root(tmp_path: Path) -> None:
     (tmp_path / "a").mkdir()
     _touch(tmp_path / "a" / "run.json", "{}", 10**18)
@@ -42,6 +43,7 @@ def test_a_stamp_changes_with_any_file_under_the_root(tmp_path: Path) -> None:
     assert file_stamp([tmp_path / "missing"]) == ((str(tmp_path / "missing"), -1, -1),)
 
 
+@pytest.mark.behaviour
 def test_a_kept_answer_is_rebuilt_when_its_stamp_or_query_changes() -> None:
     answers = Answers()
     built: list[str] = []
@@ -58,6 +60,7 @@ def test_a_kept_answer_is_rebuilt_when_its_stamp_or_query_changes() -> None:
     assert b == b'"three"' and other != tag
 
 
+@pytest.mark.behaviour
 def test_the_disk_tier_survives_a_restart_and_ignores_a_torn_body(tmp_path: Path) -> None:
     Answers(tmp_path).get("data/x", {}, "s", lambda: b'{"v": 1}', disk=True)
     (kept,) = (tmp_path / "data_x").glob("*.json")
@@ -76,6 +79,7 @@ def test_the_disk_tier_survives_a_restart_and_ignores_a_torn_body(tmp_path: Path
     assert not (tmp_path / "data_y").exists()
 
 
+@pytest.mark.behaviour
 def test_the_server_answers_from_the_cache_until_a_run_changes(
     run_root: Path, gate_docs: Path, panel_root: Path, tmp_path: Path
 ) -> None:
@@ -119,6 +123,7 @@ def test_the_server_answers_from_the_cache_until_a_run_changes(
         assert list((tmp_path / "cache" / "data_coverage").glob("*.json"))
 
 
+@pytest.mark.invariant
 def test_a_kept_run_row_is_read_again_when_a_file_changes(run_root: Path, tmp_path: Path) -> None:
     from optspread.dashboard_data import load_run_row
 
@@ -133,6 +138,7 @@ def test_a_kept_run_row_is_read_again_when_a_file_changes(run_root: Path, tmp_pa
     assert load_run_row(run_dir).digests_ok is False  # edited: read and checked again
 
 
+@pytest.mark.behaviour
 def test_a_warmed_server_reads_its_tables_at_start_and_answers_as_before(
     run_root: Path, gate_docs: Path, panel_root: Path, tmp_path: Path
 ) -> None:

@@ -67,6 +67,7 @@ def m4_docs(grid_root: Path, tmp_path_factory: pytest.TempPathFactory) -> Path:
 # -- the study design --------------------------------------------------------- #
 
 
+@pytest.mark.invariant
 def test_the_study_is_the_a7_design_with_its_power_recomputed() -> None:
     s = v.study()
     assert (s.n_seeds, s.n_episodes, s.train_steps, s.episode_days) == (5, 500, 1_000_000, 63)
@@ -78,6 +79,7 @@ def test_the_study_is_the_a7_design_with_its_power_recomputed() -> None:
     assert s.measured is None  # no analysis asked for, none read
 
 
+@pytest.mark.invariant
 def test_the_study_quotes_the_measured_power_beside_the_plan(m4_docs: Path, tmp_path: Path) -> None:
     """M4's design check is the power the design had; A7's 0.898 stays the plan."""
     s = v.study(m4_docs)
@@ -92,6 +94,7 @@ def test_the_study_quotes_the_measured_power_beside_the_plan(m4_docs: Path, tmp_
     assert v.study(tmp_path).measured is None  # one without a design check
 
 
+@pytest.mark.behaviour
 def test_the_launch_estimate_includes_training_at_the_a7_rates() -> None:
     scripted = v.launch_estimate(100, 63, None)
     assert scripted.train_hours == 0.0
@@ -108,6 +111,7 @@ def test_the_launch_estimate_includes_training_at_the_a7_rates() -> None:
 # -- checks and docs ---------------------------------------------------------- #
 
 
+@pytest.mark.behaviour
 def test_checks_are_every_gate_item_once_with_its_report(gate_docs: Path) -> None:
     rows = v.checks(gate_docs)
     names = [r.name for r in rows]
@@ -122,6 +126,7 @@ def test_checks_are_every_gate_item_once_with_its_report(gate_docs: Path) -> Non
     assert rows[0].report_date >= rows[-1].report_date
 
 
+@pytest.mark.behaviour
 def test_check_labels_say_what_is_checked_not_which_gate() -> None:
     rows = v.checks(REPO_ROOT / "docs")
     labels = {r.name: r.label for r in rows}
@@ -131,6 +136,7 @@ def test_check_labels_say_what_is_checked_not_which_gate() -> None:
     assert all(r.report.endswith(".md") for r in rows)  # both reports have their markdown
 
 
+@pytest.mark.behaviour
 def test_only_report_files_in_docs_are_served(gate_docs: Path) -> None:
     assert v.doc_file(gate_docs, "M2_GATE_REPORT.json").name == "M2_GATE_REPORT.json"
     for bad in ("../conftest.py", "M2_GATE_REPORT.py", "nope.md", ".hidden.md"):
@@ -141,6 +147,7 @@ def test_only_report_files_in_docs_are_served(gate_docs: Path) -> None:
 # -- the VRP mapping and the M4 analysis -------------------------------------- #
 
 
+@pytest.mark.behaviour
 def test_the_vrp_mapping_is_the_real_premium_or_says_it_is_missing(
     m4_docs: Path, tmp_path: Path
 ) -> None:
@@ -154,12 +161,14 @@ def test_the_vrp_mapping_is_the_real_premium_or_says_it_is_missing(
     assert "not a JSON object" in v.vrp_mapping(tmp_path).error
 
 
+@pytest.mark.behaviour
 def test_without_the_sidecar_the_m4_view_says_what_produces_it(tmp_path: Path) -> None:
     out = v.m4_analysis(tmp_path)
     assert not out.available and out.analysis is None and out.vrp is None and not out.mapped
     assert "make m4" in out.waiting_for
 
 
+@pytest.mark.invariant
 def test_the_m4_view_reads_the_generators_sidecar_and_the_real_premium_off_it(
     m4_docs: Path,
 ) -> None:
@@ -188,6 +197,7 @@ def test_the_m4_view_reads_the_generators_sidecar_and_the_real_premium_off_it(
         assert m.band_min <= m.power_min and m.power_max <= m.band_max
 
 
+@pytest.mark.behaviour
 def test_a_sidecar_of_another_schema_is_refused_by_name(m4_docs: Path, tmp_path: Path) -> None:
     raw = json.loads((m4_docs / v.M4_FILE).read_text())
     raw["schema_version"] = 99
@@ -196,6 +206,7 @@ def test_a_sidecar_of_another_schema_is_refused_by_name(m4_docs: Path, tmp_path:
     assert not out.available and "schema v99" in out.error
 
 
+@pytest.mark.invariant
 def test_a_curve_is_read_at_the_premium_or_the_reason_it_cannot_be_is_given() -> None:
     good = {"interpolated": [{"premium": x, "power": 0.05 + 0.2 * x} for x in (0.0, 1.0, 2.0)]}
     m = v._mapped("delta_seller", good, 1.0, (0.5, 3.0))
@@ -212,6 +223,7 @@ def test_a_curve_is_read_at_the_premium_or_the_reason_it_cannot_be_is_given() ->
 # -- the orchestrated grid on the Sweep page ---------------------------------- #
 
 
+@pytest.mark.behaviour
 def test_the_sweep_list_carries_orchestrated_grids(grid_root: Path) -> None:
     listed = w.sweeps(grid_root)
     grids = [s for s in listed.sweeps if s.kind == "grid"]
@@ -221,6 +233,7 @@ def test_the_sweep_list_carries_orchestrated_grids(grid_root: Path) -> None:
     assert g.n_present == g.n_cells and g.premiums == [0.0, 1.0, 2.0, 4.0]
 
 
+@pytest.mark.invariant
 def test_a_grid_reads_as_means_by_premium_cells_and_the_pre_registered_contrasts(
     grid_root: Path,
 ) -> None:
@@ -248,6 +261,7 @@ def test_a_grid_reads_as_means_by_premium_cells_and_the_pre_registered_contrasts
     assert (grid_root / cell.key / "manifest.json").is_file()
 
 
+@pytest.mark.invariant
 def test_a_grid_with_a_cell_gone_says_which_and_keeps_the_rest(
     grid_root: Path, tmp_path: Path
 ) -> None:
@@ -266,6 +280,7 @@ def test_a_grid_with_a_cell_gone_says_which_and_keeps_the_rest(
     assert next(c for c in out.grid.contrasts["delta_seller"] if c.premium == 2.0).estimate
 
 
+@pytest.mark.behaviour
 def test_grid_cells_are_their_grid_in_the_run_index(grid_root: Path) -> None:
     record = read_grid(grid_root / grid_filename(GRID))
     cell = record.cells[0]
@@ -276,6 +291,7 @@ def test_grid_cells_are_their_grid_in_the_run_index(grid_root: Path) -> None:
     assert facets.sweeps == [record.grid_hash]
 
 
+@pytest.mark.behaviour
 def test_a_bad_grid_key_is_not_found(grid_root: Path, tmp_path: Path) -> None:
     (tmp_path / "grid-broken.json").write_text("{")
     for root, key in ((tmp_path, "grid-broken.json"), (grid_root, "../x"), (grid_root, "nope")):
@@ -284,6 +300,7 @@ def test_a_bad_grid_key_is_not_found(grid_root: Path, tmp_path: Path) -> None:
     assert w.sweeps(tmp_path).sweeps == []  # an unreadable record is left out
 
 
+@pytest.mark.behaviour
 @pytest.mark.parametrize("spelling", ["relative", "dot-dot"])
 def test_a_grid_and_its_runs_open_however_the_runs_root_is_spelled(
     grid_root: Path, spelling: str, monkeypatch: pytest.MonkeyPatch
@@ -317,6 +334,7 @@ def _wait(tasks: v.Tasks, kind: str, key: str) -> tuple[v.TaskState, object]:
     raise AssertionError("task did not finish")
 
 
+@pytest.mark.behaviour
 def test_tasks_run_once_per_key_and_report_their_failure() -> None:
     tasks = v.Tasks()
     try:
@@ -347,6 +365,7 @@ def _ok_row(run_root: Path, policy: str) -> RunRow:
     )
 
 
+@pytest.mark.invariant
 def test_attribution_is_computed_outside_the_run_and_read_back(
     run_root: Path, tmp_path: Path
 ) -> None:
@@ -371,6 +390,7 @@ def test_attribution_is_computed_outside_the_run_and_read_back(
     assert v.attribution_view(tmp_path, row, v.TaskState(state="running")).state == "cached"
 
 
+@pytest.mark.invariant
 def test_attribution_says_why_a_run_cannot_be_attributed_here(
     run_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -393,6 +413,7 @@ def test_attribution_says_why_a_run_cannot_be_attributed_here(
     assert v.attribution_view(tmp_path, row, v.TaskState(state="idle")).state == "failed"
 
 
+@pytest.mark.invariant
 def test_capital_re_simulates_the_run_and_reads_margin_and_drawdown(run_root: Path) -> None:
     row = _ok_row(run_root, "delta_seller")
     out = v.compute_capital(row.path)
@@ -444,6 +465,7 @@ def _stub_run(tmp_path: Path) -> RunRow:
     return load_run_row(run_dir)
 
 
+@pytest.mark.invariant
 def test_capital_and_attribution_re_simulate_a_real_data_run_on_its_recorded_source(
     tmp_path: Path,
 ) -> None:
@@ -460,6 +482,7 @@ def test_capital_and_attribution_re_simulate_a_real_data_run_on_its_recorded_sou
     assert out.result["reproduces"] is True and out.result["source"] == "optionmetrics_stub"
 
 
+@pytest.mark.invariant
 def test_a_real_data_run_whose_panel_was_rebuilt_is_refused_with_the_reason(
     tmp_path: Path,
 ) -> None:
@@ -477,6 +500,7 @@ def test_a_real_data_run_whose_panel_was_rebuilt_is_refused_with_the_reason(
         v.compute_capital(row.path)
 
 
+@pytest.mark.invariant
 def test_capital_counts_the_episodes_beyond_the_tolerance(run_root: Path, tmp_path: Path) -> None:
     """A P&L a billionth off is within tolerance; a dollar off is one episode that differs."""
     from optspread.artifacts import RUN_FILENAME
@@ -499,6 +523,7 @@ def test_capital_counts_the_episodes_beyond_the_tolerance(run_root: Path, tmp_pa
     assert out.max_abs_diff == pytest.approx(1.0)
 
 
+@pytest.mark.invariant
 def test_replay_reports_identical_with_the_reason(
     run_root: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -521,6 +546,7 @@ def test_replay_reports_identical_with_the_reason(
     assert "train extra" in v.replay_reason(replace(row, policy="ppo"))
 
 
+@pytest.mark.behaviour
 def test_a_replay_within_tolerance_agrees_and_never_reads_as_a_failure(run_root: Path) -> None:
     """Three states: bit for bit, within the seller's 1e-9, beyond it. A retrained PPO run
     off its own platform is not comparable, which is not a failure either."""
@@ -538,6 +564,7 @@ def test_a_replay_within_tolerance_agrees_and_never_reads_as_a_failure(run_root:
     assert ppo.verdict == "DIFFERS" and not ppo.comparable and "not comparable" in ppo.note
 
 
+@pytest.mark.behaviour
 def test_a_ppo_replay_says_it_retrains_and_how_long_before_it_starts(grid_root: Path) -> None:
     ppo = next(r for r in w.index(grid_root) if r.policy == "ppo" and r.status == "OK")
     idle = v.replay_view(ppo, v.TaskState(state="idle"), None)
@@ -551,6 +578,7 @@ def test_a_ppo_replay_says_it_retrains_and_how_long_before_it_starts(grid_root: 
 # -- leaks -------------------------------------------------------------------- #
 
 
+@pytest.mark.behaviour
 def test_the_leak_floor_is_the_smallest_eps_still_caught() -> None:
     out = v.leak_floor_out(v.LeakFloorParams(n_seeds=4, eps_grid=[1.0, 0.5, 0.01]))
     assert out.eps == [1.0, 0.5, 0.01] and len(out.flagged) == 3
@@ -559,6 +587,7 @@ def test_the_leak_floor_is_the_smallest_eps_still_caught() -> None:
         v.leak_floor_out(v.LeakFloorParams(n_seeds=3, eps_grid=[3.0, 1.0]))
 
 
+@pytest.mark.invariant
 def test_a_leak_planted_in_one_field_is_caught_on_that_field() -> None:
     out = v.leak_field_out(v.LeakFieldParams(field="atm_iv", eps=1.0, n_seeds=6))
     assert out.flagged and out.named_correctly and out.worst_feature == "atm_iv"
@@ -568,6 +597,7 @@ def test_a_leak_planted_in_one_field_is_caught_on_that_field() -> None:
         v.leak_field_out(v.LeakFieldParams(field="nope"))
 
 
+@pytest.mark.invariant
 @pytest.mark.slow
 def test_field_coverage_runs_every_field() -> None:
     out = v.leak_coverage_out(1.0, 4)
@@ -578,6 +608,7 @@ def test_field_coverage_runs_every_field() -> None:
 # -- the seller on a real chain ----------------------------------------------- #
 
 
+@pytest.mark.behaviour
 def test_the_seller_opens_the_condor_with_its_credit_risk_and_breakevens() -> None:
     cfg = MarketConfig()
     chain = SyntheticChainProvider(cfg).reset(SeededStepRNG(0))
@@ -595,6 +626,7 @@ def test_the_seller_opens_the_condor_with_its_credit_risk_and_breakevens() -> No
     assert "Illustration" in out.note
 
 
+@pytest.mark.behaviour
 def test_a_real_chain_is_built_from_the_days_grid() -> None:
     from optspread.realdata.panel import K_GRID, TENOR_GRID
 
@@ -615,6 +647,7 @@ def test_a_real_chain_is_built_from_the_days_grid() -> None:
 # -- the run page's re-simulations, cached outside the run; the launch preview -------- #
 
 
+@pytest.mark.behaviour
 def test_capital_is_cached_outside_the_run_with_its_equity_and_margin_by_day(
     run_root: Path, tmp_path: Path
 ) -> None:
@@ -638,6 +671,7 @@ def test_capital_is_cached_outside_the_run_with_its_equity_and_margin_by_day(
     assert v.band([]) is None
 
 
+@pytest.mark.invariant
 def test_the_action_mix_is_re_simulated_once_and_read_with_its_holdings(
     run_root: Path, tmp_path: Path
 ) -> None:
@@ -673,6 +707,7 @@ def test_the_action_mix_is_re_simulated_once_and_read_with_its_holdings(
     assert "policy.zip" in v.mix_reason(replace(row, policy="ppo")) or "ppo" not in available_arms()
 
 
+@pytest.mark.behaviour
 def test_the_launch_preview_shows_the_run_or_every_reason_it_would_be_refused(
     run_root: Path,
 ) -> None:
@@ -702,6 +737,7 @@ def test_the_launch_preview_shows_the_run_or_every_reason_it_would_be_refused(
     assert ppo.ok and ppo.day0 is not None and ppo.day0.reference  # the seller, for scale
 
 
+@pytest.mark.behaviour
 def test_the_seller_view_shows_the_loss_its_wings_cap_when_the_frozen_check_says_naked() -> None:
     """The dashboard's 2026-10-02 condor (#39): the wings cap the loss at $30,364, but the
     frozen margin check margins it as naked; the view says both, not "not capped"."""

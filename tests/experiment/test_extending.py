@@ -42,6 +42,7 @@ def guide_blocks() -> list[str]:
     return re.findall(r"^```python\n(.*?)^```", GUIDE.read_text(), flags=re.DOTALL | re.MULTILINE)
 
 
+@pytest.mark.behaviour
 @pytest.mark.slow
 def test_every_block_in_the_guide_runs(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
@@ -71,6 +72,7 @@ def test_every_block_in_the_guide_runs(
     assert (tmp_path / "runs" / "extend" / "skew-wing").is_dir()
 
 
+@pytest.mark.behaviour
 def test_the_readme_links_the_guide() -> None:
     readme = (REPO / "README.md").read_text()
     assert "docs/EXTENDING.md" in readme
@@ -79,6 +81,7 @@ def test_the_readme_links_the_guide() -> None:
 # -- the defaults through the runner ----------------------------------------- #
 
 
+@pytest.mark.invariant
 def test_the_default_components_run_exactly_what_the_harness_runs() -> None:
     cfg = RunConfig(seed=3, n_episodes=3, market=SHORT, env=EnvConfig(episode_days=15))
     config = cfg.model_copy(update={"policy": "delta_seller"})
@@ -98,6 +101,7 @@ class _DoubleSpread:
         return 2.0 * self.quoted.leg_cost(chain, leg)
 
 
+@pytest.mark.invariant
 def test_the_drag_check_runs_on_a_cost_model_of_ones_own() -> None:
     own = cost_drag_check(n_episodes=3, sellers=["hold_condor", "roll_condor"])
     doubled = cost_drag_check(
@@ -132,6 +136,7 @@ GRID = GridConfig(
 SKEW_WORLD = Components(source=planted(SkewPremium()))
 
 
+@pytest.mark.invariant
 def test_components_of_ones_own_run_through_the_grid_and_replay_only_through_them(
     tmp_path: Path,
 ) -> None:
@@ -148,6 +153,7 @@ def test_components_of_ones_own_run_through_the_grid_and_replay_only_through_the
         assert not replay_run(cell, trainer=fake_trainer).matches
 
 
+@pytest.mark.invariant
 @pytest.mark.spawns_processes
 @pytest.mark.slow
 def test_components_pickle_into_parallel_workers(tmp_path: Path) -> None:

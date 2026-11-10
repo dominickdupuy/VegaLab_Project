@@ -84,6 +84,7 @@ GRID = GridConfig(base=SHORT, premiums=(0.0, 2.0), n_seeds=3, train=TRAIN)
 # -- the design, before anything runs ----------------------------------------- #
 
 
+@pytest.mark.invariant
 def test_the_default_grid_is_the_pre_registered_axis_and_contrast() -> None:
     grid = GridConfig(train=TRAIN)
     assert grid.premiums == SWEEP_PREMIUMS == (0.0, 0.25, 0.5, 1.0, 2.0, 4.0)
@@ -91,6 +92,7 @@ def test_the_default_grid_is_the_pre_registered_axis_and_contrast() -> None:
     assert grid.base.cost.enabled
 
 
+@pytest.mark.invariant
 def test_within_a_block_every_arm_at_every_premium_runs_the_same_paths() -> None:
     cells = grid_cells(GRID)
     assert len(cells) == 2 * 3 * 2
@@ -99,6 +101,7 @@ def test_within_a_block_every_arm_at_every_premium_runs_the_same_paths() -> None
         assert seeds == {(SHORT.seed + block * SHORT.n_episodes, SHORT.n_episodes)}
 
 
+@pytest.mark.invariant
 def test_blocks_are_disjoint_and_block_i_trains_with_one_seed_at_every_premium() -> None:
     cells = grid_cells(GRID)
     ranges = {
@@ -115,12 +118,14 @@ def test_blocks_are_disjoint_and_block_i_trains_with_one_seed_at_every_premium()
     assert len({c.run_id for c in cells}) == len(cells)
 
 
+@pytest.mark.invariant
 def test_a_cell_changes_only_the_premium_the_arm_the_block_and_the_training() -> None:
     cfg = block_config(GRID, 2.0, "delta_seller", 1)
     assert cfg.market == SHORT.market.model_copy(update={"iv_premium_vol_pts": 2.0})
     assert (cfg.env, cfg.cost, cfg.policy) == (SHORT.env, SHORT.cost, "delta_seller")
 
 
+@pytest.mark.invariant
 def test_a_grid_refuses_an_inconsistent_design() -> None:
     with pytest.raises(ValueError, match="ppo arm needs a TrainConfig"):
         GridConfig(base=SHORT, arms=("delta_seller", "ppo"))
@@ -140,6 +145,7 @@ def test_a_grid_refuses_an_inconsistent_design() -> None:
         )
 
 
+@pytest.mark.behaviour
 def test_the_cost_estimate_rounds_training_up_to_whole_rollouts() -> None:
     ppo = block_config(GRID, 0.0, "ppo", 0)
     scripted = block_config(GRID, 0.0, "delta_seller", 0)
@@ -151,6 +157,7 @@ def test_the_cost_estimate_rounds_training_up_to_whole_rollouts() -> None:
     assert format_seconds(75) == "1m15s" and format_seconds(3 * 3600 + 120) == "3h02m"
 
 
+@pytest.mark.behaviour
 def test_the_wall_clock_estimate_never_splits_a_cell() -> None:
     assert makespan([10.0] * 8 + [1.0] * 8, workers=16) == 10.0
     assert makespan([10.0] * 10, workers=3) == 40.0  # four rounds, not 33.3
@@ -161,6 +168,7 @@ def test_the_wall_clock_estimate_never_splits_a_cell() -> None:
 # -- one run -------------------------------------------------------------------- #
 
 
+@pytest.mark.invariant
 def test_a_scripted_cell_is_exactly_the_run_write_run_writes(tmp_path: Path) -> None:
     cfg = block_config(GRID, 2.0, "delta_seller", 0)
     execute_run(cfg, tmp_path / "a")
@@ -173,6 +181,7 @@ def test_a_scripted_cell_is_exactly_the_run_write_run_writes(tmp_path: Path) -> 
     assert "trainer" not in json.loads((tmp_path / "a" / MANIFEST_FILENAME).read_text())
 
 
+@pytest.mark.invariant
 def test_a_learned_cell_keeps_its_policy_hashed_in_the_manifest(tmp_path: Path) -> None:
     cfg = block_config(GRID, 0.0, "ppo", 1)
     execute_run(cfg, tmp_path, fake_trainer)
@@ -188,6 +197,7 @@ def test_a_learned_cell_keeps_its_policy_hashed_in_the_manifest(tmp_path: Path) 
 # -- many runs ------------------------------------------------------------------- #
 
 
+@pytest.mark.invariant
 def test_every_cell_is_a_run_directory_listed_in_the_grid_record(tmp_path: Path) -> None:
     record = run_grid(GRID, tmp_path, trainer=fake_trainer)
     assert len(record.cells) == len(grid_cells(GRID))
@@ -201,6 +211,7 @@ def test_every_cell_is_a_run_directory_listed_in_the_grid_record(tmp_path: Path)
         record.cell(9.0, "ppo", 0)
 
 
+@pytest.mark.behaviour
 def test_the_grid_record_refuses_an_unknown_schema(tmp_path: Path) -> None:
     record = run_grid(GRID, tmp_path, trainer=fake_trainer)
     bumped = record.model_copy(update={"schema_version": record.schema_version + 1})
@@ -209,6 +220,7 @@ def test_the_grid_record_refuses_an_unknown_schema(tmp_path: Path) -> None:
         read_grid(tmp_path / "bumped.json")
 
 
+@pytest.mark.invariant
 def test_a_second_run_reads_cells_back_and_recomputes_only_what_is_missing(
     tmp_path: Path,
 ) -> None:
@@ -238,6 +250,7 @@ def test_a_second_run_reads_cells_back_and_recomputes_only_what_is_missing(
     assert plan_cells(grid_cells(GRID), tmp_path).to_run == 6
 
 
+@pytest.mark.invariant
 def test_a_failed_cell_is_reported_and_the_rest_are_kept(tmp_path: Path) -> None:
     lines: list[Progress] = []
     with pytest.raises(IncompleteGridError) as caught:
@@ -255,6 +268,7 @@ def test_a_failed_cell_is_reported_and_the_rest_are_kept(tmp_path: Path) -> None
     run_grid(GRID, tmp_path, trainer=fake_trainer)
 
 
+@pytest.mark.invariant
 @pytest.mark.spawns_processes
 @pytest.mark.slow
 def test_two_workers_write_exactly_the_bytes_one_worker_writes(tmp_path: Path) -> None:
@@ -269,6 +283,7 @@ def test_two_workers_write_exactly_the_bytes_one_worker_writes(tmp_path: Path) -
                 assert a.read_bytes() == b.read_bytes()
 
 
+@pytest.mark.invariant
 @pytest.mark.spawns_processes
 @pytest.mark.slow
 def test_a_dead_worker_loses_only_the_cells_in_flight_and_the_grid_resumes(
@@ -313,6 +328,7 @@ def test_a_dead_worker_loses_only_the_cells_in_flight_and_the_grid_resumes(
                 assert a.read_bytes() == b.read_bytes()
 
 
+@pytest.mark.behaviour
 @pytest.mark.spawns_processes
 @pytest.mark.slow
 def test_a_pool_that_dies_before_finishing_a_cell_is_not_fed_again(tmp_path: Path) -> None:
@@ -329,6 +345,7 @@ def test_a_pool_that_dies_before_finishing_a_cell_is_not_fed_again(tmp_path: Pat
     assert plan_cells(grid_cells(GRID), tmp_path, trainer=fake_trainer).to_run == 0
 
 
+@pytest.mark.invariant
 @pytest.mark.spawns_processes
 def test_a_cell_written_in_full_before_its_worker_died_is_kept(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -349,6 +366,7 @@ def test_a_cell_written_in_full_before_its_worker_died_is_kept(
     assert plan_cells(grid_cells(grid), tmp_path, runner=writes_then_dies).to_run == len(lost)
 
 
+@pytest.mark.behaviour
 @pytest.mark.spawns_processes
 def test_a_task_that_cannot_reach_a_worker_fails_its_cell(tmp_path: Path) -> None:
     def local(config: RunConfig) -> FakeLearned:  # a closure does not pickle
@@ -360,6 +378,7 @@ def test_a_task_that_cannot_reach_a_worker_fails_its_cell(tmp_path: Path) -> Non
     assert all("local object" in why for why in caught.value.failures.values())
 
 
+@pytest.mark.behaviour
 def test_workers_must_be_positive(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="workers"):
         run_cells(grid_cells(GRID), tmp_path, workers=0)
@@ -368,6 +387,7 @@ def test_workers_must_be_positive(tmp_path: Path) -> None:
 # -- the pilot ------------------------------------------------------------------- #
 
 
+@pytest.mark.invariant
 @pytest.mark.slow
 def test_the_pilot_writes_the_contrast_the_budget_reads_and_its_control(tmp_path: Path) -> None:
     S, N = 3, 4
@@ -410,11 +430,13 @@ def test_the_pilot_writes_the_contrast_the_budget_reads_and_its_control(tmp_path
     assert manifest.config.policy == "ppo" and manifest.config.market.iv_premium_vol_pts == 1.0
 
 
+@pytest.mark.behaviour
 def test_the_pilot_refuses_to_contrast_zero_with_itself() -> None:
     with pytest.raises(ValueError, match="must differ from 0"):
         pilot_grid(SHORT, n_seeds=3, n_episodes=4, premium=0.0, train=TRAIN)
 
 
+@pytest.mark.invariant
 def test_a_grid_contrast_is_zero_at_zero_and_needs_the_null_world(tmp_path: Path) -> None:
     grid = pilot_grid(SHORT, n_seeds=2, n_episodes=3, premium=0.5, train=TRAIN)
     record = run_grid(grid, tmp_path, trainer=fake_trainer)
@@ -427,6 +449,7 @@ def test_a_grid_contrast_is_zero_at_zero_and_needs_the_null_world(tmp_path: Path
 # -- the commands ------------------------------------------------------------------ #
 
 
+@pytest.mark.invariant
 @pytest.mark.slow
 def test_the_pilot_command_runs_resumes_and_writes_the_matrix(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -449,6 +472,7 @@ def test_the_pilot_command_runs_resumes_and_writes_the_matrix(
     assert pilot.main(fresh, trainer=failing_trainer) == 1
 
 
+@pytest.mark.behaviour
 def test_without_a_root_the_pilot_and_sweep_land_where_the_reports_read(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -475,6 +499,7 @@ def test_without_a_root_the_pilot_and_sweep_land_where_the_reports_read(
         assert "$VEGALAB_DATA/runs" in capsys.readouterr().out
 
 
+@pytest.mark.behaviour
 def test_the_sweep_command_needs_a_budget_only_when_it_trains(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -493,6 +518,7 @@ def test_the_sweep_command_needs_a_budget_only_when_it_trains(
     assert sweep.main(retrain, trainer=failing_trainer) == 1  # seeds 5 and 6: 5 fails
 
 
+@pytest.mark.internal
 def test_workers_are_spawned_with_one_blas_thread_set_before_they_import_numpy(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

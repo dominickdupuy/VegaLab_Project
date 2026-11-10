@@ -21,6 +21,7 @@ def components(tau: float, sigma: float, seed: int = 0) -> VarianceComponents:
     )
 
 
+@pytest.mark.invariant
 def test_the_design_is_the_cheapest_that_reaches_80_percent_exactly() -> None:
     vc = components(300.0, 4_000.0)
     design, best, _ = cd.choose(500.0, vc, 1_000_000, 1_000.0, 1_800.0)
@@ -30,6 +31,7 @@ def test_the_design_is_the_cheapest_that_reaches_80_percent_exactly() -> None:
         assert power_t(500.0, vc.tau2, vc.sigma2, c.n_seeds - 1, c.n_episodes) < cd.TARGET
 
 
+@pytest.mark.invariant
 def test_the_planner_and_the_rule_agree_on_every_n() -> None:
     # #20: seeds_for plans on the same exact power A6 chooses on, so above A6's floor of
     # five seeds the two give the same S at every N (on the normal form they did not).
@@ -41,6 +43,7 @@ def test_the_planner_and_the_rule_agree_on_every_n() -> None:
         assert max(planned, cd.MIN_SEEDS) == c.n_seeds
 
 
+@pytest.mark.invariant
 def test_the_fallbacks_are_the_preregistered_ones() -> None:
     vc = components(300.0, 4_000.0)
     no_edge, _, why = cd.choose(-10.0, vc, 1_000_000, 1_000.0, 1_800.0)
@@ -49,12 +52,14 @@ def test_the_fallbacks_are_the_preregistered_ones() -> None:
     assert (hopeless.n_seeds, hopeless.n_episodes) == (cd.MAX_SEEDS, 1000) and "no S" in why
 
 
+@pytest.mark.invariant
 def test_the_sweep_cost_counts_every_cell() -> None:
     # 6 premiums x S blocks; the ppo cell trains 1000 s, each cell evaluates N x 63 / 1800 s.
     hours = cd.sweep_core_hours(10, 200, 1_000_000, 1_000.0, 1_800.0)
     assert hours == pytest.approx(6 * 10 * (1000 + 2 * 200 * 63 / 1800) / 3600)
 
 
+@pytest.mark.behaviour
 def test_the_command_reads_the_pilot(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     rng = np.random.default_rng(1)
     np.save(tmp_path / "matrix.npy", rng.normal(0, 300, (8, 1)) + rng.normal(0, 4000, (8, 200)))

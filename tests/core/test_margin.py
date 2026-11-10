@@ -67,6 +67,7 @@ def short_leg(chain: Chain, right: Right, strike: float, qty: int = -1) -> Optio
 # -- the rule, to the cent -------------------------------------------------- #
 
 
+@pytest.mark.invariant
 def test_reg_t_strangle_matches_the_hand_worked_requirement_to_the_cent() -> None:
     chain = default_chain()
     pos = build_position(SHORT_STRANGLE, chain, EnvConfig())
@@ -93,6 +94,7 @@ def test_reg_t_strangle_matches_the_hand_worked_requirement_to_the_cent() -> Non
     assert got > -pos.entry_value(), "a naked structure needs more than the credit it brings in"
 
 
+@pytest.mark.invariant
 def test_the_fifteen_percent_branch_binds_near_the_money() -> None:
     chain = default_chain()
     leg = short_leg(chain, "P", 4900.0)
@@ -104,6 +106,7 @@ def test_the_fifteen_percent_branch_binds_near_the_money() -> None:
     assert expected > (490.0 + mid(chain, leg)) * MULTIPLIER
 
 
+@pytest.mark.invariant
 def test_the_put_floor_is_ten_percent_of_the_strike_deep_out_of_the_money() -> None:
     chain = default_chain()
     leg = short_leg(chain, "P", 3000.0)
@@ -117,6 +120,7 @@ def test_the_put_floor_is_ten_percent_of_the_strike_deep_out_of_the_money() -> N
     assert expected < (0.10 * chain.spot + mid(chain, leg)) * MULTIPLIER
 
 
+@pytest.mark.invariant
 def test_the_call_floor_is_ten_percent_of_the_underlying_not_the_strike() -> None:
     chain = default_chain()
     leg = short_leg(chain, "C", 5500.0)
@@ -129,6 +133,7 @@ def test_the_call_floor_is_ten_percent_of_the_underlying_not_the_strike() -> Non
     assert margin_requirement((leg,), chain) < (550.0 + mid(chain, leg)) * MULTIPLIER - 1.0
 
 
+@pytest.mark.invariant
 def test_a_same_right_naked_pair_counts_each_premium_once() -> None:
     chain = default_chain()
     near, far = short_leg(chain, "P", 4900.0), short_leg(chain, "P", 4700.0)
@@ -143,6 +148,7 @@ def test_a_same_right_naked_pair_counts_each_premium_once() -> None:
     assert abs(got - strangle_style) > 1.0
 
 
+@pytest.mark.invariant
 def test_contract_quantity_scales_the_requirement_exactly() -> None:
     chain = default_chain()
     one, two = short_leg(chain, "C", 5300.0, -1), short_leg(chain, "C", 5300.0, -2)
@@ -152,6 +158,7 @@ def test_contract_quantity_scales_the_requirement_exactly() -> None:
     )
 
 
+@pytest.mark.invariant
 def test_a_short_put_requirement_is_non_increasing_in_spot() -> None:
     base = default_chain()
     leg = OptionLeg("P", 4800.0, int(base.expiry_days[1]), -1, 0.0)  # entry price plays no part
@@ -172,6 +179,7 @@ def test_a_short_put_requirement_is_non_increasing_in_spot() -> None:
     assert reqs[0] > reqs[-1]
 
 
+@pytest.mark.behaviour
 def test_no_legs_consume_no_buying_power() -> None:
     assert margin_requirement((), default_chain()) == 0.0
 
@@ -179,6 +187,7 @@ def test_no_legs_consume_no_buying_power() -> None:
 # -- the requirement binds inside the environment ------------------------------ #
 
 
+@pytest.mark.behaviour
 def test_a_strangle_on_too_little_cash_is_refused_at_open_not_liquidated_a_day_late() -> None:
     # 20,000 of cash against a 56,466.22 requirement (the hand-worked figure above). Before
     # the pre-trade check the strangle was opened, held overnight, and forced flat on the
@@ -202,6 +211,7 @@ def test_a_strangle_on_too_little_cash_is_refused_at_open_not_liquidated_a_day_l
     assert info["equity"] == 20_000.0
 
 
+@pytest.mark.behaviour
 def test_a_strangle_opened_on_just_enough_cash_breaches_on_a_rally_and_pays_its_exit() -> None:
     # The breach path in the env is still live: the pre-trade check holds only at the chain
     # it is made on. Seed 7 rallies 1.75% on day one (5,000 to 5,087.56), which marks the
@@ -229,6 +239,7 @@ def test_a_strangle_opened_on_just_enough_cash_breaches_on_a_rally_and_pays_its_
     assert obs[OBS_NAMES.index("margin_frac")] == 0.0
 
 
+@pytest.mark.behaviour
 def test_the_same_strangle_on_ample_cash_is_held() -> None:
     cfg = RunConfig(cost=CostConfig(enabled=True))  # 1,000,000 of initial cash
     env = build_env(cfg)

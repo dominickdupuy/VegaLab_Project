@@ -47,6 +47,7 @@ PPO_RUN = RunConfig(policy="ppo", train=TrainConfig(total_timesteps=10_000, seed
 # -- the config ------------------------------------------------------------- #
 
 
+@pytest.mark.invariant
 def test_adding_the_learner_re_keyed_no_existing_run() -> None:
     # Re-pinned once, on purpose: adopting the fitted cost parameters for the Nov 1
     # freeze (#8, docs/COSTS.md) re-keys every costed config. Adding the learner
@@ -57,6 +58,7 @@ def test_adding_the_learner_re_keyed_no_existing_run() -> None:
     assert "train" not in canonical_json(RunConfig())
 
 
+@pytest.mark.invariant
 def test_a_ppo_run_needs_its_training_config_and_a_scripted_run_refuses_one() -> None:
     with pytest.raises(ValueError, match="ppo run needs its TrainConfig"):
         RunConfig(policy="ppo")
@@ -66,6 +68,7 @@ def test_a_ppo_run_needs_its_training_config_and_a_scripted_run_refuses_one() ->
         TrainConfig()  # not pre-registered, so no default
 
 
+@pytest.mark.invariant
 def test_training_enters_the_hash() -> None:
     hashes = {
         config_hash(PPO_RUN),
@@ -83,6 +86,7 @@ def test_training_enters_the_hash() -> None:
     assert '"learning_rate":0.0003' in canonical_json(PPO_RUN)
 
 
+@pytest.mark.invariant
 def test_a_ppo_config_round_trips_through_its_manifest(tmp_path: Path) -> None:
     manifest = RunManifest.create(PPO_RUN)
     manifest.write(tmp_path)
@@ -91,6 +95,7 @@ def test_a_ppo_config_round_trips_through_its_manifest(tmp_path: Path) -> None:
     assert back.config_hash == config_hash(PPO_RUN)
 
 
+@pytest.mark.invariant
 def test_the_hyperparameters_are_frozen_by_d3() -> None:
     assert TrainConfig(total_timesteps=1).hyperparameters == FROZEN_PPO
     with pytest.raises(ValueError, match=r"frozen by decision D3; learning_rate differ"):
@@ -99,6 +104,7 @@ def test_the_hyperparameters_are_frozen_by_d3() -> None:
         TrainConfig(total_timesteps=1, hyperparameters=PPOHyperparameters(n_steps=128, n_epochs=4))
 
 
+@pytest.mark.invariant
 def test_a_copy_that_skips_validation_cannot_train_off_the_frozen_set() -> None:
     tuned = TrainConfig(total_timesteps=1).model_copy(
         update={"hyperparameters": PPOHyperparameters(learning_rate=1e-2)}
@@ -109,6 +115,7 @@ def test_a_copy_that_skips_validation_cannot_train_off_the_frozen_set() -> None:
         train_ppo(config)  # refused before the learner is imported, so no torch needed
 
 
+@pytest.mark.invariant
 def test_a_ppo_config_is_never_evaluated_with_a_scripted_stand_in() -> None:
     with pytest.raises(ValueError, match="trained policy"):
         run_episodes(PPO_RUN)
@@ -119,6 +126,7 @@ def test_a_ppo_config_is_never_evaluated_with_a_scripted_stand_in() -> None:
 # -- training paths ---------------------------------------------------------- #
 
 
+@pytest.mark.invariant
 def test_training_paths_are_disjoint_from_evaluation_and_from_each_other() -> None:
     assert training_path_seed(0, 0) == TRAIN_PATH_BASE
     assert training_path_seed(1, 0) == training_path_seed(0, 0) + TRAIN_PATH_STRIDE
@@ -136,6 +144,7 @@ def test_training_paths_are_disjoint_from_evaluation_and_from_each_other() -> No
         check_disjoint(RunConfig(seed=-1))
 
 
+@pytest.mark.invariant
 def test_every_training_episode_gets_its_own_path_whatever_seed_it_resets_with() -> None:
     # Stable-Baselines3 resets with a seed once and then with None; SpreadEnv reads None as
     # path 0. The wrapper ignores both and walks the training seed's own path sequence.
@@ -169,6 +178,7 @@ class _Model:
         self.saved.append(path)
 
 
+@pytest.mark.invariant
 def test_the_sb3_adapter_acts_greedily_and_saves_through_the_model(tmp_path: Path) -> None:
     model = _Model()
     policy = SB3Policy(model)
@@ -178,6 +188,7 @@ def test_the_sb3_adapter_acts_greedily_and_saves_through_the_model(tmp_path: Pat
     assert model.saved == [tmp_path / "policy.zip"]
 
 
+@pytest.mark.behaviour
 def test_the_frozen_set_is_hashed_and_reports_when_the_library_is_absent(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -193,6 +204,7 @@ def test_the_frozen_set_is_hashed_and_reports_when_the_library_is_absent(
     assert record.render().startswith(f"{len(record.values)} PPO hyperparameters")
 
 
+@pytest.mark.internal
 def test_the_record_names_what_drifted_from_the_library() -> None:
     drifted = HyperparameterRecord({}, "abc", "9.9.9", False, ("ent_coef", "n_steps"))
     assert "differ from the stable-baselines3 9.9.9 defaults in ent_coef, n_steps" in (

@@ -56,6 +56,7 @@ SWEEP = SweepConfig(base=SHORT, premiums=(0.0, 2.0), arms=("flat", "delta_seller
 # -- the orchestration contract --------------------------------------------- #
 
 
+@pytest.mark.invariant
 def test_a_cell_changes_only_the_premium_and_the_arm() -> None:
     cfg = cell_config(SWEEP, 2.0, "delta_seller")
     assert cfg.market.iv_premium_vol_pts == 2.0
@@ -69,6 +70,7 @@ def test_a_cell_changes_only_the_premium_and_the_arm() -> None:
     )
 
 
+@pytest.mark.invariant
 def test_cells_are_run_configs_keyed_by_hash_and_written_as_run_directories(
     tmp_path: Path,
 ) -> None:
@@ -88,6 +90,7 @@ def test_cells_are_run_configs_keyed_by_hash_and_written_as_run_directories(
     assert (tmp_path / SWEEP_FILENAME).exists()
 
 
+@pytest.mark.invariant
 @pytest.mark.slow
 def test_arms_at_one_premium_share_their_episode_seeds_exactly(tmp_path: Path) -> None:
     record = run_sweep(SWEEP, tmp_path)
@@ -97,6 +100,7 @@ def test_arms_at_one_premium_share_their_episode_seeds_exactly(tmp_path: Path) -
         assert [row.seed for row in rows] == expected, cell.run_id
 
 
+@pytest.mark.invariant
 @pytest.mark.slow
 def test_p3_a_second_run_is_bit_identical(tmp_path: Path) -> None:
     a = run_sweep(SWEEP, tmp_path / "a")
@@ -112,6 +116,7 @@ def test_p3_a_second_run_is_bit_identical(tmp_path: Path) -> None:
     ).read_bytes()
 
 
+@pytest.mark.invariant
 @pytest.mark.slow
 def test_a_sweep_resumes_from_valid_cells_and_recomputes_only_the_missing(
     tmp_path: Path,
@@ -142,6 +147,7 @@ def test_a_sweep_resumes_from_valid_cells_and_recomputes_only_the_missing(
     assert third == first
 
 
+@pytest.mark.behaviour
 def test_the_sweep_record_round_trips_and_refuses_an_unknown_schema(tmp_path: Path) -> None:
     record = run_sweep(SWEEP, tmp_path)
     assert read_sweep(tmp_path) == record
@@ -151,6 +157,7 @@ def test_the_sweep_record_round_trips_and_refuses_an_unknown_schema(tmp_path: Pa
         read_sweep(tmp_path)
 
 
+@pytest.mark.behaviour
 def test_a_sweep_config_must_have_distinct_premiums_and_at_least_one_arm() -> None:
     with pytest.raises(ValueError, match="premiums"):
         SweepConfig(base=SHORT, premiums=(1.0, 1.0), arms=("flat",))
@@ -163,6 +170,7 @@ def test_a_sweep_config_must_have_distinct_premiums_and_at_least_one_arm() -> No
 # -- the pre-registered predictions ----------------------------------------- #
 
 
+@pytest.mark.invariant
 def test_p1_flat_is_exactly_zero_at_every_premium(tmp_path: Path) -> None:
     record = run_sweep(SWEEP, tmp_path)
     for premium in SWEEP.premiums:
@@ -172,6 +180,7 @@ def test_p1_flat_is_exactly_zero_at_every_premium(tmp_path: Path) -> None:
         assert all(row.pnl == 0.0 for row in read_run(tmp_path / cell.run_id).episodes)
 
 
+@pytest.mark.invariant
 def test_p2_the_fixed_delta_seller_collects_a_planted_premium(tmp_path: Path) -> None:
     record = run_sweep(SWEEP, tmp_path)
     at_zero = read_run(tmp_path / record.cell(0.0, "delta_seller").run_id).episodes
@@ -193,6 +202,7 @@ def test_p2_the_fixed_delta_seller_collects_a_planted_premium(tmp_path: Path) ->
 # -- the pilot matrix: the scripted negative control --------------------------- #
 
 
+@pytest.mark.invariant
 def test_pilot_matrix_blocks_use_disjoint_path_seeds() -> None:
     S, N = 4, 5
     matrix = pilot_matrix(SHORT, S, N, lambda _: DeltaSellerPolicy())
@@ -204,6 +214,7 @@ def test_pilot_matrix_blocks_use_disjoint_path_seeds() -> None:
             assert matrix[i, j] == direct.pnl, (i, j)
 
 
+@pytest.mark.invariant
 @pytest.mark.slow
 def test_a_scripted_policy_shows_no_seed_effect_across_a_seed_sweep() -> None:
     # Under no seed effect E[MS_between] = E[MS_within], so (MS_between - MS_within)/N has

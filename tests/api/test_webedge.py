@@ -65,6 +65,7 @@ def roots(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Path, Path]:
 GH = grid_filename(GRID).removeprefix("grid-").removesuffix(".json")
 
 
+@pytest.mark.behaviour
 def test_the_list_names_every_edge_file_and_each_grids_commands(
     roots: tuple[Path, Path, Path], tmp_path: Path
 ) -> None:
@@ -83,6 +84,7 @@ def test_the_list_names_every_edge_file_and_each_grids_commands(
     assert empty.files == [] and empty.grids == [] and "make edge" in empty.command
 
 
+@pytest.mark.invariant
 def test_the_detail_is_the_edge_as_written_with_each_cells_run(
     roots: tuple[Path, Path, Path],
 ) -> None:
@@ -106,6 +108,7 @@ def test_the_detail_is_the_edge_as_written_with_each_cells_run(
     assert v.edge_detail(attr, runs, f"grid-{GH}.json").name == out.name
 
 
+@pytest.mark.behaviour
 def test_a_partial_read_alone_is_served_and_a_missing_or_bad_grid_is_refused(
     roots: tuple[Path, Path, Path], tmp_path: Path
 ) -> None:
@@ -160,6 +163,7 @@ def client(roots: tuple[Path, Path, Path], tmp_path: Path, gate_docs: Path) -> I
         yield c
 
 
+@pytest.mark.invariant
 def test_the_routes_serve_the_edge_files_and_one_grids_edge(
     client: object, roots: tuple[Path, Path, Path], tmp_path: Path
 ) -> None:
@@ -183,6 +187,7 @@ def test_the_routes_serve_the_edge_files_and_one_grids_edge(
     assert str(tmp_path) not in missing.text and str(runs) not in missing.text
 
 
+@pytest.mark.invariant
 def test_the_routes_serve_a_grids_action_mix_and_a_runs(
     client: object, roots: tuple[Path, Path, Path], tmp_path: Path
 ) -> None:
@@ -205,6 +210,7 @@ def test_the_routes_serve_a_grids_action_mix_and_a_runs(
     assert str(tmp_path) not in absent.text and str(runs) not in absent.text
 
 
+@pytest.mark.behaviour
 def test_a_differing_cell_counts_its_episodes_from_its_runs_attribution(
     roots: tuple[Path, Path, Path], tmp_path: Path
 ) -> None:

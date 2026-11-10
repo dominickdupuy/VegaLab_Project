@@ -19,6 +19,7 @@ import pytest
 from scripts import wrds_extract
 
 
+@pytest.mark.behaviour
 def test_help_needs_neither_wrds_nor_arguments(capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit) as exit_:
         wrds_extract.main(["--help"])
@@ -26,6 +27,7 @@ def test_help_needs_neither_wrds_nor_arguments(capsys: pytest.CaptureFixture[str
     assert "out first_year last_year [secids]" in capsys.readouterr().out
 
 
+@pytest.mark.behaviour
 def test_the_account_is_the_flag_else_the_environment_and_never_a_default(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -39,6 +41,7 @@ def test_the_account_is_the_flag_else_the_environment_and_never_a_default(
     assert wrds_extract.connect("someone")["wrds_username"] == "someone"
 
 
+@pytest.mark.behaviour
 def test_a_pull_with_no_account_stops_before_connecting(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -55,6 +58,7 @@ def test_a_pull_with_no_account_stops_before_connecting(
     assert not (tmp_path / "out").exists()
 
 
+@pytest.mark.invariant
 def test_the_vendored_ticker_list_maps_tickers_to_secids() -> None:
     secids = json.loads(wrds_extract.SECIDS.read_text())
     assert secids["SPX"] == [108105]
@@ -69,6 +73,7 @@ class FakeDB:
         pass
 
 
+@pytest.mark.behaviour
 def test_a_pull_writes_per_ticker_year_and_resumes(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

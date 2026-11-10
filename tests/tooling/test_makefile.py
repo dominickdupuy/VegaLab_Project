@@ -35,6 +35,7 @@ def _dry_run(cwd: Path, *args: str) -> str:
     return out.stdout
 
 
+@pytest.mark.behaviour
 @pytest.mark.parametrize("scripts", [False, True])
 def test_the_default_interpreter_is_the_venv_this_platform_made(
     tmp_path: Path, scripts: bool
@@ -47,21 +48,25 @@ def test_the_default_interpreter_is_the_venv_this_platform_made(
     assert _dry_run(tmp_path, "gate", "PY=py").split()[0] == "py"  # an explicit PY wins
 
 
+@pytest.mark.behaviour
 def test_the_m2_target_passes_its_args_through(tmp_path: Path) -> None:
     line = _dry_run(tmp_path, "m2", "ARGS=--runs /tmp/r", "PY=py").strip()
     assert line == "py -m scripts.m2_gate_report --runs /tmp/r"
 
 
+@pytest.mark.behaviour
 def test_the_m4_target_passes_its_args_through(tmp_path: Path) -> None:
     line = _dry_run(tmp_path, "m4", "ARGS=--root /tmp/r", "PY=py").strip()
     assert line == "py -m scripts.m4_analysis --root /tmp/r"
 
 
+@pytest.mark.behaviour
 def test_the_m4gate_target_passes_its_args_through(tmp_path: Path) -> None:
     line = _dry_run(tmp_path, "m4gate", "ARGS=--runs-root /tmp/r", "PY=py").strip()
     assert line == "py -m scripts.m4_gate_report --runs-root /tmp/r"
 
 
+@pytest.mark.behaviour
 def test_the_script_targets_import_the_checkout_they_live_in(tmp_path: Path) -> None:
     # `python scripts/x.py` puts scripts/ first on the path, and optspread then comes from
     # whatever a shared venv's editable install points at; `-m scripts.x` imports this one.
@@ -79,6 +84,7 @@ def _fake_python(where: Path, name: str, version: tuple[int, int]) -> None:
     script.chmod(0o755)
 
 
+@pytest.mark.behaviour
 @pytest.mark.skipif(os.name == "nt", reason="the POSIX bootstrap probe")
 def test_make_reproduce_bootstraps_with_a_python_new_enough_for_the_project(
     tmp_path: Path,

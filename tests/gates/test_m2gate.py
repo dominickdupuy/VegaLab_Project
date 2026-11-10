@@ -110,6 +110,7 @@ def _record(
     )
 
 
+@pytest.mark.internal
 def test_load_names_the_import_that_failed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.syspath_prepend(str(tmp_path))
     (tmp_path / "needs_dep.py").write_text("import not_a_real_dependency_xyz\n")
@@ -123,6 +124,7 @@ def test_load_names_the_import_that_failed(tmp_path: Path, monkeypatch: pytest.M
     assert m2gate._load("plain_mod", "x") == (1, "")
 
 
+@pytest.mark.behaviour
 def test_run_manifests_counts_the_valid_and_the_refused(tmp_path: Path) -> None:
     assert m2gate.run_manifests(tmp_path / "absent") == ([], 0)
     write_run(tmp_path, "a")
@@ -133,6 +135,7 @@ def test_run_manifests_counts_the_valid_and_the_refused(tmp_path: Path) -> None:
     assert [p.name for p, _ in runs] == ["a", "b"] and refused == 1
 
 
+@pytest.mark.behaviour
 def test_a_pilot_matrix_manifest_is_not_a_run(tmp_path: Path) -> None:
     write_matrix_manifest(tmp_path / "pilot")
     write_run(tmp_path, "r")
@@ -147,6 +150,7 @@ def test_a_pilot_matrix_manifest_is_not_a_run(tmp_path: Path) -> None:
 PINNED = {"learning_rate": 3e-4, "n_steps": 2048, "net_arch_pi": [64, 64], "ortho_init": True}
 
 
+@pytest.mark.behaviour
 def test_ppo_harness_absent_then_present(
     tmp_path: Path, fake_module: Callable[..., None], monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -176,6 +180,7 @@ def test_ppo_harness_absent_then_present(
     blocked(m2gate.ppo_harness_item(tmp_path), "2.3.2 defaults: n_steps, ortho_init")
 
 
+@pytest.mark.behaviour
 def test_ppo_harness_without_the_library(
     tmp_path: Path, fake_module: Callable[..., None], monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -187,6 +192,7 @@ def test_ppo_harness_without_the_library(
     assert "4 pinned values, hash 0123abcd" in item.evidence
 
 
+@pytest.mark.behaviour
 def test_ppo_harness_reads_the_real_record(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from optspread import train
 
@@ -215,6 +221,7 @@ def with_policy(run_dir: Path, write: Callable[[Path], None]) -> None:
     manifest.write(run_dir)
 
 
+@pytest.mark.invariant
 def test_ppo_harness_refuses_a_stand_in_learners_run(
     tmp_path: Path, fake_module: Callable[..., None], monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -246,6 +253,7 @@ def test_ppo_harness_refuses_a_stand_in_learners_run(
     assert callable_name(train_ppo) == "optspread.train.train_ppo"
 
 
+@pytest.mark.invariant
 @pytest.mark.slow
 def test_a_pilot_from_before_the_trainer_was_recorded_is_judged_by_its_cells(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -281,6 +289,7 @@ def test_a_pilot_from_before_the_trainer_was_recorded_is_judged_by_its_cells(
     blocked(m2gate.pilot_item(root), f"PPO cell {gone.run_id} has no valid manifest")
 
 
+@pytest.mark.invariant
 def test_replay_absent_empty_mismatched_raising_and_matching(
     tmp_path: Path, fake_module: Callable[..., None], monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -317,6 +326,7 @@ def test_replay_absent_empty_mismatched_raising_and_matching(
     blocked(m2gate.replay_item(tmp_path), "disk full")
 
 
+@pytest.mark.behaviour
 def test_replay_covers_a_ppo_run_and_a_scripted_run(
     tmp_path: Path, fake_module: Callable[..., None], monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -340,6 +350,7 @@ def test_replay_covers_a_ppo_run_and_a_scripted_run(
     assert "no PPO run" not in item.evidence and "no scripted run" not in item.evidence
 
 
+@pytest.mark.invariant
 def test_dashboard_absent_then_live(
     tmp_path: Path, fake_module: Callable[..., None], monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -394,6 +405,7 @@ def test_dashboard_absent_then_live(
     blocked(m2gate.dashboard_item(runs, docs), "manifest_v2")
 
 
+@pytest.mark.behaviour
 def test_dashboard_reads_the_real_data_layer(tmp_path: Path) -> None:
     runs, docs = tmp_path / "runs", tmp_path / "docs"
     write_run(runs, "r1")
@@ -411,6 +423,7 @@ def test_dashboard_reads_the_real_data_layer(tmp_path: Path) -> None:
     assert "reads 1 of 1 sidecars" in item.evidence
 
 
+@pytest.mark.invariant
 def test_dashboard_fails_on_a_real_board_whose_verdict_line_was_edited(tmp_path: Path) -> None:
     runs, docs = tmp_path / "runs", tmp_path / "docs"
     write_run(runs, "r1")
@@ -433,6 +446,7 @@ def suite(real: ConformanceReport) -> Callable[[], tuple[ConformanceReport, ...]
     return lambda: (synthetic, real)
 
 
+@pytest.mark.behaviour
 def test_the_adapter_clears_only_on_a_real_conforming_source(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -485,6 +499,7 @@ def pilot_matrix(seed: int = 0, S: int = 8, N: int = 40) -> np.ndarray:
     return rng.normal(0.0, 300.0, size=(S, 1)) + rng.normal(0.0, 400.0, size=(S, N))
 
 
+@pytest.mark.behaviour
 def test_the_pilot_item_refuses_everything_short_of_a_recorded_matrix(tmp_path: Path) -> None:
     blocked(m2gate.pilot_item(tmp_path / "pilot"), "pilot not run")
 
@@ -515,6 +530,7 @@ def test_the_pilot_item_refuses_everything_short_of_a_recorded_matrix(tmp_path: 
     blocked(m2gate.pilot_item(tmp_path / "nan"), "every entry finite")
 
 
+@pytest.mark.invariant
 def test_the_pilot_item_refuses_a_throwaway_or_mislabelled_matrix(tmp_path: Path) -> None:
     # What `make train-smoke` writes: 2 seeds x 3 episodes.
     write_pilot(tmp_path / "smoke", pilot_matrix(S=2, N=3))
@@ -534,6 +550,7 @@ def test_the_pilot_item_refuses_a_throwaway_or_mislabelled_matrix(tmp_path: Path
     )
 
 
+@pytest.mark.invariant
 def test_the_pilot_item_reports_the_contrast_and_the_control(tmp_path: Path) -> None:
     ppo, oracle = pilot_matrix(), pilot_matrix(seed=1) * 0.1
     write_pilot(tmp_path, ppo, oracle)
@@ -559,6 +576,7 @@ def test_the_pilot_item_reports_the_contrast_and_the_control(tmp_path: Path) -> 
     assert "no design up to 64 seeds is feasible" in hopeless.evidence
 
 
+@pytest.mark.invariant
 @pytest.mark.slow
 def test_the_pilot_item_on_a_real_pilot_checks_the_grid(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -591,6 +609,7 @@ def test_the_pilot_item_on_a_real_pilot_checks_the_grid(
     blocked(m2gate.pilot_item(tmp_path), "S = 6 seeds, the grid record 5")
 
 
+@pytest.mark.invariant
 @pytest.mark.slow
 def test_the_analysis_item_passes_live_and_names_its_numbers() -> None:
     item = m2gate.analysis_item(replications=4_000)
@@ -603,6 +622,7 @@ def test_the_analysis_item_passes_live_and_names_its_numbers() -> None:
     assert "cost drag" in item.criterion
 
 
+@pytest.mark.invariant
 @pytest.mark.slow
 def test_the_analysis_item_fails_when_the_event_fires_in_the_null_world(
     monkeypatch: pytest.MonkeyPatch,
@@ -614,6 +634,7 @@ def test_the_analysis_item_fails_when_the_event_fires_in_the_null_world(
     blocked(m2gate.analysis_item(replications=2_000), "fires at 0.99")
 
 
+@pytest.mark.invariant
 @pytest.mark.slow
 def test_the_analysis_item_fails_when_the_null_world_accepts_a_replaced_event(
     monkeypatch: pytest.MonkeyPatch,
@@ -622,6 +643,7 @@ def test_the_analysis_item_fails_when_the_null_world_accepts_a_replaced_event(
     blocked(m2gate.analysis_item(replications=2_000), "did not refuse a replaced event")
 
 
+@pytest.mark.invariant
 def test_the_analysis_item_fails_when_the_gate_would_accept_a_wrong_rule(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -631,6 +653,7 @@ def test_the_analysis_item_fails_when_the_gate_would_accept_a_wrong_rule(
     blocked(m2gate.analysis_item(replications=500), "accepted a wrong rule: not actually wrong")
 
 
+@pytest.mark.invariant
 @pytest.mark.slow
 def test_the_analysis_item_fails_when_the_pipeline_misses_the_closed_form(
     monkeypatch: pytest.MonkeyPatch,
@@ -664,6 +687,7 @@ def repo(tmp_path: Path) -> Path:
     return tmp_path
 
 
+@pytest.mark.invariant
 def test_the_pre_registration_item_walks_from_untracked_to_tagged(repo: Path) -> None:
     prereg = repo / "docs" / "PRE_REGISTRATION.md"
     blocked(m2gate.prereg_item(repo), "is not tracked")
@@ -693,6 +717,7 @@ def test_the_pre_registration_item_walks_from_untracked_to_tagged(repo: Path) ->
     blocked(m2gate.prereg_item(repo), "edited in place after prereg-m2")
 
 
+@pytest.mark.invariant
 def test_the_pre_registration_tag_must_hold_the_file_and_sit_on_this_history(
     repo: Path,
 ) -> None:
@@ -715,6 +740,7 @@ def test_the_pre_registration_tag_must_hold_the_file_and_sit_on_this_history(
 # -- the report command ------------------------------------------------------ #
 
 
+@pytest.mark.behaviour
 def test_the_report_defaults_its_roots_to_the_shared_folder(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -740,6 +766,7 @@ def test_the_report_defaults_its_roots_to_the_shared_folder(
     assert str(data) not in text
 
 
+@pytest.mark.behaviour
 def test_a_written_report_names_roots_portably(monkeypatch: pytest.MonkeyPatch) -> None:
     from scripts.m2_gate_report import portable
 
@@ -748,6 +775,7 @@ def test_a_written_report_names_roots_portably(monkeypatch: pytest.MonkeyPatch) 
     assert portable(text) == "$VEGALAB_DATA/runs and ~/elsewhere"
 
 
+@pytest.mark.behaviour
 def test_a_run_whose_files_moved_under_its_manifest_is_not_evidence(tmp_path: Path) -> None:
     good = write_run(tmp_path, "good")
     moved = write_run(tmp_path, "moved")

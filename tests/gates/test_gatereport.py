@@ -38,12 +38,14 @@ NO_CRITERION = GateItem(
 )
 
 
+@pytest.mark.behaviour
 def test_a_report_of_passes_clears() -> None:
     report = build_report("M1", [PASSING], date(2026, 10, 1))
     assert report.passed
     assert "PASS" in report.render()
 
 
+@pytest.mark.behaviour
 def test_a_failure_blocks_the_gate_and_is_named() -> None:
     report = build_report("M1", [PASSING, FAILING], date(2026, 10, 1))
     assert not report.passed
@@ -54,6 +56,7 @@ def test_a_failure_blocks_the_gate_and_is_named() -> None:
     assert "added twice" in rendered
 
 
+@pytest.mark.behaviour
 def test_evidence_without_a_stated_criterion_is_not_a_pass() -> None:
     report = build_report("M1", [PASSING, NO_CRITERION], date(2026, 10, 1))
     assert not report.passed, "a check with no stated rule must not clear a gate"
@@ -62,20 +65,24 @@ def test_evidence_without_a_stated_criterion_is_not_a_pass() -> None:
     assert "Items without a stated criterion" in report.render()
 
 
+@pytest.mark.behaviour
 def test_an_empty_report_does_not_clear() -> None:
     assert not build_report("M1", [], date(2026, 10, 1)).passed
 
 
+@pytest.mark.behaviour
 def test_a_pass_cannot_also_record_a_failure() -> None:
     with pytest.raises(ValueError, match="cannot record a first failure"):
         GateItem("x", "Dominick Dupuy", "c", "e", passed=True, failed_first="something")
 
 
+@pytest.mark.behaviour
 def test_a_failure_must_say_what_failed() -> None:
     with pytest.raises(ValueError, match="must record what failed first"):
         GateItem("x", "Dominick Dupuy", "c", "e", passed=False)
 
 
+@pytest.mark.behaviour
 def test_every_item_reaches_the_table() -> None:
     report = build_report("M1", [PASSING, FAILING, NO_CRITERION], date(2026, 10, 1))
     rendered = report.render()
@@ -84,6 +91,7 @@ def test_every_item_reaches_the_table() -> None:
         assert item.owner in rendered
 
 
+@pytest.mark.behaviour
 def test_a_pass_must_show_its_evidence() -> None:
     with pytest.raises(ValueError, match="evidence"):
         GateItem("x", "Dominick Dupuy", "c", "  ", passed=True)
@@ -95,6 +103,7 @@ DOCS = Path(__file__).resolve().parent.parent.parent / "docs"
 FAILED_NO_CRITERION = GateItem("Pilot", "Dominick Dupuy", "", "a matrix", False, "not run")
 
 
+@pytest.mark.behaviour
 def test_the_sidecar_has_exactly_the_dashboard_schema() -> None:
     report = build_report("M2", [PASSING, FAILING, NO_CRITERION], date(2026, 10, 29))
     doc = json.loads(report.render_json())
@@ -113,6 +122,7 @@ def test_the_sidecar_has_exactly_the_dashboard_schema() -> None:
     assert json.loads(cleared.render_json())["verdict"] == "PASS"
 
 
+@pytest.mark.behaviour
 def test_write_puts_both_halves_of_one_build_side_by_side(tmp_path: Path) -> None:
     report = build_report("M2", [PASSING, FAILING], date(2026, 10, 29))
     md, sidecar = report.write(tmp_path / "nested" / "M2_GATE_REPORT.md")
@@ -121,6 +131,7 @@ def test_write_puts_both_halves_of_one_build_side_by_side(tmp_path: Path) -> Non
     assert json.loads(sidecar.read_text()) == report.to_dict()
 
 
+@pytest.mark.behaviour
 @pytest.mark.parametrize(
     "items",
     [[PASSING], [PASSING, FAILING], [PASSING, FAILING, NO_CRITERION, FAILED_NO_CRITERION]],
@@ -130,6 +141,7 @@ def test_a_rendered_report_reads_back_to_itself(items: list[GateItem]) -> None:
     assert GateReport.from_markdown(report.render()) == report
 
 
+@pytest.mark.behaviour
 def test_context_lines_sit_under_the_date_and_read_back() -> None:
     context = ("Runs root: /data/runs", "Pilot root: /data/runs/pilot")
     report = build_report("M2", [PASSING], date(2026, 10, 29), context)
@@ -140,6 +152,7 @@ def test_context_lines_sit_under_the_date_and_read_back() -> None:
     assert report.to_dict() == build_report("M2", [PASSING], date(2026, 10, 29)).to_dict()
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize("md", sorted(DOCS.glob("*_GATE_REPORT.md")), ids=lambda p: p.name)
 def test_every_committed_report_has_a_sidecar_from_the_same_build(md: Path) -> None:
     recorded = GateReport.from_markdown(md.read_text())
@@ -149,6 +162,7 @@ def test_every_committed_report_has_a_sidecar_from_the_same_build(md: Path) -> N
     assert json.loads(sidecar.read_text()) == recorded.to_dict()
 
 
+@pytest.mark.behaviour
 def test_a_hand_edited_report_is_refused() -> None:
     text = build_report("M1", [PASSING, FAILING], date(2026, 10, 1)).render()
     with pytest.raises(ValueError, match="re-render"):

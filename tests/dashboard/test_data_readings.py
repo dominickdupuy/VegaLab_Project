@@ -32,11 +32,13 @@ REPO_DOCS = Path(__file__).resolve().parent.parent.parent / "docs"
 # -- the small helpers ------------------------------------------------------------- #
 
 
+@pytest.mark.behaviour
 def test_signed_numbers_carry_a_sign_and_the_typographic_minus() -> None:
     assert p.signed(0.6396) == "+0.64" and p.signed(-0.3437) == f"{M}0.34"
     assert p.signed(0.0) == "+0.00" and p.signed(-2.68, 1) == f"{M}2.7"
 
 
+@pytest.mark.behaviour
 def test_the_trailing_mean_skips_holes_and_ends_where_the_data_do() -> None:
     x = np.asarray([1.0, 2.0, 3.0, np.nan, 5.0, np.nan])
     out = p.trailing_mean(x, window=2, min_count=1)
@@ -45,6 +47,7 @@ def test_the_trailing_mean_skips_holes_and_ends_where_the_data_do() -> None:
     assert np.isnan(p.trailing_mean(np.asarray([1.0, 2.0]), window=3)[0])  # 1 of 3 < 2/3
 
 
+@pytest.mark.behaviour
 def test_share_below_is_strict_and_ignores_nan() -> None:
     v_ = np.asarray([1.0, 2.0, 3.0, np.nan])
     assert p.share_below(v_, 2.0) == pytest.approx(1 / 3) and p.share_below(v_, 9.0) == 1.0
@@ -64,6 +67,7 @@ def _daily() -> p.Columns:
     )
 
 
+@pytest.mark.invariant
 def test_the_premium_is_the_mappings_definition_one_row_per_date() -> None:
     daily = _daily()
     s = p.premium_series(daily)
@@ -88,6 +92,7 @@ def test_the_premium_is_the_mappings_definition_one_row_per_date() -> None:
     assert s.smooth[j] == pytest.approx(np.nanmean(s.premium[max(0, j - 62) : j + 1]))
 
 
+@pytest.mark.behaviour
 def test_where_the_premium_stands_at_the_end_of_the_panel() -> None:
     s = p.premium_series(_daily())
     now = p.premium_now(s)
@@ -100,6 +105,7 @@ def test_where_the_premium_stands_at_the_end_of_the_panel() -> None:
     assert len(empty.date) == 0 and p.premium_now(empty) is None
 
 
+@pytest.mark.behaviour
 def test_the_place_on_the_sweeps_axis_in_words() -> None:
     axis = (0.0, 0.25, 0.5, 1.0, 2.0, 4.0)
     assert p.axis_place(0.64, vrp.bracket(0.64, axis), axis) == (
@@ -110,6 +116,7 @@ def test_the_place_on_the_sweeps_axis_in_words() -> None:
     assert p.axis_place(5.0, vrp.bracket(5.0, axis), axis) == "above the sweep's highest level (4)"
 
 
+@pytest.mark.behaviour
 def test_the_premium_reading_is_the_mappings_headline_in_words() -> None:
     m = json.loads((REPO_DOCS / "VRP_MAPPING.json").read_text())
     h = m["headline"]
@@ -155,6 +162,7 @@ def _grid(days: list[str], atm: list[float], put: list[float], year: list[float]
     )
 
 
+@pytest.mark.behaviour
 def test_the_shape_is_level_skew_and_term_slope_against_every_day() -> None:
     days = ["2025-01-02", "2025-01-03", "2025-01-06", "2025-01-07"]
     grid = _grid(days, [0.15, 0.16, 0.40, 0.12], [0.24, 0.25, 0.46, 0.22], [0.18, 0.19, 0.30, 0.16])
@@ -181,6 +189,7 @@ def test_the_shape_is_level_skew_and_term_slope_against_every_day() -> None:
     assert p.shape_on(h, date(2025, 1, 4)) is None  # a Saturday: not in the grid
 
 
+@pytest.mark.behaviour
 def test_the_shape_reading_says_only_what_the_grid_quotes() -> None:
     days = ["2025-01-02"]
     grid = _grid(days, [0.15], [float("nan")], [float("nan")])
@@ -196,6 +205,7 @@ def test_the_shape_reading_says_only_what_the_grid_quotes() -> None:
 # -- question 3: the simulator against the market ------------------------------------- #
 
 
+@pytest.mark.behaviour
 def test_where_the_simulator_and_the_market_differ_most() -> None:
     k = np.asarray([[-0.2, -0.05, 0.0, 0.02, 0.1], [-0.2, -0.05, 0.0, 0.02, 0.1]])
     real = np.asarray([[0.35, 0.25, 0.21, 0.20, np.nan], [0.30, 0.24, 0.22, 0.21, 0.18]])
@@ -222,6 +232,7 @@ def test_where_the_simulator_and_the_market_differ_most() -> None:
 # -- question 4 and the data quality line -------------------------------------------- #
 
 
+@pytest.mark.behaviour
 def test_the_seller_reading_names_the_strikes_the_credit_and_the_risk() -> None:
     text = p.seller_reading(
         "2022-06-13",
@@ -249,6 +260,7 @@ def test_the_seller_reading_names_the_strikes_the_credit_and_the_risk() -> None:
     assert "lose at most" not in naked and "keeps money" not in naked
 
 
+@pytest.mark.behaviour
 def test_the_quality_line() -> None:
     text = p.quality_reading(4213, "2010-01-04", "2026-10-02", 0, 43, 0.0027, 4, True, 0.0132)
     assert text == (
@@ -269,6 +281,7 @@ def built(panel_root: Path) -> w.PanelReader:
     return w.PanelReader(panel_root)
 
 
+@pytest.mark.behaviour
 def test_the_premium_payload(built: w.PanelReader) -> None:
     out = built.premium_out()
     s = p.premium_series(built.daily())
@@ -285,6 +298,7 @@ def test_the_premium_payload(built: w.PanelReader) -> None:
     assert headed.sweep_axis == mapping["sweep_axis"] and "+0.64" in headed.reading
 
 
+@pytest.mark.behaviour
 def test_the_shape_payload(built: w.PanelReader) -> None:
     out = built.shape_out(date(2025, 7, 1))
     assert out.atm is not None and 5.0 < out.atm < 50.0 and out.tenor == 30
@@ -296,6 +310,7 @@ def test_the_shape_payload(built: w.PanelReader) -> None:
         built.shape_out(date(2025, 7, 4))
 
 
+@pytest.mark.behaviour
 def test_the_simulated_payload_says_where_the_two_differ(built: w.PanelReader) -> None:
     sim = built.simulated_out(date(2025, 7, 1), 1.0)
     assert [r.name for r in sim.regions] == ["put", "atm", "call"]
@@ -309,6 +324,7 @@ def test_the_simulated_payload_says_where_the_two_differ(built: w.PanelReader) -
     assert "furthest from it in" in sim.reading
 
 
+@pytest.mark.behaviour
 def test_the_seller_payload_reads_in_words(built: w.PanelReader) -> None:
     out = v.seller_out(built, date(2025, 7, 1))
     shorts = sorted(leg.strike for leg in out.legs if leg.qty < 0)
@@ -317,6 +333,7 @@ def test_the_seller_payload_reads_in_words(built: w.PanelReader) -> None:
     assert f"collect ${out.credit:,.0f}" in out.reading
 
 
+@pytest.mark.invariant
 def test_the_quality_payload_checks_the_build_against_the_manifest(
     built: w.PanelReader, panel_root: Path, tmp_path: Path
 ) -> None:

@@ -46,6 +46,7 @@ def path(provider: SyntheticChainProvider | PlantedChainProvider, seed: int) -> 
 # -- the default effect is the market as it was ------------------------------ #
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize("premium", [0.0, 0.25, 1.0, 4.0, -3.7])
 def test_the_default_effect_is_bit_identical_to_the_constant_premium(premium: float) -> None:
     cfg = MarketConfig(iv_premium_vol_pts=premium, sigma=0.31, tenor_days=(7, 21, 63))
@@ -58,6 +59,7 @@ def test_the_default_effect_is_bit_identical_to_the_constant_premium(premium: fl
         assert a.spot == b.spot
 
 
+@pytest.mark.invariant
 def test_the_sources_plant_the_constant_premium_unless_told_otherwise() -> None:
     assert SyntheticSource(SHORT).effect is CONSTANT_PREMIUM
     assert OptionMetricsStubSource(SHORT).effect is CONSTANT_PREMIUM
@@ -69,6 +71,7 @@ def test_the_sources_plant_the_constant_premium_unless_told_otherwise() -> None:
 # -- the example effects ----------------------------------------------------- #
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize("effect", [CONSTANT_PREMIUM, *EXAMPLES])
 def test_zero_premium_is_the_null_world_under_every_effect(effect: PlantedEffect) -> None:
     null = path(SyntheticChainProvider(SHORT), 5)
@@ -77,6 +80,7 @@ def test_zero_premium_is_the_null_world_under_every_effect(effect: PlantedEffect
         assert np.all(a.ivs == SHORT.sigma)
 
 
+@pytest.mark.invariant
 def test_the_planted_effect_never_moves_the_path() -> None:
     cfg = SHORT.model_copy(update={"iv_premium_vol_pts": 2.0})
     spots = [c.spot for c in path(SyntheticChainProvider(cfg), 9)]
@@ -84,6 +88,7 @@ def test_the_planted_effect_never_moves_the_path() -> None:
         assert [c.spot for c in path(SyntheticChainProvider(cfg, effect), 9)] == spots
 
 
+@pytest.mark.behaviour
 def test_the_skew_premium_is_larger_on_out_of_the_money_puts() -> None:
     cfg = SHORT.model_copy(update={"iv_premium_vol_pts": 2.0})
     chain = SyntheticChainProvider(cfg, SkewPremium(put_slope=0.5)).reset(SeededStepRNG(0))
@@ -99,6 +104,7 @@ def test_the_skew_premium_is_larger_on_out_of_the_money_puts() -> None:
     assert calls[0, -1] > calls[0, chain.strikes.size // 2] > cfg.sigma
 
 
+@pytest.mark.behaviour
 def test_the_term_premium_is_larger_at_short_tenors() -> None:
     cfg = SHORT.model_copy(update={"iv_premium_vol_pts": 2.0, "tenor_days": (5, 20, 80)})
     chain = SyntheticChainProvider(cfg, TermPremium(ref_days=20)).reset(SeededStepRNG(0))
@@ -107,6 +113,7 @@ def test_the_term_premium_is_larger_at_short_tenors() -> None:
     np.testing.assert_allclose(premium[:, 0], [4.0, 2.0, 1.0], rtol=1e-12)
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize("effect", EXAMPLES)
 def test_the_example_effects_conform_and_do_not_leak(effect: PlantedEffect) -> None:
     cfg = SHORT.model_copy(update={"iv_premium_vol_pts": 3.0})
@@ -122,6 +129,7 @@ def test_the_example_effects_conform_and_do_not_leak(effect: PlantedEffect) -> N
     ).flagged
 
 
+@pytest.mark.behaviour
 @pytest.mark.parametrize("effect", EXAMPLES)
 @pytest.mark.parametrize("action", [IRON_CONDOR, SHORT_STRANGLE, PUT_CREDIT_SPREAD])
 def test_the_example_effects_price_a_sold_structure_rich(
@@ -143,6 +151,7 @@ class _Negative:
         return fair.ivs - 1.0
 
 
+@pytest.mark.invariant
 def test_an_effect_that_breaks_the_chain_fails_conformance() -> None:
     report = conformance_report(SyntheticSource(SHORT, _Negative()))
     assert not report.passed
@@ -152,6 +161,7 @@ def test_an_effect_that_breaks_the_chain_fails_conformance() -> None:
 # -- planting on a provider that plants nothing -------------------------------- #
 
 
+@pytest.mark.invariant
 def test_planting_on_a_null_provider_matches_the_market_at_that_premium() -> None:
     at = SHORT.model_copy(update={"iv_premium_vol_pts": 1.5})
     wrapped = PlantedChainProvider(SyntheticChainProvider(SHORT), CONSTANT_PREMIUM, 1.5)

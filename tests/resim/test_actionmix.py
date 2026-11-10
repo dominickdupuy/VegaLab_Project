@@ -137,6 +137,7 @@ def book_consistent(result: RunActionMix) -> None:
 # -- the run it reads ---------------------------------------------------------- #
 
 
+@pytest.mark.invariant
 @pytest.mark.parametrize("arm", SCRIPTED)
 def test_a_run_directory_is_reproduced_episode_for_episode_and_left_alone(
     arm: PolicyName, tmp_path: Path
@@ -154,6 +155,7 @@ def test_a_run_directory_is_reproduced_episode_for_episode_and_left_alone(
     assert snapshot(run_dir) == before
 
 
+@pytest.mark.invariant
 def test_agreement_allows_the_last_digits_and_nothing_more(tmp_path: Path) -> None:
     run_dir = write_scripted(SMALL, tmp_path / "run")
     rows = {row.seed: row for row in read_run(run_dir).episodes}
@@ -172,6 +174,7 @@ def test_agreement_allows_the_last_digits_and_nothing_more(tmp_path: Path) -> No
     assert missing.agrees is False and missing.episodes[1].pnl_diff is None
 
 
+@pytest.mark.invariant
 def test_a_subset_of_seeds_and_an_edited_run(tmp_path: Path) -> None:
     run_dir = write_scripted(SMALL.model_copy(update={"policy": "random"}), tmp_path / "run")
     result = mix_run(run_dir, seeds=[SMALL.seed + 2])
@@ -185,6 +188,7 @@ def test_a_subset_of_seeds_and_an_edited_run(tmp_path: Path) -> None:
         mix_run(run_dir)
 
 
+@pytest.mark.invariant
 def test_a_run_is_read_on_its_recorded_source_and_refused_on_another_panel(
     tmp_path: Path,
 ) -> None:
@@ -204,6 +208,7 @@ def test_a_run_is_read_on_its_recorded_source_and_refused_on_another_panel(
 # -- what the scripted arms trade ---------------------------------------------- #
 
 
+@pytest.mark.invariant
 def test_the_fixed_delta_seller_opens_condors_at_its_deltas_and_rolls_them() -> None:
     config = RunConfig(policy="delta_seller", n_episodes=6, cost=CostConfig(enabled=True))
     result = mix_config(config)
@@ -233,6 +238,7 @@ def test_the_fixed_delta_seller_opens_condors_at_its_deltas_and_rolls_them() -> 
     assert s.holding_days is not None and s.holding_days.max == 37.0
 
 
+@pytest.mark.invariant
 def test_always_on_holds_to_expiry_and_flat_never_trades() -> None:
     always = mix_config(RunConfig(policy="always_on", n_episodes=3))
     book_consistent(always)
@@ -244,6 +250,7 @@ def test_always_on_holds_to_expiry_and_flat_never_trades() -> None:
     assert all(st.n_opens == 0 and st.open_share == 0.0 for st in flat.summary.structures.values())
 
 
+@pytest.mark.invariant
 def test_a_small_account_is_refused_and_breached_and_the_record_says_which() -> None:
     result = mix_config(TIGHT, policy=AlwaysOnPolicy(SHORT_STRANGLE))
     s = result.summary
@@ -256,6 +263,7 @@ def test_a_small_account_is_refused_and_breached_and_the_record_says_which() -> 
     assert sum(d.refused for d in s.by_day) == s.n_refused
 
 
+@pytest.mark.invariant
 def test_a_random_policy_shows_every_event_and_the_book_still_adds_up() -> None:
     config = TIGHT.model_copy(update={"policy": "random", "n_episodes": 8})
     result = mix_config(config, policy=RandomPolicy())
@@ -266,6 +274,7 @@ def test_a_random_policy_shows_every_event_and_the_book_still_adds_up() -> None:
     assert sum(result.summary.action_share.values()) == pytest.approx(1.0)
 
 
+@pytest.mark.invariant
 def test_a_learned_run_is_read_with_its_saved_policy(tmp_path: Path) -> None:
     execute_run(LEARNED, tmp_path / "ppo", fake_trainer)
     result = mix_run(tmp_path / "ppo", load_policy=fake_loader)
@@ -279,6 +288,7 @@ def test_a_learned_run_is_read_with_its_saved_policy(tmp_path: Path) -> None:
         mix_config(LEARNED)
 
 
+@pytest.mark.behaviour
 def test_a_missing_learner_or_policy_is_refused_with_what_to_do(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -295,6 +305,7 @@ def test_a_missing_learner_or_policy_is_refused_with_what_to_do(
         mix_run(run_dir, load_policy=fake_loader)
 
 
+@pytest.mark.internal
 def test_the_tap_must_be_bound_before_the_path_moves() -> None:
     tap = _Tap(SyntheticChainProvider(MarketConfig()))
     tap.reset(SeededStepRNG(0))
@@ -321,6 +332,7 @@ def grid_root(tmp_path: Path) -> Path:
     return root
 
 
+@pytest.mark.invariant
 def test_a_grid_gives_the_mix_per_cell_and_pooled_per_arm_and_premium(grid_root: Path) -> None:
     before = snapshot(grid_root)
     grid, cells = mix_grid(grid_root, load_policy=fake_loader)
@@ -345,6 +357,7 @@ def test_a_grid_gives_the_mix_per_cell_and_pooled_per_arm_and_premium(grid_root:
     assert snapshot(grid_root) == before
 
 
+@pytest.mark.invariant
 @pytest.mark.spawns_processes
 def test_a_grid_can_keep_the_scripted_arm_alone_and_run_on_workers(grid_root: Path) -> None:
     serial, _ = mix_grid(grid_root, arms=["delta_seller"], first=2)
@@ -361,6 +374,7 @@ def test_a_grid_can_keep_the_scripted_arm_alone_and_run_on_workers(grid_root: Pa
         mix_grid(grid_root, arms=["delta_seller"])
 
 
+@pytest.mark.behaviour
 def test_finding_the_grid_file(grid_root: Path, tmp_path: Path) -> None:
     (only,) = grid_root.glob("grid-*.json")
     assert find_grid(grid_root) == only == find_grid(only)
@@ -374,6 +388,7 @@ def test_finding_the_grid_file(grid_root: Path, tmp_path: Path) -> None:
 # -- the JSON ------------------------------------------------------------------ #
 
 
+@pytest.mark.behaviour
 def test_the_json_round_trips_and_can_be_lean(tmp_path: Path, grid_root: Path) -> None:
     result = mix_config(SMALL)
     path = write_mix(result, tmp_path / "out" / output_name(result))
@@ -395,6 +410,7 @@ def test_the_json_round_trips_and_can_be_lean(tmp_path: Path, grid_root: Path) -
     assert dump_mix(grid, episodes=False) == dump_mix(grid)
 
 
+@pytest.mark.behaviour
 def test_the_mix_is_never_written_into_a_run_or_a_sweep_root(
     tmp_path: Path, grid_root: Path
 ) -> None:
@@ -406,6 +422,7 @@ def test_the_mix_is_never_written_into_a_run_or_a_sweep_root(
         write_mix(result, grid_root / "mix.json")
 
 
+@pytest.mark.behaviour
 def test_another_schema_version_is_refused(tmp_path: Path) -> None:
     result = mix_config(RunConfig(policy="flat", n_episodes=1))
     path = tmp_path / "a.json"
@@ -430,6 +447,7 @@ def test_another_schema_version_is_refused(tmp_path: Path) -> None:
         read_grid_mix(path)
 
 
+@pytest.mark.behaviour
 def test_the_default_root_is_outside_every_run_and_can_be_moved(tmp_path: Path) -> None:
     assert default_root({}) == REPO_ROOT / "actionmix"
     assert default_root({ACTIONMIX_ENV: str(tmp_path)}) == tmp_path
@@ -440,6 +458,7 @@ def test_the_default_root_is_outside_every_run_and_can_be_moved(tmp_path: Path) 
 # -- the command and make -------------------------------------------------------- #
 
 
+@pytest.mark.behaviour
 def test_the_command_reads_runs_grids_and_configs(
     tmp_path: Path, grid_root: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -489,6 +508,7 @@ def test_the_command_reads_runs_grids_and_configs(
     assert next(stub.glob("*.json")).name.endswith(".optionmetrics_stub.json")
 
 
+@pytest.mark.behaviour
 def test_the_command_says_no(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -526,6 +546,7 @@ def test_the_command_says_no(
     assert "stable-baselines3" in capsys.readouterr().err
 
 
+@pytest.mark.behaviour
 @pytest.mark.skipif(shutil.which("make") is None, reason="needs make")
 def test_the_make_target_passes_its_args_through(tmp_path: Path) -> None:
     env = {"PATH": "/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin"}
@@ -562,6 +583,7 @@ def mix_root(tmp_path: Path, grid_root: Path) -> Path:
     return out
 
 
+@pytest.mark.behaviour
 def test_the_payload_reads_a_run_or_a_grid_and_says_what_is_missing(mix_root: Path) -> None:
     (grid_file,) = mix_root.glob("grid-*.json")
     grid_hash = grid_file.stem.removeprefix("grid-")
@@ -591,6 +613,7 @@ def test_the_payload_reads_a_run_or_a_grid_and_says_what_is_missing(mix_root: Pa
             webapi.action_mix(mix_root, **kwargs)
 
 
+@pytest.mark.behaviour
 def test_the_payload_defaults_to_the_actionmix_root(
     mix_root: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -599,6 +622,7 @@ def test_the_payload_defaults_to_the_actionmix_root(
     assert webapi.action_mix(grid=grid_file.name).path == str(grid_file)
 
 
+@pytest.mark.behaviour
 def test_the_route_serves_the_payload(
     mix_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, gate_docs: Path
 ) -> None:
@@ -627,6 +651,7 @@ def test_the_route_serves_the_payload(
         assert client.get("/api/runs/actionmix").status_code == 422
 
 
+@pytest.mark.invariant
 def test_a_config_on_the_real_source_is_mixed_on_its_evaluation_range(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -37,11 +37,13 @@ def written(tmp_path: Path) -> Path:
     return tmp_path
 
 
+@pytest.mark.behaviour
 def test_run_directory_has_both_halves(written: Path) -> None:
     assert (written / RUN_FILENAME).exists()
     assert (written / MANIFEST_FILENAME).exists()
 
 
+@pytest.mark.invariant
 def test_record_round_trips_every_episode(written: Path) -> None:
     record = read_run(written)
     assert record.schema_version == SCHEMA_VERSION
@@ -51,6 +53,7 @@ def test_record_round_trips_every_episode(written: Path) -> None:
     assert record.run_id == f"{config_hash(SMALL)}-s7"
 
 
+@pytest.mark.invariant
 def test_summary_fields_agree_with_the_episode_rows(written: Path) -> None:
     record = read_run(written)
     assert record.mean_pnl == pytest.approx(
@@ -61,6 +64,7 @@ def test_summary_fields_agree_with_the_episode_rows(written: Path) -> None:
     )
 
 
+@pytest.mark.invariant
 def test_manifest_hashes_the_results_file(written: Path) -> None:
     manifest = RunManifest.read(written)
     assert RUN_FILENAME in manifest.artifacts
@@ -68,6 +72,7 @@ def test_manifest_hashes_the_results_file(written: Path) -> None:
     assert manifest.config_hash == config_hash(SMALL)
 
 
+@pytest.mark.behaviour
 def test_an_unknown_schema_version_is_refused_not_misread(written: Path) -> None:
     record = read_run(written)
     bumped = record.model_copy(update={"schema_version": SCHEMA_VERSION + 1})
@@ -76,6 +81,7 @@ def test_an_unknown_schema_version_is_refused_not_misread(written: Path) -> None
         read_run(written)
 
 
+@pytest.mark.internal
 def test_the_record_is_frozen() -> None:
     record = RunRecord.of(SMALL, summarize(run_episodes(SMALL)), run_episodes(SMALL))
     with pytest.raises(Exception, match=r"frozen"):
