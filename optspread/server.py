@@ -16,6 +16,8 @@ from optspread.api.server import CACHE_ENV as CACHE_ENV
 from optspread.api.server import IMMUTABLE as IMMUTABLE
 from optspread.api.server import LOCAL_HOSTS as LOCAL_HOSTS
 from optspread.api.server import WEB_DIR as WEB_DIR
+from optspread.api.server import Day as Day
+from optspread.api.server import OptionalDay as OptionalDay
 from optspread.api.server import Settings as Settings
 from optspread.api.server import _day as _day
 from optspread.api.server import allowed_hosts as allowed_hosts
