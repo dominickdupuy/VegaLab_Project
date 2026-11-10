@@ -284,6 +284,27 @@ def test_a_bad_grid_key_is_not_found(grid_root: Path, tmp_path: Path) -> None:
     assert w.sweeps(tmp_path).sweeps == []  # an unreadable record is left out
 
 
+@pytest.mark.parametrize("spelling", ["relative", "dot-dot"])
+def test_a_grid_and_its_runs_open_however_the_runs_root_is_spelled(
+    grid_root: Path, spelling: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A runs root not spelled as its resolved path (relative, through ``..``, a short
+    name or a link) opens the grid, and a cell's run keeps its key and its sweep."""
+    if spelling == "relative":
+        monkeypatch.chdir(grid_root.parent)
+        root = Path(grid_root.name)
+    else:
+        root = grid_root / ".." / grid_root.name
+    assert root != grid_root and root.resolve() == grid_root.resolve()
+    reference = w.sweep_detail(grid_root, grid_filename(GRID))
+    out = w.sweep_detail(root, grid_filename(GRID))
+    assert out.grid is not None and reference.grid is not None
+    assert [c.key for c in out.grid.cells] == [c.key for c in reference.grid.cells]
+    key = out.grid.cells[0].key
+    detail = w.run_detail(w.load_detail(root, key), root, w.index(root))
+    assert detail.row.key == key and detail.provenance.sweep_cells == len(out.grid.cells)
+
+
 # -- background tasks --------------------------------------------------------- #
 
 

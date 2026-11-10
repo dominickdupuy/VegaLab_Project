@@ -258,10 +258,17 @@ def resolve_run(root: Path, key: str) -> Path:
 
 
 def _inside(root: Path, key: str) -> Path | None:
-    """``root / key`` resolved, or None when it leaves the root or is not a path at all."""
+    """``root / key`` resolved, or None when it leaves the root or is not a path at all.
+
+    Judged on the resolved forms, but returned under ``root`` as the caller spells it
+    (relative, a short name, a link), so a path made from it is relative to that root as
+    every path read from the root's own listing is."""
     try:
+        resolved_root = root.resolve()
         target = (root / key).resolve()
-        return target if target.is_relative_to(root.resolve()) else None
+        if not target.is_relative_to(resolved_root):
+            return None
+        return root / target.relative_to(resolved_root)
     except (OSError, ValueError):  # a NUL byte, or a name the filesystem refuses
         return None
 
