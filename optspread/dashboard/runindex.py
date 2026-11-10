@@ -35,6 +35,7 @@ from numpy.typing import NDArray
 from pydantic import ValidationError
 
 from optspread.artifacts import RUN_FILENAME, RunRecord, read_run
+from optspread.fileio import env_path
 from optspread.manifest import MANIFEST_FILENAME, DataRecord, RunManifest, file_sha256
 from optspread.sweep import SWEEP_FILENAME
 
@@ -45,14 +46,12 @@ DOCS_ENV = "OPTSPREAD_DOCS"
 
 def runs_root(env: Mapping[str, str] | None = None) -> Path:
     """``$OPTSPREAD_RUNS`` if set, else ``runs/`` at the repository root."""
-    value = (os.environ if env is None else env).get(RUNS_ENV, "")
-    return Path(value).expanduser() if value else REPO_ROOT / "runs"
+    return env_path(RUNS_ENV, REPO_ROOT / "runs", env)
 
 
 def docs_dir(env: Mapping[str, str] | None = None) -> Path:
     """``$OPTSPREAD_DOCS`` if set, else ``docs/`` at the repository root."""
-    value = (os.environ if env is None else env).get(DOCS_ENV, "")
-    return Path(value).expanduser() if value else REPO_ROOT / "docs"
+    return env_path(DOCS_ENV, REPO_ROOT / "docs", env)
 
 
 # -- the run index ------------------------------------------------------------ #
