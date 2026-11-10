@@ -6,6 +6,8 @@ A report is read from the JSON sidecar ``optspread.gatereport`` writes when ther
 is one, else from its rendered markdown table. A report this reader cannot parse
 raises ``GateReportFormatError`` rather than being guessed around;
 ``load_gate_boards`` leaves it out and ``unreadable_gate_reports`` names it.
+``scan_gate_reports`` reads every report once and gives both, each unreadable one
+with the reason it did not parse.
 
 Moved from ``optspread.dashboard_data``, which re-exports it; ``optspread.m2gate``
 looks ``load_gate_boards`` up there by name.
@@ -13,11 +15,13 @@ looks ``load_gate_boards`` up there by name.
 
 from __future__ import annotations
 
-import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+
+from pydantic import ValidationError
+
+from optspread.gatereport import GateReportSidecar
 
 # -- the gate board ----------------------------------------------------------- #
 
@@ -103,31 +107,37 @@ def gate_milestones(docs: Path) -> tuple[str, ...]:
     return tuple(sorted(names, key=order))
 
 
+def _reason(exc: Exception) -> str:
+    """One line saying why: pydantic's first error with where it is, else the message."""
+    if isinstance(exc, ValidationError) and exc.errors():
+        first = exc.errors()[0]
+        where = ".".join(str(p) for p in first["loc"])
+        return f"{where}: {first['msg']}" if where else str(first["msg"])
+    return str(exc)
+
+
+def _board(sidecar: GateReportSidecar, source: Path, *, from_json: bool) -> GateBoard:
+    return GateBoard(
+        milestone=sidecar.milestone,
+        report_date=sidecar.report_date,
+        stated_verdict=sidecar.verdict,
+        items=tuple(
+            GateRow(i.name, i.owner, i.verdict, i.criterion, i.evidence, i.failed_first)
+            for i in sidecar.items
+        ),
+        source=source,
+        from_json=from_json,
+    )
+
+
 def parse_gate_json(text: str, source: Path) -> GateBoard:
-    """The JSON sidecar ``optspread.gatereport`` writes beside the markdown."""
+    """The JSON sidecar ``optspread.gatereport`` writes beside the markdown, read through
+    the same model that writes it (``GateReportSidecar``)."""
     try:
-        raw: Any = json.loads(text)
-        items = tuple(
-            GateRow(
-                name=str(i["name"]),
-                owner=str(i.get("owner", "")),
-                verdict=str(i["verdict"]),
-                criterion=str(i.get("criterion", "")),
-                evidence=str(i.get("evidence", "")),
-                failed_first=str(i.get("failed_first") or ""),
-            )
-            for i in raw["items"]
-        )
-        return GateBoard(
-            milestone=str(raw["milestone"]),
-            report_date=str(raw.get("report_date", "")),
-            stated_verdict=str(raw["verdict"]),
-            items=items,
-            source=source,
-            from_json=True,
-        )
+        sidecar = GateReportSidecar.parse(text)
     except (ValueError, KeyError, TypeError, AttributeError) as exc:
-        raise GateReportFormatError(f"{source.name}: {exc}") from exc
+        raise GateReportFormatError(f"{source.name}: {_reason(exc)}") from exc
+    return _board(sidecar, source, from_json=True)
 
 
 _DATE_LINE = re.compile(r"^Report date:\s*(\S+)")
@@ -186,29 +196,39 @@ def load_gate_board(docs: Path, milestone: str) -> GateBoard | None:
     return None
 
 
+@dataclass(frozen=True, slots=True)
+class GateScan:
+    """Every gate report under a docs folder: the boards that read, and the ones that
+    do not, each as ``(milestone, reason)``, both in milestone order."""
+
+    boards: tuple[GateBoard, ...]
+    unreadable: tuple[tuple[str, str], ...]
+
+
+def scan_gate_reports(docs: Path) -> GateScan:
+    """Read every milestone's report once; one that does not parse is listed with why."""
+    boards: list[GateBoard] = []
+    bad: list[tuple[str, str]] = []
+    for m in gate_milestones(docs):
+        try:
+            board = load_gate_board(docs, m)
+        except ValueError as exc:  # GateReportFormatError is a ValueError
+            bad.append((m, str(exc)))
+            continue
+        if board is not None:
+            boards.append(board)
+    return GateScan(tuple(boards), tuple(bad))
+
+
 def load_gate_boards(docs: Path) -> tuple[GateBoard, ...]:
     """Every board that reads; an unreadable one is named by ``unreadable_gate_reports``.
 
     One malformed sidecar must not take down every page that shows a board, so it
     is left out here and reported there, rather than raised through the API.
     """
-    boards: list[GateBoard] = []
-    for m in gate_milestones(docs):
-        try:
-            board = load_gate_board(docs, m)
-        except (GateReportFormatError, ValueError):
-            continue
-        if board is not None:
-            boards.append(board)
-    return tuple(boards)
+    return scan_gate_reports(docs).boards
 
 
 def unreadable_gate_reports(docs: Path) -> tuple[str, ...]:
     """The milestones whose report exists but does not parse."""
-    bad: list[str] = []
-    for m in gate_milestones(docs):
-        try:
-            load_gate_board(docs, m)
-        except (GateReportFormatError, ValueError):
-            bad.append(m)
-    return tuple(bad)
+    return tuple(m for m, _ in scan_gate_reports(docs).unreadable)
