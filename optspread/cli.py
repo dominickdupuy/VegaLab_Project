@@ -7,8 +7,11 @@ imports keep working.
 """
 
 from optspread.experiment.cli import SOURCES as SOURCES
+from optspread.experiment.cli import add_run_options as add_run_options
 from optspread.experiment.cli import add_source_arguments as add_source_arguments
 from optspread.experiment.cli import chosen_source as chosen_source
 from optspread.experiment.cli import describe as describe
+from optspread.experiment.cli import plan_and_run as plan_and_run
 from optspread.experiment.cli import premium_note as premium_note
 from optspread.experiment.cli import runs_root as runs_root
+from optspread.experiment.cli import train_config as train_config
