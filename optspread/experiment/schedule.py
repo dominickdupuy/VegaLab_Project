@@ -6,8 +6,10 @@ Every cell is an ordinary run directory under ``root``, named by its run id and
 written by ``write_run``, so a cell is the same object whichever command produced
 it. ``run_cells`` reads back every cell that ``rundir.valid_run`` accepts and
 computes the rest, most expensive first, across ``workers`` processes. A killed
-run loses only the cells in flight; the same command resumes it. One process per
-root: two orchestrators writing the same cell at once are not guarded against.
+run loses only the cells in flight; the same command resumes it. One orchestrator per
+root: ``run_cells`` and ``run_single`` hold the root's lock (``rundir.root_lock``) while
+they read back and compute, so a second one started on the same root stops with
+``RootInUseError`` instead of writing the same cells. The workers never take it.
 
 A worker can die without raising: the kernel's out-of-memory killer on the sweep
 machine is the likely one. ``multiprocessing.Pool`` replaces the process and waits
@@ -87,7 +89,14 @@ from optspread.experiment.grid import (
 )
 from optspread.harness import run_episodes, summarize
 from optspread.manifest import callable_name, git_sha
-from optspread.runs.rundir import Runner, expected_data, foreign_run, run_id, valid_run
+from optspread.runs.rundir import (
+    Runner,
+    expected_data,
+    foreign_run,
+    root_lock,
+    run_id,
+    valid_run,
+)
 from optspread.train import POLICY_FILENAME, Trainer, check_disjoint, train_on, train_ppo
 
 # M1-measured rates, steps/s/core (README, Throughput). Only their ratio enters the ETA,
@@ -190,13 +199,16 @@ def run_single(
 
     Read back when ``sweep.valid_run`` accepts what is on disk (same source, trainer and
     components), computed through ``execute_run`` otherwise: the grid's rule for one cell.
+    Both under ``root``'s lock (``rundir.root_lock``), as ``run_cells`` does.
     """
-    run_dir = root / run_id(config)
-    record = valid_run(run_dir, config, source, trainer=callable_name(trainer), runner=runner)
-    if record is not None:
-        return run_dir, record, True
-    execute_run(config, run_dir, trainer, runner, source=source)
-    return run_dir, read_run(run_dir), False
+    root.mkdir(parents=True, exist_ok=True)
+    with root_lock(root):
+        run_dir = root / run_id(config)
+        record = valid_run(run_dir, config, source, trainer=callable_name(trainer), runner=runner)
+        if record is not None:
+            return run_dir, record, True
+        execute_run(config, run_dir, trainer, runner, source=source)
+        return run_dir, read_run(run_dir), False
 
 
 SINGLE_THREAD_ENV = ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS")
@@ -377,12 +389,28 @@ def run_cells(
 
     With one worker (or one cell) the cells run in this process. Otherwise they run on
     a pool of spawned processes that survives a dead worker (see the module docstring).
-    ``source`` says which data every cell runs on (``execute_run``).
+    ``source`` says which data every cell runs on (``execute_run``). The cells are read
+    back and computed under ``root``'s lock (``rundir.root_lock``), so a second
+    orchestrator on the same root raises ``RootInUseError`` instead of writing beside this.
     """
     if workers < 1:
         raise ValueError(f"workers must be at least 1, got {workers}")
     source_runner(runner, source)  # refuse a runner of your own on other data now
     root.mkdir(parents=True, exist_ok=True)
+    with root_lock(root):
+        _compute_cells(cells, root, workers, trainer, report, runner, source)
+
+
+def _compute_cells(
+    cells: Sequence[Cell],
+    root: Path,
+    workers: int,
+    trainer: Trainer,
+    report: Reporter | None,
+    runner: Runner,
+    source: SourceName,
+) -> None:
+    """``run_cells``' work, done while it holds the root's lock."""
     total, done = len(cells), 0
     pending: list[Cell] = []
     for cell in cells:

@@ -51,7 +51,14 @@ from optspread.config import MarketConfig, PolicyName, RunConfig, config_hash
 from optspread.data import SourceName
 from optspread.harness import run_episodes, summarize
 from optspread.policies import Policy
-from optspread.runs.rundir import Runner, expected_data, foreign_run, run_id, valid_run
+from optspread.runs.rundir import (
+    Runner,
+    expected_data,
+    foreign_run,
+    root_lock,
+    run_id,
+    valid_run,
+)
 
 SCHEMA_VERSION = 1
 SWEEP_FILENAME = "sweep.json"
@@ -195,7 +202,8 @@ def run_sweep(
     On another ``source`` the default runner runs there, on its ``eval`` split; a runner
     of your own brings its own data and is refused with one. A cell directory holding
     this config's run on other data, or made with other components, is refused rather
-    than written over (``foreign_run``).
+    than written over (``foreign_run``). The cells are read back and computed under
+    ``root``'s lock (``rundir.root_lock``), as the grid's are.
     """
     if source != "synthetic":
         if runner is not run_episodes:
@@ -203,19 +211,22 @@ def run_sweep(
         runner = partial(run_episodes, source=source)
     root.mkdir(parents=True, exist_ok=True)
     cells: list[CellRecord] = []
-    for premium in sweep.premiums:
-        for arm in sweep.arms:
-            config = cell_config(sweep, premium, arm)
-            cell_dir = root / run_id(config)
-            record = valid_run(cell_dir, config, source, runner=runner)
-            if record is None:
-                if why := foreign_run(cell_dir, config, source, runner):
-                    raise FileExistsError(why)
-                data = expected_data(runner, config, source)
-                episodes = runner(config, None)
-                write_run(cell_dir, config, summarize(episodes), episodes, source=source, data=data)
-                record = read_run(cell_dir)
-            cells.append(CellRecord.of(premium, arm, record))
+    with root_lock(root):
+        for premium in sweep.premiums:
+            for arm in sweep.arms:
+                config = cell_config(sweep, premium, arm)
+                cell_dir = root / run_id(config)
+                record = valid_run(cell_dir, config, source, runner=runner)
+                if record is None:
+                    if why := foreign_run(cell_dir, config, source, runner):
+                        raise FileExistsError(why)
+                    data = expected_data(runner, config, source)
+                    episodes = runner(config, None)
+                    write_run(
+                        cell_dir, config, summarize(episodes), episodes, source=source, data=data
+                    )
+                    record = read_run(cell_dir)
+                cells.append(CellRecord.of(premium, arm, record))
     result = SweepRecord(
         sweep_hash=config_hash(sweep),
         seed=sweep.base.seed,
