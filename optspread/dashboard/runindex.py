@@ -34,7 +34,7 @@ import numpy as np
 from numpy.typing import NDArray
 from pydantic import ValidationError
 
-from optspread.artifacts import RUN_FILENAME, RunRecord, SchemaVersionError, read_run
+from optspread.artifacts import RUN_FILENAME, RunRecord, read_run
 from optspread.manifest import MANIFEST_FILENAME, DataRecord, RunManifest, file_sha256
 from optspread.sweep import SWEEP_FILENAME
 
@@ -251,13 +251,26 @@ def load_run_row(run_dir: Path) -> RunRow:
     if held is not None and held[0] == stamp:
         return held[1]
     row = _read_run_row(run_dir)
-    if len(_ROWS) >= _MAX_ROWS:
-        _ROWS.clear()
-    _ROWS[run_dir] = (stamp, row)
+    _keep_row(run_dir, stamp, row)
     return row
 
 
+def _keep_row(run_dir: Path, stamp: tuple[tuple[str, int, int], ...], row: RunRow) -> None:
+    if len(_ROWS) >= _MAX_ROWS:
+        _ROWS.clear()
+    _ROWS[run_dir] = (stamp, row)
+
+
 def _read_run_row(run_dir: Path) -> RunRow:
+    return _read_run_dir(run_dir)[0]
+
+
+def _read_run_dir(
+    run_dir: Path,
+) -> tuple[RunRow, Any, RunRecord | None, tuple[ArtifactCheck, ...]]:
+    """The row, and what it was built from, each file read and hashed once: the manifest
+    JSON as parsed (``{}`` when unreadable), the record (None when missing or unreadable)
+    and the digest checks."""
     problems: list[str] = []
     try:
         raw: Any = json.loads((run_dir / MANIFEST_FILENAME).read_text())
@@ -288,7 +301,7 @@ def _read_run_row(run_dir: Path) -> RunRow:
     )
     seed = _as_int(_get(raw, "config", "seed"))
     data_source, panel = _data_source(raw)
-    return RunRow(
+    row = RunRow(
         run_id=str(_get(raw, "run_id") or (record.run_id if record else run_dir.name)),
         path=run_dir,
         config_hash=str(_get(raw, "config_hash") or (record.config_hash if record else "")),
@@ -313,6 +326,7 @@ def _read_run_row(run_dir: Path) -> RunRow:
         data_source=data_source,
         panel=panel,
     )
+    return row, raw, record, checks
 
 
 def is_matrix_manifest(run_dir: Path) -> bool:
@@ -421,28 +435,32 @@ class RunDetail:
 
 
 def load_run_detail(run_dir: Path) -> RunDetail:
-    row = load_run_row(run_dir)
-    try:
-        manifest: Any = json.loads((run_dir / MANIFEST_FILENAME).read_text())
-    except (OSError, ValueError):
-        manifest = {}
-    manifest = manifest if isinstance(manifest, dict) else {}
-    try:
-        record: RunRecord | None = read_run(run_dir)
-    except (OSError, ValueError, SchemaVersionError):
-        record = None
+    """The row, plus the manifest, record and digest checks it was read from.
+
+    The run directory is read once: the manifest, ``run.json`` and every recorded
+    artifact are each read or hashed one time, and the row is built from that same
+    read. It is stored in the row cache under the directory's stamp, as
+    ``load_run_row`` stores it, unless the cache already holds an equal row under
+    that stamp, which is then the one returned. So the row shown always agrees with
+    the digest checks beside it, even after an edit the stamp cannot see (same size,
+    modification time put back), where a cached row would have been shown.
+    """
+    stamp = _row_stamp(run_dir)
+    row, manifest, record, checks = _read_run_dir(run_dir)
+    held = _ROWS.get(run_dir)
+    if held is not None and held[0] == stamp and held[1] == row:
+        row = held[1]
+    else:
+        _keep_row(run_dir, stamp, row)
     episodes = record.episodes if record else ()
-    artifacts = _get(manifest, "artifacts")
     return RunDetail(
         row=row,
-        manifest=manifest,
+        manifest=manifest if isinstance(manifest, dict) else {},
         record=record,
         pnl=np.asarray([e.pnl for e in episodes], dtype=np.float64),
         cost=np.asarray([e.cost for e in episodes], dtype=np.float64),
         trades=np.asarray([e.n_trades for e in episodes], dtype=np.float64),
-        artifacts=check_artifacts(run_dir, {str(k): str(v) for k, v in artifacts.items()})
-        if isinstance(artifacts, dict)
-        else (),
+        artifacts=checks,
     )
 
 
