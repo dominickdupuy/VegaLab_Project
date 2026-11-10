@@ -62,6 +62,7 @@ from optspread.dashboard.jobs.spec import (
     to_run_config,
 )
 from optspread.data import SourceName
+from optspread.fileio import atomic_write_text
 from optspread.harness import EpisodeResult, build_env, summarize
 from optspread.manifest import RunManifest, callable_name
 from optspread.policies import Policy, make_policy
@@ -148,20 +149,10 @@ class _Progress:
             raise JobCancelledError("cancelled from the dashboard")
 
     def write(self, **fields: Any) -> None:
-        tmp = self.state.with_suffix(".tmp")
-        tmp.write_text(json.dumps(fields), encoding="utf-8")
-        # The replace is atomic, so a reader never sees half a file. Windows refuses it
-        # (PermissionError) while another handle has the file open, as the server does for
-        # a moment on every status poll, so wait that out briefly before giving up.
-        attempts = 20
-        for attempt in range(attempts):
-            try:
-                tmp.replace(self.state)
-                return
-            except PermissionError:
-                if attempt == attempts - 1:
-                    raise
-                time.sleep(0.05)
+        # Atomic, so a reader never sees half a file; the helper also waits out Windows
+        # refusing the replace (PermissionError) while another handle has the file open,
+        # as the server does for a moment on every status poll.
+        atomic_write_text(self.state, json.dumps(fields))
 
     def log(self, line: str) -> None:
         stamp = datetime.now(UTC).strftime("%H:%M:%S")
