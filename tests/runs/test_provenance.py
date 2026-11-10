@@ -345,6 +345,9 @@ WRITERS = (
     "experiment/grid",
     "experiment/schedule",
     "experiment/pilot",
+    "dashboard/jobs/spec",
+    "dashboard/jobs/worker",
+    "dashboard/jobs/queue",
 )
 
 

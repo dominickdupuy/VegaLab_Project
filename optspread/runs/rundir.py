@@ -19,10 +19,11 @@ is recomputed rather than mixed into a grid with cells of the new build.
 
 Where runs live by default: ``default_runs_root`` (``$VEGALAB_DATA/runs``, else ``runs``
 under the current directory), and under it ``source_root``, a real-data run's own folder,
-because the source is not in a run id.
+because the source is not in a run id. ``JobSource`` names the sources a run can be
+launched on.
 
-Moved from ``optspread.sweep`` (the run-directory rules) and ``optspread.orchestrate``
-(the runs roots), which re-export it.
+Moved from ``optspread.sweep`` (the run-directory rules), ``optspread.orchestrate``
+(the runs roots) and ``optspread.jobs`` (the sources), which re-export it.
 """
 
 from __future__ import annotations
@@ -32,7 +33,7 @@ import zipfile
 from collections.abc import Callable, Mapping
 from functools import partial
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal, get_args
 
 from optspread.artifacts import RUN_FILENAME, RunRecord, read_run
 from optspread.config import RunConfig, config_hash
@@ -302,3 +303,8 @@ def source_root(root: Path, source: SourceName) -> Path:
     ``<root>/<source>`` otherwise. The source is not in a run id, so a real-data run and
     its synthetic twin share one; their own folders keep them apart by default."""
     return root if source == "synthetic" else root / source
+
+
+# The data a job can run on: the generator, or the real SPX panel (optspread.data).
+JobSource = Literal["synthetic", "optionmetrics"]
+SOURCES: tuple[JobSource, ...] = get_args(JobSource)
