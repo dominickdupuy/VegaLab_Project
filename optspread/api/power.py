@@ -107,7 +107,8 @@ def power_lab(p: PowerParams) -> PowerOut:
     """
     var = pw.var_grand_mean(p.tau2, p.sigma2, p.n_seeds, p.n_episodes)
     floor = _floor(p, p.n_seeds)
-    top = max(2.0 * p.delta, 2.5 * max(floor, _floor(p, 5) / 2.0), 1.0)
+    floor_s5 = _floor(p, 5)
+    top = max(2.0 * p.delta, 2.5 * max(floor, floor_s5 / 2.0), 1.0)
     grid = np.linspace(0.0, top, 81)
 
     def curve(n_seeds: int) -> list[float]:
@@ -116,6 +117,9 @@ def power_lab(p: PowerParams) -> PowerOut:
         ]
 
     floors = [_floor(p, s) for s in FLOOR_SEEDS]
+    # after the list, where it was first computed: _floor is pure, so a design that fails
+    # still fails at the same call, with the same error
+    floor_s50 = _floor(p, 50)
     designs = pw.frontier(
         p.delta,
         p.tau2,
@@ -159,9 +163,9 @@ def power_lab(p: PowerParams) -> PowerOut:
         floor_vs_seeds=FloorOut(
             seeds=list(FLOOR_SEEDS),
             floor=floors,
-            floor_s5=_floor(p, 5),
-            floor_s50=_floor(p, 50),
-            ratio=_floor(p, 5) / _floor(p, 50) if _floor(p, 50) > 0 else float("nan"),
+            floor_s5=floor_s5,
+            floor_s50=floor_s50,
+            ratio=floor_s5 / floor_s50 if floor_s50 > 0 else float("nan"),
         ),
         frontier=[_design(d) for d in designs],
         design=DesignOut(

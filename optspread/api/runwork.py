@@ -20,12 +20,13 @@ from typing import Any
 import numpy as np
 from pydantic import Field
 
-from optspread.api._base import Out, _f, _finite_json
+from optspread.api._base import Out, _f, _finite_json, _source_suffix
 from optspread.api.launch import launch_estimate
 from optspread.dashboard.jobs.spec import available_arms
 from optspread.dashboard.runindex import RunRow
 from optspread.dashboard.tasks import TaskState
 from optspread.manifest import MANIFEST_FILENAME, RunManifest
+from optspread.train import POLICY_FILENAME
 
 # -- background work: attribution, capital and replay ------------------------------- #
 
@@ -50,8 +51,7 @@ class AttributionOut(Out):
 
 def attribution_file(root: Path, row: RunRow) -> Path:
     """Where ``scripts/attribution.py`` writes this run: ``<run_id>[.<source>].json``."""
-    suffix = "" if row.source in ("", "synthetic") else f".{row.source}"
-    return root / f"{row.run_id}{suffix}.json"
+    return root / f"{row.run_id}{_source_suffix(row.source)}.json"
 
 
 def real_data_reason(row: RunRow) -> str:
@@ -79,7 +79,7 @@ def _ppo_reason(row: RunRow) -> str:
         return ""
     if "ppo" not in available_arms():
         return "a PPO run is re-simulated with its policy.zip, which needs the train extra"
-    if not (row.path / "policy.zip").is_file():
+    if not (row.path / POLICY_FILENAME).is_file():
         return "this PPO run saved no policy.zip to re-simulate with"
     return ""
 
@@ -227,8 +227,7 @@ CAPITAL_DIR = "capital"  # under the attribution root: the cached re-simulations
 
 def capital_file(root: Path, row: RunRow) -> Path:
     """``<attribution root>/capital/<run_id>[.<source>].json``: never in a run directory."""
-    suffix = "" if row.source in ("", "synthetic") else f".{row.source}"
-    return root / CAPITAL_DIR / f"{row.run_id}{suffix}.json"
+    return root / CAPITAL_DIR / f"{row.run_id}{_source_suffix(row.source)}.json"
 
 
 CAPITAL_METHOD = (
@@ -270,7 +269,6 @@ def compute_capital(run_dir: Path, out: Path | None = None) -> CapitalOut:
     policy: Any
     if config.policy == "ppo":
         from optspread.attribution import load_sb3_policy
-        from optspread.train import POLICY_FILENAME
 
         saved_policy = run_dir / POLICY_FILENAME
         if not saved_policy.is_file():

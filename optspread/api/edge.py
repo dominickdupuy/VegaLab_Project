@@ -16,7 +16,10 @@ from typing import Any
 
 from pydantic import Field
 
-from optspread.api._base import Out, _finite_json
+from optspread.api._base import Out, _finite_json, _source_suffix
+from optspread.dashboard.jobs.spec import JOBS_DIR
+from optspread.dashboard.runindex import GRID_PATTERN
+from optspread.manifest import MANIFEST_FILENAME
 
 # -- the edge: which components and structures carry it (optspread.edge) ------------ #
 
@@ -77,8 +80,7 @@ def _episode_counts(attribution_root: Path, source: str, run_id: str) -> dict[st
     """Episodes and those beyond tolerance in a run's cached attribution, if it is there."""
     from optspread.attribution import read_attribution
 
-    suffix = "" if source in ("", "synthetic") else f".{source}"
-    path = attribution_root / f"{run_id}{suffix}.json"
+    path = attribution_root / f"{run_id}{_source_suffix(source)}.json"
     if not path.is_file():
         return None
     try:
@@ -123,9 +125,9 @@ def _grid_files(runs_root: Path) -> dict[str, list[Path]]:
     out: dict[str, list[Path]] = {}
     if not runs_root.is_dir():
         return out
-    for p in sorted(runs_root.rglob("grid-*.json")):
+    for p in sorted(runs_root.rglob(GRID_PATTERN)):
         gh = p.stem.removeprefix("grid-")
-        if ".jobs" not in p.parts and p.is_file() and _HASH.fullmatch(gh):
+        if JOBS_DIR not in p.parts and p.is_file() and _HASH.fullmatch(gh):
             out.setdefault(gh, []).append(p)
     return out
 
@@ -197,7 +199,7 @@ def edge_detail(
     keys: dict[str, str | None] = {}
     for cell in result.cells:
         run_dir = grid_path.parent / cell.run_id if grid_path is not None else None
-        ok = run_dir is not None and (run_dir / "manifest.json").is_file()
+        ok = run_dir is not None and (run_dir / MANIFEST_FILENAME).is_file()
         keys[cell.run_id] = run_dir.relative_to(runs_root).as_posix() if ok and run_dir else None
     grid_key = grid_path.relative_to(runs_root).as_posix() if grid_path is not None else None
     counts = {
