@@ -32,14 +32,15 @@ from dataclasses import dataclass
 from datetime import date
 from functools import partial
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.routing import APIRoute
 from fastapi.staticfiles import StaticFiles
-from pydantic import ValidationError
+from pydantic import BeforeValidator, ValidationError
+from pydantic_core import PydanticCustomError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
@@ -111,10 +112,37 @@ class Settings:
 
 
 def _day(value: str, name: str = "date") -> date:
+    """``value`` as a date, or a 422 naming ``name``. No route parses by hand any more (they
+    take ``Day`` and ``OptionalDay``); kept for code that imports it."""
     try:
         return date.fromisoformat(value)
     except ValueError as exc:
         raise HTTPException(422, f"{name} must be YYYY-MM-DD, got {value!r}") from exc
+
+
+def _iso_date(value: object) -> object:
+    """A query value read as ``date.fromisoformat`` reads it, as the data routes always have.
+
+    Pydantic's own date parsing differs both ways: it takes Unix times and datetimes at
+    midnight, and refuses ``YYYYMMDD`` and ISO week dates. Parsing here keeps every query
+    getting the answer it got before; FastAPI reports a refusal as a 422.
+    """
+    if not isinstance(value, str):
+        return value
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        raise PydanticCustomError("iso_date", "Input should be a date as YYYY-MM-DD") from None
+
+
+def _iso_date_or_none(value: object) -> object:
+    """As ``_iso_date``, except that an empty value means the parameter was left out."""
+    return None if value == "" else _iso_date(value)
+
+
+# A date query parameter, and one that may be left out or sent empty.
+Day = Annotated[date, BeforeValidator(_iso_date)]
+OptionalDay = Annotated[date | None, BeforeValidator(_iso_date_or_none)]
 
 
 LOCAL_HOSTS = ("localhost", "127.0.0.1", "[::1]", "::1")
@@ -320,27 +348,7 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
     # -- runs -------------------------------------------------------------- #
 
     @app.get("/api/runs", response_model=w.RunListOut)
-    def runs(
-        request: Request,
-        config_hash: list[str] = Query(default=[]),  # noqa: B008
-        seed: list[int] = Query(default=[]),  # noqa: B008
-        policy: list[str] = Query(default=[]),  # noqa: B008
-        premium: list[float] = Query(default=[]),  # noqa: B008
-        commit: list[str] = Query(default=[]),  # noqa: B008
-        sweep: list[str] = Query(default=[]),  # noqa: B008
-        source: list[str] = Query(default=[]),  # noqa: B008
-        q: str = "",
-    ) -> Response:
-        filters = w.RunFilters(
-            config_hash=config_hash,
-            seed=seed,
-            policy=policy,
-            premium=premium,
-            commit=commit,
-            sweep=sweep,
-            source=source,
-            q=q,
-        )
+    def runs(request: Request, filters: Annotated[w.RunFilters, Query()]) -> Response:
         return answer(
             request, "runs", runs_stamp(), lambda: w.run_list(w.index(cfg.runs), cfg.runs, filters)
         )
@@ -376,27 +384,7 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
         )
 
     @app.get("/api/runs/premiums", response_model=w.PremiumsOut)
-    def run_premiums(
-        request: Request,
-        config_hash: list[str] = Query(default=[]),  # noqa: B008
-        seed: list[int] = Query(default=[]),  # noqa: B008
-        policy: list[str] = Query(default=[]),  # noqa: B008
-        premium: list[float] = Query(default=[]),  # noqa: B008
-        commit: list[str] = Query(default=[]),  # noqa: B008
-        sweep: list[str] = Query(default=[]),  # noqa: B008
-        source: list[str] = Query(default=[]),  # noqa: B008
-        q: str = "",
-    ) -> Response:
-        filters = w.RunFilters(
-            config_hash=config_hash,
-            seed=seed,
-            policy=policy,
-            premium=premium,
-            commit=commit,
-            sweep=sweep,
-            source=source,
-            q=q,
-        )
+    def run_premiums(request: Request, filters: Annotated[w.RunFilters, Query()]) -> Response:
         return answer(
             request,
             "runs/premiums",
@@ -446,39 +434,7 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
     # -- the power lab and the leak demo ----------------------------------- #
 
     @app.get("/api/power", response_model=w.PowerOut)
-    def power(
-        request: Request,
-        tau2: float = w.POWER_DEFAULTS["tau2"],
-        sigma2: float = w.POWER_DEFAULTS["sigma2"],
-        n_seeds: int = 10,
-        n_episodes: int = 100,
-        delta: float = w.POWER_DEFAULTS["delta"],
-        alpha: float = 0.05,
-        target_power: float = 0.80,
-        train_steps: int = 1_000_000,
-        episode_days: int = 63,
-        train_rate: float = 1_000.0,
-        eval_rate: float = 1_800.0,
-        cores: int = 1,
-    ) -> Response:
-        try:
-            params = w.PowerParams(
-                tau2=tau2,
-                sigma2=sigma2,
-                n_seeds=n_seeds,
-                n_episodes=n_episodes,
-                delta=delta,
-                alpha=alpha,
-                target_power=target_power,
-                train_steps=train_steps,
-                episode_days=episode_days,
-                train_rate=train_rate,
-                eval_rate=eval_rate,
-                cores=cores,
-            )
-        except ValidationError as exc:
-            raise HTTPException(422, [e["msg"] for e in exc.errors()]) from exc
-
+    def power(request: Request, params: Annotated[w.PowerParams, Query()]) -> Response:
         def build() -> w.PowerOut:
             try:
                 return w.power_lab(params)
@@ -489,30 +445,8 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
 
     @app.get("/api/power/surface", response_model=w.PowerSurfaceOut)
     def power_surface(
-        request: Request,
-        tau2: float = w.POWER_DEFAULTS["tau2"],
-        sigma2: float = w.POWER_DEFAULTS["sigma2"],
-        n_episodes: int = 100,
-        delta: float = w.POWER_DEFAULTS["delta"],
-        alpha: float = 0.05,
-        target_power: float = 0.80,
-        max_premium: float = 4.0,
-        max_seeds: int = 100,
+        request: Request, params: Annotated[w.PowerSurfaceParams, Query()]
     ) -> Response:
-        try:
-            params = w.PowerSurfaceParams(
-                tau2=tau2,
-                sigma2=sigma2,
-                n_episodes=n_episodes,
-                delta=delta,
-                alpha=alpha,
-                target_power=target_power,
-                max_premium=max_premium,
-                max_seeds=max_seeds,
-            )
-        except ValidationError as exc:
-            raise HTTPException(422, [e["msg"] for e in exc.errors()]) from exc
-
         def build() -> w.PowerSurfaceOut:
             try:
                 return w.power_surface(params)
@@ -589,55 +523,51 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
     @app.get("/api/data/chain", response_model=w.ChainIndexOut)
     def chain(
         request: Request,
-        date: str,
+        date: Day,
         source: str | None = None,
         roots: list[str] = Query(default=[]),  # noqa: B008
     ) -> Response:
-        day = _day(date)
-        return from_panel(request, "data/chain", lambda: reader.chain_index(day, source, roots))
+        return from_panel(request, "data/chain", lambda: reader.chain_index(date, source, roots))
 
     @app.get("/api/data/smile", response_model=w.SmileOut)
     def smile(
         request: Request,
-        date: str,
-        expiry: str | None = None,
+        date: Day,
+        expiry: OptionalDay = None,
         source: str | None = None,
         roots: list[str] = Query(default=[]),  # noqa: B008
     ) -> Response:
-        day, exp = _day(date), _day(expiry, "expiry") if expiry else None
-        return from_panel(request, "data/smile", lambda: reader.smile_out(day, exp, source, roots))
+        return from_panel(
+            request, "data/smile", lambda: reader.smile_out(date, expiry, source, roots)
+        )
 
     @app.get("/api/data/surface", response_model=w.SurfaceOut)
     def surface(
         request: Request,
-        date: str,
+        date: Day,
         source: str | None = None,
         roots: list[str] = Query(default=[]),  # noqa: B008
         min_dte: int = 1,
         max_dte: int = 365,
     ) -> Response:
-        day = _day(date)
         return from_panel(
             request,
             "data/surface",
-            unprocessable(lambda: reader.surface_out(day, source, roots, min_dte, max_dte)),
+            unprocessable(lambda: reader.surface_out(date, source, roots, min_dte, max_dte)),
         )
 
     @app.get("/api/data/term", response_model=w.TermOut)
     def term(
         request: Request,
-        date: str,
+        date: Day,
         source: str | None = None,
         roots: list[str] = Query(default=[]),  # noqa: B008
     ) -> Response:
-        day = _day(date)
-        return from_panel(request, "data/term", lambda: reader.term_out(day, source, roots))
+        return from_panel(request, "data/term", lambda: reader.term_out(date, source, roots))
 
     @app.get("/api/data/daily", response_model=w.DailyOut)
-    def daily(request: Request, start: str | None = None, end: str | None = None) -> Response:
-        lo = _day(start, "start") if start else None
-        hi = _day(end, "end") if end else None
-        return from_panel(request, "data/daily", lambda: reader.daily_out(lo, hi))
+    def daily(request: Request, start: OptionalDay = None, end: OptionalDay = None) -> Response:
+        return from_panel(request, "data/daily", lambda: reader.daily_out(start, end))
 
     @app.get("/api/data/seam", response_model=w.SeamOut)
     def seam(request: Request) -> Response:
@@ -650,32 +580,29 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
         return from_panel(request, "data/grid/dates", reader.grid_dates)
 
     @app.get("/api/data/grid", response_model=w.GridOut)
-    def grid(request: Request, date: str) -> Response:
-        day = _day(date)
-        return from_panel(request, "data/grid", lambda: reader.grid_out(day))
+    def grid(request: Request, date: Day) -> Response:
+        return from_panel(request, "data/grid", lambda: reader.grid_out(date))
 
     @app.get("/api/data/grid/frames", response_model=w.GridFramesOut)
     def grid_frames(
-        request: Request, start: str, end: str | None = None, max_frames: int = 126
+        request: Request, start: Day, end: OptionalDay = None, max_frames: int = 126
     ) -> Response:
-        lo, hi = _day(start, "start"), _day(end, "end") if end else None
         return from_panel(
             request,
             "data/grid/frames",
-            unprocessable(lambda: reader.grid_frames(lo, hi, max_frames)),
+            unprocessable(lambda: reader.grid_frames(start, end, max_frames)),
         )
 
     @app.get("/api/data/simulated", response_model=w.SimulatedOut)
     def simulated(
-        request: Request, date: str, premium: float = 0.0, sigma_from: str = "config"
+        request: Request, date: Day, premium: float = 0.0, sigma_from: str = "config"
     ) -> Response:
         if not (math.isfinite(premium) and 0.0 <= premium <= 20.0):
             raise HTTPException(422, f"premium must be between 0 and 20 vol points, got {premium}")
-        day = _day(date)
         return from_panel(
             request,
             "data/simulated",
-            unprocessable(lambda: reader.simulated_out(day, premium, sigma_from)),
+            unprocessable(lambda: reader.simulated_out(date, premium, sigma_from)),
         )
 
     # -- the data page's questions ---------------------------------------------- #
@@ -690,9 +617,8 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
         )
 
     @app.get("/api/data/shape", response_model=w.ShapeOut)
-    def shape(request: Request, date: str) -> Response:
-        day = _day(date)
-        return from_panel(request, "data/shape", lambda: reader.shape_out(day))
+    def shape(request: Request, date: Day) -> Response:
+        return from_panel(request, "data/shape", lambda: reader.shape_out(date))
 
     @app.get("/api/data/quality", response_model=w.QualityOut)
     def quality(request: Request) -> Response:
@@ -702,14 +628,12 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
 
     @app.get("/api/data/landscape", response_model=w.LandscapeOut)
     def landscape(
-        request: Request, start: str | None = None, end: str | None = None, max_dates: int = 420
+        request: Request, start: OptionalDay = None, end: OptionalDay = None, max_dates: int = 420
     ) -> Response:
-        lo = _day(start, "start") if start else None
-        hi = _day(end, "end") if end else None
         return from_panel(
             request,
             "data/landscape",
-            unprocessable(lambda: reader.landscape_out(lo, hi, max_dates)),
+            unprocessable(lambda: reader.landscape_out(start, end, max_dates)),
         )
 
     # -- the study, its checks and its analyses ------------------------------ #
@@ -866,9 +790,8 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
     # -- the seller on a real close, and launch ------------------------------- #
 
     @app.get("/api/data/seller", response_model=w.SellerOut)
-    def seller(request: Request, date: str) -> Response:
-        day = _day(date)
-        return from_panel(request, "data/seller", lambda: w.seller_out(reader, day))
+    def seller(request: Request, date: Day) -> Response:
+        return from_panel(request, "data/seller", lambda: w.seller_out(reader, date))
 
     @app.get("/api/launch/options")
     def launch_options() -> w.JobOptionsOut:

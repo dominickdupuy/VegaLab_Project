@@ -482,7 +482,17 @@ function withQuery(path: string, params?: Params): string {
 
 function detailText(detail: unknown): string {
   if (typeof detail === "string") return detail;
-  if (Array.isArray(detail)) return detail.map((d) => (typeof d === "string" ? d : JSON.stringify(d))).join("; ");
+  if (Array.isArray(detail))
+    return detail
+      .map((d) => {
+        if (typeof d === "string") return d;
+        // FastAPI's validation errors, {loc: ["query", "tau2"], msg: "...", ...}: "tau2: ..."
+        const e = d as { loc?: unknown; msg?: unknown } | null;
+        if (typeof e?.msg !== "string") return JSON.stringify(d);
+        const where = Array.isArray(e.loc) ? e.loc.slice(1).join(".") : "";
+        return where ? `${where}: ${e.msg}` : e.msg;
+      })
+      .join("; ");
   return JSON.stringify(detail);
 }
 
