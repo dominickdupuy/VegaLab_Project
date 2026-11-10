@@ -19,3 +19,4 @@ web/*.tsbuildinfo
 !web/app/runs/
 !web/app/attribution/
 !tests/runs/
+!optspread/runs/

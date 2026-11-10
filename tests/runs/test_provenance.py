@@ -333,7 +333,16 @@ def test_a_finder_ds_store_does_not_make_runs_dirty(tmp_path: Path) -> None:
 
 # -- n5: the encoding ---------------------------------------------------------------- #
 
-WRITERS = ("manifest", "artifacts", "sweep", "orchestrate", "jobs", "replay")
+WRITERS = (
+    "manifest",
+    "artifacts",
+    "sweep",
+    "orchestrate",
+    "jobs",
+    "replay",
+    "runs/rundir",
+    "experiment/sweep",
+)
 
 
 @pytest.mark.behaviour
