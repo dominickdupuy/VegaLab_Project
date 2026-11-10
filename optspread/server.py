@@ -886,8 +886,14 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
         return v.launch_preview(spec, cfg.runs, w.index(cfg.runs))
 
     # An /api path no route serves is a JSON 404, not the site's HTML page; a route asked
-    # with a method it does not take is still a 405 that names the ones it does.
-    @app.api_route("/api/{rest:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+    # with a method it does not take is still a 405 that names the ones it does. Left out
+    # of the OpenAPI document: its five methods would share one operation id, picked in
+    # string-hash order, so the document would differ from one process to the next.
+    @app.api_route(
+        "/api/{rest:path}",
+        methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
+        include_in_schema=False,
+    )
     def no_route(rest: str, request: Request) -> None:
         allowed = sorted(
             {
