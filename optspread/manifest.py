@@ -133,6 +133,8 @@ def callable_name(fn: object) -> str:
     """
     module = getattr(fn, "__module__", None) or type(fn).__module__
     name = getattr(fn, "__qualname__", None) or type(fn).__qualname__
+    if module == "__mp_main__":  # the same script, as a spawned worker imports it
+        module = "__main__"
     if module != "__main__" and "<locals>" not in name:
         return f"{module}.{name}"
     target = fn if hasattr(fn, "__code__") else type(fn)
