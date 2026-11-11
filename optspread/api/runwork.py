@@ -20,7 +20,7 @@ from typing import Any, Literal
 import numpy as np
 from pydantic import Field
 
-from optspread.api._base import Out, _f, _finite_json, _source_suffix
+from optspread.api._base import Out, _f, _finite_json, _from_attrs, _source_suffix
 from optspread.api.launch import launch_estimate
 from optspread.dashboard.jobs.spec import available_arms
 from optspread.dashboard.runindex import RunRow
@@ -472,14 +472,7 @@ def run_replay(run_dir: Path) -> ReplayDone:
 
     learned = RunManifest.read(run_dir).config.train is not None
     out = replay_run(run_dir, rtol=None if learned else SCRIPTED_RTOL)
-    return ReplayDone(
-        verdict=out.verdict,
-        reason=out.reason,
-        seconds=out.seconds,
-        rtol=out.rtol,
-        max_rel_diff=out.max_rel_diff,
-        comparable=not (learned and platform_differs(run_dir)),
-    )
+    return _from_attrs(ReplayDone, out, comparable=not (learned and platform_differs(run_dir)))
 
 
 def replay_note(done: ReplayDone) -> str:

@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Literal
 
 from optspread import actionmix as am
-from optspread.api._base import Out, _f, _source_suffix
+from optspread.api._base import Out, _f, _from_attrs, _source_suffix
 from optspread.api.runwork import _ppo_reason, real_data_reason
 from optspread.dashboard.runindex import RunRow
 from optspread.dashboard.tasks import TaskState
@@ -144,18 +144,12 @@ def compute_mix(run_dir: Path, out: Path) -> Path:
 
 def _holding(seed: int, h: am.Holding) -> HoldingOut:
     shorts, longs = h.abs_deltas(short=True), h.abs_deltas(short=False)
-    return HoldingOut(
+    return _from_attrs(
+        HoldingOut,
+        h,
         seed=seed,
-        structure=h.structure,
-        open_day=h.open_day,
-        exit_day=h.exit_day,
-        days=h.days,
-        exit=h.exit,
-        tenor_days=h.tenor_days,
         short_delta=_f(sum(shorts) / len(shorts)) if shorts else None,
         long_delta=_f(sum(longs) / len(longs)) if longs else None,
-        credit=h.credit,
-        margin=h.margin,
         strikes=sorted(leg.strike for leg in h.legs),
     )
 

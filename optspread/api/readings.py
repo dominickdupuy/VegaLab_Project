@@ -15,7 +15,7 @@ from typing import Literal
 import numpy as np
 from pydantic import Field
 
-from optspread.api._base import Out, _f, _fl
+from optspread.api._base import Out, _f, _fl, _from_attrs
 from optspread.config import MarketConfig
 from optspread.dashboard.panel_views import GridSurface
 from optspread.dashboard.readings import sim_reading, sim_regions
@@ -133,9 +133,7 @@ def simulated_surface(
             f"spot0={cfg.spot0:.2f}, sigma={cfg.sigma:.4f}, "
             f"iv_premium_vol_pts={cfg.iv_premium_vol_pts:g})"
         ),
-        regions=[
-            RegionOut(name=r.name, label=r.label, mean_diff=_f(r.mean_diff), n=r.n) for r in regions
-        ],
+        regions=[_from_attrs(RegionOut, r, mean_diff=_f(r.mean_diff)) for r in regions],
         widest=widest_out,
         reading=sim_reading(
             level,

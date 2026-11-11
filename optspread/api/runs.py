@@ -18,7 +18,7 @@ import numpy as np
 from numpy.typing import NDArray
 from pydantic import Field
 
-from optspread.api._base import Out, _f, _inside
+from optspread.api._base import Out, _f, _from_attrs, _inside
 from optspread.artifacts import RUN_FILENAME
 from optspread.dashboard.jobs.spec import EQUITY_FILENAME, JOBS_DIR
 from optspread.dashboard.runindex import (
@@ -166,15 +166,7 @@ def run_list(rows: Sequence[RunRow], root: Path, filters: RunFilters) -> RunList
     return RunListOut(
         root=str(root),
         rows=[row_out(r, root) for r in shown],
-        facets=FacetsOut(
-            config_hashes=list(facets.config_hashes),
-            seeds=list(facets.seeds),
-            policies=list(facets.policies),
-            premiums=list(facets.premiums),
-            commits=list(facets.commits),
-            sweeps=list(facets.sweeps),
-            sources=sorted({run_source(r) for r in rows}),
-        ),
+        facets=_from_attrs(FacetsOut, facets, sources=sorted({run_source(r) for r in rows})),
         trials=TrialsOut(
             n_runs=len(rows),
             n_ok=sum(r.status == "OK" for r in rows),
@@ -300,17 +292,11 @@ def run_detail(detail: RunDetail, root: Path, index: Sequence[RunRow]) -> RunDet
     return RunDetailOut(
         row=row_out(row, root),
         manifest=detail.manifest,
-        episodes=[
-            EpisodeOut(seed=e.seed, pnl=e.pnl, cost=e.cost, n_trades=e.n_trades, steps=e.steps)
-            for e in episodes
-        ],
+        episodes=[EpisodeOut.model_validate(e, from_attributes=True) for e in episodes],
         risk=risk_out(risk_stats(detail.pnl, detail.trades)),
         histogram=histogram(detail.pnl),
         equity=_equity(row.path),
-        artifacts=[
-            ArtifactOut(path=a.path, recorded=a.recorded, actual=a.actual, ok=a.ok)
-            for a in detail.artifacts
-        ],
+        artifacts=[ArtifactOut.model_validate(a, from_attributes=True) for a in detail.artifacts],
         provenance=ProvenanceOut(
             run_dir=str(row.path),
             manifest=str(row.path / MANIFEST_FILENAME),
