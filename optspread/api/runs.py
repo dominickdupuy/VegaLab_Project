@@ -18,7 +18,7 @@ import numpy as np
 from numpy.typing import NDArray
 from pydantic import Field
 
-from optspread.api._base import Out, _f, _from_attrs, _inside
+from optspread.api._base import Out, _from_attrs, _inside
 from optspread.artifacts import RUN_FILENAME
 from optspread.dashboard.jobs.spec import EQUITY_FILENAME, JOBS_DIR
 from optspread.dashboard.runindex import (
@@ -79,30 +79,8 @@ def row_out(row: RunRow, root: Path) -> RunRowOut:
         key = row.path.relative_to(root).as_posix()
     except ValueError:
         key = row.path.as_posix()
-    return RunRowOut(
-        key=key,
-        run_id=row.run_id,
-        config_hash=row.config_hash,
-        seed=row.seed,
-        policy=row.policy,
-        premium=row.premium,
-        source=run_source(row),
-        source_recorded=bool(row.data_source),
-        panel=row.panel,
-        git_sha=row.git_sha,
-        commit=row.commit,
-        git_dirty=row.git_dirty,
-        created_at=row.created_at,
-        n_episodes=row.n_episodes,
-        mean_pnl=_f(row.mean_pnl),
-        se_pnl=_f(row.se_pnl),
-        t_stat=_f(row.t_stat),
-        mean_cost=_f(row.mean_cost),
-        mean_trades=_f(row.mean_trades),
-        sweep=row.sweep,
-        status=row.status,
-        digests_ok=row.digests_ok,
-        problems=list(row.problems),
+    return _from_attrs(
+        RunRowOut, row, key=key, source=run_source(row), source_recorded=bool(row.data_source)
     )
 
 
@@ -200,16 +178,7 @@ class RiskOut(Out):
 
 
 def risk_out(stats: RiskStats) -> RiskOut:
-    return RiskOut(
-        n=stats.n,
-        mean=_f(stats.mean),
-        se=_f(stats.se),
-        sortino=_f(stats.sortino),
-        cvar5=_f(stats.cvar5),
-        max_drawdown=_f(stats.max_drawdown),
-        hit_rate=_f(stats.hit_rate),
-        turnover=_f(stats.turnover),
-    )
+    return RiskOut.model_validate(stats, from_attributes=True)
 
 
 class HistogramOut(Out):

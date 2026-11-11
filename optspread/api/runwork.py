@@ -20,7 +20,7 @@ from typing import Any, Literal
 import numpy as np
 from pydantic import Field
 
-from optspread.api._base import Out, _f, _finite_json, _from_attrs, _source_suffix
+from optspread.api._base import Out, _from_attrs, _source_suffix
 from optspread.api.launch import launch_estimate
 from optspread.dashboard.jobs.spec import available_arms
 from optspread.dashboard.runindex import RunRow
@@ -136,9 +136,9 @@ def attribution_view(
         return AttributionOut(
             state="cached",
             **base,
-            result=_finite_json(result.without_steps().model_dump(mode="json")),
+            result=result.without_steps().model_dump(mode="json"),
             seed=pick,
-            steps=_finite_json(steps),
+            steps=steps,
         )
     if task.state == "running":
         return AttributionOut(
@@ -174,12 +174,7 @@ def band(paths: Sequence[Sequence[float]]) -> BandOut | None:
     with np.errstate(all="ignore"):
         q = np.nanpercentile(grid, (10, 50, 90), axis=0)
         mean = np.nanmean(grid, axis=0)
-    return BandOut(
-        mean=[_f(x) for x in mean],
-        p10=[_f(x) for x in q[0]],
-        p50=[_f(x) for x in q[1]],
-        p90=[_f(x) for x in q[2]],
-    )
+    return BandOut(mean=mean.tolist(), p10=q[0].tolist(), p50=q[1].tolist(), p90=q[2].tolist())
 
 
 class CapitalEpisodeOut(Out):
@@ -323,6 +318,7 @@ def compute_capital(run_dir: Path, out: Path | None = None) -> CapitalOut:
     dd = np.asarray([r.max_drawdown for r in rows])
     peaks = np.asarray([r.peak_margin for r in rows])
     total_peak = float(peaks.sum())
+    top = max(diffs) if diffs else math.inf
     result = CapitalOut(
         state="done",
         can_compute=True,
@@ -333,14 +329,15 @@ def compute_capital(run_dir: Path, out: Path | None = None) -> CapitalOut:
         agrees=n_differ == 0,
         rtol=SCRIPTED_RTOL,
         n_differ=n_differ,
-        max_abs_diff=_f(max(diffs)) if diffs else None,
-        mean_return_on_cash=_f(float(np.mean([r.return_on_cash for r in rows]))) if rows else None,
-        mean_return_on_margin=_f(sum(r.pnl for r in rows) / total_peak) if total_peak else None,
-        mean_peak_margin=_f(float(peaks.mean())) if rows else None,
-        max_peak_margin=_f(float(peaks.max())) if rows else None,
-        median_drawdown=_f(float(np.median(dd))) if rows else None,
-        worst_drawdown=_f(float(dd.max())) if rows else None,
-        worst_drawdown_on_cash=_f(float(dd.max()) / cash) if rows else None,
+        # a seed missing from run.json (an infinite difference) leaves no largest one: None
+        max_abs_diff=top if math.isfinite(top) else None,
+        mean_return_on_cash=float(np.mean([r.return_on_cash for r in rows])) if rows else None,
+        mean_return_on_margin=sum(r.pnl for r in rows) / total_peak if total_peak else None,
+        mean_peak_margin=float(peaks.mean()) if rows else None,
+        max_peak_margin=float(peaks.max()) if rows else None,
+        median_drawdown=float(np.median(dd)) if rows else None,
+        worst_drawdown=float(dd.max()) if rows else None,
+        worst_drawdown_on_cash=float(dd.max()) / cash if rows else None,
         method=CAPITAL_METHOD,
         episodes=rows,
         path_seeds=[r.seed for r in rows[:MAX_PATHS_SENT]],

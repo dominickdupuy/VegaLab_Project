@@ -20,7 +20,7 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from optspread.api._base import DateText, Out, _f, _fl, _from_attrs, _iso
+from optspread.api._base import DateText, Out, _from_attrs, _iso
 from optspread.api.readings import (
     SIGMA_FROM,
     FredRowOut,
@@ -154,8 +154,8 @@ class VrpStatsOut(Out):
     mean_vol_pts: float | None
     median_vol_pts: float | None
     share_positive: float | None
-    first: str | None
-    last: str | None
+    first: DateText | None
+    last: DateText | None
 
 
 class DailyOut(Out):
@@ -379,7 +379,7 @@ class PanelReader:
             sources=list(panel.chain_sources(chain)),
             roots=sorted(set(chain["root"].tolist())) if panel.n_rows(chain) else [],
             expiries=[
-                _from_attrs(ExpiryOut, e, forward=_f(e.forward)) for e in panel.expiries(rows)
+                ExpiryOut.model_validate(e, from_attributes=True) for e in panel.expiries(rows)
             ],
             default_expiry=near.expiry.isoformat() if near else None,
             source=str(self.layout.chain_file(day.year)),
@@ -405,13 +405,13 @@ class PanelReader:
             expiry=expiry.isoformat(),
             dte=s.dte,
             data_source=self._source_name(rows),
-            moneyness=_fl(s.moneyness),
-            strike=_fl(s.strike),
-            iv=_fl(s.iv),
-            iv_vendor=_fl(s.iv_vendor),
+            moneyness=s.moneyness.tolist(),
+            strike=s.strike.tolist(),
+            iv=s.iv.tolist(),
+            iv_vendor=s.iv_vendor.tolist(),
             cp=[str(c) for c in s.cp],
             has_vendor=s.has_vendor,
-            forward=_f(fwd),
+            forward=fwd,
             source=str(self.layout.chain_file(day.year)),
         )
 
@@ -432,7 +432,7 @@ class PanelReader:
             data_source=self._source_name(rows),
             moneyness=[float(m) for m in surf.moneyness],
             dte=[int(d) for d in surf.dte],
-            iv=[_fl(row) for row in surf.iv],
+            iv=surf.iv.tolist(),
             source=str(self.layout.chain_file(day.year)),
         )
 
@@ -444,7 +444,7 @@ class PanelReader:
             data_source=self._source_name(rows),
             expiry=[e.isoformat() for e in ts.expiry],
             dte=[int(d) for d in ts.dte],
-            atm_iv=_fl(ts.atm_iv),
+            atm_iv=ts.atm_iv.tolist(),
             source=str(self.layout.chain_file(day.year)),
         )
 
@@ -461,27 +461,9 @@ class PanelReader:
         stats: dict[str, VrpStatsOut] = {}
         for src in panel.daily_sources(daily):
             s = panel.vrp_series(daily, src or None)
-            series.append(
-                SeriesOut(
-                    data_source=src,
-                    date=_iso(s.date),
-                    spot=_fl(s.spot),
-                    spot_parity=_fl(s.spot_parity),
-                    iv30=_fl(s.iv30),
-                    rv21=_fl(s.rv21),
-                    rv21_fwd=_fl(s.rv21_fwd),
-                    vrp30=_fl(s.vrp30),
-                )
-            )
-            st = panel.vrp_stats(s)
-            stats[src] = VrpStatsOut(
-                n_days=st.n_days,
-                mean_vol_pts=_f(st.mean_vol_pts),
-                median_vol_pts=_f(st.median_vol_pts),
-                share_positive=_f(st.share_positive),
-                first=st.first.isoformat() if st.first else None,
-                last=st.last.isoformat() if st.last else None,
-            )
+            # the series' arrays are read as they are: NaN where a day has no value
+            series.append(_from_attrs(SeriesOut, s, data_source=src, date=_iso(s.date)))
+            stats[src] = VrpStatsOut.model_validate(panel.vrp_stats(s), from_attributes=True)
         return DailyOut(series=series, stats=stats, source=str(self.layout.daily))
 
     def seam_out(self) -> SeamOut:
@@ -490,13 +472,13 @@ class PanelReader:
         return SeamOut(
             available=report is not None,
             date=_iso(report.date) if report else [],
-            stats={k: _fl(v) for k, v in report.stats.items()} if report else {},
-            medians={k: _f(report.median(k)) for k in panel.SEAM_STATS} if report else {},
-            p95_mean=_f(report.mean(panel.SEAM_HEADLINE)) if report else None,
-            p95_worst=_f(report.worst(panel.SEAM_HEADLINE)) if report else None,
+            stats={k: v.tolist() for k, v in report.stats.items()} if report else {},
+            medians={k: report.median(k) for k in panel.SEAM_STATS} if report else {},
+            p95_mean=report.mean(panel.SEAM_HEADLINE) if report else None,
+            p95_worst=report.worst(panel.SEAM_HEADLINE) if report else None,
             iv30_sources=list(iv_seam.sources) if iv_seam else [],
             iv30_date=_iso(iv_seam.date) if iv_seam else [],
-            iv30_diff_vol_pts=_fl(iv_seam.diff_vol_pts) if iv_seam else [],
+            iv30_diff_vol_pts=iv_seam.diff_vol_pts.tolist() if iv_seam else [],
             source=str(self.layout.seam_overlap),
         )
 
@@ -545,7 +527,7 @@ class PanelReader:
             date=day.isoformat(),
             k=[float(x) for x in g.k],
             tenor_days=[int(t) for t in g.tenor_days],
-            iv=[_fl(row) for row in g.iv],
+            iv=g.iv.tolist(),
             source=str(self.layout.surface_grid),
         )
 
@@ -568,12 +550,7 @@ class PanelReader:
         frames = [
             GridFrameOut(
                 date=str(d),
-                iv=[
-                    _fl(row)
-                    for row in panel.grid_surface(
-                        window, date.fromisoformat(str(d)), (k, tenors)
-                    ).iv
-                ],
+                iv=panel.grid_surface(window, date.fromisoformat(str(d)), (k, tenors)).iv.tolist(),
             )
             for d in days[:max_frames]
         ]
@@ -603,7 +580,7 @@ class PanelReader:
         return LandscapeOut(
             date=_iso(land.date),
             tenor_days=[int(t) for t in land.tenor_days],
-            iv=[_fl(row) for row in land.iv],
+            iv=land.iv.tolist(),
             stride=land.stride,
             n_days=int(within.sum()),
             first=str(dates[within][0]) if within.any() else None,
@@ -636,9 +613,9 @@ class PanelReader:
             else "The daily table has no day with a complete forward window yet."
         )
 
-        def pts(x: NDArray[np.float64]) -> list[float | None]:
+        def pts(x: NDArray[np.float64]) -> list[float]:
             # a thousandth of a vol point is below anything the chart can show
-            return [None if v is None else round(v, 3) for v in _fl(x)]
+            return [round(v, 3) for v in x.tolist()]
 
         return PremiumOut(
             date=_iso(s.date),
@@ -650,20 +627,20 @@ class PanelReader:
             smooth_days=SMOOTH_DAYS,
             now=PremiumNowOut(
                 date=now.day.isoformat(),
-                iv30=_f(now.iv30 * 100.0),
-                rv_trailing=_f(now.rv_trailing * 100.0),
-                priced=_f(now.priced),
+                iv30=now.iv30 * 100.0,
+                rv_trailing=now.rv_trailing * 100.0,
+                priced=now.priced,
                 measured_date=now.measured_date.isoformat() if now.measured_date else None,
-                measured=_f(now.measured),
-                recent=_f(now.recent),
-                recent_share_below=_f(now.recent_share_below),
+                measured=now.measured,
+                recent=now.recent,
+                recent_share_below=now.recent_share_below,
             )
             if now
             else None,
-            mean=_f(mean),
-            mean_low=_f(low),
-            mean_high=_f(high),
-            bracket=[_f(b) for b in bracket],
+            mean=mean,
+            mean_low=low,
+            mean_high=high,
+            bracket=bracket,
             sweep_axis=axis,
             reading=reading,
             source=str(self.layout.daily),
@@ -677,22 +654,10 @@ class PanelReader:
         sd = shape_on(h, day)
         if sd is None:
             raise PanelNotBuiltError(f"no gridded surface on {day} in {self.layout.surface_grid}")
-        return ShapeOut(
+        return _from_attrs(
+            ShapeOut,
+            sd,
             date=day.isoformat(),
-            atm=_f(sd.atm),
-            skew=_f(sd.skew),
-            call=_f(sd.call),
-            term=_f(sd.term),
-            atm_share_below=_f(sd.atm_share_below),
-            skew_share_below=_f(sd.skew_share_below),
-            term_share_below=_f(sd.term_share_below),
-            share_inverted=_f(sd.share_inverted),
-            skew_median=_f(sd.skew_median),
-            term_median=_f(sd.term_median),
-            tenor=sd.tenor,
-            put_k=sd.put_k,
-            call_k=sd.call_k,
-            long_tenor=sd.long_tenor,
             reading=shape_reading(sd),
             source=str(self.layout.surface_grid),
         )
@@ -733,7 +698,7 @@ class PanelReader:
             for i in order:
 
                 def col(name: str, i: int = int(i)) -> float | None:
-                    return _f(float(cols[name][i])) if name in cols else None
+                    return float(cols[name][i]) if name in cols else None
 
                 fred.append(
                     FredRowOut(

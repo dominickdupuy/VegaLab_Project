@@ -15,7 +15,7 @@ from typing import Literal
 import numpy as np
 from pydantic import Field
 
-from optspread.api._base import Out, _f, _fl, _from_attrs
+from optspread.api._base import Out
 from optspread.config import MarketConfig
 from optspread.dashboard.panel_views import GridSurface
 from optspread.dashboard.readings import sim_reading, sim_regions
@@ -124,16 +124,16 @@ def simulated_surface(
         tenor_days=[t * 365.0 for t in taus],
         k=[[float(x) for x in k] for k in ks],
         iv=[[float(x) for x in row] for row in chain.ivs],
-        real=[_fl(row) for row in real_at],
-        mean_diff=_f(float(diff[ok].mean())) if ok.any() else None,
-        mean_abs_diff=_f(float(np.abs(diff[ok]).mean())) if ok.any() else None,
-        max_abs_diff=_f(float(np.abs(diff[ok]).max())) if ok.any() else None,
+        real=[row.tolist() for row in real_at],
+        mean_diff=float(diff[ok].mean()) if ok.any() else None,
+        mean_abs_diff=float(np.abs(diff[ok]).mean()) if ok.any() else None,
+        max_abs_diff=float(np.abs(diff[ok]).max()) if ok.any() else None,
         source=(
             "optspread.market.SyntheticChainProvider on MarketConfig("
             f"spot0={cfg.spot0:.2f}, sigma={cfg.sigma:.4f}, "
             f"iv_premium_vol_pts={cfg.iv_premium_vol_pts:g})"
         ),
-        regions=[_from_attrs(RegionOut, r, mean_diff=_f(r.mean_diff)) for r in regions],
+        regions=[RegionOut.model_validate(r, from_attributes=True) for r in regions],
         widest=widest_out,
         reading=sim_reading(
             level,

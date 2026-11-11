@@ -14,7 +14,7 @@ from typing import Any, Literal
 import numpy as np
 from pydantic import Field
 
-from optspread.api._base import Out, _f
+from optspread.api._base import Out
 from optspread.api.premiums import _interval
 from optspread.api.runs import RunStatus, row_out, run_source
 from optspread.artifacts import SchemaVersionError, read_run
@@ -146,7 +146,7 @@ def _paired(pair: CatalogPairOut, a: dict[int, float], b: dict[int, float]) -> C
     return pair.model_copy(
         update={
             "n_shared": len(d),
-            "diff_mean": _f(mean),
+            "diff_mean": mean,
             "diff_ci_low": lo,
             "diff_ci_high": hi,
             "clear": lo is not None and hi is not None and (lo > 0 or hi < 0),
@@ -191,8 +191,8 @@ def catalog(root: Path, rows: Sequence[RunRow]) -> CatalogOut:
             premium=row.premium if row else settings.get("iv_premium_vol_pts"),
             source=run_source(row) if row else str(settings.get("source", "synthetic")),
             n_episodes=row.n_episodes if row else settings.get("n_episodes"),
-            mean_pnl=_f(row.mean_pnl) if row else None,
-            se_pnl=_f(row.se_pnl) if row else None,
+            mean_pnl=row.mean_pnl if row else None,
+            se_pnl=row.se_pnl if row else None,
         )
         held = groups.setdefault(
             group, CatalogGroupOut(group=group, question=question, runs=[], pairs=[])

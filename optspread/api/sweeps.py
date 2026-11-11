@@ -14,7 +14,7 @@ from typing import Literal
 import numpy as np
 
 from optspread.analysis import NULL_PREMIUM, decide_premium, paired_contrast
-from optspread.api._base import Out, _f, _fl, _from_attrs, _inside
+from optspread.api._base import Out, _from_attrs, _inside
 from optspread.artifacts import SchemaVersionError
 from optspread.config import ArmName
 from optspread.dashboard.jobs.spec import JOBS_DIR
@@ -188,12 +188,20 @@ def sweeps(root: Path) -> SweepListOut:
 
 
 def _arm_mean(premium: float, cells: Sequence[GridCellOut]) -> ArmMeanOut:
-    means = np.asarray([c.mean_pnl for c in cells if c.mean_pnl is not None], dtype=np.float64)
+    # a cell whose mean is not finite (null on the page) is left out of its arm's mean
+    means = np.asarray(
+        [c.mean_pnl for c in cells if c.mean_pnl is not None and math.isfinite(c.mean_pnl)],
+        dtype=np.float64,
+    )
     n = len(means)
+    mean = float(means.mean()) if n else math.nan
+    se = float(means.std(ddof=1) / math.sqrt(n)) if n > 1 else math.nan
     return ArmMeanOut(
         premium=premium,
-        mean=_f(float(means.mean())) if n else None,
-        se=_f(float(means.std(ddof=1) / math.sqrt(n))) if n > 1 else None,
+        # a mean or se that is not finite is None: grid_detail's oracle leaves such a
+        # point out and reads such an se as 0.0
+        mean=mean if math.isfinite(mean) else None,
+        se=se if math.isfinite(se) else None,
         n_blocks=n,
         block_means=[c.mean_pnl for c in cells],
     )
@@ -220,14 +228,14 @@ def _contrast(root: Path, record: GridRecord, premium: float, arm: ArmName) -> C
         )
     return ContrastOut(
         premium=premium,
-        estimate=_f(decision.estimate),
-        se=_f(decision.se),
-        t=_f(decision.t_stat),
+        estimate=decision.estimate,
+        se=decision.se,
+        t=decision.t_stat,
         df=decision.df,
-        critical=_f(decision.critical),
-        lower_bound=_f(decision.lower_bound),
+        critical=decision.critical,
+        lower_bound=decision.lower_bound,
         detected=decision.rejected,
-        block_means=_fl(block),
+        block_means=block.tolist(),
     )
 
 
@@ -249,19 +257,7 @@ def grid_detail(path: Path, root: Path) -> SweepOut:
         else:
             missing.append(f"{c.arm} at {c.premium:g}, block {c.block}: {c.run_id}")
         cells.append(
-            GridCellOut(
-                premium=c.premium,
-                arm=c.arm,
-                block=c.block,
-                run_id=c.run_id,
-                key=run_dir.relative_to(root).as_posix(),
-                train_seed=c.train_seed,
-                mean_pnl=_f(c.mean_pnl),
-                se_pnl=_f(c.se_pnl),
-                mean_cost=_f(c.mean_cost),
-                mean_trades=_f(c.mean_trades),
-                present=present,
-            )
+            _from_attrs(GridCellOut, c, key=run_dir.relative_to(root).as_posix(), present=present)
         )
     premiums = sorted(grid.premiums)
     means = {

@@ -5,6 +5,7 @@ Lane: Ilan Danial (machinery). Moved from ``optspread.webapi``, which re-exports
 
 from __future__ import annotations
 
+import math
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
@@ -12,7 +13,7 @@ from typing import Any
 import numpy as np
 from pydantic import Field
 
-from optspread.api._base import Out, _f
+from optspread.api._base import Out
 from optspread.api.catalog import CatalogOut
 from optspread.api.premiums import _interval
 from optspread.api.runs import (
@@ -157,21 +158,25 @@ def compare(
         if cmp.diff_mean is not None and cmp.diff_se is not None
         else (None, None)
     )
+    mean = cmp.diff_mean
+    # the verdict reads a mean difference that is not finite (two P&Ls that overflow
+    # apart) as no mean at all
+    verdict_mean = mean if mean is not None and math.isfinite(mean) else None
     return CompareOut(
         a=run_detail(a, root, index),
         b=run_detail(b, root, index),
         config_diff=[DiffOut(key=k, a=va, b=vb) for k, va, vb in cmp.config_diff],
         shared_seeds=len(cmp.shared_seeds),
-        diff_mean=_f(cmp.diff_mean),
-        diff_se=_f(cmp.diff_se),
-        diff_t=_f(cmp.diff_t),
+        diff_mean=cmp.diff_mean,
+        diff_se=cmp.diff_se,
+        diff_t=cmp.diff_t,
         diff_histogram=histogram(diffs),
         diff_df=n - 1 if n > 1 else None,
         diff_ci_low=lo,
         diff_ci_high=hi,
-        b_better_share=_f(float((diffs > 0).mean())) if n else None,
+        b_better_share=float((diffs > 0).mean()) if n else None,
         diffs=[SeedDiffOut(seed=s, a=pa[s], b=pb[s], diff=pb[s] - pa[s]) for s in cmp.shared_seeds],
-        verdict=compare_verdict(a.row, b.row, n, _f(cmp.diff_mean), lo, hi, names),
+        verdict=compare_verdict(a.row, b.row, n, verdict_mean, lo, hi, names),
         a_label=names[0],
         b_label=names[1],
         group=chosen.group if chosen is not None else "",

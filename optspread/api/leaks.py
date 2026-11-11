@@ -11,7 +11,7 @@ from typing import Any
 
 from pydantic import ConfigDict, Field
 
-from optspread.api._base import Out, _f, _from_attrs
+from optspread.api._base import Out, _from_attrs
 from optspread.dashboard.leakdemo import LeakDemo
 from optspread.leaks import LeakReport
 
@@ -56,15 +56,15 @@ def leak_t_critical(threshold: float, n_pairs: int) -> float | None:
 
     if n_pairs <= 2 or not 0.0 < threshold < 1.0:
         return None
-    return _f(float(stats.t.isf(threshold / 2.0, df=n_pairs - 2)))
+    return float(stats.t.isf(threshold / 2.0, df=n_pairs - 2))
 
 
 def _side(report: LeakReport, past_unchanged: bool) -> LeakSideOut:
     return LeakSideOut(
         flagged=report.flagged,
         worst_feature=report.worst_feature,
-        worst_t=_f(report.worst_t),
-        p_value=_f(report.p_value),
+        worst_t=report.worst_t,
+        p_value=report.p_value,
         threshold=report.threshold,
         n_pairs=report.n_pairs,
         n_tested=report.n_features_tested,
@@ -74,8 +74,9 @@ def _side(report: LeakReport, past_unchanged: bool) -> LeakSideOut:
             FeatureOut(
                 name=f.name,
                 tested=f.tested,
-                t_stat=_f(f.t_stat) if f.tested else None,
-                p_value=_f(f.p_value) if f.tested else None,
+                # an untested feature has no t or p: null, though the report stores 0 and 1
+                t_stat=f.t_stat if f.tested else None,
+                p_value=f.p_value if f.tested else None,
                 reason=f.reason,
             )
             for f in report.features
@@ -196,7 +197,7 @@ def leak_field_out(p: LeakFieldParams) -> LeakFieldOut:
         flagged=report.flagged,
         named_correctly=report.flagged and report.worst_feature == p.field,
         worst_feature=report.worst_feature,
-        p_value=_f(report.p_value),
+        p_value=report.p_value,
         threshold=report.threshold,
         features=side.features,
         seconds=time.perf_counter() - start,
@@ -237,7 +238,7 @@ def leak_coverage_out(eps: float, n_seeds: int) -> LeakCoverageOut:
         passed=rep.passed,
         uncovered=list(rep.uncovered),
         misattributed=list(rep.misattributed),
-        controls=[_from_attrs(FieldControlOut, c, p_value=_f(c.p_value)) for c in rep.controls],
+        controls=[FieldControlOut.model_validate(c, from_attributes=True) for c in rep.controls],
         seconds=time.perf_counter() - start,
         source="optspread.leaks.field_coverage on default_env",
     )
