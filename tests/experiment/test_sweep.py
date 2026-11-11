@@ -30,18 +30,22 @@ import pytest
 
 from optspread.artifacts import RUN_FILENAME, SchemaVersionError, read_run
 from optspread.config import CostConfig, EnvConfig, MarketConfig, RunConfig, config_hash
+from optspread.experiment.grid import GridConfig, block_config
+from optspread.experiment.sweep import (
+    SWEEP_FILENAME,
+    SweepConfig,
+    block_seed,
+    cell_config,
+    distinct,
+    pilot_matrix,
+    premium_market,
+    read_sweep,
+    run_sweep,
+)
 from optspread.harness import EpisodeResult, build_env, run_episode, run_episodes
 from optspread.manifest import MANIFEST_FILENAME
 from optspread.policies import DeltaSellerPolicy, Policy
 from optspread.power import variance_components
-from optspread.sweep import (
-    SWEEP_FILENAME,
-    SweepConfig,
-    cell_config,
-    pilot_matrix,
-    read_sweep,
-    run_sweep,
-)
 
 SHORT = RunConfig(
     seed=3000,
@@ -165,6 +169,45 @@ def test_a_sweep_config_must_have_distinct_premiums_and_at_least_one_arm() -> No
         SweepConfig(base=SHORT, premiums=(0.0,), arms=())
     with pytest.raises(ValueError, match="premiums"):
         SweepConfig(base=SHORT, premiums=(), arms=("flat",))
+
+
+# -- the helpers the grid shares ---------------------------------------------- #
+
+
+@pytest.mark.behaviour
+def test_distinct_refuses_an_empty_or_repeated_tuple_in_the_callers_words() -> None:
+    kept = (2.0, 0.0, 1.0)
+    assert distinct(kept, "none", "twice") is kept  # unchanged, order kept
+    with pytest.raises(ValueError, match=r"^none$"):
+        distinct((), "none", "twice")
+    with pytest.raises(ValueError, match=r"^twice$"):
+        distinct(("flat", "ppo", "flat"), "none", "twice")
+    with pytest.raises(ValueError, match=r"^twice$"):  # -0.0 == 0.0: one premium written twice
+        distinct((0.0, -0.0), "none", "twice")
+
+
+@pytest.mark.invariant
+def test_premium_market_changes_only_the_planted_premium() -> None:
+    base = SHORT.model_copy(
+        update={"market": SHORT.market.model_copy(update={"iv_premium_vol_pts": 3.0})}
+    )
+    for premium in (0.0, -0.0, 0.25, 4.0):
+        market = premium_market(base, premium)
+        assert market.iv_premium_vol_pts == premium
+        assert market.model_copy(update={"iv_premium_vol_pts": 3.0}) == base.market
+    assert premium_market(base, -0.0) == premium_market(base, 0.0)
+    assert base.market.iv_premium_vol_pts == 3.0  # the base is left as it was
+
+
+@pytest.mark.invariant
+def test_block_seed_starts_each_block_where_the_one_before_ended() -> None:
+    assert block_seed(500, 0, 20) == 500
+    for block in range(5):
+        assert block_seed(500, block + 1, 20) == block_seed(500, block, 20) + 20
+    grid = GridConfig(base=SHORT, premiums=(0.0,), arms=("delta_seller",), n_seeds=3)
+    for block in range(grid.n_seeds):
+        config = block_config(grid, 0.0, "delta_seller", block)
+        assert config.seed == block_seed(SHORT.seed, block, SHORT.n_episodes)
 
 
 # -- the pre-registered predictions ----------------------------------------- #

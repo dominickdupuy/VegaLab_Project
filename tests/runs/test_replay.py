@@ -25,11 +25,11 @@ from fake_learner import FakeLearned, fake_trainer
 from optspread.artifacts import RUN_FILENAME, RunRecord, dump_run, write_run
 from optspread.config import CostConfig, EnvConfig, MarketConfig, RunConfig, TrainConfig
 from optspread.data import DataUnavailableError
+from optspread.experiment.schedule import execute_run
 from optspread.harness import run_episodes, summarize
 from optspread.manifest import MANIFEST_FILENAME, RunManifest, callable_name, file_sha256
-from optspread.orchestrate import execute_run
 from optspread.replay import find_runs, replay_matches, replay_run
-from optspread.sweep import changed_artifacts, valid_run
+from optspread.runs.rundir import changed_artifacts, valid_run
 from optspread.train import POLICY_FILENAME
 
 SCRIPTED = RunConfig(

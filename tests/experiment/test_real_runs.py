@@ -28,6 +28,15 @@ from fake_learner import FakeLearned, fake_real_trainer, fake_trainer
 from optspread.artifacts import RUN_FILENAME, read_run
 from optspread.config import CostConfig, EnvConfig, MarketConfig, RunConfig, TrainConfig
 from optspread.data import OptionMetricsSource
+from optspread.experiment.grid import GridConfig, grid_cells
+from optspread.experiment.schedule import (
+    IncompleteGridError,
+    execute_run,
+    plan_cells,
+    run_grid,
+    run_single,
+)
+from optspread.experiment.sweep import SweepConfig, run_sweep
 from optspread.extend import Components
 from optspread.manifest import (
     MANIFEST_FILENAME,
@@ -36,26 +45,15 @@ from optspread.manifest import (
     callable_name,
     file_sha256,
 )
-from optspread.orchestrate import (
-    GridConfig,
-    IncompleteGridError,
-    execute_run,
-    foreign_run,
-    grid_cells,
-    plan_cells,
-    run_grid,
-    run_single,
-    source_root,
-)
 from optspread.realdata import SPLITS, SplitRanges
 from optspread.replay import replay_matches, replay_run
-from optspread.sweep import (
+from optspread.runs.rundir import (
     REAL_TRAINER,
     SB3_ARCHIVE_MEMBER,
-    SweepConfig,
+    foreign_run,
     recorded_trainer,
     run_id,
-    run_sweep,
+    source_root,
     valid_run,
 )
 from optspread.train import POLICY_FILENAME, train_on, train_ppo
@@ -488,8 +486,10 @@ def test_a_job_on_the_real_source_lands_in_its_folder_and_reports_it(
 ) -> None:
     from concurrent.futures import ThreadPoolExecutor, wait
 
-    from optspread.jobs import LAUNCH_DIR, JobManager, JobSpec, available_sources, execute_job
-    from optspread.webapi import job_options, job_out
+    from optspread.api.jobs import job_options, job_out
+    from optspread.dashboard.jobs.queue import JobManager
+    from optspread.dashboard.jobs.spec import LAUNCH_DIR, JobSpec, available_sources
+    from optspread.dashboard.jobs.worker import execute_job
 
     spec = JobSpec(n_days=21, tenor_days=(7, 14), n_episodes=2, seed=3, source="optionmetrics")
     (tmp_path / ".jobs").mkdir()  # the manager makes it
@@ -532,7 +532,8 @@ def test_a_job_on_a_source_whose_data_is_absent_is_refused_at_submission(
 ) -> None:
     from concurrent.futures import ThreadPoolExecutor
 
-    from optspread.jobs import JobManager, JobSpec, available_sources
+    from optspread.dashboard.jobs.queue import JobManager
+    from optspread.dashboard.jobs.spec import JobSpec, available_sources
 
     monkeypatch.setenv("VEGALAB_DATA", str(tmp_path / "nothing"))
     assert available_sources() == ("synthetic",)

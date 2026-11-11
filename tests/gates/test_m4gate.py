@@ -35,8 +35,9 @@ from optspread import m4gate
 from optspread.attribution import attribute_run, output_name, write_attribution
 from optspread.config import CostConfig, EnvConfig, MarketConfig, RunConfig, TrainConfig
 from optspread.config import config_hash as hash_of
+from optspread.experiment.grid import GridConfig, GridRecord, grid_filename, read_grid
+from optspread.experiment.schedule import run_grid
 from optspread.gatereport import GateItem, GateReport
-from optspread.orchestrate import GridConfig, GridRecord, grid_filename, read_grid, run_grid
 
 SHORT = RunConfig(
     seed=7000,
@@ -551,8 +552,9 @@ def test_the_dashboard_item_matches_the_views_by_name_and_finds_them_called(
     web = built_site(tmp_path / "web", "/api/runs/attribution", "/api/m4")
     item = m4gate.dashboard_item(tmp_path / "runs", tmp_path / "docs", web)
     passes(item)
-    assert "4 API routes; attribution view: /api/runs/attribution; power curve view: /api/m4" in (
-        item.evidence
+    # A prefix, so the count is the stand-in's four routes: the real app's 54 contain "4 API".
+    assert item.evidence.startswith(
+        "4 API routes; attribution view: /api/runs/attribution; power curve view: /api/m4"
     )
     assert "/api/m4 from _next/static/chunks/app/sweep/page-1a2b.js" in item.evidence
 

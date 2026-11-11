@@ -18,7 +18,7 @@ from optspread.artifacts import (
 )
 from optspread.config import CostConfig, EnvConfig, MarketConfig, RunConfig, config_hash
 from optspread.harness import run_episodes, summarize
-from optspread.manifest import MANIFEST_FILENAME, RunManifest
+from optspread.manifest import MANIFEST_FILENAME, RunManifest, file_sha256
 
 SMALL = RunConfig(
     policy="always_on",
@@ -67,7 +67,7 @@ def test_summary_fields_agree_with_the_episode_rows(written: Path) -> None:
 @pytest.mark.invariant
 def test_manifest_hashes_the_results_file(written: Path) -> None:
     manifest = RunManifest.read(written)
-    assert RUN_FILENAME in manifest.artifacts
+    assert manifest.artifacts[RUN_FILENAME] == file_sha256(written / RUN_FILENAME)
     assert manifest.results["mean_pnl"] == pytest.approx(read_run(written).mean_pnl)
     assert manifest.config_hash == config_hash(SMALL)
 

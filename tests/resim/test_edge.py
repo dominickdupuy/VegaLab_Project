@@ -36,7 +36,8 @@ from optspread.edge import (
     render_markdown,
     write_edge,
 )
-from optspread.orchestrate import GridConfig, grid_filename, read_grid, run_grid
+from optspread.experiment.grid import GridConfig, grid_filename, read_grid
+from optspread.experiment.schedule import run_grid
 from optspread.policies import Policy
 from optspread.power import t_critical
 from optspread.train import POLICY_FILENAME
@@ -292,7 +293,8 @@ def test_the_json_round_trips_and_is_never_written_into_a_sweep(
 
 @pytest.mark.behaviour
 def test_the_default_root_is_under_the_attribution_folder(tmp_path: Path) -> None:
-    assert default_root({}).parts[-2:] == ("attribution", "edge")
+    checkout = next(p for p in Path(__file__).resolve().parents if (p / "pyproject.toml").is_file())
+    assert default_root({}) == checkout / "attribution" / "edge"
     assert default_root({"OPTSPREAD_ATTRIBUTION": str(tmp_path)}) == tmp_path / "edge"
 
 

@@ -24,9 +24,10 @@ import pytest
 from optspread import m2gate
 from optspread.config import CostConfig, EnvConfig, MarketConfig, RunConfig, TrainConfig
 from optspread.data import ConformanceReport
+from optspread.experiment.pilot import pilot_grid, write_pilot_matrices
+from optspread.experiment.schedule import run_grid
 from optspread.gatereport import GateItem, build_report
 from optspread.manifest import RunManifest
-from optspread.orchestrate import pilot_grid, run_grid, write_pilot_matrices
 from optspread.power import detectable_effect_t, variance_components
 from optspread.validation import POISONED_PIPELINES, PREREGISTERED_EVENT, REJECTED_EVENTS
 

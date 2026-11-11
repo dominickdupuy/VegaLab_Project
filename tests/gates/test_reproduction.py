@@ -24,8 +24,8 @@ from fake_learner import fake_trainer
 from m3_fixtures import TINY, World, build_world, git
 
 from optspread import reproduction as rp
+from optspread.experiment.grid import grid_cells, grid_filename, read_grid
 from optspread.m4analysis import CONFIRMATORY_GRID
-from optspread.orchestrate import grid_cells, grid_filename, read_grid
 
 REPO = Path(__file__).resolve().parent.parent.parent
 COMMITTED = REPO / "docs" / rp.EXPECTED_FILE
@@ -259,7 +259,7 @@ def test_a_retrained_ppo_cell_is_compared_statistically_not_by_its_numbers(
 def test_the_ppo_structure_is_read_off_the_policy_the_cell_saved(tmp_path: Path) -> None:
     pytest.importorskip("stable_baselines3")
     from optspread.config import CostConfig, EnvConfig, MarketConfig, RunConfig, TrainConfig
-    from optspread.orchestrate import execute_run
+    from optspread.experiment.schedule import execute_run
 
     config = RunConfig(
         policy="ppo",

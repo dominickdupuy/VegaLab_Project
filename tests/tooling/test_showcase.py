@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from optspread.jobs import JobSpec
+from optspread.dashboard.jobs.spec import JobSpec
 from scripts import showcase
 
 
