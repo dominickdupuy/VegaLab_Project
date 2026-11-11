@@ -12,7 +12,7 @@ from typing import Any, Literal
 
 from pydantic import Field
 
-from optspread.api._base import Out, _f
+from optspread.api._base import Out
 from optspread.api.jobs import JobOptionsOut, PresetOut, job_options
 from optspread.api.study import A7_EVAL_RATE, A7_TRAIN_RATE
 from optspread.dashboard.jobs.spec import JobSpec
@@ -266,7 +266,7 @@ def _peers(spec: JobSpec, config: Any, runs_root: Path, rows: Sequence[RunRow]) 
                     premium=row.premium,
                     source=run_source(row),
                     n_episodes=row.n_episodes,
-                    mean_pnl=_f(row.mean_pnl),
+                    mean_pnl=row.mean_pnl,
                     relation=relation,
                     paired=paired,
                     note=note,

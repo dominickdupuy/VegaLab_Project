@@ -16,7 +16,7 @@ from typing import Any
 
 from pydantic import Field
 
-from optspread.api._base import Out, _finite_json, _source_suffix
+from optspread.api._base import Out, _source_suffix
 from optspread.dashboard.jobs.spec import JOBS_DIR
 from optspread.dashboard.runindex import GRID_PATTERN
 from optspread.manifest import MANIFEST_FILENAME
@@ -211,7 +211,7 @@ def edge_detail(
     return EdgeOut(
         name=path.name,
         folder=f"{EDGE_DIR}/",
-        edge=_finite_json(result.model_dump(mode="json")),
+        edge=result.model_dump(mode="json"),
         run_keys=keys,
         grid_key=grid_key,
         actionmix_command=ACTIONMIX_COMMAND.format(grid=grid_key or f"grid-{gh}.json"),

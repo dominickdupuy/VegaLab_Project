@@ -15,7 +15,7 @@ import numpy as np
 from pydantic import ConfigDict, Field
 
 from optspread import power as pw
-from optspread.api._base import Out, _f
+from optspread.api._base import Out
 
 # -- the power lab ---------------------------------------------------------------- #
 
@@ -94,10 +94,10 @@ def _design(d: pw.Design) -> DesignOut:
     return DesignOut(
         n_seeds=d.n_seeds,
         n_episodes=d.n_episodes,
-        power=_f(d.power),
-        train_hours=_f(b.train_hours) if b else None,
-        eval_hours=_f(b.eval_hours) if b else None,
-        total_hours=_f(b.total_hours) if b else None,
+        power=d.power,
+        train_hours=b.train_hours if b else None,
+        eval_hours=b.eval_hours if b else None,
+        total_hours=b.total_hours if b else None,
     )
 
 
@@ -240,7 +240,7 @@ def power_surface(p: PowerSurfaceParams) -> PowerSurfaceOut:
     seeds = surface_seeds(p.max_seeds)
     grid = [
         [
-            _f(pw.power_t(p.delta * float(x), p.tau2, p.sigma2, s, p.n_episodes, p.alpha))
+            pw.power_t(p.delta * float(x), p.tau2, p.sigma2, s, p.n_episodes, p.alpha)
             for x in premiums
         ]
         for s in seeds

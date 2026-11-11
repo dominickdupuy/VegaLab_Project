@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Literal
 
 from optspread import actionmix as am
-from optspread.api._base import Out, _f, _from_attrs, _source_suffix
+from optspread.api._base import Out, _from_attrs, _source_suffix
 from optspread.api.runwork import _ppo_reason, real_data_reason
 from optspread.dashboard.runindex import RunRow
 from optspread.dashboard.tasks import TaskState
@@ -148,8 +148,8 @@ def _holding(seed: int, h: am.Holding) -> HoldingOut:
         HoldingOut,
         h,
         seed=seed,
-        short_delta=_f(sum(shorts) / len(shorts)) if shorts else None,
-        long_delta=_f(sum(longs) / len(longs)) if longs else None,
+        short_delta=sum(shorts) / len(shorts) if shorts else None,
+        long_delta=sum(longs) / len(longs) if longs else None,
         strikes=sorted(leg.strike for leg in h.legs),
     )
 

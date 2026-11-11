@@ -17,7 +17,7 @@ import numpy as np
 
 from optspread import power as pw
 from optspread.analysis import ALPHA, NULL_PREMIUM, decide_contrast
-from optspread.api._base import Out, _f
+from optspread.api._base import Out
 from optspread.api.runs import RunFilters, _filtered, row_out, run_source
 from optspread.artifacts import SchemaVersionError, read_run
 from optspread.dashboard.runindex import RunRow, flatten_config
@@ -145,7 +145,10 @@ def _interval(mean: float, se: float, n: int) -> tuple[float | None, float | Non
     if n < 2 or not math.isfinite(se):
         return None, None
     half = _t95(n) * se
-    return _f(mean - half), _f(mean + half)
+    lo, hi = float(mean - half), float(mean + half)
+    # an end that is not finite (it overflowed) is no end: the compare verdict and a
+    # catalog pair's "clear" read None, and the page gets null
+    return (lo if math.isfinite(lo) else None), (hi if math.isfinite(hi) else None)
 
 
 def _group(
@@ -175,16 +178,16 @@ def _group(
         premium=premium,
         n_runs=len(runs),
         n_episodes=n,
-        mean=_f(mean),
-        se=_f(se),
+        mean=mean,
+        se=se,
         ci_low=lo,
         ci_high=hi,
         interval=kind,
-        p5=_f(q[0]),
-        p25=_f(q[1]),
-        p50=_f(q[2]),
-        p75=_f(q[3]),
-        p95=_f(q[4]),
+        p5=q[0],
+        p25=q[1],
+        p50=q[2],
+        p75=q[3],
+        p95=q[4],
         run_keys=[key for key, _, _ in runs],
     )
 
@@ -230,12 +233,12 @@ def _premium_contrast(
             **base,
             n_blocks=len(blocks),
             n_pairs=n * len(blocks),
-            estimate=_f(decision.estimate),
-            se=_f(decision.se),
+            estimate=decision.estimate,
+            se=decision.se,
             df=decision.df,
             ci_low=lo,
             ci_high=hi,
-            lower_bound=_f(decision.lower_bound),
+            lower_bound=decision.lower_bound,
             detected=decision.rejected,
             interval="runs",
         )
@@ -249,12 +252,12 @@ def _premium_contrast(
         **base,
         n_blocks=1,
         n_pairs=len(d),
-        estimate=_f(est),
-        se=_f(se),
+        estimate=est,
+        se=se,
         df=len(d) - 1,
         ci_low=lo,
         ci_high=hi,
-        lower_bound=_f(bound),
+        lower_bound=bound,
         detected=bool(bound > 0),
         interval="episodes",
     )
