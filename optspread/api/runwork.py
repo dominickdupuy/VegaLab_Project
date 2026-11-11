@@ -192,8 +192,11 @@ class CapitalEpisodeOut(Out):
 
 
 class CapitalOut(Out):
-    # "done" from compute_capital (and so in every cached file); the rest from capital_view
-    state: Literal["done", "computing", "absent", "failed"]
+    # The server writes "done" (compute_capital) or "computing", "absent", "failed"
+    # (capital_view), but a cached file is served as it reads (read_capital), whatever
+    # state it holds: a hand-edited or foreign file's state reaches the page as written,
+    # so the schema says only str.
+    state: str
     can_compute: bool
     reason: str
     initial_cash: float | None = None
