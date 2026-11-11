@@ -11,7 +11,7 @@ from typing import Any
 
 from pydantic import ConfigDict, Field
 
-from optspread.api._base import Out, _f
+from optspread.api._base import Out, _f, _from_attrs
 from optspread.dashboard.leakdemo import LeakDemo
 from optspread.leaks import LeakReport
 
@@ -84,14 +84,11 @@ def _side(report: LeakReport, past_unchanged: bool) -> LeakSideOut:
 
 
 def leak_demo(demo: LeakDemo) -> LeakDemoOut:
-    return LeakDemoOut(
-        eps=demo.eps,
-        seeds=list(demo.seeds),
+    return _from_attrs(
+        LeakDemoOut,
+        demo,
         clean=_side(demo.clean, demo.clean_past_unchanged),
         poisoned=_side(demo.poisoned, demo.poisoned_past_unchanged),
-        caught=demo.caught,
-        seconds=demo.seconds,
-        criterion=demo.criterion,
         source="optspread.leaks: detect_leak and perturbation_check, run live on default_env",
     )
 
@@ -240,15 +237,7 @@ def leak_coverage_out(eps: float, n_seeds: int) -> LeakCoverageOut:
         passed=rep.passed,
         uncovered=list(rep.uncovered),
         misattributed=list(rep.misattributed),
-        controls=[
-            FieldControlOut(
-                field=c.field,
-                flagged=c.flagged,
-                named_correctly=c.named_correctly,
-                p_value=_f(c.p_value),
-            )
-            for c in rep.controls
-        ],
+        controls=[_from_attrs(FieldControlOut, c, p_value=_f(c.p_value)) for c in rep.controls],
         seconds=time.perf_counter() - start,
         source="optspread.leaks.field_coverage on default_env",
     )

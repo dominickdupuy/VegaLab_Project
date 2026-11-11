@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from optspread import power as pw
-from optspread.api._base import Out
+from optspread.api._base import Out, _from_attrs
 
 # -- the study design (docs/PRE_REGISTRATION.md) ------------------------------------ #
 
@@ -274,20 +274,7 @@ def _mapped(
             clipped=False,
             reason=str(exc).splitlines()[0] if str(exc) else type(exc).__name__,
         )
-    return MappedPowerOut(
-        arm=arm,
-        premium=m.premium,
-        low=m.low,
-        high=m.high,
-        power=m.power,
-        power_low=m.power_low,
-        power_high=m.power_high,
-        clipped=m.clipped,
-        power_min=m.power_min,
-        power_max=m.power_max,
-        band_min=band[0],
-        band_max=band[1],
-    )
+    return _from_attrs(MappedPowerOut, m, arm=arm, band_min=band[0], band_max=band[1])
 
 
 def m4_analysis(docs: Path) -> M4Out:

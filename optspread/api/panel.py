@@ -20,7 +20,7 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from optspread.api._base import Out, _f, _fl, _iso
+from optspread.api._base import DateText, Out, _f, _fl, _from_attrs, _iso
 from optspread.api.readings import (
     SIGMA_FROM,
     FredRowOut,
@@ -66,8 +66,8 @@ class DataStatusOut(Out):
 
 class SpanOut(Out):
     source: str
-    first: str
-    last: str
+    first: DateText
+    last: DateText
     n_days: int
     n_missing: int
     median_contracts: float
@@ -89,7 +89,7 @@ class CoverageOut(Out):
 
 
 class ExpiryOut(Out):
-    expiry: str
+    expiry: DateText
     dte: int
     n_quotes: int
     forward: float | None
@@ -345,17 +345,7 @@ class PanelReader:
                 )
             )
         return CoverageOut(
-            spans=[
-                SpanOut(
-                    source=s.source,
-                    first=s.first.isoformat(),
-                    last=s.last.isoformat(),
-                    n_days=s.n_days,
-                    n_missing=s.n_missing,
-                    median_contracts=s.median_contracts,
-                )
-                for s in summary.spans
-            ],
+            spans=[SpanOut.model_validate(s, from_attributes=True) for s in summary.spans],
             missing=[(d.isoformat(), s) for d, s in summary.missing],
             overlap=(
                 summary.overlap[0].isoformat(),
@@ -389,14 +379,7 @@ class PanelReader:
             sources=list(panel.chain_sources(chain)),
             roots=sorted(set(chain["root"].tolist())) if panel.n_rows(chain) else [],
             expiries=[
-                ExpiryOut(
-                    expiry=e.expiry.isoformat(),
-                    dte=e.dte,
-                    n_quotes=e.n_quotes,
-                    forward=_f(e.forward),
-                    carry_fit=e.carry_fit,
-                )
-                for e in panel.expiries(rows)
+                _from_attrs(ExpiryOut, e, forward=_f(e.forward)) for e in panel.expiries(rows)
             ],
             default_expiry=near.expiry.isoformat() if near else None,
             source=str(self.layout.chain_file(day.year)),

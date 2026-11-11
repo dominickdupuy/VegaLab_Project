@@ -14,7 +14,7 @@ from typing import Literal
 import numpy as np
 
 from optspread.analysis import NULL_PREMIUM, decide_premium, paired_contrast
-from optspread.api._base import Out, _f, _fl, _inside
+from optspread.api._base import Out, _f, _fl, _from_attrs, _inside
 from optspread.artifacts import SchemaVersionError
 from optspread.config import ArmName
 from optspread.dashboard.jobs.spec import JOBS_DIR
@@ -325,13 +325,7 @@ def sweep_detail(root: Path, key: str) -> SweepOut:
     for arm in rec.arms:
         base = rec.cell(rec.premiums[0], arm).mean_pnl
         oracle[arm] = [
-            OraclePointOut(
-                premium=c.premium,
-                mean_pnl=c.mean_pnl,
-                se_pnl=c.se_pnl,
-                lift=c.mean_pnl - base,
-                run_id=c.run_id,
-            )
+            _from_attrs(OraclePointOut, c, lift=c.mean_pnl - base)
             for c in (rec.cell(p, arm) for p in rec.premiums)
         ]
     return SweepOut(

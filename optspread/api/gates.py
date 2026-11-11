@@ -14,7 +14,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from optspread.api._base import Out
+from optspread.api._base import Out, _from_attrs
 from optspread.dashboard.gateboard import GateBoard, load_gate_boards
 
 # -- gates ------------------------------------------------------------------------ #
@@ -48,28 +48,8 @@ class GatesOut(Out):
 
 
 def board_out(board: GateBoard) -> GateBoardOut:
-    return GateBoardOut(
-        milestone=board.milestone,
-        report_date=board.report_date,
-        verdict=board.verdict,
-        stated_verdict=board.stated_verdict,
-        verdict_mismatch=board.verdict_mismatch,
-        counts=board.counts,
-        items=[
-            GateItemOut(
-                name=i.name,
-                owner=i.owner,
-                verdict=i.verdict,
-                criterion=i.criterion,
-                evidence=i.evidence,
-                failed_first=i.failed_first,
-                cited_runs=list(i.cited_runs),
-            )
-            for i in board.items
-        ],
-        source=str(board.source),
-        from_json=board.from_json,
-    )
+    # the items are read from the board's rows by name too
+    return _from_attrs(GateBoardOut, board, source=str(board.source))
 
 
 def gates(docs: Path) -> GatesOut:
@@ -120,14 +100,10 @@ def checks(docs: Path) -> list[CheckOut]:
             seen.add(i.name)
             readable = b.source.with_suffix(".md")
             out.append(
-                CheckOut(
-                    name=i.name,
+                _from_attrs(
+                    CheckOut,
+                    i,
                     label=check_label(i.name),
-                    verdict=i.verdict,
-                    failed_first=i.failed_first,
-                    criterion=i.criterion,
-                    evidence=i.evidence,
-                    owner=i.owner,
                     report=readable.name if readable.is_file() else b.source.name,
                     sidecar=b.source.name,
                     report_date=b.report_date,

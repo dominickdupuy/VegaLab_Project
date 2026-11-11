@@ -9,7 +9,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Literal
 
-from optspread.api._base import Out
+from optspread.api._base import Out, PathText, _from_attrs
 from optspread.api.panel import DataStatusOut, PanelReader, SpanOut
 from optspread.api.runs import RunRowOut, row_out
 from optspread.api.sweeps import _grid_files, _sweep_dirs
@@ -36,7 +36,7 @@ class GateTileOut(Out):
     report_date: str
     n_items: int
     n_pass: int
-    source: str
+    source: PathText
 
 
 class OverviewOut(Out):
@@ -64,15 +64,7 @@ def overview(
     return OverviewOut(
         summary=list(readme_summary(readme)),
         gates=[
-            GateTileOut(
-                milestone=b.milestone,
-                verdict=b.verdict,
-                verdict_mismatch=b.verdict_mismatch,
-                report_date=b.report_date,
-                n_items=len(b.items),
-                n_pass=b.counts.get("PASS", 0),
-                source=str(b.source),
-            )
+            _from_attrs(GateTileOut, b, n_items=len(b.items), n_pass=b.counts.get("PASS", 0))
             for b in boards
         ],
         data=reader.status(),

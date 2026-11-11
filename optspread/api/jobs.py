@@ -11,7 +11,7 @@ from typing import Any, Literal
 
 from pydantic import Field
 
-from optspread.api._base import Out
+from optspread.api._base import Out, _from_attrs
 from optspread.dashboard.jobs.queue import JobState, JobStatus
 from optspread.dashboard.jobs.spec import (
     LAUNCH_DIR,
@@ -191,15 +191,7 @@ def job_options() -> JobOptionsOut:
         landing={s: (source_root(Path(), s) / LAUNCH_DIR).as_posix() for s in SOURCES},
         splits={k: [a.isoformat(), b.isoformat()] for k, (a, b) in SPLITS.items()},
         knobs=knobs,
-        presets=[
-            PresetOut(
-                name=p.name,
-                label=p.label,
-                description=p.description,
-                spec=p.spec.model_dump(mode="json"),
-            )
-            for p in PRESETS
-        ],
+        presets=[_from_attrs(PresetOut, p, spec=p.spec.model_dump(mode="json")) for p in PRESETS],
         defaults=JobSpec().model_dump(mode="json"),
     )
 
@@ -221,18 +213,4 @@ class JobOut(Out):
 
 
 def job_out(status: JobStatus) -> JobOut:
-    return JobOut(
-        job_id=status.job_id,
-        state=status.state,
-        phase=status.phase,
-        done=status.done,
-        total=status.total,
-        fraction=status.fraction,
-        run_id=status.run_id,
-        run_key=status.run_key,
-        created_at=status.created_at,
-        policy=status.policy,
-        error=status.error,
-        log_tail=list(status.log_tail),
-        source=status.source,
-    )
+    return JobOut.model_validate(status, from_attributes=True)
