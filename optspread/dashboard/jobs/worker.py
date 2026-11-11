@@ -111,7 +111,7 @@ def _make_policy(
     if name in _SCRIPTED:
         return make_policy(_SCRIPTED[name], roll_dte=config.env.roll_dte), None, None
     train = importlib.import_module("optspread.train")
-    check_disjoint(config)  # as orchestrate.execute_run: never scored on a path it trained on
+    check_disjoint(config)  # as schedule.execute_run: never scored on a path it trained on
     log("training PPO at the frozen D3 hyperparameters")
     trainer = (
         train.train_ppo
@@ -124,7 +124,7 @@ def _make_policy(
 
 
 def _existing(run_dir: Path, config: RunConfig, source: SourceName = "synthetic") -> bool:
-    """A job's run already on disk: valid by ``sweep.valid_run`` with its equity paths."""
+    """A job's run already on disk: valid by ``rundir.valid_run`` with its equity paths."""
     if valid_run(run_dir, config, source) is None:
         return False
     try:
@@ -215,7 +215,7 @@ def execute_job(job_id: str, spec_json: str, runs_root: str) -> str:
     episodes = tuple(results)
     summary = summarize(episodes)
     # The policy and the equity paths first: the manifest is written once, last, with
-    # them hashed in. The policy is saved as orchestrate.execute_run saves it.
+    # them hashed in. The policy is saved as schedule.execute_run saves it.
     run_dir.mkdir(parents=True, exist_ok=True)
     extra: list[Path] = []
     if trained is not None:

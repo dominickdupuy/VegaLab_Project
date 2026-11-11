@@ -158,8 +158,8 @@ def execute_run(
 
     On another ``source`` the run trains on its ``train`` split and is evaluated on
     ``eval``, and the manifest records the split. A run of one's own components records
-    them (``sweep.expected_data``). A directory that holds this config's run on other
-    data, or made with other components, is refused (``sweep.foreign_run``).
+    them (``rundir.expected_data``). A directory that holds this config's run on other
+    data, or made with other components, is refused (``rundir.foreign_run``).
     """
     run = source_runner(runner, source)
     if why := foreign_run(run_dir, config, source, runner):
@@ -199,7 +199,7 @@ def run_single(
 ) -> tuple[Path, RunRecord, bool]:
     """One run at ``root/<run id>``: ``(run_dir, record, reused)``.
 
-    Read back when ``sweep.valid_run`` accepts what is on disk (same source, trainer and
+    Read back when ``rundir.valid_run`` accepts what is on disk (same source, trainer and
     components), computed through ``execute_run`` otherwise: the grid's rule for one cell.
     The run is computed under ``root``'s lock (``rundir.root_lock``), as ``run_cells``
     computes; a run already on disk is read back without it, so a root this account cannot

@@ -50,7 +50,7 @@ class EstimateOut(Out):
 
 
 def launch_options() -> JobOptionsOut:
-    """``webapi.job_options`` with the PPO preset beside the scripted ones."""
+    """``api.jobs.job_options`` with the PPO preset beside the scripted ones."""
     return job_options().model_copy(update={"ppo_preset": PPO_PRESET})
 
 

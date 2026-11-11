@@ -48,7 +48,7 @@ from pydantic import (
 from optspread.analysis import NULL_PREMIUM, paired_contrast
 from optspread.artifacts import RunRecord, read_run
 
-# Used here before read_grid's check moved to sweep.check_schema; still importable from here.
+# Used here before read_grid's check moved to rundir.check_schema; still importable from here.
 from optspread.artifacts import SchemaVersionError as SchemaVersionError
 from optspread.config import ArmName, CostConfig, RunConfig, TrainConfig, config_hash
 from optspread.data import SourceName
@@ -155,7 +155,7 @@ def reusable(
     source: SourceName = "synthetic",
     runner: Runner = run_episodes,
 ) -> RunRecord | None:
-    """The cell's run on disk when it can be reused: ``sweep.valid_run`` on ``source`` with
+    """The cell's run on disk when it can be reused: ``rundir.valid_run`` on ``source`` with
     ``runner``'s components, and for a learned cell trained by ``trainer`` (the real
     learner unless told otherwise; None accepts any)."""
     name = callable_name(trainer) if trainer is not None else None
