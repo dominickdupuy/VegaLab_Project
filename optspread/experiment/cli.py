@@ -32,7 +32,7 @@ from optspread.data import DataUnavailableError, SourceName, make_source
 from optspread.experiment.grid import GridConfig, GridRecord, grid_cells
 from optspread.experiment.schedule import IncompleteGridError, plan_cells, run_grid
 from optspread.realdata import SPLITS, Split
-from optspread.runs.rundir import JobSource, default_runs_root, source_root
+from optspread.runs.rundir import JobSource, RootInUseError, default_runs_root, source_root
 from optspread.train import Trainer
 
 SOURCES: tuple[str, ...] = get_args(JobSource)
@@ -129,7 +129,8 @@ def plan_and_run(
     """Print the plan on ``source``; unless ``--dry-run``, run the grid with ``--workers``
     and one progress line per cell, print its record, then ``finish(record)``.
 
-    The exit code: 1 when a cell failed (listed on stderr), else 0."""
+    The exit code: 1 when a cell failed (listed on stderr) or another run holds the root's
+    lock (``RootInUseError``, one line on stderr), else 0."""
     plan = plan_cells(grid_cells(grid), root, int(args.workers), trainer=trainer, source=source)
     print(f"{plan.render()}; on {describe(source)}", flush=True)
     if args.dry_run:
@@ -143,7 +144,7 @@ def plan_and_run(
             report=lambda p: print(p.render(), flush=True),
             source=source,
         )
-    except IncompleteGridError as exc:
+    except (IncompleteGridError, RootInUseError) as exc:
         print(exc, file=sys.stderr)
         return 1
     print()
