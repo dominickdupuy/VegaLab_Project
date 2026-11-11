@@ -18,8 +18,7 @@ so a test server never writes beside the repository. Writes are atomic, and a bo
 does not read back is ignored and rebuilt.
 
 The ETag of a body is its key's digest: a browser that sends it back (``If-None-Match``)
-is told 304 without the body being rebuilt or resent. Moved from ``optspread.webcache``,
-which re-exports it.
+is told 304 without the body being rebuilt or resent. Moved from ``optspread.webcache``.
 """
 
 from __future__ import annotations

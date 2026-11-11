@@ -2,7 +2,7 @@
 run's mix view, which the run page starts and polls.
 
 Lane: Ilan Danial (machinery). Moved from ``optspread.webapi`` (the action mix) and
-``optspread.webviews`` (the run's mix view), which re-export it.
+``optspread.webviews`` (the run's mix view).
 """
 
 from __future__ import annotations

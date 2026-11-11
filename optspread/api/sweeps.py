@@ -1,6 +1,6 @@
 """API payloads for sweeps and grids: the list, and one sweep's or grid's detail.
 
-Lane: Ilan Danial (machinery). Moved from ``optspread.webapi``, which re-exports it.
+Lane: Ilan Danial (machinery). Moved from ``optspread.webapi``.
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ from optspread.artifacts import SchemaVersionError
 from optspread.config import ArmName
 from optspread.dashboard.jobs.spec import JOBS_DIR
 
-# an orchestrated grid's record, as the run index finds it (re-exported for optspread.webapi)
+# an orchestrated grid's record, as the run index finds it
 from optspread.dashboard.runindex import GRID_PATTERN as GRID_PATTERN
 from optspread.experiment.grid import GridRecord, read_grid
 from optspread.experiment.sweep import SWEEP_FILENAME, SweepRecord, read_sweep

@@ -1,6 +1,6 @@
 """API payloads for launching jobs: the knobs a job takes, their options, and a job's status.
 
-Lane: Ilan Danial (machinery). Moved from ``optspread.webapi``, which re-exports it.
+Lane: Ilan Danial (machinery). Moved from ``optspread.webapi``.
 """
 
 from __future__ import annotations

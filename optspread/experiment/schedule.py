@@ -58,7 +58,7 @@ a cell directory that holds another source's run of the same config is refused r
 than overwritten.
 
 The pool pickles ``_execute`` by module path, so it stays module-level here. Moved from
-``optspread.orchestrate``, which re-exports it.
+``optspread.orchestrate``.
 """
 
 from __future__ import annotations

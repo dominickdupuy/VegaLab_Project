@@ -5,7 +5,7 @@ Lane: Ilan Danial (machinery).
 
 The design's power and floor are recomputed by ``optspread.power`` rather than copied; the
 real premium is read off the M4 analysis' power curves with ``optspread.vrp.power_at``.
-Moved from ``optspread.webviews``, which re-exports it.
+Moved from ``optspread.webviews``.
 """
 
 from __future__ import annotations

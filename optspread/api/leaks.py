@@ -1,7 +1,7 @@
 """API payloads for the leak detector: the demo, its floor, and its per-field controls.
 
 Lane: Ilan Danial (machinery). Moved from ``optspread.webapi`` (the demo) and
-``optspread.webviews`` (the floor, the fields and their coverage), which re-export it.
+``optspread.webviews`` (the floor, the fields and their coverage).
 """
 
 from __future__ import annotations

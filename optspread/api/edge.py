@@ -4,7 +4,7 @@ component's and each structure's share of the paired contrast.
 Lane: Ilan Danial (machinery).
 
 Read from ``<attribution root>/edge`` as ``scripts/edge_attribution.py`` wrote it, with each
-cell's run under the runs root. Moved from ``optspread.webviews``, which re-exports it.
+cell's run under the runs root. Moved from ``optspread.webviews``.
 """
 
 from __future__ import annotations

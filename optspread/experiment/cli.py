@@ -16,7 +16,7 @@ and their flow (``plan_and_run``): print the plan, stop there on ``--dry-run``, 
 grid with one progress line per cell, report failed cells on stderr with exit code 1, and
 otherwise print the grid record before each script's own closing lines.
 
-Moved from ``optspread.cli``, which re-exports it.
+Moved from ``optspread.cli``.
 """
 
 from __future__ import annotations

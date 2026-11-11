@@ -2,8 +2,7 @@
 
 Lane: Ilan Danial (machinery).
 
-``PanelReader`` (``optspread.api.panel``) builds these. Moved from ``optspread.webapi``,
-which re-exports it.
+``PanelReader`` (``optspread.api.panel``) builds these. Moved from ``optspread.webapi``.
 """
 
 from __future__ import annotations

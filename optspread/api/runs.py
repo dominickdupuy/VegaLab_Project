@@ -3,8 +3,7 @@
 Lane: Ilan Danial (machinery).
 
 Every payload read from a run names it by its key under the runs root and its config hash.
-``index`` is the run index every run route lists from. Moved from ``optspread.webapi``,
-which re-exports it.
+``index`` is the run index every run route lists from. Moved from ``optspread.webapi``.
 """
 
 from __future__ import annotations

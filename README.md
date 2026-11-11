@@ -108,17 +108,17 @@ module they drive.
 | `env.py` | Ilan | Gymnasium env and the append-only observation schema. |
 | `harness.py` | Ilan | Episode runner and evaluator; the one path from a config to numbers. |
 | `artifacts.py` | Ilan | The run output schema: versioned `RunRecord`, hashed into the manifest. |
-| `sweep.py` | Ilan | Scripted premium sweep on paired seeds; the resume rule every orchestrator shares. |
+| `experiment/sweep.py` | Ilan | Scripted premium sweep on paired seeds. |
+| `runs/rundir.py` | Ilan | Run ids and the resume rule every orchestrator shares; one orchestrator per results root. |
 | `train.py` | Ilan | The PPO arm at the frozen D3 hyperparameters; training paths kept off evaluation paths. |
-| `orchestrate.py` | Ilan | The pilot and sweep grid: premium x arm x seed block, parallel and resumable. |
+| `experiment/` | Ilan | The pilot and sweep grid: premium x arm x seed block (`grid.py`), parallel and resumable (`schedule.py`), the pilot (`pilot.py`). |
 | `replay.py` | Ilan | The reproducibility gate: rerun from the manifest, compare `run.json` bytes (or within `--rtol`). |
-| `cli.py` | Ilan | The `--source` flag every command that launches runs takes, read the same way. |
-| `dashboard_data.py` | Ilan | What the dashboard reads: run index, gate board, risk figures, live leak demo. |
-| `dashboard_panel.py` | Ilan | Read-side views of the SPX panel: coverage, smile, surface, term structure, VRP, seam. |
-| `jobs.py` | Ilan | Runs launched from the dashboard: knobs to `RunConfig`, a bounded process pool. |
-| `webapi.py` | Ilan | The API's typed payloads, each saying where its numbers came from. |
-| `webviews.py` | Ilan | The study-level payloads: the design, the checks, the analyses, the work a view starts. |
-| `server.py` | Ilan | FastAPI over `webapi` and `webviews`, serving the static site in `web/out`. |
+| `experiment/cli.py` | Ilan | The `--source` flag every command that launches runs takes, read the same way. |
+| `dashboard/` | Ilan | What the dashboard reads: run index, gate board, risk figures, live leak demo; `dashboard_data.py` re-exports it for the M2 gate. |
+| `dashboard/panel_views.py` | Ilan | Read-side views of the SPX panel: coverage, smile, surface, term structure, VRP, seam. |
+| `dashboard/jobs/` | Ilan | Runs launched from the dashboard: knobs to `RunConfig`, a bounded process pool. |
+| `api/` | Ilan | The API's typed payloads, each saying where its numbers came from: the runs, the panel, the study, its checks and analyses, the work a view starts; the answer cache (`cache.py`). |
+| `server.py` | Ilan | FastAPI over the `api/` payloads (`api/server.py`), serving the static site in `web/out`. |
 | `web/` | Ilan | The dashboard: Next.js static export, ECharts, two themes from the deck. |
 | `leaks.py` | Dominick | Perturbation property, structural invariants, poisoned env, leak floor. |
 | `gatereport.py` | Dominick | Milestone reports: criterion, evidence, what failed first; a JSON sidecar. |
@@ -598,7 +598,7 @@ therefore go under their own folder of the runs root (`$VEGALAB_DATA/runs` when
 | dashboard job | `<runs root>/launched` | `<runs root>/optionmetrics/launched` |
 
 Each run's manifest records the source, the sha256 of each panel file it read and the
-split its episodes came from (`DataRecord`). Every reuse check (`sweep.valid_run`, so the
+split its episodes came from (`DataRecord`). Every reuse check (`rundir.valid_run`, so the
 grid's resume and the single run's, and the job runner's) refuses a run on another source
 or split, and a directory that already holds one is never overwritten: the cell fails and
 says so. A learned cell is also reused only when its manifest names the trainer asked for,
@@ -789,7 +789,7 @@ A chart draws once per real change of what it shows: the site binds ECharts itse
 sets an option only when it differs from the last one drawn, never animates or morphs
 between two, and counts its draws in the chart's `data-draws` attribute.
 
-Answers are kept while the files they read stand (`optspread/webcache.py`): each route's
+Answers are kept while the files they read stand (`optspread/api/cache.py`): each route's
 body is keyed by its query and a stamp (path, modification time, size) of the runs root,
 the docs or the panel, kept in memory, and for the panel's routes on disk too (under
 `<attribution root>/webcache`, or `--cache` / `OPTSPREAD_CACHE`), since a cloud-synced
@@ -802,7 +802,7 @@ running and the pool is rebuilt; jobs queued behind it run on the new one, and
 later launches are unaffected (#30). At most `OPTSPREAD_MAX_JOBS` jobs (default 8)
 are queued or running at once; past that a launch is refused with a 429 rather than
 queued. A PPO job saves the policy it trained beside `run.json`, hashed into the manifest
-as `orchestrate.execute_run` saves it, so its capital, attribution and action mix
+as `schedule.execute_run` saves it, so its capital, attribution and action mix
 re-simulate it. `POST /api/jobs/<id>/cancel` cancels a job: a queued one never runs, and a
 running one stops between episodes or, if it finishes anyway, reports no run.
 

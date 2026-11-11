@@ -1,7 +1,7 @@
 """API payload for the runs list read by planted premium: P&L per arm, and each arm against
 itself at zero.
 
-Lane: Ilan Danial (machinery). Moved from ``optspread.webapi``, which re-exports it.
+Lane: Ilan Danial (machinery). Moved from ``optspread.webapi``.
 """
 
 from __future__ import annotations

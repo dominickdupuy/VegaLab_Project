@@ -5,8 +5,7 @@ Lane: Ilan Danial (machinery).
 
 Also the builders of the old ``/api/gates`` board (``gates``, ``board_out`` and their
 models), which no route calls since ``/api/checks`` replaced it; one test still does.
-Moved from ``optspread.webviews`` (the checks) and ``optspread.webapi`` (the board), which
-re-export them.
+Moved from ``optspread.webviews`` (the checks) and ``optspread.webapi`` (the board).
 """
 
 from __future__ import annotations

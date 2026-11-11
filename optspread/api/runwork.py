@@ -5,8 +5,7 @@ Lane: Ilan Danial (machinery).
 
 Attribution (``optspread.attribution``) and capital are cached under the attribution root,
 never in a run directory; replay is ``optspread.replay``. The server runs the work on one
-thread with ``optspread.dashboard.tasks.Tasks``. Moved from ``optspread.webviews``, which
-re-exports it.
+thread with ``optspread.dashboard.tasks.Tasks``. Moved from ``optspread.webviews``.
 """
 
 from __future__ import annotations

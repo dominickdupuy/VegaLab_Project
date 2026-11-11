@@ -25,8 +25,8 @@ train = [
 ]
 # The dashboard (W6-6): `make serve` runs optspread.server over the static site that
 # `make web` builds into web/out. An extra for the same reason as `train`: `make check`
-# runs without it. The builders the server returns (optspread.webapi, .dashboard_data,
-# .dashboard_panel, .jobs) need none of it apart from the one parquet reader, so they
+# runs without it. The builders the server returns (optspread.api, .dashboard_data,
+# .dashboard) need none of it apart from the one parquet reader, so they
 # are tested and covered on the plain `dev` install; httpx is for the server's tests.
 dashboard = [
     "fastapi>=0.115",

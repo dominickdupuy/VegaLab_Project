@@ -11,7 +11,7 @@ learner installed. It is detected, not assumed, so the dashboard never offers an
 arm this checkout cannot run. A source whose data is absent is not offered either
 (``available_sources``).
 
-Moved from ``optspread.jobs``, which re-exports it.
+Moved from ``optspread.jobs``.
 """
 
 from __future__ import annotations

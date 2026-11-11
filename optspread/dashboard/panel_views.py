@@ -22,8 +22,7 @@ Nothing here interpolates a missing trading day. Coverage reports what is there,
 and a day the build could not fill is listed, not smoothed over.
 
 The data page's one-sentence readings are built on these views, in
-``optspread.dashboard.readings``. Moved from ``optspread.dashboard_panel``, which
-re-exports both.
+``optspread.dashboard.readings``. Moved from ``optspread.dashboard_panel``.
 """
 
 from __future__ import annotations

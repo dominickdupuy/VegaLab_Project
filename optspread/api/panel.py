@@ -4,7 +4,7 @@ Lane: Ilan Danial (machinery).
 
 Every payload read from the panel names the file its numbers came from. The data page's
 question models ``PanelReader`` builds are in ``optspread.api.readings``. Moved from
-``optspread.webapi``, which re-exports it.
+``optspread.webapi``.
 """
 
 from __future__ import annotations

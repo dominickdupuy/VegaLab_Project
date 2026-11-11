@@ -3,7 +3,7 @@
 Lane: Ilan Danial (machinery).
 
 These compute rather than read, so they name the module and formula their numbers came
-from. Moved from ``optspread.webapi``, which re-exports it.
+from. Moved from ``optspread.webapi``.
 """
 
 from __future__ import annotations

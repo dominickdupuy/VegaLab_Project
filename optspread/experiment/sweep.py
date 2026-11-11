@@ -33,7 +33,7 @@ is recomputed rather than mixed into a grid with cells of the new build.
 The run-directory rules a sweep shares with the grid (``run_id``, ``valid_run``,
 ``foreign_run``, ``expected_data``) are in ``optspread.runs.rundir``; ``distinct``,
 ``premium_market`` and ``block_seed`` are shared with ``optspread.experiment.grid``.
-Moved from ``optspread.sweep``, which re-exports it.
+Moved from ``optspread.sweep``.
 """
 
 from __future__ import annotations

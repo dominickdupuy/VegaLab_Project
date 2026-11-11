@@ -1,7 +1,7 @@
 """API payloads for launch: a PPO preset, the wall-time estimate at the rates A7 measured,
 and a live preview of the run a spec stands for.
 
-Lane: Ilan Danial (machinery). Moved from ``optspread.webviews``, which re-exports it.
+Lane: Ilan Danial (machinery). Moved from ``optspread.webviews``.
 """
 
 from __future__ import annotations
