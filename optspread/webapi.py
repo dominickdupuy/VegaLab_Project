@@ -9,8 +9,6 @@ patches a name must patch the module that now defines and reads it.
 """
 
 from optspread.api._base import Out as Out
-from optspread.api._base import _f as _f
-from optspread.api._base import _fl as _fl
 from optspread.api._base import _inside as _inside
 from optspread.api._base import _iso as _iso
 from optspread.api.catalog import _NOT_A_VARIANT as _NOT_A_VARIANT

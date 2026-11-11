@@ -1,9 +1,11 @@
-"""Shared pieces of the API payloads: the frozen base model and the JSON-safe conversions.
+"""Shared pieces of the API payloads: the frozen base model and reading one from an object.
 
 Lane: Ilan Danial (machinery).
 
-NaN is not JSON, so a figure that is undefined is sent as null (``_f``, ``_fl``,
-``_finite_json`` for a free-form dict). A payload whose fields are the attributes of the
+NaN is not JSON. A figure that is undefined (NaN or infinite) is put in a payload as it
+is: the server's redacting response writes it as null wherever it sits (a returned
+model, an answer the cache keeps), and ``model_dump_json``, which writes the cached
+capital file, does the same. A payload whose fields are the attributes of the
 object it describes, under the same names, is read from it
 (``Model.model_validate(obj, from_attributes=True)``, or ``_from_attrs`` when the caller
 gives a few fields the object does not have); a date or a path read that way arrives as
@@ -15,8 +17,6 @@ read. Moved from ``optspread.webapi`` and ``optspread.webviews``, which re-expor
 
 from __future__ import annotations
 
-import math
-from collections.abc import Iterable
 from datetime import date
 from pathlib import Path, PurePath
 from typing import Annotated, Any
@@ -24,18 +24,6 @@ from typing import Annotated, Any
 import numpy as np
 from numpy.typing import NDArray
 from pydantic import BaseModel, BeforeValidator, ConfigDict
-
-
-def _f(x: float | None) -> float | None:
-    """A float for JSON: NaN and infinities become null."""
-    if x is None:
-        return None
-    x = float(x)
-    return x if math.isfinite(x) else None
-
-
-def _fl(values: Iterable[float]) -> list[float | None]:
-    return [_f(v) for v in values]
 
 
 def _iso(values: NDArray[np.datetime64]) -> list[str]:
@@ -98,13 +86,3 @@ def _source_suffix(source: str) -> str:
     ``.<source>``: what a cached file's name adds after the run id or grid hash, so a
     real-data run's file never stands in for the synthetic one's."""
     return "" if source in ("", "synthetic") else f".{source}"
-
-
-def _finite_json(value: Any) -> Any:
-    if isinstance(value, float):
-        return value if math.isfinite(value) else None
-    if isinstance(value, dict):
-        return {k: _finite_json(v) for k, v in value.items()}
-    if isinstance(value, list):
-        return [_finite_json(v) for v in value]
-    return value
