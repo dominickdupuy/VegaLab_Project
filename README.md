@@ -34,7 +34,7 @@ make run ARGS="..."          # one run; --source optionmetrics for the real pane
 make pilot ARGS="..."        # the variance-components pilot (see below)
 make sweep ARGS="..."        # the full premium x arm x seed sweep (see below)
 make replay RUN=<run dir>    # rerun from the manifest; bit-identical, or ARGS="--rtol 1e-9"
-make web && make serve       # the dashboard on http://127.0.0.1:8600 (dashboard extra + npm)
+make web && make serve       # the dashboard on http://127.0.0.1:8600 (venv with the dashboard extra, + npm; see below)
 ```
 
 What we found wrong, how it was fixed and what it touched is in
@@ -730,10 +730,18 @@ computed it.
 
 ```bash
 pip install -e ".[dev,dashboard]"
-make web                     # npm ci, build web/out, typecheck
+make web                     # npm ci, the API types from the server, build web/out, typecheck
 make serve                   # http://127.0.0.1:8600; OPTSPREAD_RUNS (default $VEGALAB_DATA/runs, else runs/) and VEGALAB_DATA pick the roots
 make web-dev                 # hot reload on :3000 against a running `make serve`
 ```
+
+`make web` needs Node and npm and also the project venv with the dashboard extra: after
+`npm ci` it writes the server's OpenAPI document (`python -m scripts.write_openapi`, which
+imports the app; without FastAPI it stops with `ModuleNotFoundError`) and regenerates the
+site's API types from it into `web/lib/schema.d.ts` (`npm run api-types`), then builds and
+typechecks, so the build fails when a page no longer fits the API. That file is committed
+and the target rewrites it: commit it again whenever it changes. With Node alone, build
+from the committed file: `cd web && npm ci && npm run build && npm run typecheck`.
 
 | View | Reads | What it shows |
 |---|---|---|
