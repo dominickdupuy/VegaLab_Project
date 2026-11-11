@@ -17,12 +17,14 @@ from pathlib import Path
 import pytest
 from fake_learner import FakeLearned, fake_trainer
 
-from optspread import webviews as v
 from optspread.actionmix import mix_grid, output_name, write_mix
+from optspread.api.edge import EDGE_DIR, edge_detail, edge_list
+from optspread.api.runwork import compute_attribution
 from optspread.config import CostConfig, EnvConfig, MarketConfig, RunConfig, TrainConfig
-from optspread.dashboard_data import REPO_ROOT
+from optspread.dashboard.runindex import REPO_ROOT
 from optspread.edge import COMPONENTS, edge_grid, write_edge
-from optspread.orchestrate import GridConfig, grid_filename, run_grid
+from optspread.experiment.grid import GridConfig, grid_filename
+from optspread.experiment.schedule import run_grid
 from optspread.policies import Policy
 from optspread.train import POLICY_FILENAME
 
@@ -53,8 +55,8 @@ def roots(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Path, Path]:
     base = tmp_path_factory.mktemp("webedge")
     runs, attr, mix = base / "runs", base / "attribution", base / "actionmix"
     run_grid(GRID, runs, trainer=fake_trainer)
-    write_edge(edge_grid(runs, load_policy=fake_loader), attr / v.EDGE_DIR)
-    write_edge(edge_grid(runs, first=2, load_policy=fake_loader), attr / v.EDGE_DIR)
+    write_edge(edge_grid(runs, load_policy=fake_loader), attr / EDGE_DIR)
+    write_edge(edge_grid(runs, first=2, load_policy=fake_loader), attr / EDGE_DIR)
     grid, cells = mix_grid(runs, load_policy=fake_loader)
     write_mix(grid, mix / output_name(grid))
     for cell in cells:
@@ -70,7 +72,7 @@ def test_the_list_names_every_edge_file_and_each_grids_commands(
     roots: tuple[Path, Path, Path], tmp_path: Path
 ) -> None:
     runs, attr, _ = roots
-    listed = v.edge_list(attr, runs)
+    listed = edge_list(attr, runs)
     assert {(f.grid_hash, f.first) for f in listed.files} == {(GH, None), (GH, 2)}
     full = next(f for f in listed.files if f.first is None)
     assert full.arms == ["delta_seller", "ppo"] and full.premiums == [0.0, 2.0]
@@ -80,7 +82,7 @@ def test_the_list_names_every_edge_file_and_each_grids_commands(
     assert grid.edge_command == f'make edge ARGS="--grid <runs root>/{grid.key} --workers 2"'
     assert grid.actionmix_command.startswith('make actionmix ARGS="--grid <runs root>/')
     # an empty root: no files, and the command the page shows says what writes them
-    empty = v.edge_list(tmp_path / "none", tmp_path / "noruns")
+    empty = edge_list(tmp_path / "none", tmp_path / "noruns")
     assert empty.files == [] and empty.grids == [] and "make edge" in empty.command
 
 
@@ -89,7 +91,7 @@ def test_the_detail_is_the_edge_as_written_with_each_cells_run(
     roots: tuple[Path, Path, Path],
 ) -> None:
     runs, attr, _ = roots
-    out = v.edge_detail(attr, runs, GH)
+    out = edge_detail(attr, runs, GH)
     assert out.name == f"edge-{GH}.json" and out.grid_key == grid_filename(GRID)
     edge = out.edge
     assert edge["components"] == list(COMPONENTS) and edge["first"] is None
@@ -104,8 +106,8 @@ def test_the_detail_is_the_edge_as_written_with_each_cells_run(
         assert key is not None and (runs / key / "manifest.json").is_file()
         assert cell["reproduction"] == "reproduces"
     # the partial read on request, and by default only when no full read exists
-    assert v.edge_detail(attr, runs, GH, first=2).edge["first"] == 2
-    assert v.edge_detail(attr, runs, f"grid-{GH}.json").name == out.name
+    assert edge_detail(attr, runs, GH, first=2).edge["first"] == 2
+    assert edge_detail(attr, runs, f"grid-{GH}.json").name == out.name
 
 
 @pytest.mark.behaviour
@@ -114,26 +116,26 @@ def test_a_partial_read_alone_is_served_and_a_missing_or_bad_grid_is_refused(
 ) -> None:
     runs, attr, _ = roots
     only = tmp_path / "attr"
-    (only / v.EDGE_DIR).mkdir(parents=True)
-    shutil.copy(attr / v.EDGE_DIR / f"edge-{GH}-first2.json", only / v.EDGE_DIR)
-    assert v.edge_detail(only, runs, GH).edge["first"] == 2
+    (only / EDGE_DIR).mkdir(parents=True)
+    shutil.copy(attr / EDGE_DIR / f"edge-{GH}-first2.json", only / EDGE_DIR)
+    assert edge_detail(only, runs, GH).edge["first"] == 2
     # cells whose runs are not under this root are still read, with no run to link
-    elsewhere = v.edge_detail(only, tmp_path / "noruns", GH)
+    elsewhere = edge_detail(only, tmp_path / "noruns", GH)
     assert elsewhere.grid_key is None and set(elsewhere.run_keys.values()) == {None}
     with pytest.raises(KeyError):
-        v.edge_detail(only, runs, "abc123")
+        edge_detail(only, runs, "abc123")
     with pytest.raises(KeyError):
-        v.edge_detail(only, runs, GH, first=7)
+        edge_detail(only, runs, GH, first=7)
     for bad in ("../etc", "ABC", ""):
         with pytest.raises(ValueError):
-            v.edge_detail(only, runs, bad)
+            edge_detail(only, runs, bad)
     with pytest.raises(ValueError):
-        v.edge_detail(only, runs, GH, first=1)
-    (only / v.EDGE_DIR / f"edge-{GH}.json").write_text("{not json")
-    listed = v.edge_list(only, runs)
+        edge_detail(only, runs, GH, first=1)
+    (only / EDGE_DIR / f"edge-{GH}.json").write_text("{not json")
+    listed = edge_list(only, runs)
     assert any(f.error for f in listed.files)
     with pytest.raises(ValueError):
-        v.edge_detail(only, runs, GH)
+        edge_detail(only, runs, GH)
 
 
 # -- through the server ---------------------------------------------------------- #
@@ -145,8 +147,8 @@ def client(roots: tuple[Path, Path, Path], tmp_path: Path, gate_docs: Path) -> I
     pytest.importorskip("httpx")
     from fastapi.testclient import TestClient
 
-    from optspread.jobs import JobManager
-    from optspread.server import Settings, create_app
+    from optspread.api.server import Settings, create_app
+    from optspread.dashboard.jobs.queue import JobManager
 
     runs, attr, mix = roots
     settings = Settings(
@@ -221,16 +223,16 @@ def test_a_differing_cell_counts_its_episodes_from_its_runs_attribution(
     runs, attr, _ = roots
     mine = tmp_path / "attribution"
     shutil.copytree(attr, mine)
-    path = mine / v.EDGE_DIR / f"edge-{GH}.json"
+    path = mine / EDGE_DIR / f"edge-{GH}.json"
     edge = json.loads(path.read_text())
     cell = next(c for c in edge["cells"] if c["arm"] == "delta_seller")
     cell["reproduction"], cell["reproduces"], cell["agrees"] = "differs", False, False
     path.write_text(json.dumps(edge))
-    assert v.edge_detail(mine, runs, GH).episode_counts == {}  # no run attribution cached yet
+    assert edge_detail(mine, runs, GH).episode_counts == {}  # no run attribution cached yet
     target = mine / f"{cell['run_id']}.json"
-    v.compute_attribution(runs / cell["run_id"], target)
+    compute_attribution(runs / cell["run_id"], target)
     att = json.loads(target.read_text())
     att["episodes"][0]["agrees"] = False
     target.write_text(json.dumps(att))
-    counts = v.edge_detail(mine, runs, GH).episode_counts
+    counts = edge_detail(mine, runs, GH).episode_counts
     assert counts == {cell["run_id"]: {"n_episodes": len(att["episodes"]), "n_differ": 1}}

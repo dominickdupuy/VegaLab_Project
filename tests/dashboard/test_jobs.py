@@ -27,26 +27,30 @@ from dying_jobs import DIES_ON_START, DIES_RUNNING, dying_job
 from pydantic import ValidationError
 
 from optspread.config import RunConfig, config_hash
-from optspread.dashboard_data import load_run_detail, load_run_row
-from optspread.harness import build_env, run_episode
-from optspread.jobs import (
+from optspread.dashboard.jobs.queue import (
+    WORKER_DIED,
+    JobManager,
+    JobNotCancellableError,
+    JobStatus,
+    QueueFullError,
+)
+from optspread.dashboard.jobs.spec import (
     EQUITY_FILENAME,
     LAUNCH_DIR,
     PRESETS,
-    WORKER_DIED,
-    JobCancelledError,
-    JobManager,
-    JobNotCancellableError,
     JobSpec,
-    JobStatus,
-    QueueFullError,
-    _Progress,
     available_arms,
-    execute_job,
     ppo_available,
-    run_episode_traced,
     to_run_config,
 )
+from optspread.dashboard.jobs.worker import (
+    JobCancelledError,
+    _Progress,
+    execute_job,
+    run_episode_traced,
+)
+from optspread.dashboard.runindex import load_run_detail, load_run_row
+from optspread.harness import build_env, run_episode
 from optspread.policies import make_policy
 
 SMALL = JobSpec(n_days=21, tenor_days=(7, 14), n_episodes=3, seed=11)
@@ -449,8 +453,8 @@ def test_a_launched_ppo_run_saves_its_policy_as_the_orchestrator_does(
 ) -> None:
     from fake_learner import fake_trainer
 
+    from optspread.experiment.schedule import execute_run
     from optspread.manifest import RunManifest, file_sha256
-    from optspread.orchestrate import execute_run
     from optspread.train import POLICY_FILENAME
 
     _fake_ppo(monkeypatch)
@@ -536,4 +540,5 @@ def test_a_progress_write_waits_out_a_reader_holding_the_file(tmp_path: Path) ->
         holder.join()
     state = json.loads(progress.state.read_text(encoding="utf-8"))
     assert state == {"done": 1, "total": 3, "phase": "evaluating"}
-    assert not progress.state.with_suffix(".tmp").exists()
+    # no temporary file is left behind, whatever the writer names it
+    assert [p.name for p in tmp_path.iterdir()] == [progress.state.name]

@@ -24,9 +24,10 @@ pytest.importorskip("httpx")
 
 from fastapi.testclient import TestClient
 
-from optspread.dashboard_data import REPO_ROOT
-from optspread.jobs import JobManager, execute_job
-from optspread.server import WEB_DIR, Settings, allowed_hosts, create_app, redactor
+from optspread.api.server import WEB_DIR, Settings, allowed_hosts, create_app, redactor
+from optspread.dashboard.jobs.queue import JobManager
+from optspread.dashboard.jobs.worker import execute_job
+from optspread.dashboard.runindex import REPO_ROOT
 
 HANG = 600.0  # seconds: bounds a job that never ends, never a slow one
 
@@ -225,14 +226,14 @@ def test_an_undefined_figure_is_sent_as_null_never_a_500(
     cache, a returned model and an error's detail."""
     from fastapi import HTTPException
 
-    from optspread import webviews as v
+    from optspread.api.launch import EstimateOut
 
     # kept by the answer cache: with no variance at all the floor ratio is NaN by design
     power = client.get("/api/power", params={"tau2": 0, "sigma2": 0})
     assert power.status_code == 200 and power.json()["floor_vs_seeds"]["ratio"] is None
     # a model the route returns, rendered by the app's response class
     inf = float("inf")
-    estimate = v.EstimateOut(
+    estimate = EstimateOut(
         eval_steps=1,
         train_steps=0,
         eval_hours=float("nan"),
@@ -417,7 +418,7 @@ def test_a_foreign_host_header_is_refused(client: TestClient) -> None:
 def test_the_servers_default_runs_root_is_the_orchestrators(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from optspread.orchestrate import default_runs_root
+    from optspread.runs.rundir import default_runs_root
 
     monkeypatch.delenv("OPTSPREAD_RUNS", raising=False)
     monkeypatch.setenv("VEGALAB_DATA", str(tmp_path))
@@ -512,7 +513,7 @@ def test_the_seller_on_a_real_close_and_the_launch_extras(client: TestClient) ->
 
 @pytest.mark.behaviour
 def test_the_largest_windows_are_served_and_one_past_them_is_a_422(client: TestClient) -> None:
-    from optspread.webapi import MAX_DATES, MAX_FRAMES
+    from optspread.api.panel import MAX_DATES, MAX_FRAMES
 
     frames = client.get(
         "/api/data/grid/frames", params={"start": "2025-07-01", "max_frames": MAX_FRAMES}
@@ -520,7 +521,9 @@ def test_the_largest_windows_are_served_and_one_past_them_is_a_422(client: TestC
     assert frames.status_code == 200
     assert client.get("/api/data/landscape", params={"max_dates": MAX_DATES}).status_code == 200
     over = client.get("/api/data/landscape", params={"max_dates": MAX_DATES + 1})
-    assert over.status_code == 422 and str(MAX_DATES) in over.json()["detail"]
+    # the limit is named, whether the detail is a sentence (a check by hand, as today) or
+    # FastAPI's error objects (a bound on the query parameter)
+    assert over.status_code == 422 and str(MAX_DATES) in json.dumps(over.json()["detail"])
 
 
 @pytest.mark.behaviour
@@ -636,3 +639,114 @@ def test_the_run_pages_new_routes(client: TestClient) -> None:
     assert ok["ok"] and ok["day0"]["structure"] == "IRON_CONDOR" and ok["estimate"]
     cmp = client.get("/api/runs/compare", params={"a": key, "b": key}).json()
     assert cmp["verdict"] and cmp["diff_df"] == 2 and cmp["question"] == ""
+
+
+# -- pins: the 422 body, the dates a query takes, health, a sweep's count, POST details -- #
+
+
+@pytest.mark.behaviour
+@pytest.mark.parametrize(
+    ("path", "params", "name"),
+    [
+        ("/api/runs", {"premium": "abc"}, "premium"),
+        ("/api/power", {"tau2": -1}, "tau2"),
+        ("/api/data/grid", {"date": "not-a-date"}, "date"),
+    ],
+)
+def test_a_query_that_does_not_validate_is_a_422_with_fastapis_error_objects(
+    client: TestClient, path: str, params: dict[str, object], name: str
+) -> None:
+    """The agreed 422 body (Q26.1) on a runs, a power and a date-taking route: FastAPI's
+    list of error objects, each saying where (``loc``) and what (``msg``)."""
+    response = client.get(path, params=params)
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert isinstance(detail, list) and detail
+    for error in detail:
+        assert isinstance(error, dict) and error["loc"] and error["msg"], error
+    assert any(name in error["loc"] for error in detail)
+
+
+# What date.fromisoformat takes, as the date parameters always have (pydantic's own date
+# parsing would take a Unix time and refuse the basic and week forms): pinned as it is.
+DATES_TAKEN = {
+    "2025-07-01": "2025-07-01",  # the form the site sends
+    "20250701": "2025-07-01",  # ISO basic
+    "2025-W27-2": "2025-07-01",  # ISO week date: Tuesday of week 27
+    "2025W272": "2025-07-01",
+    "2025-W27": "2025-06-30",  # a week alone is its Monday
+}
+DATES_REFUSED = (
+    "1751328000",  # a Unix time
+    "2025-182",  # an ordinal date
+    "2025-07-01T00:00",  # a datetime
+    "07/01/2025",
+    "2025-7-1",
+    " 2025-07-01",
+)
+
+
+@pytest.mark.behaviour
+def test_a_date_parameter_takes_iso_dates_and_never_a_unix_time(client: TestClient) -> None:
+    for sent, day in DATES_TAKEN.items():
+        response = client.get("/api/data/grid", params={"date": sent})
+        assert response.status_code == 200 and response.json()["date"] == day, sent
+    for sent in DATES_REFUSED:
+        response = client.get("/api/data/grid", params={"date": sent})
+        assert response.status_code == 422, sent
+        assert [e["type"] for e in response.json()["detail"]] == ["iso_date"], sent
+
+
+@pytest.mark.behaviour
+def test_an_optional_date_sent_empty_is_one_left_out(client: TestClient) -> None:
+    daily = client.get("/api/data/daily").json()
+    assert client.get("/api/data/daily", params={"start": "", "end": ""}).json() == daily
+    assert client.get("/api/data/daily", params={"start": "2025-07-01"}).json() != daily
+    day = {"date": "2025-07-01"}
+    smile = client.get("/api/data/smile", params=day).json()
+    assert client.get("/api/data/smile", params={**day, "expiry": ""}).json() == smile
+    assert client.get("/api/data/grid", params={"date": ""}).status_code == 422  # required
+
+
+@pytest.mark.behaviour
+def test_health_says_ok_with_the_version_and_the_commit(client: TestClient) -> None:
+    from optspread import __version__
+    from optspread.manifest import git_sha
+
+    health = client.get("/api/health").json()
+    assert health == {"ok": True, "version": __version__, "git_sha": git_sha(REPO_ROOT)}
+
+
+@pytest.mark.behaviour
+def test_a_scripted_sweeps_cells_present_in_its_list_row_and_its_detail(
+    client: TestClient,
+) -> None:
+    """As the two differ today: the list counts the cells, the detail's summary sends 0.
+    Whether the detail should send the count too is open (question Q26.4)."""
+    row = next(s for s in client.get("/api/sweeps").json()["sweeps"] if s["key"] == "sweeps/tiny")
+    assert row["kind"] == "sweep" and row["n_cells"] == row["n_present"] == 4
+    detail = client.get("/api/sweeps/detail", params={"key": "sweeps/tiny"}).json()
+    assert detail["summary"]["n_cells"] == 4 and detail["summary"]["n_present"] == 0
+
+
+@pytest.mark.behaviour
+def test_a_post_checked_by_hand_answers_its_reason_as_a_sentence(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The routes that check a request themselves were left out of the agreed 422 change:
+    their detail is one string, which the site shows as it is."""
+    monkeypatch.setattr("optspread.dashboard.jobs.queue.ppo_available", lambda: False)
+    ppo = client.post("/api/jobs", json={"policy": "ppo", "total_timesteps": 100})
+    assert ppo.status_code == 422 and isinstance(ppo.json()["detail"], str)
+    assert "PPO" in ppo.json()["detail"]
+    tampered = next(r for r in client.get("/api/runs").json()["rows"] if r["status"] != "OK")
+    for response in (
+        client.post("/api/leaks/floor", json={"n_seeds": 3, "eps_grid": [5.0, 1.0]}),
+        client.post("/api/leaks/field", json={"field": "nope"}),
+        client.post("/api/runs/attribution", params={"key": tampered["key"]}),
+    ):
+        assert response.status_code == 422, response.text
+        assert isinstance(response.json()["detail"], str) and response.json()["detail"]
+    # a knob the spec refuses: one plain sentence per refusal, not FastAPI's error objects
+    knob = client.post("/api/jobs", json={"n_episodes": 0}).json()["detail"]
+    assert isinstance(knob, list) and knob and all(isinstance(m, str) for m in knob)

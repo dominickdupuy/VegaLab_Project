@@ -13,52 +13,58 @@ markdown table, which is what lets it work on the M1 report as committed.
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 
 import numpy as np
 import pytest
 
-from optspread.dashboard_data import (
+from optspread.dashboard.gateboard import (
+    GateReportFormatError,
+    gate_milestones,
+    load_gate_board,
+    load_gate_boards,
+    parse_gate_json,
+    parse_gate_markdown,
+    unreadable_gate_reports,
+)
+from optspread.dashboard.landing import readme_summary
+from optspread.dashboard.leakdemo import run_leak_demo
+from optspread.dashboard.runindex import (
     DOCS_ENV,
     REPO_ROOT,
     RUNS_ENV,
-    GateReportFormatError,
     RunRow,
     compare_runs,
     docs_dir,
     filter_runs,
     flatten_config,
-    gate_milestones,
-    load_gate_board,
-    load_gate_boards,
     load_run_detail,
     load_run_row,
-    parse_gate_json,
-    parse_gate_markdown,
     premium_curve,
-    readme_summary,
     risk_stats,
     run_facets,
-    run_leak_demo,
     runs_root,
     scan_runs,
-    unreadable_gate_reports,
 )
+from optspread.experiment.sweep import SweepConfig
 from optspread.leaks import PASS_CRITERION
 from optspread.manifest import DataRecord, file_sha256
-from optspread.sweep import SweepConfig
 
 # -- where things are read from ------------------------------------------------ #
 
 
 @pytest.mark.behaviour
-def test_roots_come_from_the_environment_or_the_repository(tmp_path: Path) -> None:
+def test_roots_come_from_the_environment_or_the_repository(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     assert runs_root({}) == REPO_ROOT / "runs"
     assert docs_dir({}) == REPO_ROOT / "docs"
     assert runs_root({RUNS_ENV: str(tmp_path)}) == tmp_path
     assert docs_dir({DOCS_ENV: str(tmp_path)}) == tmp_path
-    assert runs_root() == runs_root(dict(os.environ))
+    # with no argument, the process environment is read (the server's Settings.from_env)
+    monkeypatch.setenv(RUNS_ENV, str(tmp_path / "runs"))
+    monkeypatch.setenv(DOCS_ENV, str(tmp_path / "docs"))
+    assert runs_root() == tmp_path / "runs" and docs_dir() == tmp_path / "docs"
 
 
 # -- the run browser ------------------------------------------------------------ #
