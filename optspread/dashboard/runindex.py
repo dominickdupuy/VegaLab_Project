@@ -330,7 +330,7 @@ def _read_run_dir(
 def is_matrix_manifest(run_dir: Path) -> bool:
     """The pilot's own manifest: at the pilot root, hashing ``.npy`` matrices, no ``run.json``.
 
-    ``orchestrate.write_pilot_matrices`` writes it so the matrices can be checked; it
+    ``pilot.write_pilot_matrices`` writes it so the matrices can be checked; it
     describes no run, so the run index leaves it out rather than listing it INVALID.
     """
     if (run_dir / RUN_FILENAME).exists():
