@@ -41,6 +41,7 @@ from __future__ import annotations
 from collections.abc import Callable, Hashable, Sequence
 from functools import partial
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -209,31 +210,29 @@ def run_sweep(
     On another ``source`` the default runner runs there, on its ``eval`` split; a runner
     of your own brings its own data and is refused with one. A cell directory holding
     this config's run on other data, or made with other components, is refused rather
-    than written over (``foreign_run``). The cells are read back and computed under
-    ``root``'s lock (``rundir.root_lock``), as the grid's are.
+    than written over (``foreign_run``). The cells still to compute are computed in grid
+    order under ``root``'s lock (``rundir.root_lock``), as the grid's are; cells valid on
+    disk are read back first, without it, and when every cell is, none is taken.
     """
     if source != "synthetic":
         if runner is not run_episodes:
             raise ValueError("a runner of your own brings its own data; source is for the default")
         runner = partial(run_episodes, source=source)
     root.mkdir(parents=True, exist_ok=True)
-    cells: list[CellRecord] = []
-    with root_lock(root):
-        for premium in sweep.premiums:
-            for arm in sweep.arms:
-                config = cell_config(sweep, premium, arm)
-                cell_dir = root / run_id(config)
-                record = valid_run(cell_dir, config, source, runner=runner)
-                if record is None:
-                    if why := foreign_run(cell_dir, config, source, runner):
-                        raise FileExistsError(why)
-                    data = expected_data(runner, config, source)
-                    episodes = runner(config, None)
-                    write_run(
-                        cell_dir, config, summarize(episodes), episodes, source=source, data=data
-                    )
-                    record = read_run(cell_dir)
-                cells.append(CellRecord.of(premium, arm, record))
+    plan = [(p, arm, cell_config(sweep, p, arm)) for p in sweep.premiums for arm in sweep.arms]
+    found = [valid_run(root / run_id(config), config, source, runner=runner) for *_, config in plan]
+    if any(record is None for record in found):
+        with root_lock(root):
+            records = [
+                _sweep_cell(root, config, source, runner) if record is None else record
+                for (*_, config), record in zip(plan, found, strict=True)
+            ]
+    else:
+        records = cast(list[RunRecord], found)  # every cell read back
+    cells = [
+        CellRecord.of(premium, arm, record)
+        for (premium, arm, _), record in zip(plan, records, strict=True)
+    ]
     result = SweepRecord(
         sweep_hash=config_hash(sweep),
         seed=sweep.base.seed,
@@ -246,6 +245,22 @@ def run_sweep(
         result.model_dump_json(indent=2), encoding="utf-8", newline="\n"
     )
     return result
+
+
+def _sweep_cell(root: Path, config: RunConfig, source: SourceName, runner: Runner) -> RunRecord:
+    """One cell of ``run_sweep`` not valid when it looked, computed under the root's lock:
+    read back if another orchestrator finished it meanwhile, refused if it holds a run of
+    other data (``foreign_run``), written otherwise."""
+    cell_dir = root / run_id(config)
+    record = valid_run(cell_dir, config, source, runner=runner)
+    if record is not None:
+        return record
+    if why := foreign_run(cell_dir, config, source, runner):
+        raise FileExistsError(why)
+    data = expected_data(runner, config, source)
+    episodes = runner(config, None)
+    write_run(cell_dir, config, summarize(episodes), episodes, source=source, data=data)
+    return read_run(cell_dir)
 
 
 def read_sweep(root: Path) -> SweepRecord:
