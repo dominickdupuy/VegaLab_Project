@@ -9,7 +9,6 @@ patches a name must patch the module that now defines and reads it.
 """
 
 from optspread import dashboard_panel as panel  # noqa: F401  (tests reach it as webviews.panel)
-from optspread.api._base import _finite_json as _finite_json
 from optspread.api.edge import _EDGE_FILE as _EDGE_FILE
 from optspread.api.edge import _HASH as _HASH
 from optspread.api.edge import ACTIONMIX_COMMAND as ACTIONMIX_COMMAND
