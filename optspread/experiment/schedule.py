@@ -7,9 +7,11 @@ written by ``write_run``, so a cell is the same object whichever command produce
 it. ``run_cells`` reads back every cell that ``rundir.valid_run`` accepts and
 computes the rest, most expensive first, across ``workers`` processes. A killed
 run loses only the cells in flight; the same command resumes it. One orchestrator per
-root: ``run_cells`` and ``run_single`` hold the root's lock (``rundir.root_lock``) while
-they read back and compute, so a second one started on the same root stops with
-``RootInUseError`` instead of writing the same cells. The workers never take it.
+root at a time computes: ``run_cells`` and ``run_single`` hold the root's lock
+(``rundir.root_lock``) while they compute, so a second one started on the same root while
+the first computes stops with ``RootInUseError`` rather than computing the same cells.
+The workers never take it. The lock is the parent's, so it does not outlive a parent
+that is killed, while that parent's workers may still be finishing their cells.
 
 A worker can die without raising: the kernel's out-of-memory killer on the sweep
 machine is the likely one. ``multiprocessing.Pool`` replaces the process and waits
@@ -199,12 +201,18 @@ def run_single(
 
     Read back when ``sweep.valid_run`` accepts what is on disk (same source, trainer and
     components), computed through ``execute_run`` otherwise: the grid's rule for one cell.
-    Both under ``root``'s lock (``rundir.root_lock``), as ``run_cells`` does.
+    The run is computed under ``root``'s lock (``rundir.root_lock``), as ``run_cells``
+    computes; a run already on disk is read back without it, so a root this account cannot
+    add files to still reads back. Under the lock the run is checked again, since another
+    orchestrator may have finished it meanwhile.
     """
-    root.mkdir(parents=True, exist_ok=True)
+    run_dir = root / run_id(config)
+    trained_by = callable_name(trainer)
+    record = valid_run(run_dir, config, source, trainer=trained_by, runner=runner)
+    if record is not None:
+        return run_dir, record, True
     with root_lock(root):
-        run_dir = root / run_id(config)
-        record = valid_run(run_dir, config, source, trainer=callable_name(trainer), runner=runner)
+        record = valid_run(run_dir, config, source, trainer=trained_by, runner=runner)
         if record is not None:
             return run_dir, record, True
         execute_run(config, run_dir, trainer, runner, source=source)
@@ -389,39 +397,54 @@ def run_cells(
 
     With one worker (or one cell) the cells run in this process. Otherwise they run on
     a pool of spawned processes that survives a dead worker (see the module docstring).
-    ``source`` says which data every cell runs on (``execute_run``). The cells are read
-    back and computed under ``root``'s lock (``rundir.root_lock``), so a second
-    orchestrator on the same root raises ``RootInUseError`` instead of writing beside this.
+    ``source`` says which data every cell runs on (``execute_run``). The cells still to
+    compute are computed under ``root``'s lock (``rundir.root_lock``), so a second
+    orchestrator on the same root raises ``RootInUseError`` instead of computing them too.
+    Cells valid on disk are read back first, without the lock: when every cell is, none is
+    taken, so a root this account cannot add files to still reads back. Under the lock the
+    pending cells are read back again, since another orchestrator may have finished some.
     """
     if workers < 1:
         raise ValueError(f"workers must be at least 1, got {workers}")
     source_runner(runner, source)  # refuse a runner of your own on other data now
     root.mkdir(parents=True, exist_ok=True)
+    total, done = len(cells), 0
+
+    def read_back(candidates: Sequence[Cell]) -> list[Cell]:
+        """Report each of ``candidates`` valid on disk as reused; return the rest, in order."""
+        nonlocal done
+        pending: list[Cell] = []
+        for cell in candidates:
+            record = reusable(cell, root, trainer=trainer, source=source, runner=runner)
+            if record is None:
+                pending.append(cell)
+                continue
+            done += 1
+            if report is not None:
+                report(Progress(done, total, cell, None, None, record.mean_pnl))
+        return pending
+
+    pending = read_back(cells)
+    if not pending:
+        return
     with root_lock(root):
-        _compute_cells(cells, root, workers, trainer, report, runner, source)
+        pending = read_back(pending)
+        _compute_cells(pending, root, workers, trainer, report, runner, source, done, total)
 
 
 def _compute_cells(
-    cells: Sequence[Cell],
+    pending: list[Cell],
     root: Path,
     workers: int,
     trainer: Trainer,
     report: Reporter | None,
     runner: Runner,
     source: SourceName,
+    done: int,
+    total: int,
 ) -> None:
-    """``run_cells``' work, done while it holds the root's lock."""
-    total, done = len(cells), 0
-    pending: list[Cell] = []
-    for cell in cells:
-        record = reusable(cell, root, trainer=trainer, source=source, runner=runner)
-        if record is None:
-            pending.append(cell)
-            continue
-        done += 1
-        if report is not None:
-            report(Progress(done, total, cell, None, None, record.mean_pnl))
-
+    """Compute ``pending`` (``done`` of ``total`` cells already read back), while
+    ``run_cells`` holds the root's lock."""
     # Longest first, so the slow ppo cells do not end up as the tail of a parallel run.
     pending.sort(key=lambda c: cell_seconds(c.config), reverse=True)
     # The ETA is the plan's schedule over the cells not yet finished, rescaled by how
