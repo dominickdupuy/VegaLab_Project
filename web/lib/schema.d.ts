@@ -1081,11 +1081,8 @@ export interface components {
             rtol: number | null;
             /** Seconds */
             seconds: number | null;
-            /**
-             * State
-             * @enum {string}
-             */
-            state: "done" | "computing" | "absent" | "failed";
+            /** State */
+            state: string;
             /** Worst Drawdown */
             worst_drawdown: number | null;
             /** Worst Drawdown On Cash */
