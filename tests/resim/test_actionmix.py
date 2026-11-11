@@ -29,7 +29,6 @@ from pathlib import Path
 import pytest
 from fake_learner import FakeLearned, fake_trainer
 
-from optspread import webapi
 from optspread.actionmix import (
     ACTIONMIX_ENV,
     EVENTS,
@@ -52,6 +51,7 @@ from optspread.actionmix import (
     write_mix,
 )
 from optspread.actions import ACTION_NAMES, FLAT, SHORT_STRANGLE
+from optspread.api.mix import action_mix
 from optspread.artifacts import RUN_FILENAME, read_run, write_run
 from optspread.config import (
     CostConfig,
@@ -61,10 +61,11 @@ from optspread.config import (
     RunConfig,
     TrainConfig,
 )
+from optspread.experiment.grid import GridConfig
+from optspread.experiment.schedule import execute_run, run_grid
 from optspread.harness import run_episodes, summarize
 from optspread.manifest import MANIFEST_FILENAME
 from optspread.market import SyntheticChainProvider
-from optspread.orchestrate import GridConfig, execute_run, run_grid
 from optspread.policies import AlwaysOnPolicy, Policy, RandomPolicy
 from optspread.rng import SeededStepRNG
 from optspread.train import POLICY_FILENAME
@@ -589,19 +590,19 @@ def test_the_payload_reads_a_run_or_a_grid_and_says_what_is_missing(mix_root: Pa
     grid_hash = grid_file.stem.removeprefix("grid-")
     run_file = next(p for p in mix_root.glob("*.json") if p != grid_file)
     rid = run_file.stem
-    run = webapi.action_mix(mix_root, run=f"sweeps/tiny/{rid}")
+    run = action_mix(mix_root, run=f"sweeps/tiny/{rid}")
     assert run.kind == "run" and run.run is not None and run.grid is None
     assert run.run.run_id == rid and run.run.episodes[0].actions == ()  # lean
     assert run.run.summary == read_mix(run_file).summary and run.path == str(run_file)
-    grid = webapi.action_mix(mix_root, grid=grid_hash)
+    grid = action_mix(mix_root, grid=grid_hash)
     assert grid.kind == "grid" and grid.grid is not None and grid.grid.grid_hash == grid_hash
-    assert webapi.action_mix(mix_root, grid=grid_file.name).grid == grid.grid
+    assert action_mix(mix_root, grid=grid_file.name).grid == grid.grid
     with pytest.raises(KeyError):
-        webapi.action_mix(mix_root, run="0123abcd-s1")
+        action_mix(mix_root, run="0123abcd-s1")
     with pytest.raises(KeyError):
-        webapi.action_mix(mix_root, grid="0123abcd")
+        action_mix(mix_root, grid="0123abcd")
     with pytest.raises(KeyError):
-        webapi.action_mix(mix_root, run=rid, source="optionmetrics")
+        action_mix(mix_root, run=rid, source="optionmetrics")
     for kwargs in (
         {},
         {"run": rid, "grid": grid_hash},
@@ -610,7 +611,7 @@ def test_the_payload_reads_a_run_or_a_grid_and_says_what_is_missing(mix_root: Pa
         {"run": rid, "source": "elsewhere"},
     ):
         with pytest.raises(ValueError):
-            webapi.action_mix(mix_root, **kwargs)
+            action_mix(mix_root, **kwargs)
 
 
 @pytest.mark.behaviour
@@ -619,7 +620,7 @@ def test_the_payload_defaults_to_the_actionmix_root(
 ) -> None:
     monkeypatch.setenv(ACTIONMIX_ENV, str(mix_root))
     (grid_file,) = mix_root.glob("grid-*.json")
-    assert webapi.action_mix(grid=grid_file.name).path == str(grid_file)
+    assert action_mix(grid=grid_file.name).path == str(grid_file)
 
 
 @pytest.mark.behaviour
@@ -632,7 +633,7 @@ def test_the_route_serves_the_payload(
 
     from fastapi.testclient import TestClient
 
-    from optspread.jobs import JobManager
+    from optspread.dashboard.jobs.queue import JobManager
     from optspread.server import Settings, create_app
 
     monkeypatch.setenv(ACTIONMIX_ENV, str(mix_root))

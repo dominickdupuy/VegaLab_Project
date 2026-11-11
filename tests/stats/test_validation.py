@@ -26,14 +26,9 @@ from optspread.config import (
     RunConfig,
     TrainConfig,
 )
-from optspread.orchestrate import (
-    GridRecord,
-    grid_filename,
-    pilot_grid,
-    read_grid,
-    run_grid,
-    write_pilot_matrices,
-)
+from optspread.experiment.grid import GridRecord, grid_filename, read_grid
+from optspread.experiment.pilot import pilot_grid, write_pilot_matrices
+from optspread.experiment.schedule import run_grid
 from optspread.power import variance_components
 from optspread.validation import (
     DEFAULT_CASE,

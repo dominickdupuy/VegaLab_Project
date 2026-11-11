@@ -32,10 +32,10 @@ from m3_fixtures import FAKE_TRAINER, TAG, TINY, World, build_world, git
 from optspread import m3gate
 from optspread import reproduction as rp
 from optspread.artifacts import RUN_FILENAME
+from optspread.experiment.grid import grid_cells, grid_filename
 from optspread.gatereport import GateItem, GateReport
 from optspread.leaks import default_env, leak_floor
 from optspread.manifest import MANIFEST_FILENAME, file_sha256
-from optspread.orchestrate import grid_cells, grid_filename
 from optspread.replay import ReplayResult
 
 
@@ -661,7 +661,9 @@ def test_a_windows_checkout_with_crlf_hashes_the_expected_file_as_the_gate_does(
 
 @pytest.mark.behaviour
 def test_the_committed_json_keeps_lf_in_every_checkout() -> None:
-    repo = Path(__file__).resolve().parent.parent.parent
+    # Found by its pyproject.toml: a fixed number of parents could name a folder outside
+    # the checkout, where git fails and the test would only be skipped.
+    repo = next(p for p in Path(__file__).resolve().parents if (p / "pyproject.toml").is_file())
     done = subprocess.run(
         ["git", "check-attr", "eol", "text", "--", f"docs/{rp.EXPECTED_FILE}"],
         cwd=repo,

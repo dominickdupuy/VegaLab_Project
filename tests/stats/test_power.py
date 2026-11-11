@@ -14,6 +14,7 @@ Every number is synthetic.
 
 from __future__ import annotations
 
+import math
 from itertools import pairwise
 
 import numpy as np
@@ -204,6 +205,9 @@ def test_the_last_episode_is_settled_on_the_test_not_on_the_closed_form(
     import optspread.power as pw
 
     monkeypatch.setattr(pw, "t_noncentrality", lambda *_: k)
+    # The stand-in reaches the planner (8 is also the answer without it): the closed form
+    # over the variance budget it now gives rounds to the wrong integer.
+    assert math.ceil(1.0 / (5 * pw.variance_budget_t(0.5, 5))) == {3.25: 9, 2.85: 7}[k]
     assert pw.episodes_for(0.5, tau2=0.0, sigma2=1.0, n_seeds=5) == 8
 
 

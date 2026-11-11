@@ -25,9 +25,9 @@ pytest.importorskip("stable_baselines3")
 import torch
 
 from optspread.config import CostConfig, EnvConfig, MarketConfig, RunConfig, TrainConfig
+from optspread.experiment.schedule import execute_run
 from optspread.harness import run_episodes
 from optspread.manifest import RunManifest
-from optspread.orchestrate import execute_run
 from optspread.replay import replay_matches
 from optspread.train import TrainingPaths, frozen_hyperparameters, train_ppo
 

@@ -20,7 +20,11 @@ the bytes a run with no death writes. Those tests wait on the pool, not on a clo
 
 from __future__ import annotations
 
+import argparse
 import json
+import os
+import shutil
+import threading
 from pathlib import Path
 
 import numpy as np
@@ -39,35 +43,42 @@ from fake_learner import (
 
 from optspread.artifacts import RUN_FILENAME, SchemaVersionError, read_run, write_run
 from optspread.config import CostConfig, EnvConfig, MarketConfig, RunConfig, TrainConfig
-from optspread.harness import run_episodes, summarize
-from optspread.manifest import MANIFEST_FILENAME, RunManifest, file_sha256
-from optspread.orchestrate import (
-    LOST,
-    NOT_RUN,
-    PILOT_MATRIX,
-    PILOT_ORACLE_MATRIX,
+from optspread.experiment.cli import add_run_options, plan_and_run
+from optspread.experiment.grid import (
     SWEEP_PREMIUMS,
     GridConfig,
-    IncompleteGridError,
-    Progress,
+    GridRecord,
     block_config,
-    cell_seconds,
-    default_runs_root,
-    execute_run,
-    format_seconds,
     grid_cells,
     grid_filename,
     grid_record,
-    makespan,
-    pilot_grid,
-    plan_cells,
     read_grid,
-    run_cells,
-    run_grid,
+)
+from optspread.experiment.pilot import (
+    PILOT_MATRIX,
+    PILOT_ORACLE_MATRIX,
+    pilot_grid,
     write_pilot_matrices,
 )
+from optspread.experiment.schedule import (
+    LOST,
+    NOT_RUN,
+    SINGLE_THREAD_ENV,
+    IncompleteGridError,
+    Progress,
+    cell_seconds,
+    execute_run,
+    format_seconds,
+    makespan,
+    plan_cells,
+    run_cells,
+    run_grid,
+)
+from optspread.experiment.sweep import pilot_matrix
+from optspread.harness import run_episodes, summarize
+from optspread.manifest import MANIFEST_FILENAME, RunManifest, file_sha256
 from optspread.policies import DeltaSellerPolicy
-from optspread.sweep import pilot_matrix, run_id
+from optspread.runs.rundir import default_runs_root, run_id
 from optspread.train import POLICY_FILENAME, TRAIN_PATH_BASE
 
 SHORT = RunConfig(
@@ -79,6 +90,25 @@ SHORT = RunConfig(
 )
 TRAIN = TrainConfig(total_timesteps=4096, seed=10)
 GRID = GridConfig(base=SHORT, premiums=(0.0, 2.0), n_seeds=3, train=TRAIN)
+SCRIPTED = GridConfig(base=SHORT, premiums=(0.0, 2.0), arms=("delta_seller",), n_seeds=2)
+
+
+class _EnvNoted(FakeLearned):
+    """``FakeLearned`` whose saved policy is the process it was trained in: its id and its
+    BLAS and OpenMP thread settings."""
+
+    def __init__(self, seed: int) -> None:
+        super().__init__(seed)
+        self.seen = {"pid": os.getpid(), **{n: os.environ.get(n) for n in SINGLE_THREAD_ENV}}
+
+    def save(self, path: Path) -> None:
+        path.write_text(json.dumps(self.seen), encoding="utf-8")
+
+
+def env_noting_trainer(config: RunConfig) -> _EnvNoted:
+    """Module-level, so a spawned worker imports it from this module by name."""
+    assert config.train is not None
+    return _EnvNoted(config.train.seed)
 
 
 # -- the design, before anything runs ----------------------------------------- #
@@ -186,7 +216,9 @@ def test_a_learned_cell_keeps_its_policy_hashed_in_the_manifest(tmp_path: Path) 
     cfg = block_config(GRID, 0.0, "ppo", 1)
     execute_run(cfg, tmp_path, fake_trainer)
     manifest = RunManifest.read(tmp_path)
-    assert set(manifest.artifacts) == {RUN_FILENAME, POLICY_FILENAME}
+    assert manifest.artifacts == {
+        name: file_sha256(tmp_path / name) for name in (RUN_FILENAME, POLICY_FILENAME)
+    }
     assert manifest.config.train == cfg.train
     # The stand-in is named, so no gate takes this cell for the real learner's (#31).
     assert manifest.trainer == "fake_learner.fake_trainer"
@@ -384,6 +416,77 @@ def test_workers_must_be_positive(tmp_path: Path) -> None:
         run_cells(grid_cells(GRID), tmp_path, workers=0)
 
 
+@pytest.mark.behaviour
+@pytest.mark.spawns_processes
+def test_two_grids_run_from_two_threads_both_finish_with_every_cell_written(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Each grid has a pool of its own. A pool shared by the process (as joblib's was) hung
+    # or broke the second grid once the first shut it down (refactor-questions Q15, Q16).
+    # Two overlapping grids can leave this process's BLAS variables at 1 (Q22), so
+    # monkeypatch puts them back afterwards and this test does not look at them.
+    for name in SINGLE_THREAD_ENV:
+        monkeypatch.delenv(name, raising=False)
+    outcome: dict[str, GridRecord | BaseException] = {}
+
+    def run(name: str) -> None:
+        try:
+            outcome[name] = run_grid(SCRIPTED, tmp_path / name, workers=2)
+        except BaseException as exc:  # reported below, from the test's own thread
+            outcome[name] = exc
+
+    threads = [threading.Thread(target=run, args=(name,), daemon=True) for name in "ab"]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=600)
+    assert not any(thread.is_alive() for thread in threads), "a grid never finished"
+    a, b = outcome["a"], outcome["b"]
+    assert isinstance(a, GridRecord) and isinstance(b, GridRecord), outcome
+    assert a == b and len(a.cells) == len(grid_cells(SCRIPTED))
+    for name, record in outcome.items():
+        assert read_grid(tmp_path / name / grid_filename(SCRIPTED)) == record
+        assert plan_cells(grid_cells(SCRIPTED), tmp_path / name).to_run == 0
+
+
+@pytest.mark.behaviour
+@pytest.mark.spawns_processes
+def test_an_interrupt_lets_the_cells_running_finish_and_starts_no_more(tmp_path: Path) -> None:
+    # What happens today, pinned: the cells in flight finish and are kept, nothing else is
+    # started, and the interrupt goes on up. Before the merge every queued cell finished
+    # too (12 of 12 against 2 of 12); the analysis recommends accepting this (Q22).
+    def interrupted(progress: Progress) -> None:
+        raise KeyboardInterrupt  # Ctrl+C, arriving as the first cell comes back
+
+    with pytest.raises(KeyboardInterrupt):
+        run_grid(SCRIPTED, tmp_path, workers=2, report=interrupted)
+    written = sorted(p.name for p in tmp_path.iterdir() if p.is_dir())
+    assert len(written) == 2, "the two cells in flight, and no other"
+    cells = grid_cells(SCRIPTED)
+    assert all(read_run(tmp_path / rid) for rid in written)
+    assert plan_cells(cells, tmp_path).to_run == len(cells) - 2
+    assert not (tmp_path / grid_filename(SCRIPTED)).exists()
+
+
+@pytest.mark.behaviour
+@pytest.mark.spawns_processes
+def test_a_spawned_worker_trains_on_one_blas_thread_and_the_parent_keeps_its_own(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    mine = {name: str(n) for n, name in enumerate(SINGLE_THREAD_ENV, start=5)}
+    for name, value in mine.items():
+        monkeypatch.setenv(name, value)
+    grid = GridConfig(base=SHORT, premiums=(0.0,), n_seeds=2, train=TRAIN)
+    record = run_grid(grid, tmp_path, workers=2, trainer=env_noting_trainer)
+    learned = [c for c in record.cells if c.arm == "ppo"]
+    assert len(learned) == 2
+    for cell in learned:
+        seen = json.loads((tmp_path / cell.run_id / POLICY_FILENAME).read_text(encoding="utf-8"))
+        assert seen.pop("pid") != os.getpid(), "trained in a worker process"
+        assert seen == dict.fromkeys(SINGLE_THREAD_ENV, "1")
+    assert {name: os.environ.get(name) for name in SINGLE_THREAD_ENV} == mine
+
+
 # -- the pilot ------------------------------------------------------------------- #
 
 
@@ -518,6 +621,70 @@ def test_the_sweep_command_needs_a_budget_only_when_it_trains(
     assert sweep.main(retrain, trainer=failing_trainer) == 1  # seeds 5 and 6: 5 fails
 
 
+def _flow(*argv: str) -> argparse.Namespace:
+    """The options the sweep and pilot commands share, parsed as those commands parse them."""
+    parser = argparse.ArgumentParser()
+    add_run_options(parser, seed=SHORT.seed, train_seed=TRAIN.seed)
+    return parser.parse_args(list(argv))
+
+
+@pytest.mark.behaviour
+def test_the_shared_flow_hands_workers_to_the_plan_and_to_the_grid(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from optspread.experiment import cli
+
+    given: list[int] = []
+
+    def computed_here(grid: GridConfig, root: Path, *, workers: int, **kw: object) -> GridRecord:
+        given.append(workers)
+        return run_grid(grid, root, workers=1, **kw)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(cli, "run_grid", computed_here)
+    finished: list[GridRecord] = []
+    args = _flow("--workers", "3")
+    assert plan_and_run(SCRIPTED, tmp_path, args, fake_trainer, "synthetic", finished.append) == 0
+    assert capsys.readouterr().out.splitlines()[0].endswith(" on 3 worker(s); on synthetic")
+    assert given == [3]
+    assert finished == [read_grid(tmp_path / grid_filename(SCRIPTED))]
+
+
+@pytest.mark.behaviour
+def test_the_shared_flow_lists_the_failed_cells_on_stderr_and_exits_1(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    grid = GridConfig(base=SHORT, premiums=(0.0,), n_seeds=2, train=TRAIN)
+    finished: list[GridRecord] = []
+    assert plan_and_run(grid, tmp_path, _flow(), failing_trainer, "synthetic", finished.append) == 1
+    err = capsys.readouterr().err
+    failed = [c.run_id for c in grid_cells(grid) if c.arm == "ppo" and c.block == 1]
+    assert len(failed) == 1 and "1 cell(s) failed; rerun to resume" in err
+    assert f"  {failed[0]}: RuntimeError: training seed 11 diverged" in err
+    assert not any(c.run_id in err for c in grid_cells(grid) if c.run_id not in failed)
+    assert not finished and not (tmp_path / grid_filename(grid)).exists()
+
+
+@pytest.mark.behaviour
+def test_a_dry_run_prints_the_plan_and_writes_nothing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    finished: list[GridRecord] = []
+    empty = tmp_path / "empty"
+    dry = _flow("--dry-run", "--workers", "2")
+    assert plan_and_run(SCRIPTED, empty, dry, fake_trainer, "synthetic", finished.append) == 0
+    assert capsys.readouterr().out.startswith("4 cells: 0 on disk, 4 to run")
+    assert not empty.exists()
+
+    root = tmp_path / "runs"  # a root that holds three of the four cells
+    run_grid(SCRIPTED, root)
+    shutil.rmtree(root / grid_cells(SCRIPTED)[0].run_id)
+    before = {p: p.read_bytes() for p in root.rglob("*") if p.is_file()}
+    assert plan_and_run(SCRIPTED, root, dry, fake_trainer, "synthetic", finished.append) == 0
+    assert capsys.readouterr().out.startswith("4 cells: 3 on disk, 1 to run")
+    assert {p: p.read_bytes() for p in root.rglob("*") if p.is_file()} == before
+    assert not finished
+
+
 @pytest.mark.internal
 def test_workers_are_spawned_with_one_blas_thread_set_before_they_import_numpy(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -527,7 +694,7 @@ def test_workers_are_spawned_with_one_blas_thread_set_before_they_import_numpy(
     import concurrent.futures
     import os
 
-    from optspread import orchestrate
+    from optspread.experiment import schedule
 
     monkeypatch.setenv("OMP_NUM_THREADS", "7")
     monkeypatch.delenv("MKL_NUM_THREADS", raising=False)
@@ -538,10 +705,10 @@ def test_workers_are_spawned_with_one_blas_thread_set_before_they_import_numpy(
             super().__init__(workers)
 
         def submit(self, fn, /, *args, **kwargs):  # type: ignore[no-untyped-def, override]
-            seen.append({n: os.environ.get(n) for n in orchestrate.SINGLE_THREAD_ENV})
+            seen.append({n: os.environ.get(n) for n in schedule.SINGLE_THREAD_ENV})
             return super().submit(fn, *args, **kwargs)
 
-    monkeypatch.setattr("optspread.experiment.schedule.ProcessPoolExecutor", Recording)
+    monkeypatch.setattr(schedule, "ProcessPoolExecutor", Recording)
     grid = GridConfig(
         base=RunConfig(
             n_episodes=2,

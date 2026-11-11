@@ -23,9 +23,10 @@ from optspread.artifacts import RUN_FILENAME
 from optspread.config import CostConfig, EnvConfig, MarketConfig, RunConfig, TrainConfig
 from optspread.costs import CostModel, QuotedSpreadCost, make_cost_model
 from optspread.effects import SkewPremium, TermPremium
+from optspread.experiment.grid import GridConfig
+from optspread.experiment.schedule import run_grid
 from optspread.extend import Components, planted
 from optspread.harness import run_episodes
-from optspread.orchestrate import GridConfig, run_grid
 from optspread.replay import replay_run
 from optspread.scripted import cost_drag_check
 from optspread.types import Chain, OptionLeg

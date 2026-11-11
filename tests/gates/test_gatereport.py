@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from optspread.gatereport import GateItem, GateReport, build_report
+from optspread.gatereport import GateItem, GateReport, GateReportSidecar, build_report
 
 PASSING = GateItem(
     name="Wave 0 no-edge gate",
@@ -99,7 +99,10 @@ def test_a_pass_must_show_its_evidence() -> None:
 
 # -- the JSON sidecar and reading a committed report back (week 6) ----------- #
 
-DOCS = Path(__file__).resolve().parent.parent.parent / "docs"
+# The checkout is found by its pyproject.toml, not a fixed number of parents: from a
+# wrong folder the glob below would find no report and the test would only be skipped.
+CHECKOUT = next(p for p in Path(__file__).resolve().parents if (p / "pyproject.toml").is_file())
+DOCS = CHECKOUT / "docs"
 FAILED_NO_CRITERION = GateItem("Pilot", "Dominick Dupuy", "", "a matrix", False, "not run")
 
 
@@ -129,6 +132,46 @@ def test_write_puts_both_halves_of_one_build_side_by_side(tmp_path: Path) -> Non
     assert sidecar == tmp_path / "nested" / "M2_GATE_REPORT.json"
     assert md.read_text() == report.render()
     assert json.loads(sidecar.read_text()) == report.to_dict()
+
+
+@pytest.mark.behaviour
+def test_a_written_sidecar_reads_back_through_the_model_to_the_report_it_came_from(
+    tmp_path: Path,
+) -> None:
+    report = build_report("M2", [PASSING, FAILING, NO_CRITERION], date(2026, 10, 29))
+    _, path = report.write(tmp_path / "M2_GATE_REPORT.md")
+    text = path.read_text(encoding="utf-8")
+    parsed = GateReportSidecar.parse(text)
+    assert parsed == report.sidecar() and parsed.render() == text
+    # Field by field against the report itself, not only against the model that wrote it.
+    assert (parsed.milestone, parsed.report_date, parsed.verdict) == (
+        "M2",
+        "2026-10-29",
+        "NOT CLEARED",
+    )
+    assert [
+        (i.name, i.owner, i.verdict, i.criterion, i.evidence, i.failed_first) for i in parsed.items
+    ] == [
+        (i.name, i.owner, i.verdict, i.criterion, i.evidence, i.failed_first) for i in report.items
+    ]
+
+
+@pytest.mark.behaviour
+@pytest.mark.parametrize(
+    "text",
+    [
+        "not json",
+        "[]",  # JSON, but not an object
+        '{"report_date": "2026-10-29", "verdict": "PASS", "items": []}',  # no milestone
+        '{"milestone": "M2", "verdict": "PASS", "items": [{"owner": "x"}]}',  # an item unnamed
+        '{"milestone": "M2", "verdict": "PASS", "items": 3}',
+    ],
+)
+def test_text_that_is_not_a_sidecar_is_refused_as_a_value_error(text: str) -> None:
+    # The board reads a sidecar and treats a ValueError as "unreadable", so a refusal
+    # must stay one (pydantic's ValidationError and json's JSONDecodeError both are).
+    with pytest.raises(ValueError):
+        GateReportSidecar.parse(text)
 
 
 @pytest.mark.behaviour

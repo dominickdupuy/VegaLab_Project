@@ -17,7 +17,7 @@ from optspread.config import RunConfig
 from optspread.data import SourceName
 from optspread.harness import EpisodeResult, build_env, run_episodes, summarize
 from optspread.policies import DeltaSellerPolicy, Info, Observation
-from optspread.sweep import expected_data, run_id
+from optspread.runs.rundir import expected_data, run_id
 from optspread.train import TrainingPaths
 
 

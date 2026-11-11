@@ -12,7 +12,8 @@ import json
 import os
 from pathlib import Path
 
-from optspread.jobs import JOBS_DIR, JobSpec, execute_job
+from optspread.dashboard.jobs.spec import JOBS_DIR, JobSpec
+from optspread.dashboard.jobs.worker import execute_job
 
 DIES_RUNNING = 666  # writes its progress file first, as a job killed mid-run has
 DIES_ON_START = 667  # dies before it has written anything, every time it is launched

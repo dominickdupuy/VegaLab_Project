@@ -28,15 +28,15 @@ from optspread.analysis import decide_contrast
 from optspread.artifacts import RUN_FILENAME
 from optspread.config import CostConfig, EnvConfig, MarketConfig, RunConfig, TrainConfig
 from optspread.config import config_hash as hash_of
-from optspread.orchestrate import (
+from optspread.experiment.grid import (
     GridCell,
     GridConfig,
     GridRecord,
     grid_cells,
     grid_filename,
     read_grid,
-    run_grid,
 )
+from optspread.experiment.schedule import run_grid
 from optspread.power import power_t, t_critical, t_noncentrality, var_grand_mean
 from scripts import m4_analysis
 

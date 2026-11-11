@@ -32,6 +32,15 @@ from optspread.config import CostConfig, EnvConfig, MarketConfig, RunConfig, Tra
 from optspread.costs import make_cost_model
 from optspread.data import SyntheticSource
 from optspread.effects import SkewPremium
+from optspread.experiment.grid import GridConfig, grid_cells, grid_record
+from optspread.experiment.schedule import (
+    IncompleteGridError,
+    execute_run,
+    plan_cells,
+    run_cells,
+    run_grid,
+)
+from optspread.experiment.sweep import SweepConfig, run_sweep
 from optspread.extend import Components, planted
 from optspread.harness import run_episodes, summarize
 from optspread.manifest import (
@@ -41,26 +50,11 @@ from optspread.manifest import (
     git_dirty,
     platform_record,
 )
-from optspread.orchestrate import (
-    GridConfig,
-    IncompleteGridError,
-    execute_run,
-    grid_cells,
-    grid_record,
-    plan_cells,
-    run_cells,
-    run_grid,
-)
-from optspread.sweep import (
-    REAL_TRAINER,
-    SweepConfig,
-    components_identity,
-    run_id,
-    run_sweep,
-    valid_run,
-)
+from optspread.runs.rundir import REAL_TRAINER, components_identity, run_id, valid_run
 
-REPO = Path(__file__).resolve().parent.parent.parent
+# Found by its pyproject.toml: from a folder outside the checkout git fails and the
+# .DS_Store test below would only be skipped.
+REPO = next(p for p in Path(__file__).resolve().parents if (p / "pyproject.toml").is_file())
 SHORT = RunConfig(
     seed=100,
     n_episodes=3,
@@ -225,7 +219,8 @@ from pathlib import Path
 from fake_learner import fake_trainer
 
 from optspread.config import EnvConfig, MarketConfig, RunConfig, TrainConfig
-from optspread.orchestrate import GridConfig, grid_cells, plan_cells, run_grid
+from optspread.experiment.grid import GridConfig, grid_cells
+from optspread.experiment.schedule import plan_cells, run_grid
 
 
 def trainer(config):  # a researcher's own, at the top of the script
@@ -333,13 +328,15 @@ def test_a_finder_ds_store_does_not_make_runs_dirty(tmp_path: Path) -> None:
 
 # -- n5: the encoding ---------------------------------------------------------------- #
 
+# The modules that write or read run files, as paths under optspread/. The warnings are
+# matched by these paths, so a module that moves must move here too: the script below
+# imports each one and stops when a path names no module of the package. fileio holds
+# the atomic write the job worker's progress file goes through, and the JSON reader.
 WRITERS = (
     "manifest",
     "artifacts",
-    "sweep",
-    "orchestrate",
-    "jobs",
     "replay",
+    "fileio",
     "runs/rundir",
     "experiment/sweep",
     "experiment/grid",
@@ -354,13 +351,24 @@ WRITERS = (
 @pytest.mark.behaviour
 def test_the_run_writers_and_readers_name_their_encoding(tmp_path: Path) -> None:
     script = """
-import sys, warnings
+import importlib, sys, warnings
 from pathlib import Path
 from optspread.config import RunConfig, MarketConfig, EnvConfig
-from optspread.orchestrate import GridConfig, run_grid, read_grid, grid_filename
+from optspread.dashboard.jobs.spec import JobSpec
+from optspread.dashboard.jobs.worker import execute_job
+from optspread.experiment.grid import GridConfig, read_grid, grid_filename
+from optspread.experiment.schedule import run_grid
+from optspread.experiment.sweep import SweepConfig, run_sweep, read_sweep
 from optspread.replay import replay_run
-from optspread.sweep import SweepConfig, run_sweep, read_sweep
-from optspread.jobs import JobSpec, execute_job
+
+def listed(filename):
+    return any(f"optspread/{m}.py" in filename.replace(chr(92), "/") for m in sys.argv[2:])
+
+# A listed path that names no module, or whose file the filter does not match, would
+# leave the filter matching nothing and the check passing whatever the code does.
+for m in sys.argv[2:]:
+    if not listed(importlib.import_module("optspread." + m.replace("/", ".")).__file__):
+        sys.exit(f"the filter does not match the file of optspread/{m}.py")
 root = Path(sys.argv[1])
 (root / "jobs" / ".jobs").mkdir(parents=True)
 base = RunConfig(n_episodes=2, market=MarketConfig(n_days=10, tenor_days=(5, 10)),
@@ -375,8 +383,7 @@ with warnings.catch_warnings(record=True) as seen:
     replay_run(root / "grid" / record.cells[0].run_id)
     spec = JobSpec(n_days=10, tenor_days=(5, 10), n_episodes=2, roll_dte=2)
     execute_job("j1", spec.model_dump_json(), str(root / "jobs"))
-mine = [w for w in seen if issubclass(w.category, EncodingWarning)
-        and any(f"optspread/{m}.py" in w.filename.replace(chr(92), "/") for m in sys.argv[2:])]
+mine = [w for w in seen if issubclass(w.category, EncodingWarning) and listed(w.filename)]
 print("\\n".join(f"{w.filename}:{w.lineno}" for w in mine))
 sys.exit(1 if mine else 0)
 """

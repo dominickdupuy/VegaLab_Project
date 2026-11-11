@@ -26,9 +26,9 @@ from optspread.config import (
     canonical_json,
     config_hash,
 )
+from optspread.experiment.sweep import SweepConfig
 from optspread.harness import build_env, run_episodes
 from optspread.manifest import RunManifest
-from optspread.sweep import SweepConfig
 from optspread.train import (
     TRAIN_PATH_BASE,
     TRAIN_PATH_STRIDE,

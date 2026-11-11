@@ -26,7 +26,7 @@ from typing import TYPE_CHECKING, Any
 import pytest
 
 if TYPE_CHECKING:
-    from optspread.sweep import SweepConfig
+    from optspread.experiment.sweep import SweepConfig
 
 
 # -- under xdist: process-spawning tests left out, the heaviest files sent first ---- #
@@ -93,7 +93,7 @@ def pytest_terminal_summary(
 def tiny_sweep() -> SweepConfig:
     """Two premiums by two arms on a three-week world: the sweep in every run root."""
     from optspread.config import CostConfig, EnvConfig, MarketConfig, RunConfig
-    from optspread.sweep import SweepConfig
+    from optspread.experiment.sweep import SweepConfig
 
     tiny = RunConfig(
         seed=7,
@@ -108,7 +108,7 @@ def tiny_sweep() -> SweepConfig:
 @pytest.fixture(scope="session")
 def run_root(tmp_path_factory: pytest.TempPathFactory, tiny_sweep: SweepConfig) -> Path:
     """A runs root with one real sweep (four cells) plus a broken and a tampered run."""
-    from optspread.sweep import run_sweep
+    from optspread.experiment.sweep import run_sweep
 
     root = tmp_path_factory.mktemp("runs")
     run_sweep(tiny_sweep, root / "sweeps" / "tiny")
@@ -199,7 +199,7 @@ def _the_m4_grids_stand_in_learner(request: pytest.FixtureRequest) -> Iterator[N
 
     from optspread import m4analysis
     from optspread.manifest import callable_name
-    from optspread.sweep import valid_run
+    from optspread.runs.rundir import valid_run
 
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr(m4analysis, "valid_run", partial(valid_run, trainer=callable_name(fake_trainer)))

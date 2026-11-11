@@ -51,9 +51,9 @@ from optspread.config import (
     TrainConfig,
     config_hash,
 )
+from optspread.experiment.schedule import execute_run
 from optspread.harness import run_episodes, summarize
 from optspread.market import SyntheticChainProvider
-from optspread.orchestrate import execute_run
 from optspread.policies import Policy
 from optspread.realdata.panel import K_GRID, TENOR_GRID
 from optspread.realdata.provider import HistoricalChainProvider, SurfaceStore
@@ -405,7 +405,11 @@ def test_another_schema_version_is_refused(tmp_path: Path) -> None:
 
 @pytest.mark.behaviour
 def test_the_default_root_is_outside_every_run_and_can_be_moved(tmp_path: Path) -> None:
-    assert default_root({}) == REPO_ROOT / "attribution"
+    # The checkout is found from this file, not from the module's own REPO_ROOT, so a
+    # module moved a folder down (REPO_ROOT then optspread/) fails here.
+    checkout = next(p for p in Path(__file__).resolve().parents if (p / "pyproject.toml").is_file())
+    assert checkout == REPO_ROOT
+    assert default_root({}) == checkout / "attribution"
     assert default_root({ATTRIBUTION_ENV: str(tmp_path)}) == tmp_path
 
 
