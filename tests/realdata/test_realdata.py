@@ -9,6 +9,7 @@ clears the same conformance suite as the synthetic source.
 
 from __future__ import annotations
 
+import re
 from dataclasses import replace
 from datetime import date, timedelta
 from pathlib import Path
@@ -1268,7 +1269,9 @@ def test_a_day_missing_from_both_tables_is_a_gap() -> None:
 
 
 @pytest.mark.behaviour
-def test_the_build_check_runs_the_chain_checks_on_both_splits(tmp_path: Path) -> None:
+def test_the_build_check_runs_the_chain_checks_on_both_splits(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     from scripts.build_spx_panel import calendar_check
 
     days = _business_days(date(2018, 10, 1), date(2019, 3, 29))
@@ -1277,3 +1280,14 @@ def test_the_build_check_runs_the_chain_checks_on_both_splits(tmp_path: Path) ->
     grid = pd.concat([_wing_day(d) for d in days], ignore_index=True)
     grid.to_parquet(panel / "surface_grid.parquet", index=False)
     assert calendar_check(panel) == 0, "the wing day is served arbitrage-free"
+    line = r"check (\w+): (\d+) days, \d+ window starts, (\d+) days failing"
+    checked = re.findall(line, capsys.readouterr().out)
+    # both splits, on both panels, and no day failing
+    assert [(s, f) for s, _, f in checked] == [("train", "0"), ("eval", "0")] * 2
+    # a positive control: every day whose chain fails a check is counted, on both splits
+    monkeypatch.setattr("optspread.leaks.chain_violations", lambda chain: ["planted"])
+    failing = calendar_check(panel)
+    checked = re.findall(line, capsys.readouterr().out)
+    assert [s for s, _, _ in checked] == ["train", "eval"]
+    assert all(n == f != "0" for _, n, f in checked)
+    assert failing == sum(int(f) for _, _, f in checked)

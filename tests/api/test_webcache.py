@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from optspread.webcache import Answers, file_stamp, tree_stamp
+from optspread.api.cache import Answers, file_stamp, tree_stamp
 
 
 def _touch(path: Path, text: str, ns: int) -> None:
@@ -86,9 +86,9 @@ def test_the_server_answers_from_the_cache_until_a_run_changes(
     pytest.importorskip("fastapi")
     from fastapi.testclient import TestClient
 
-    from optspread.dashboard_data import REPO_ROOT
-    from optspread.jobs import JobManager
-    from optspread.server import Settings, create_app
+    from optspread.api.server import Settings, create_app
+    from optspread.dashboard.jobs.queue import JobManager
+    from optspread.dashboard.runindex import REPO_ROOT
 
     runs = tmp_path / "runs"
     shutil.copytree(run_root, runs)
@@ -125,7 +125,7 @@ def test_the_server_answers_from_the_cache_until_a_run_changes(
 
 @pytest.mark.invariant
 def test_a_kept_run_row_is_read_again_when_a_file_changes(run_root: Path, tmp_path: Path) -> None:
-    from optspread.dashboard_data import load_run_row
+    from optspread.dashboard.runindex import load_run_row
 
     runs = tmp_path / "runs"
     shutil.copytree(run_root, runs)
@@ -143,14 +143,15 @@ def test_a_warmed_server_reads_its_tables_at_start_and_answers_as_before(
     run_root: Path, gate_docs: Path, panel_root: Path, tmp_path: Path
 ) -> None:
     pytest.importorskip("fastapi")
+    import dataclasses
     import threading
     import time
 
     from fastapi.testclient import TestClient
 
-    from optspread.dashboard_data import REPO_ROOT
-    from optspread.jobs import JobManager
-    from optspread.server import Settings, create_app
+    from optspread.api.server import Settings, create_app
+    from optspread.dashboard.jobs.queue import JobManager
+    from optspread.dashboard.runindex import REPO_ROOT
 
     settings = Settings(
         run_root,
@@ -161,11 +162,19 @@ def test_a_warmed_server_reads_its_tables_at_start_and_answers_as_before(
         attribution=tmp_path / "attr",
         warm=True,
     )
+    paths = ("/api/data/grid/dates", "/api/data/coverage", "/api/runs")
     app = create_app(settings, JobManager(tmp_path / "runs", executor=ThreadPoolExecutor(1)))
     with TestClient(app, base_url="http://127.0.0.1") as client:
         deadline = time.monotonic() + 60
         while any(t.name == "optspread-warm" for t in threading.enumerate()):
             assert time.monotonic() < deadline, "the warm-up never ended"
             time.sleep(0.05)
-        assert client.get("/api/data/grid/dates").status_code == 200
-        assert client.get("/api/runs").status_code == 200
+        warmed = [client.get(path) for path in paths]
+    assert [r.status_code for r in warmed] == [200] * len(paths)
+    # the same answers as a server that read nothing at start
+    cold = create_app(
+        dataclasses.replace(settings, warm=False),
+        JobManager(tmp_path / "runs", executor=ThreadPoolExecutor(1)),
+    )
+    with TestClient(cold, base_url="http://127.0.0.1") as client:
+        assert [r.json() for r in warmed] == [client.get(path).json() for path in paths]

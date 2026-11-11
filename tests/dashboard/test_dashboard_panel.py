@@ -13,7 +13,6 @@ window exists.
 
 from __future__ import annotations
 
-import os
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -31,7 +30,7 @@ from dashboard_fixtures import (
     seam_columns,
 )
 
-from optspread.dashboard_panel import (
+from optspread.dashboard.panel_views import (
     DATA_ENV,
     DEFAULT_DATA_ROOT,
     TENOR_GRID,
@@ -90,11 +89,15 @@ def daily() -> dict[str, np.ndarray]:
 
 
 @pytest.mark.behaviour
-def test_the_data_root_comes_from_the_environment(tmp_path: Path) -> None:
+def test_the_data_root_comes_from_the_environment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     assert data_root({DATA_ENV: str(tmp_path)}) == tmp_path
     assert data_root({}) == DEFAULT_DATA_ROOT
     assert "wrds_optionmetrics" in DEFAULT_DATA_ROOT.name
-    assert data_root() in (DEFAULT_DATA_ROOT, Path(os.environ.get(DATA_ENV, "x")))
+    # with no argument, the process environment is read (the server's Settings.from_env)
+    monkeypatch.setenv(DATA_ENV, str(tmp_path / "data"))
+    assert data_root() == tmp_path / "data"
 
 
 @pytest.mark.behaviour
