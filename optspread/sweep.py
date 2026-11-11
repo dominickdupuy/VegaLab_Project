@@ -22,6 +22,7 @@ from optspread.experiment.sweep import premium_market as premium_market
 from optspread.experiment.sweep import read_sweep as read_sweep
 from optspread.experiment.sweep import run_sweep as run_sweep
 from optspread.runs.rundir import LOCK_FILENAME as LOCK_FILENAME
+from optspread.runs.rundir import LOCK_MODE as LOCK_MODE
 from optspread.runs.rundir import LOCK_TIMEOUT as LOCK_TIMEOUT
 from optspread.runs.rundir import REAL_TRAINER as REAL_TRAINER
 from optspread.runs.rundir import SB3_ARCHIVE_MEMBER as SB3_ARCHIVE_MEMBER
