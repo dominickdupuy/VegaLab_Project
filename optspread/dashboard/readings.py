@@ -4,7 +4,7 @@ Lane: Ilan Danial (machinery).
 
 Built on the panel views in ``optspread.dashboard.panel_views``, whose private
 ``_day`` they share by its name; nothing there depends on this module. Moved from
-``optspread.dashboard_panel``, which re-exports it.
+``optspread.dashboard_panel``.
 """
 
 from __future__ import annotations

@@ -1,6 +1,6 @@
 """API payload for two runs side by side: their difference, seed by seed, and its verdict.
 
-Lane: Ilan Danial (machinery). Moved from ``optspread.webapi``, which re-exports it.
+Lane: Ilan Danial (machinery). Moved from ``optspread.webapi``.
 """
 
 from __future__ import annotations

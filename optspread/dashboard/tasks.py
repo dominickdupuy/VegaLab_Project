@@ -4,7 +4,7 @@ Lane: Ilan Danial (machinery).
 
 ``Tasks`` runs the API's re-simulations of one run (attribution, capital, its action mix,
 replay); ``TaskState`` is what a poll of one reads back. Neither is served as it is. Moved
-from ``optspread.webviews``, which re-exports both.
+from ``optspread.webviews``.
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ class TaskState:
 class Tasks:
     """Work the API starts and the page polls: one thread, keyed by kind and run key.
 
-    Not ``optspread.jobs``: these read a run and write nowhere but the attribution root,
+    Not ``optspread.dashboard.jobs``: these read a run and write nowhere but the attribution root,
     so they need no process pool and no run directory of their own.
     """
 

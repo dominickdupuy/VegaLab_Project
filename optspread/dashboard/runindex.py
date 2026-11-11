@@ -36,9 +36,9 @@ from numpy.typing import NDArray
 from pydantic import ValidationError
 
 from optspread.artifacts import RUN_FILENAME, RunRecord, read_run
+from optspread.experiment.sweep import SWEEP_FILENAME
 from optspread.fileio import env_path
 from optspread.manifest import MANIFEST_FILENAME, DataRecord, RunManifest, file_sha256
-from optspread.sweep import SWEEP_FILENAME
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 RUNS_ENV = "OPTSPREAD_RUNS"

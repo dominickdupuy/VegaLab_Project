@@ -2,7 +2,7 @@
 
 Lane: Ilan Danial (machinery).
 
-``optspread.sweep`` runs scripted arms on one shared seed range. A learned arm
+``optspread.experiment.sweep`` runs scripted arms on one shared seed range. A learned arm
 adds the seed axis, because two training seeds are two different policies
 (project document 4.1). A ``GridConfig`` is the design both the pilot and the full
 sweep use:
@@ -22,7 +22,7 @@ matrices are what ``scripts/pilot_budget.py`` reads.
 This module is the design and its record: the cells and their configs, when a cell on
 disk is reused (``reusable``), and the grid read back from disk.
 ``optspread.experiment.schedule`` computes the cells and ``optspread.experiment.pilot`` is
-the pilot's grid. Moved from ``optspread.orchestrate``, which re-exports it.
+the pilot's grid. Moved from ``optspread.orchestrate``.
 """
 
 from __future__ import annotations

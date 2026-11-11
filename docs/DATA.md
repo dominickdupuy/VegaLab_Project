@@ -49,7 +49,7 @@ and holdout dates are the same on either; the values on those dates are not.
 **Replay refuses a real-data run made on another panel.** A run on the `optionmetrics`
 source records the sha256 of each panel file it read (`DataRecord.panel`). Replay hashes
 the panel it finds again and, when the digests differ, reports `DIFFERS` with both panel
-ids rather than replaying on other data; the sweep's resume (`sweep.valid_run`) treats
+ids rather than replaying on other data; the sweep's resume (`rundir.valid_run`) treats
 such a cell as one to recompute. A run made on the Hugging Face build, or on version 3,
 therefore replays only against that build.
 

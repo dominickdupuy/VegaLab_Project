@@ -21,7 +21,7 @@ possibly another job's too.
 The pool's workers are spawned, as the orchestrator's are: the server is a multithreaded
 process, and forking one is how a child inherits a lock some other thread held.
 
-Moved from ``optspread.jobs``, which re-exports it.
+Moved from ``optspread.jobs``.
 """
 
 from __future__ import annotations

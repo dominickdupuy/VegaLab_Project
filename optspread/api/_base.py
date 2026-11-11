@@ -12,7 +12,7 @@ gives a few fields the object does not have); a date or a path read that way arr
 its text through ``DateText`` and ``PathText``. ``_inside`` keeps a key that came from
 the browser inside the root it names a path under; the run and the sweep payloads both
 use it. ``_source_suffix`` is the part of a cached file's name that says which data a run
-read. Moved from ``optspread.webapi`` and ``optspread.webviews``, which re-export it.
+read. Moved from ``optspread.webapi`` and ``optspread.webviews``.
 """
 
 from __future__ import annotations

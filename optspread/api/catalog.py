@@ -1,6 +1,6 @@
 """API payload for a designed matrix of runs: ``<runs root>/catalog.json``, optional.
 
-Lane: Ilan Danial (machinery). Moved from ``optspread.webapi``, which re-exports it.
+Lane: Ilan Danial (machinery). Moved from ``optspread.webapi``.
 """
 
 from __future__ import annotations

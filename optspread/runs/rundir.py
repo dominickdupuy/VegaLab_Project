@@ -37,7 +37,7 @@ and computes without it, as before the lock existed. The worker processes of an
 orchestrator write under the lock their parent holds and never take it.
 
 Moved from ``optspread.sweep`` (the run-directory rules), ``optspread.orchestrate``
-(the runs roots) and ``optspread.jobs`` (the sources), which re-export it.
+(the runs roots) and ``optspread.jobs`` (the sources).
 """
 
 from __future__ import annotations
@@ -256,7 +256,7 @@ def valid_run(
     """The run already on disk for ``config``, or None when it has to be (re)computed.
 
     The resume rule every orchestrator here shares (``run_sweep`` and
-    ``optspread.orchestrate``): present, readable, keyed by the expected hash and
+    ``optspread.experiment.schedule``): present, readable, keyed by the expected hash and
     run id, its data the record a run by ``runner`` on ``source`` writes now
     (``expected_data``, ``data_mismatch``: the source, on the real source its ``eval``
     split and the panel's digests, and the components, so a run made with components of

@@ -1,6 +1,6 @@
 """API payloads for the landing page (the study at a glance) and the health check.
 
-Lane: Ilan Danial (machinery). Moved from ``optspread.webapi``, which re-exports it.
+Lane: Ilan Danial (machinery). Moved from ``optspread.webapi``.
 """
 
 from __future__ import annotations

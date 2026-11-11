@@ -37,7 +37,7 @@ in the run id, so the two would otherwise share a directory. A source whose data
 absent is refused at submission, as an arm that is not installed is.
 
 The process pool pickles ``execute_job`` by module path, so it stays module-level here.
-Moved from ``optspread.jobs``, which re-exports it.
+Moved from ``optspread.jobs``.
 """
 
 from __future__ import annotations

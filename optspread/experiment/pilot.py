@@ -5,7 +5,7 @@ Lane: Ilan Danial (machinery).
 The pilot is the grid of ``optspread.experiment.grid`` at zero and one premium, for the
 learner and its scripted control. Its S x N contrast matrices are what
 ``scripts/pilot_budget.py`` reads, written beside the cells with a manifest of their own.
-Moved from ``optspread.orchestrate``, which re-exports it.
+Moved from ``optspread.orchestrate``.
 """
 
 from __future__ import annotations

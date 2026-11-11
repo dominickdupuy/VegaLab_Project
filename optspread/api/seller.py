@@ -1,7 +1,7 @@
 """API payload for what the fixed-delta seller opens on a real day: an illustration on the
 real chain.
 
-Lane: Ilan Danial (machinery). Moved from ``optspread.webviews``, which re-exports it.
+Lane: Ilan Danial (machinery). Moved from ``optspread.webviews``.
 """
 
 from __future__ import annotations
