@@ -22,15 +22,19 @@ under the current directory), and under it ``source_root``, a real-data run's ow
 because the source is not in a run id. ``JobSource`` names the sources a run can be
 launched on.
 
-``root_lock`` is the rule the orchestrators share about writers: one at a time computes
-runs under a results root, holding ``<root>/.optspread.lock`` (``LOCK_FILENAME``); a
-second one waits ``LOCK_TIMEOUT`` seconds and then stops with ``RootInUseError``, which
-names the lock file. The lock is the operating system's, so it goes with its holder
-however that exits, killed included. The file is a plain file named like no run artifact,
-so nothing that looks for runs (``run.json``, ``manifest.json``, ``sweep.json``,
-``grid-*.json``) takes it for one. On Windows it is removed on release; on Linux and macOS
-the empty file stays. The worker processes of an orchestrator write under the lock their
-parent holds and never take it.
+``root_lock`` is the rule the orchestrators share about writers: one that has runs to
+compute under a results root holds ``<root>/.optspread.lock`` (``LOCK_FILENAME``) while
+it computes them; a second one with runs to compute waits ``LOCK_TIMEOUT`` seconds and
+then stops with ``RootInUseError``, which names the lock file. The lock is the operating
+system's, so it goes with its holder however that exits, killed included; a killed
+orchestrator's workers may still be finishing cells when it goes. The file is a plain file
+named like no run artifact, so nothing that looks for runs (``run.json``,
+``manifest.json``, ``sweep.json``, ``grid-*.json``) takes it for one. On Windows it is
+removed on release; on Linux and macOS the empty file stays, readable and writable by
+every account (``LOCK_MODE``), so the next account on a shared root can lock it too. When
+the lock cannot be taken for any reason but a live holder, the orchestrator warns once
+and computes without it, as before the lock existed. The worker processes of an
+orchestrator write under the lock their parent holds and never take it.
 
 Moved from ``optspread.sweep`` (the run-directory rules), ``optspread.orchestrate``
 (the runs roots) and ``optspread.jobs`` (the sources), which re-export it.
@@ -38,6 +42,7 @@ Moved from ``optspread.sweep`` (the run-directory rules), ``optspread.orchestrat
 
 from __future__ import annotations
 
+import sys
 import zipfile
 from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
@@ -45,7 +50,7 @@ from functools import partial
 from pathlib import Path
 from typing import Any, Literal, get_args
 
-from filelock import FileLock, Timeout
+from filelock import BaseFileLock, Timeout, UnixFileLock, WindowsFileLock
 
 from optspread.artifacts import RUN_FILENAME, RunRecord, read_run
 from optspread.config import RunConfig, config_hash
@@ -320,6 +325,16 @@ SOURCES: tuple[JobSource, ...] = get_args(JobSource)
 
 LOCK_FILENAME = ".optspread.lock"
 LOCK_TIMEOUT = 5.0  # seconds a second orchestrator on the same root waits before it stops
+# Read and write for every account. On Linux and macOS the lock file stays after release,
+# and the next account to compute on a shared root must open it read-write to lock it.
+# filelock sets an explicit mode with fchmod once it has created the file, so the umask
+# does not narrow it; a lock file that already exists keeps the mode it has.
+LOCK_MODE = 0o666
+# The operating system's lock, named rather than taken through filelock.FileLock: where
+# fcntl is missing that alias is SoftFileLock, which treats a leftover lock file as a live
+# holder for good. fallback_to_soft=False (below) keeps UnixFileLock from turning into one
+# on a filesystem without flock (some network shares and synced folders).
+_HARD_LOCK: type[BaseFileLock] = WindowsFileLock if sys.platform == "win32" else UnixFileLock
 
 
 class RootInUseError(TimeoutError):
@@ -334,16 +349,34 @@ def root_lock(root: Path, timeout: float = LOCK_TIMEOUT) -> Iterator[None]:
     after ``timeout`` seconds. Released when the body ends, however it ends (an exception
     or an interrupt included); a holder that is killed releases it with its process.
     Worker processes write under the lock their parent holds and never take it.
+
+    When the lock cannot be taken for any other reason (a lock file this account cannot
+    open, a root it cannot add files to, a filesystem without kernel locks), the body runs
+    without it after one warning line on stderr naming the lock file and the reason: as
+    every orchestrator ran before the lock existed, never worse.
     """
-    lock = FileLock(root / LOCK_FILENAME, timeout=timeout)
+    path = root / LOCK_FILENAME
+    lock = _HARD_LOCK(path, timeout=timeout, mode=LOCK_MODE, fallback_to_soft=False)
     try:
         lock.acquire()
     except Timeout as exc:
         raise RootInUseError(
-            f"could not lock {root / LOCK_FILENAME} within {timeout:g}s: another run is "
+            f"could not lock {path} within {timeout:g}s: another run is "
             f"computing cells under {root}. Let it finish, or use another root."
         ) from exc
+    except (OSError, NotImplementedError) as exc:
+        held = False
+        reason = " ".join(f"{type(exc).__name__}: {exc}".split())
+        print(
+            f"warning: could not take the lock {path} ({reason}); computing without it, so "
+            "another run on this root at the same time is not kept out",
+            file=sys.stderr,
+            flush=True,
+        )
+    else:
+        held = True
     try:
         yield
     finally:
-        lock.release()
+        if held:
+            lock.release()
