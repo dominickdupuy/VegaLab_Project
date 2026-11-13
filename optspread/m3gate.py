@@ -58,6 +58,7 @@ from optspread import reproduction as rp
 from optspread.artifacts import RUN_FILENAME, read_run
 from optspread.config import config_hash
 from optspread.env import SpreadEnv
+from optspread.experiment.grid import Cell, GridConfig, grid_cells, grid_filename, read_grid
 from optspread.gatereport import GateItem
 from optspread.leaks import default_env, detect_leak, leak_floor
 from optspread.m2gate import DOMINICK, ILAN, _git, _load, _not_cleared
@@ -72,9 +73,8 @@ from optspread.m4gate import (
     read_json,
 )
 from optspread.manifest import MANIFEST_FILENAME, RunManifest, file_sha256
-from optspread.orchestrate import Cell, GridConfig, grid_cells, grid_filename, read_grid
 from optspread.replay import ReplayResult, platform_differs, replay_run
-from optspread.sweep import (
+from optspread.runs.rundir import (
     REAL_TRAINER,
     changed_artifacts,
     recorded_trainer,

@@ -87,9 +87,10 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from optspread.artifacts import RUN_FILENAME, read_run
 from optspread.config import ArmName
+from optspread.experiment.grid import Cell, GridConfig, GridRecord, grid_cells
+from optspread.experiment.schedule import execute_run
 from optspread.manifest import RunManifest, file_sha256, library_versions
-from optspread.orchestrate import Cell, GridConfig, GridRecord, execute_run, grid_cells
-from optspread.sweep import REAL_TRAINER, valid_run
+from optspread.runs.rundir import REAL_TRAINER, valid_run
 from optspread.train import Trainer, train_ppo
 
 SCHEMA_VERSION = 1
@@ -111,7 +112,7 @@ DEFAULT_CELLS = 3
 
 # The steps of a reproduction, in order. The first six are the gate commands as the
 # Makefile runs them (``make check`` is ruff, mypy and pytest); ``STEP_COMMANDS`` holds
-# them and tests/test_m3gate.py holds them to ``make -n``.
+# them and tests/gates/test_m3gate.py holds them to ``make -n``.
 STEPS = (
     "ruff",
     "mypy --strict",

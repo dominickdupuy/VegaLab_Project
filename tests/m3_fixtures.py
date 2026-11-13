@@ -18,8 +18,9 @@ from fake_learner import fake_trainer
 from optspread import manifest as manifest_module
 from optspread import reproduction as rp
 from optspread.config import CostConfig, EnvConfig, MarketConfig, RunConfig, TrainConfig
+from optspread.experiment.grid import GridConfig, GridRecord, grid_filename, read_grid
+from optspread.experiment.schedule import run_grid
 from optspread.manifest import callable_name
-from optspread.orchestrate import GridConfig, GridRecord, grid_filename, read_grid, run_grid
 
 SHORT = RunConfig(
     seed=7000,

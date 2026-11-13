@@ -12,6 +12,7 @@ dependencies = [
     "scipy>=1.11",
     "gymnasium>=0.29",
     "pydantic>=2.0",
+    "filelock>=4.2",  # one orchestrator per results root (optspread.runs.rundir)
 ]
 
 [project.optional-dependencies]
@@ -24,8 +25,8 @@ train = [
 ]
 # The dashboard (W6-6): `make serve` runs optspread.server over the static site that
 # `make web` builds into web/out. An extra for the same reason as `train`: `make check`
-# runs without it. The builders the server returns (optspread.webapi, .dashboard_data,
-# .dashboard_panel, .jobs) need none of it apart from the one parquet reader, so they
+# runs without it. The builders the server returns (optspread.api, .dashboard_data,
+# .dashboard) need none of it apart from the one parquet reader, so they
 # are tested and covered on the plain `dev` install; httpx is for the server's tests.
 dashboard = [
     "fastapi>=0.115",
@@ -50,6 +51,7 @@ dev = [
     "pandas-stubs>=2.2",
     "pytest>=7.4",
     "pytest-cov>=4.1",
+    "pytest-xdist>=3.8",  # --no-loadscope-reorder (make test-par, make test-fast)
     "hypothesis>=6.88",
     "mypy>=1.14",
     "ruff>=0.8",
@@ -93,13 +95,25 @@ ignore_missing_imports = true
 # Without the dashboard extra FastAPI is untyped, and its route decorators with it.
 # Installed, they are typed and this changes nothing; the routes themselves are typed.
 [[tool.mypy.overrides]]
-module = ["optspread.server"]
+module = ["optspread.server", "optspread.api.server"]
 disallow_untyped_decorators = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q"
+addopts = "-q --strict-markers"
 pythonpath = ["."]
+# Every test will carry exactly one of the first three (the labels, applied separately).
+# The other three steer what runs where: under xdist the spawns_processes tests are left
+# out (tests/conftest.py) for a serial phase of their own, `make test-fast` leaves out
+# slow and spawns_processes, and the needs_torch tests skip without the train extra.
+markers = [
+    "invariant: a research claim (determinism, no look-ahead, a pre-registered number)",
+    "behaviour: what a public function, command, route or shipped file does or says",
+    "internal: pins an implementation detail",
+    "slow: a call of more than about 2 seconds; make test-fast leaves it out",
+    "spawns_processes: starts worker processes, itself or through a child; never under -n",
+    "needs_torch: needs torch or stable-baselines3 (the train extra)",
+]
 
 [tool.coverage.report]
 exclude_lines = ["pragma: no cover", "raise NotImplementedError", "if TYPE_CHECKING:"]

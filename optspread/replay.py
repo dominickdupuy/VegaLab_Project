@@ -72,7 +72,13 @@ from optspread.manifest import (
     library_versions,
     platform_record,
 )
-from optspread.sweep import Runner, changed_artifacts, components_identity, expected_data, run_id
+from optspread.runs.rundir import (
+    Runner,
+    changed_artifacts,
+    components_identity,
+    expected_data,
+    run_id,
+)
 from optspread.train import Trainer, check_disjoint, train_on, train_ppo
 
 Verdict = Literal["IDENTICAL", "WITHIN", "DIFFERS"]

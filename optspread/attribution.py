@@ -66,7 +66,7 @@ so ``dsigma`` and the vega term are exactly zero on every sweep cell, and a vega
 the wrong sign or off by 100 leaves the share where correct code puts it (1.3% to
 1.9%). On a moving surface the same errors give 37% to 3,880%. So the residual of a
 synthetic cell checks delta, gamma and theta only; vega's sign and units are checked by
-``tests/test_attribution.py`` on a moving surface, and on any attribution of real
+``tests/resim/test_attribution.py`` on a moving surface, and on any attribution of real
 chains, where the surface moves.
 
 **JSON** (``dump_attribution``; ``SCHEMA_VERSION`` 1; all money in dollars)::
@@ -132,7 +132,7 @@ from optspread.manifest import MANIFEST_FILENAME, DataRecord, RunManifest
 from optspread.market import SyntheticChainProvider
 from optspread.policies import Policy, make_policy
 from optspread.rng import StepRNG
-from optspread.sweep import changed_artifacts
+from optspread.runs.rundir import changed_artifacts
 from optspread.train import POLICY_FILENAME, TORCH_THREADS, SB3Policy
 from optspread.types import MULTIPLIER, Chain, ChainProvider, OptionLeg, Position
 

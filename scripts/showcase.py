@@ -21,7 +21,8 @@ run's mean. The questions:
 - sample: 50, 200 and 500 episodes
 - training: PPO trained 100,000, 200,000 and 500,000 steps
 
-Runs go through the dashboard's own job path (``optspread.jobs.execute_job``), so each
+Runs go through the dashboard's own job path
+(``optspread.dashboard.jobs.worker.execute_job``), so each
 records its equity paths, and a PPO run its policy. ``<root>/catalog.json`` lists every
 run's key, group, question, label and settings; the Runs page and the workflows read it.
 The real-data runs need the panel under ``$VEGALAB_DATA/panel``. A second call reuses
@@ -38,7 +39,8 @@ import time
 from pathlib import Path
 from typing import Any
 
-from optspread.jobs import JobSpec, execute_job
+from optspread.dashboard.jobs.spec import JobSpec
+from optspread.dashboard.jobs.worker import execute_job
 
 SEED = 20_000
 EPISODES = 200

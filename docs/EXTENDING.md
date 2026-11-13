@@ -14,8 +14,8 @@ piece and keep the rest: the leak suite, the paired grid, the paired test and re
 
 `optspread.extend.Components` connects them. It is a runner (config and policy in,
 episodes out) that builds each cell's market and costs from your factories, and every
-orchestrator accepts one: `sweep.pilot_matrix`, `sweep.run_sweep`,
-`orchestrate.run_grid` and `replay.replay_run`.
+orchestrator accepts one: `experiment.sweep.pilot_matrix`, `experiment.sweep.run_sweep`,
+`experiment.schedule.run_grid` and `replay.replay_run`.
 
 **What this does not change.** The confirmatory sweep uses the defaults, and nothing
 here adds a config field. As a result the config hash does not record your
@@ -24,7 +24,7 @@ settings. Put such runs under a root of their own, and replay them through the s
 components. Everything below is for exploratory research and is not part of the
 pre-registered design.
 
-Every code block on this page runs in `tests/test_extending.py`, top to bottom in one
+Every code block on this page runs in `tests/experiment/test_extending.py`, top to bottom in one
 namespace, so the page cannot drift from the code. The blocks use small settings to
 keep the test fast.
 
@@ -39,7 +39,7 @@ from pathlib import Path
 
 from optspread.analysis import decide_premium
 from optspread.config import CostConfig, EnvConfig, MarketConfig, RunConfig
-from optspread.sweep import pilot_matrix
+from optspread.experiment.sweep import pilot_matrix
 
 SMALL = RunConfig(
     seed=500,
@@ -347,14 +347,15 @@ block i is the policy trained with seed i.
 ### A Trainer, through the grid
 
 A trainer takes a config and returns a trained policy that can save itself. In
-`orchestrate.run_grid` it takes the learned arm's slot. That slot is named `ppo` in the
+`experiment.schedule.run_grid` it takes the learned arm's slot. That slot is named `ppo` in the
 record, and its `TrainConfig` carries the PPO set: your trainer reads what it needs
 (here, the seed) and ignores the rest. Train only on `train.TrainingPaths`, which keeps
 every training path off the evaluation paths.
 
 ```python
 from optspread.config import TrainConfig
-from optspread.orchestrate import GridConfig, run_grid
+from optspread.experiment.grid import GridConfig
+from optspread.experiment.schedule import run_grid
 from optspread.analysis import decide_contrast
 from optspread.replay import replay_run
 from optspread.train import TrainingPaths
@@ -409,5 +410,5 @@ not a lambda or a class defined in a notebook.
 | Data | no look-ahead | `leaks.perturbation_check(source.provider, seed, other, t)` for several `t` |
 | Planted effect | both of the above, plus the observation leak detector | `leaks.detect_leak(lambda: Components(source=planted(effect)).env(config), seeds)`, `leaks.field_coverage(...)` |
 | Cost model | the cost-drag identities | `scripted.cost_drag_check(costs=model)` |
-| Any | the paired test | `analysis.decide_premium` on `sweep.pilot_matrix` at p and at zero, or `GridRecord.contrast` into `analysis.decide_contrast` |
+| Any | the paired test | `analysis.decide_premium` on `experiment.sweep.pilot_matrix` at p and at zero, or `GridRecord.contrast` into `analysis.decide_contrast` |
 | Any | bit-for-bit replay | `replay.replay_run(run_dir, trainer, runner=components)` |

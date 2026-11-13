@@ -30,8 +30,8 @@ from typing import Any
 import numpy as np
 
 from optspread import vrp
-from optspread.dashboard_panel import Columns, PanelLayout, data_root, read_table
-from optspread.orchestrate import SWEEP_PREMIUMS
+from optspread.dashboard.panel_views import Columns, PanelLayout, data_root, read_table
+from optspread.experiment.grid import SWEEP_PREMIUMS
 
 OUT = Path("docs/VRP_MAPPING")
 MANIFEST = Path("docs/DATA_MANIFEST.json")

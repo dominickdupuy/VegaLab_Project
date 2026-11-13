@@ -150,12 +150,12 @@ from optspread.config import RunConfig, config_hash
 from optspread.costs import make_cost_model
 from optspread.data import SourceName, make_source
 from optspread.env import SpreadEnv
+from optspread.experiment.grid import read_grid
 from optspread.manifest import MANIFEST_FILENAME, RunManifest
 from optspread.margin import margin_requirement
-from optspread.orchestrate import read_grid
 from optspread.policies import Policy, make_policy
 from optspread.rng import StepRNG
-from optspread.sweep import changed_artifacts
+from optspread.runs.rundir import changed_artifacts
 from optspread.train import POLICY_FILENAME
 from optspread.types import Chain, ChainProvider, Position, Right
 

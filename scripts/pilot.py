@@ -35,22 +35,27 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from optspread.cli import (
+from optspread.config import CostConfig, RunConfig
+
+# The ``name as name`` imports: what this script imported before its flow moved to
+# optspread.experiment.cli, still importable from here.
+from optspread.config import TrainConfig as TrainConfig
+from optspread.experiment.cli import (
+    add_run_options,
     add_source_arguments,
     chosen_source,
-    describe,
+    plan_and_run,
     premium_note,
     runs_root,
+    train_config,
 )
-from optspread.config import CostConfig, RunConfig, TrainConfig
-from optspread.orchestrate import (
-    IncompleteGridError,
-    grid_cells,
-    pilot_grid,
-    plan_cells,
-    run_grid,
-    write_pilot_matrices,
-)
+from optspread.experiment.cli import describe as describe
+from optspread.experiment.grid import GridRecord
+from optspread.experiment.grid import grid_cells as grid_cells
+from optspread.experiment.pilot import pilot_grid, write_pilot_matrices
+from optspread.experiment.schedule import IncompleteGridError as IncompleteGridError
+from optspread.experiment.schedule import plan_cells as plan_cells
+from optspread.experiment.schedule import run_grid as run_grid
 from optspread.power import variance_components
 from optspread.train import Trainer, train_ppo
 
@@ -71,11 +76,7 @@ def main(argv: Sequence[str] | None = None, trainer: Trainer = train_ppo) -> int
     parser.add_argument(
         "--premium", type=float, default=1.0, help="planted premium against zero, vol points"
     )
-    parser.add_argument("--seed", type=int, default=4000, help="first evaluation path seed")
-    parser.add_argument("--train-seed", type=int, default=0, help="training seed of block 0")
-    parser.add_argument("--device", default="cpu")
-    parser.add_argument("--workers", type=int, default=1)
-    parser.add_argument("--dry-run", action="store_true", help="print the plan and stop")
+    add_run_options(parser, seed=4000, train_seed=0)
     add_source_arguments(parser)
     args = parser.parse_args(argv)
     source = chosen_source(parser, args)
@@ -85,40 +86,23 @@ def main(argv: Sequence[str] | None = None, trainer: Trainer = train_ppo) -> int
         n_seeds=int(args.seeds),
         n_episodes=int(args.episodes),
         premium=float(args.premium),
-        train=TrainConfig(
-            total_timesteps=int(args.timesteps), seed=int(args.train_seed), device=args.device
-        ),
+        train=train_config(args),
     )
     root = runs_root(args.root, source, "pilot")
     if note := premium_note(source):
         print(note, file=sys.stderr)
-    plan = plan_cells(grid_cells(grid), root, int(args.workers), trainer=trainer, source=source)
-    print(f"{plan.render()}; on {describe(source)}", flush=True)
-    if args.dry_run:
-        return 0
-    try:
-        record = run_grid(
-            grid,
-            root,
-            workers=int(args.workers),
-            trainer=trainer,
-            report=lambda p: print(p.render(), flush=True),
-            source=source,
-        )
-    except IncompleteGridError as exc:
-        print(exc, file=sys.stderr)
-        return 1
-    print()
-    print(record.render())
-    paths = write_pilot_matrices(record, root, source=source)
-    for arm, path in paths.items():
+
+    def finish(record: GridRecord) -> None:
+        paths = write_pilot_matrices(record, root, source=source)
+        for arm, path in paths.items():
+            print()
+            print(f"{arm}: {path}")
+            if grid.n_seeds >= 2 and grid.base.n_episodes >= 2:
+                print(variance_components(record.contrast(root, grid.premiums[1], arm)).render())
         print()
-        print(f"{arm}: {path}")
-        if grid.n_seeds >= 2 and grid.base.n_episodes >= 2:
-            print(variance_components(record.contrast(root, grid.premiums[1], arm)).render())
-    print()
-    print(f"next: python scripts/pilot_budget.py --delta <effect> --matrix {paths['ppo']}")
-    return 0
+        print(f"next: python scripts/pilot_budget.py --delta <effect> --matrix {paths['ppo']}")
+
+    return plan_and_run(grid, root, args, trainer, source, finish)
 
 
 if __name__ == "__main__":

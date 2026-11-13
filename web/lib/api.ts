@@ -1,550 +1,140 @@
 /**
  * The one typed client for optspread.server.
  *
- * Every shape here mirrors a pydantic model in optspread/webapi.py field for field;
- * the server's own tests pin those models, so a drift shows up as a type error here
- * or a failing test there. Undefined figures arrive as null, never NaN.
+ * Every payload type is an alias onto ./schema.d.ts, which openapi-typescript generates
+ * from the server's OpenAPI document (`npm run api-types`; `make web` writes the document
+ * and regenerates it before the build), so a page that no longer fits the API fails the
+ * type check. The names are the ones the pages import. Kept by hand: the helpers, and the
+ * payloads Python sends as untyped dicts (Attribution, EdgeDetail, M4, Vrp and their
+ * parts), whose schema says only "object". Undefined figures arrive as null, never NaN.
  */
 
 import { recordApi } from "./activity";
+import type { components } from "./schema";
+
+type Schemas = components["schemas"];
 
 // ---------- runs ----------
 
-export interface RunRow {
-  key: string;
-  run_id: string;
-  config_hash: string;
-  seed: number | null;
-  policy: string;
-  premium: number | null;
-  source: string;
-  source_recorded: boolean;
-  panel: string;
-  git_sha: string;
-  commit: string;
-  git_dirty: boolean | null;
-  created_at: string;
-  n_episodes: number | null;
-  mean_pnl: number | null;
-  se_pnl: number | null;
-  t_stat: number | null;
-  mean_cost: number | null;
-  mean_trades: number | null;
-  sweep: string;
-  status: "OK" | "UNVERIFIED" | "INVALID" | "DIGEST MISMATCH" | string;
-  digests_ok: boolean | null;
-  problems: string[];
-}
+export type RunRow = Schemas["RunRowOut"];
 
-export interface RunList {
-  root: string;
-  rows: RunRow[];
-  facets: {
-    config_hashes: string[];
-    seeds: number[];
-    policies: string[];
-    premiums: number[];
-    commits: string[];
-    sweeps: string[];
-    sources: string[];
-  };
-  trials: { n_runs: number; n_ok: number; n_configs: number; n_seeds: number };
-  n_shown: number;
-}
+export type RunList = Schemas["RunListOut"];
 
-export interface Risk {
-  n: number;
-  mean: number | null;
-  se: number | null;
-  sortino: number | null;
-  cvar5: number | null;
-  max_drawdown: number | null;
-  hit_rate: number | null;
-  turnover: number | null;
-}
+export type Risk = Schemas["RiskOut"];
 
-export interface Histogram {
-  edges: number[];
-  counts: number[];
-}
+// Narrowed by hand: the schema says a histogram edge, an equity point, a seed's difference
+// and a scripted sweep's cell figures can be null (a value that is not finite is sent as
+// null), but the pages that draw them do not handle null yet (app/runs/page.tsx,
+// app/sweep/page.tsx, components/CompareRuns.tsx, components/RunExtras.tsx). These keep
+// the number they had until those pages do; every other field is generated.
+export type Histogram = Omit<Schemas["HistogramOut"], "edges"> & { edges: number[] };
 
-export interface RunDetail {
-  row: RunRow;
-  manifest: Record<string, unknown>;
-  episodes: { seed: number; pnl: number; cost: number; n_trades: number; steps: number }[];
-  risk: Risk;
+export type RunDetail = Omit<Schemas["RunDetailOut"], "histogram" | "equity"> & {
   histogram: Histogram;
-  equity: { file: string; seeds: number[]; paths: number[][]; n_recorded: number } | null;
-  artifacts: { path: string; recorded: string; actual: string; ok: boolean }[];
-  provenance: { run_dir: string; manifest: string; results: string; replicas: number; sweep_cells: number };
-}
+  equity: (Omit<Schemas["EquityOut"], "paths"> & { paths: number[][] }) | null;
+};
 
-export interface Compare {
+export type Compare = Omit<Schemas["CompareOut"], "a" | "b" | "diff_histogram" | "diffs"> & {
   a: RunDetail;
   b: RunDetail;
-  config_diff: { key: string; a: unknown; b: unknown }[];
-  shared_seeds: number;
-  diff_mean: number | null;
-  diff_se: number | null;
-  diff_t: number | null;
   diff_histogram: Histogram;
-}
+  diffs: (Omit<Schemas["SeedDiffOut"], "diff"> & { diff: number })[];
+};
 
 // ---------- jobs ----------
 
-export interface Knob {
-  name: string;
-  kind: "number" | "integer" | "boolean" | "choice" | "tenors";
-  default: unknown;
-  minimum: number | null;
-  maximum: number | null;
-  exclusive_minimum: number | null;
-  exclusive_maximum: number | null;
-  choices: string[];
-  group: string;
-  help: string;
-  /** What the form calls it. */
-  label: string;
-  /** Read by the generator only: a real chain brings its own surface, path and carry. */
-  synthetic_only: boolean;
-}
+export type Knob = Schemas["KnobOut"];
 
 export type Spec = Record<string, unknown>;
 
-export interface Preset {
-  name: string;
-  label: string;
-  description: string;
-  spec: Spec;
-}
+export type Preset = Schemas["PresetOut"];
 
-export interface JobOptions {
-  arms: string[];
-  ppo_available: boolean;
-  /** The data a job can run on here: synthetic always, optionmetrics when the panel is present. */
-  sources: string[];
-  /** Where a job on each source lands, relative to the runs root. */
-  landing: Record<string, string>;
-  /** A8: the real data's train (PPO) and eval dates, ISO [first, last]. */
-  splits: Record<string, [string, string]>;
-  knobs: Knob[];
-  presets: Preset[];
-  defaults: Spec;
-  ppo_preset: Preset | null;
-}
+export type JobOptions = Schemas["JobOptionsOut"];
 
-export interface Estimate {
-  eval_steps: number;
-  train_steps: number;
-  eval_hours: number;
-  train_hours: number;
-  total_hours: number;
-  train_rate: number;
-  eval_rate: number;
-  source: string;
-}
+export type Estimate = Schemas["EstimateOut"];
 
-export interface Job {
-  job_id: string;
-  state: "queued" | "running" | "done" | "failed";
-  phase: string;
-  done: number;
-  total: number;
-  fraction: number;
-  run_id: string;
-  run_key: string;
-  created_at: string;
-  policy: string;
-  error: string;
-  log_tail: string[];
-}
+export type Job = Schemas["JobOut"];
 
 // ---------- power lab ----------
 
-export interface PowerParams {
-  tau2: number;
-  sigma2: number;
-  n_seeds: number;
-  n_episodes: number;
-  delta: number;
-  alpha: number;
-  target_power: number;
-  train_steps: number;
-  episode_days: number;
-  train_rate: number;
-  eval_rate: number;
-  cores: number;
-}
+export type PowerParams = Schemas["PowerParams"];
 
-export interface Design {
-  n_seeds: number;
-  n_episodes: number | null;
-  power: number | null;
-  train_hours: number | null;
-  eval_hours: number | null;
-  total_hours: number | null;
-}
+export type Design = Schemas["DesignOut"];
 
-export interface Power {
-  params: PowerParams;
-  se: number;
-  var_grand_mean: number;
-  variance_budget: number;
-  power: number;
-  floor: number;
-  episodes_needed: number | null;
-  seeds_needed: number;
-  curve: { delta: number[]; power: number[]; power_s5: number[]; power_s50: number[] };
-  floor_vs_seeds: { seeds: number[]; floor: number[]; floor_s5: number; floor_s50: number; ratio: number };
-  frontier: Design[];
-  design: Design;
-  source: string;
-}
+export type Power = Schemas["PowerOut"];
 
 // ---------- leak demo ----------
 
-export interface LeakSide {
-  flagged: boolean;
-  worst_feature: string;
-  worst_t: number | null;
-  p_value: number | null;
-  threshold: number;
-  n_pairs: number;
-  n_tested: number;
-  past_unchanged: boolean;
-  features: { name: string; tested: boolean; t_stat: number | null; p_value: number | null; reason: string }[];
-  /** The |t| a field must exceed to be flagged. */
-  t_critical?: number | null;
-}
+export type LeakSide = Schemas["LeakSideOut"];
 
-export interface LeakDemo {
-  eps: number;
-  seeds: number[];
-  clean: LeakSide;
-  poisoned: LeakSide;
-  caught: boolean;
-  seconds: number;
-  criterion: string;
-  source: string;
-}
+export type LeakDemo = Schemas["LeakDemoOut"];
 
 // ---------- sweeps ----------
 
-export interface SweepSummary {
-  key: string;
-  sweep_hash: string;
-  premiums: number[];
-  arms: string[];
-  n_cells: number;
-  seed: number;
-  n_episodes: number;
-  kind: "sweep" | "grid";
-  n_seeds: number;
-  n_present: number;
-}
+export type SweepSummary = Schemas["SweepSummaryOut"];
 
-export interface GridCell {
-  premium: number;
-  arm: string;
-  block: number;
-  run_id: string;
-  key: string;
-  train_seed: number | null;
-  mean_pnl: number | null;
-  se_pnl: number | null;
-  mean_cost: number | null;
-  mean_trades: number | null;
-  present: boolean;
-}
+export type GridCell = Schemas["GridCellOut"];
 
-export interface ArmMean {
-  premium: number;
-  mean: number | null;
-  se: number | null;
-  n_blocks: number;
-  block_means: (number | null)[];
-}
+export type ArmMean = Schemas["ArmMeanOut"];
 
-export interface Contrast {
-  premium: number;
-  estimate: number | null;
-  se: number | null;
-  t: number | null;
-  df: number;
-  critical: number | null;
-  lower_bound: number | null;
-  detected: boolean;
-  block_means: (number | null)[];
-  reason: string;
-}
+export type Contrast = Schemas["ContrastOut"];
 
-export interface GridDetail {
-  grid_hash: string;
-  n_seeds: number;
-  n_episodes: number;
-  premiums: number[];
-  arms: string[];
-  total_timesteps: number | null;
-  first_path_seed: number;
-  costs: boolean;
-  cells: GridCell[];
-  means: Record<string, ArmMean[]>;
-  contrasts: Record<string, Contrast[]>;
-  missing: string[];
-  git_shas: string[];
-}
+export type GridDetail = Schemas["GridDetailOut"];
 
-export interface SweepList {
-  root: string;
-  sweeps: SweepSummary[];
-}
+export type SweepList = Schemas["SweepListOut"];
 
-export interface Sweep {
-  summary: SweepSummary;
-  oracle: Record<string, { premium: number; mean_pnl: number; se_pnl: number; lift: number; run_id: string }[]>;
-  source: string;
-  kind: "sweep" | "grid";
-  grid: GridDetail | null;
-}
+// Narrowed by hand, as Histogram above: a scripted sweep's oracle point keeps numbers.
+type OraclePoint = Omit<Schemas["OraclePointOut"], "mean_pnl" | "se_pnl" | "lift"> & { mean_pnl: number; se_pnl: number; lift: number };
+
+export type Sweep = Omit<Schemas["SweepOut"], "oracle"> & { oracle: Record<string, OraclePoint[]> };
 
 // ---------- the SPX panel ----------
 
-export interface DataStatus {
-  root: string;
-  built: boolean;
-  missing: string[];
-  years: number[];
-  files: { path: string; present: boolean; modified: string | null }[];
-}
+export type DataStatus = Schemas["DataStatusOut"];
 
-export interface Span {
-  source: string;
-  first: string;
-  last: string;
-  n_days: number;
-  n_missing: number;
-  median_contracts: number;
-}
+export type Span = Schemas["SpanOut"];
 
-export interface Coverage {
-  spans: Span[];
-  missing: [string, string][];
-  overlap: [string, string, number] | null;
-  strips: { source: string; date: string[]; n_contracts: number[]; missing: boolean[] }[];
-  source: string;
-}
+export type Coverage = Schemas["CoverageOut"];
 
-export interface ChainIndex {
-  date: string;
-  sources: string[];
-  roots: string[];
-  expiries: { expiry: string; dte: number; n_quotes: number; forward: number | null; carry_fit: string }[];
-  default_expiry: string | null;
-  source: string;
-}
+export type ChainIndex = Schemas["ChainIndexOut"];
 
-export interface Smile {
-  date: string;
-  expiry: string;
-  dte: number;
-  data_source: string;
-  moneyness: (number | null)[];
-  strike: (number | null)[];
-  iv: (number | null)[];
-  iv_vendor: (number | null)[];
-  cp: string[];
-  has_vendor: boolean;
-  forward: number | null;
-  source: string;
-}
+export type Smile = Schemas["SmileOut"];
 
-export interface Surface {
-  date: string;
-  data_source: string;
-  moneyness: number[];
-  dte: number[];
-  iv: (number | null)[][];
-  source: string;
-}
+export type Surface = Schemas["SurfaceOut"];
 
-export interface Term {
-  date: string;
-  data_source: string;
-  expiry: string[];
-  dte: number[];
-  atm_iv: (number | null)[];
-  source: string;
-}
+export type Term = Schemas["TermOut"];
 
-export interface Series {
-  data_source: string;
-  date: string[];
-  spot: (number | null)[];
-  spot_parity: (number | null)[];
-  iv30: (number | null)[];
-  rv21: (number | null)[];
-  rv21_fwd: (number | null)[];
-  vrp30: (number | null)[];
-}
+export type Series = Schemas["SeriesOut"];
 
-export interface VrpStats {
-  n_days: number;
-  mean_vol_pts: number | null;
-  median_vol_pts: number | null;
-  share_positive: number | null;
-  first: string | null;
-  last: string | null;
-}
+export type VrpStats = Schemas["VrpStatsOut"];
 
-export interface Daily {
-  series: Series[];
-  stats: Record<string, VrpStats>;
-  source: string;
-}
+export type Daily = Schemas["DailyOut"];
 
-export interface Seam {
-  available: boolean;
-  date: string[];
-  stats: Record<string, (number | null)[]>;
-  medians: Record<string, number | null>;
-  /** The headline: each overlap day's 95th-percentile |IV gap|, averaged over the days (docs/DATA.md's figure). */
-  p95_mean: number | null;
-  /** The worst day's. */
-  p95_worst: number | null;
-  iv30_sources: string[];
-  iv30_date: string[];
-  iv30_diff_vol_pts: (number | null)[];
-  source: string;
-}
+export type Seam = Schemas["SeamOut"];
 
 // ---------- the 3D views ----------
 
-export interface Grid {
-  date: string;
-  k: number[];
-  tenor_days: number[];
-  iv: (number | null)[][];
-  source: string;
-}
+export type Grid = Schemas["GridOut"];
 
-export interface GridFrames {
-  k: number[];
-  tenor_days: number[];
-  frames: { date: string; iv: (number | null)[][] }[];
-  more: boolean;
-  source: string;
-}
+export type GridFrames = Schemas["GridFramesOut"];
 
 export type SigmaFrom = "config" | "rv21" | "atm";
 
-export interface Simulated {
-  date: string;
-  spot: number;
-  spot_from: string;
-  sigma: number;
-  sigma_from: SigmaFrom;
-  premium: number;
-  level: number;
-  r: number;
-  strike: number[];
-  tenor_trading_days: number[];
-  tenor_days: number[];
-  k: number[][];
-  iv: number[][];
-  real: (number | null)[][];
-  mean_diff: number | null;
-  mean_abs_diff: number | null;
-  max_abs_diff: number | null;
-  source: string;
-}
+export type Simulated = Schemas["SimulatedOut"];
 
-export interface Landscape {
-  date: string[];
-  tenor_days: number[];
-  iv: (number | null)[][];
-  stride: number;
-  n_days: number;
-  first: string | null;
-  last: string | null;
-  source: string;
-}
+export type Landscape = Schemas["LandscapeOut"];
 
-export interface PowerSurfaceParams {
-  tau2: number;
-  sigma2: number;
-  n_episodes: number;
-  delta: number;
-  alpha: number;
-  target_power: number;
-  max_premium: number;
-  max_seeds: number;
-}
+export type PowerSurfaceParams = Schemas["PowerSurfaceParams"];
 
-export interface PowerSurface {
-  params: PowerSurfaceParams;
-  premium: number[];
-  seeds: number[];
-  power: (number | null)[][];
-  contour_premium: (number | null)[];
-  source: string;
-}
+export type PowerSurface = Schemas["PowerSurfaceOut"];
 
 // ---------- the study and its analyses ----------
 
-export interface Study {
-  test: string;
-  alpha: number;
-  event: string;
-  n_seeds: number;
-  n_episodes: number;
-  train_steps: number;
-  episode_days: number;
-  premiums: number[];
-  arms: string[];
-  grid_hash: string;
-  delta_per_vol_pt: number;
-  tau2: number;
-  sigma2: number;
-  seller_tau2: number;
-  seller_sigma2: number;
-  target_power: number;
-  power: number;
-  floor: number;
-  floor_vol_pts: number;
-  train_rate: number;
-  eval_rate: number;
-  core_hours: number;
-  doc: string;
-  source: string;
-  /** The same design at the sweep's own variances (M4_ANALYSIS.json design_check); null until it is written. */
-  measured: MeasuredDesign | null;
-}
+export type Study = Schemas["StudyOut"];
 
-export interface MeasuredDesign {
-  arm: string;
-  premium: number;
-  tau2: number;
-  sigma2: number;
-  power: number;
-  floor: number;
-  floor_vol_pts: number;
-  file: string;
-}
+export type MeasuredDesign = Schemas["MeasuredDesignOut"];
 
-export interface Check {
-  name: string;
-  /** What is checked, in plain words: the name the page shows. */
-  label: string;
-  verdict: string;
-  failed_first: string;
-  criterion: string;
-  evidence: string;
-  owner: string;
-  /** The readable report: its markdown when there is one. */
-  report: string;
-  sidecar: string;
-  report_date: string;
-}
+export type Check = Schemas["CheckOut"];
 
 export interface VrpEstimate {
   label: string;
@@ -681,17 +271,7 @@ export interface M4Analysis {
   bootstrap_rule_size: { n_seeds: number; replications: number; size: number | null; mc_se: number | null };
 }
 
-export interface MappedPower {
-  arm: string;
-  premium: number;
-  low: number;
-  high: number;
-  power: number | null;
-  power_low: number | null;
-  power_high: number | null;
-  clipped: boolean;
-  reason: string;
-}
+export type MappedPower = Schemas["MappedPowerOut"];
 
 export interface M4 {
   available: boolean;
@@ -738,45 +318,9 @@ export interface Attribution {
   seconds: number | null;
 }
 
-export interface Capital {
-  state: "done" | "computing" | "absent" | "failed";
-  can_compute: boolean;
-  reason: string;
-  initial_cash: number | null;
-  n: number;
-  reproduces: boolean | null;
-  agrees: boolean | null;
-  rtol: number | null;
-  n_differ: number;
-  max_abs_diff: number | null;
-  mean_return_on_cash: number | null;
-  mean_return_on_margin: number | null;
-  mean_peak_margin: number | null;
-  max_peak_margin: number | null;
-  median_drawdown: number | null;
-  worst_drawdown: number | null;
-  worst_drawdown_on_cash: number | null;
-  method: string;
-  episodes: { seed: number; pnl: number; max_drawdown: number; peak_margin: number; return_on_cash: number; return_on_margin: number | null }[];
-  seconds: number | null;
-}
+export type Capital = Schemas["CapitalOut"];
 
-export interface Replay {
-  state: "idle" | "running" | "done" | "failed";
-  can_replay: boolean;
-  reason: string;
-  verdict: "" | "IDENTICAL" | "AGREES" | "DIFFERS";
-  /** The tolerance asked for; null for bytes only (a PPO retrain). */
-  rtol: number | null;
-  max_rel_diff: number | null;
-  /** False: a retrained PPO run on another platform than the one it was trained on. */
-  comparable: boolean;
-  note: string;
-  retrains: boolean;
-  train_steps: number | null;
-  estimate_hours: number | null;
-  seconds: number | null;
-}
+export type Replay = Schemas["ReplayOut"];
 
 // ---------- the edge of a grid: components and structures (optspread.edge) ----------
 
@@ -851,25 +395,9 @@ export interface GridEdge {
   edges: ArmEdge[];
 }
 
-export interface EdgeFile {
-  name: string;
-  grid_hash: string;
-  first: number | null;
-  source: string;
-  arms: string[];
-  premiums: number[];
-  n_seeds: number;
-  n_episodes: number;
-  reproduction: string;
-  error: string;
-}
+export type EdgeFile = Schemas["EdgeFileOut"];
 
-export interface EdgeList {
-  files: EdgeFile[];
-  grids: { grid_hash: string; key: string; has_edge: boolean; edge_command: string; actionmix_command: string }[];
-  folder: string;
-  command: string;
-}
+export type EdgeList = Schemas["EdgeListOut"];
 
 export interface EdgeDetail {
   name: string;
@@ -884,51 +412,11 @@ export interface EdgeDetail {
 
 // ---------- the action mix (optspread.actionmix) ----------
 
-export interface StructureMix {
-  n_opens: number;
-  open_share: number | null;
-  mean_tenor_days: number | null;
-  mean_short_abs_delta: number | null;
-  mean_long_abs_delta: number | null;
-  mean_credit: number | null;
-  mean_margin: number | null;
-  mean_holding_days: number | null;
-  exits: Record<string, number>;
-}
+export type StructureMix = Schemas["StructureMix"];
 
-export interface MixSummary {
-  n_episodes: number;
-  n_steps: number;
-  actions: Record<string, number>;
-  action_share: Record<string, number | null>;
-  held: Record<string, number>;
-  held_share: Record<string, number | null>;
-  events: Record<string, number>;
-  n_opens: number;
-  n_refused: number;
-  opens_per_episode: number | null;
-  refused_per_episode: number | null;
-  refused_share: number | null;
-  structures: Record<string, StructureMix>;
-  holding_days: { mean: number | null; p10: number | null; p50: number | null; p90: number | null; max: number | null } | null;
-  exits: Record<string, number>;
-  by_day: { day: number; actions: number[]; held: number[]; opens: number; refused: number }[];
-}
+export type MixSummary = Schemas["MixSummary"];
 
-export interface RunActionMix {
-  schema_version: number;
-  run_id: string;
-  config_hash: string;
-  policy: string;
-  premium_vol_pts: number;
-  source: string;
-  run_dir: string | null;
-  reproduces: boolean | null;
-  agrees: boolean | null;
-  max_abs_pnl_diff: number | null;
-  action_names: string[];
-  summary: MixSummary;
-}
+export type RunActionMix = Schemas["RunActionMix"];
 
 export interface GridMixRow {
   premium: number;
@@ -938,109 +426,27 @@ export interface GridMixRow {
   summary: MixSummary;
 }
 
-export interface GridActionMix {
-  schema_version: number;
-  grid_hash: string;
-  grid_file: string;
-  source: string;
-  arms: string[];
-  premiums: number[];
-  n_seeds: number;
-  reproduces: boolean;
-  agrees: boolean;
-  cells: (GridMixRow & { block: number; run_id: string })[];
-  pooled: (GridMixRow & { run_ids: string[] })[];
-}
+export type GridActionMix = Schemas["GridActionMix"];
 
-export interface ActionMix {
-  kind: "run" | "grid";
-  path: string;
-  run: RunActionMix | null;
-  grid: GridActionMix | null;
-}
+export type ActionMix = Schemas["ActionMixOut"];
 
 // ---------- leaks: the floor and the fields ----------
 
-export interface LeakFloor {
-  eps: number[];
-  flagged: boolean[];
-  floor: number | null;
-  seeds: number[];
-  seconds: number;
-  source: string;
-}
+export type LeakFloor = Schemas["LeakFloorOut"];
 
-export interface LeakField {
-  field: string;
-  eps: number;
-  scale: number;
-  seeds: number[];
-  flagged: boolean;
-  named_correctly: boolean;
-  worst_feature: string;
-  p_value: number | null;
-  threshold: number;
-  features: LeakSide["features"];
-  seconds: number;
-  source: string;
-  t_critical?: number | null;
-}
+export type LeakField = Schemas["LeakFieldOut"];
 
-export interface LeakCoverage {
-  eps: number;
-  seeds: number[];
-  clean_flagged: boolean;
-  passed: boolean;
-  uncovered: string[];
-  misattributed: string[];
-  controls: { field: string; flagged: boolean; named_correctly: boolean; p_value: number | null }[];
-  seconds: number;
-  source: string;
-}
+export type LeakCoverage = Schemas["LeakCoverageOut"];
 
 // ---------- the seller on a real close ----------
 
-export interface Seller {
-  date: string;
-  structure: string;
-  spot: number;
-  r: number;
-  tenor_trading_days: number;
-  tenor_calendar_days: number;
-  short_delta: number;
-  wing_delta: number;
-  legs: { right: string; strike: number; qty: number; price: number; iv: number; delta: number; moneyness: number }[];
-  credit: number;
-  /** $, defined risk only, as the frozen margin check decides it. */
-  max_loss: number | null;
-  /** $, the worst expiry loss the legs cap whenever each short has a wing beyond it. */
-  capped_loss: number | null;
-  /** The legs cap the loss, but the frozen margin check margins them as naked (#39). */
-  margined_as_naked: boolean;
-  margin: number;
-  breakevens: number[];
-  note: string;
-  source: string;
-}
+export type Seller = Schemas["SellerOut"];
 
 // ---------- overview ----------
 
-export interface Overview {
-  data: DataStatus;
-  coverage: Span[];
-  overlap: [string, string, number] | null;
-  n_runs: number;
-  n_ok: number;
-  latest: RunRow[];
-  sweeps: number;
-  ppo_available: boolean;
-}
+export type Overview = Schemas["OverviewOut"];
 
-export interface Health {
-  ok: boolean;
-  version: string;
-  git_sha: string;
-}
+export type Health = Schemas["HealthOut"];
 
 // ---------- the client ----------
 
@@ -1076,7 +482,17 @@ function withQuery(path: string, params?: Params): string {
 
 function detailText(detail: unknown): string {
   if (typeof detail === "string") return detail;
-  if (Array.isArray(detail)) return detail.map((d) => (typeof d === "string" ? d : JSON.stringify(d))).join("; ");
+  if (Array.isArray(detail))
+    return detail
+      .map((d) => {
+        if (typeof d === "string") return d;
+        // FastAPI's validation errors, {loc: ["query", "tau2"], msg: "...", ...}: "tau2: ..."
+        const e = d as { loc?: unknown; msg?: unknown } | null;
+        if (typeof e?.msg !== "string") return JSON.stringify(d);
+        const where = Array.isArray(e.loc) ? e.loc.slice(1).join(".") : "";
+        return where ? `${where}: ${e.msg}` : e.msg;
+      })
+      .join("; ");
   return JSON.stringify(detail);
 }
 

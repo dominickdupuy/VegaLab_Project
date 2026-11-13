@@ -60,9 +60,9 @@ from optspread import m4analysis as m4
 from optspread import vrp
 from optspread.attribution import RunAttribution, read_attribution
 from optspread.config import config_hash
+from optspread.experiment.grid import GridConfig, grid_cells, grid_filename, read_grid
 from optspread.gatereport import GateItem
 from optspread.m2gate import DOMINICK, HEMDUTT, ILAN, _load, _not_cleared
-from optspread.orchestrate import GridConfig, grid_cells, grid_filename, read_grid
 
 ANALYSIS_FILE = "M4_ANALYSIS.json"
 VRP_FILE = "VRP_MAPPING.json"
@@ -80,7 +80,7 @@ POWER_CURVE_ROUTE = re.compile(r"(^|/)m4(/|$)|power[-_]?curve", re.IGNORECASE)
 SITE_SUFFIXES = (".html", ".js", ".txt")  # what a static export's pages and chunks are
 
 # The residual share (the summed absolute residual over gross mark-to-market) a cell's attribution
-# must stay under: tests/test_attribution.py's RESIDUAL_SHARE_TOL. The residual is the
+# must stay under: tests/resim/test_attribution.py's RESIDUAL_SHARE_TOL. The residual is the
 # third-order remainder of the expansion, measured at 1.5% to 2.6% for the scripted
 # arms; a sign or unit error in delta, gamma or theta moves it far past 5%. One in vega
 # does not on the synthetic sweep, whose surface is flat (optspread.attribution).

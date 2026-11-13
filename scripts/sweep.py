@@ -35,24 +35,32 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import cast, get_args
 
-from optspread.cli import (
+from optspread.config import ArmName, CostConfig, RunConfig
+
+# The ``name as name`` imports: what this script imported before its flow moved to
+# optspread.experiment.cli, still importable from here.
+from optspread.config import TrainConfig as TrainConfig
+from optspread.experiment.cli import (
+    add_run_options,
     add_source_arguments,
     chosen_source,
     describe,
+    plan_and_run,
     premium_note,
     runs_root,
+    train_config,
 )
-from optspread.config import ArmName, CostConfig, RunConfig, TrainConfig
-from optspread.orchestrate import (
+from optspread.experiment.grid import (
     PRIMARY_ARMS,
     SWEEP_PREMIUMS,
     GridConfig,
-    IncompleteGridError,
-    grid_cells,
+    GridRecord,
     grid_filename,
-    plan_cells,
-    run_grid,
 )
+from optspread.experiment.grid import grid_cells as grid_cells
+from optspread.experiment.schedule import IncompleteGridError as IncompleteGridError
+from optspread.experiment.schedule import plan_cells as plan_cells
+from optspread.experiment.schedule import run_grid as run_grid
 from optspread.train import Trainer, train_ppo
 
 ARM_NAMES: tuple[str, ...] = get_args(ArmName)
@@ -71,11 +79,7 @@ def main(argv: Sequence[str] | None = None, trainer: Trainer = train_ppo) -> int
     parser.add_argument("--seeds", type=int, default=50, help="S: seed blocks")
     parser.add_argument("--episodes", type=int, default=200, help="N: episodes per block")
     parser.add_argument("--timesteps", type=int, help="PPO steps per seed (A4 fixes 1000000)")
-    parser.add_argument("--seed", type=int, default=100_000, help="first evaluation path seed")
-    parser.add_argument("--train-seed", type=int, default=1000, help="training seed of block 0")
-    parser.add_argument("--device", default="cpu")
-    parser.add_argument("--workers", type=int, default=1)
-    parser.add_argument("--dry-run", action="store_true", help="print the plan and stop")
+    add_run_options(parser, seed=100_000, train_seed=1000)
     add_source_arguments(parser)
     args = parser.parse_args(argv)
     source = chosen_source(parser, args)
@@ -87,9 +91,7 @@ def main(argv: Sequence[str] | None = None, trainer: Trainer = train_ppo) -> int
             parser.error(
                 "--timesteps is required with the ppo arm (A4: 1000000); it has no default"
             )
-        train = TrainConfig(
-            total_timesteps=int(args.timesteps), seed=int(args.train_seed), device=args.device
-        )
+        train = train_config(args)
     grid = GridConfig(
         base=RunConfig(
             seed=int(args.seed), n_episodes=int(args.episodes), cost=CostConfig(enabled=True)
@@ -102,28 +104,14 @@ def main(argv: Sequence[str] | None = None, trainer: Trainer = train_ppo) -> int
     root = runs_root(args.root, source)
     if len(grid.premiums) > 1 and (note := premium_note(source)):
         print(note, file=sys.stderr)
-    plan = plan_cells(grid_cells(grid), root, int(args.workers), trainer=trainer, source=source)
-    print(f"{plan.render()}; on {describe(source)}", flush=True)
-    if args.dry_run:
-        return 0
-    try:
-        record = run_grid(
-            grid,
-            root,
-            workers=int(args.workers),
-            trainer=trainer,
-            report=lambda p: print(p.render(), flush=True),
-            source=source,
+
+    def finish(record: GridRecord) -> None:
+        print(
+            f"cells under {root}, listed in {root / grid_filename(grid)} "
+            f"({describe(source)}; costs on)"
         )
-    except IncompleteGridError as exc:
-        print(exc, file=sys.stderr)
-        return 1
-    print()
-    print(record.render())
-    print(
-        f"cells under {root}, listed in {root / grid_filename(grid)} ({describe(source)}; costs on)"
-    )
-    return 0
+
+    return plan_and_run(grid, root, args, trainer, source, finish)
 
 
 if __name__ == "__main__":

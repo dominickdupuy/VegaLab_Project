@@ -22,10 +22,10 @@ import sys
 from pathlib import Path
 from typing import cast, get_args
 
-from optspread.cli import add_source_arguments, chosen_source, describe
 from optspread.config import CostConfig, PolicyName, RunConfig, config_hash
-from optspread.orchestrate import source_root
-from optspread.sweep import SweepConfig, run_sweep
+from optspread.experiment.cli import add_source_arguments, chosen_source, describe
+from optspread.experiment.sweep import SweepConfig, run_sweep
+from optspread.runs.rundir import RootInUseError, source_root
 
 POLICY_NAMES: tuple[str, ...] = get_args(PolicyName)
 
@@ -52,7 +52,11 @@ def main() -> int:
         arms=arms,
     )
     root = source_root(Path(args.root), source) / config_hash(sweep)
-    record = run_sweep(sweep, root, source=source)
+    try:
+        record = run_sweep(sweep, root, source=source)
+    except RootInUseError as exc:
+        print(exc, file=sys.stderr)
+        return 1
     print(record.render())
     print(f"cells under {root} ({describe(source)}; costs on)")
     return 0
