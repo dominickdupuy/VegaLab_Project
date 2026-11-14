@@ -11,6 +11,7 @@ the fixture's own runs. Every number is synthetic.
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import threading
 import time
@@ -22,7 +23,7 @@ import pytest
 from fake_learner import fake_trainer
 
 from optspread import m4analysis as m4
-from optspread.api.gates import checks, doc_file
+from optspread.api.gates import check_label, checks, doc_file
 from optspread.api.jobs import job_options
 from optspread.api.launch import launch_estimate, launch_options, launch_preview
 from optspread.api.leaks import (
@@ -175,7 +176,9 @@ def test_check_labels_say_what_is_checked_not_which_gate() -> None:
     labels = {r.name: r.label for r in rows}
     assert labels["Wave 0 no-edge gate"] == "No edge in the fair world"
     assert labels["Dashboard run browser and gate board"] == "Dashboard run browser and check board"
-    assert not any("gate" in r.label.lower() or "wave" in r.label.lower() for r in rows)
+    # whole words: the M4 report's "propagated" holds "gate" and names no gate
+    assert not any(re.search(r"\b(gates?|wave)\b", r.label.lower()) for r in rows)
+    assert check_label("Partner team reproduces the gates") == "Partner team reproduces the checks"
     assert all(r.report.endswith(".md") for r in rows)  # both reports have their markdown
 
 

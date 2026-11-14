@@ -82,7 +82,7 @@ CHECK_LABELS: dict[str, str] = {
 def check_label(name: str) -> str:
     if name in CHECK_LABELS:
         return CHECK_LABELS[name]
-    return re.sub(r"\bgate\b", "check", name)
+    return re.sub(r"\bgate(s?)\b", r"check\1", name)
 
 
 def checks(docs: Path) -> list[CheckOut]:

@@ -261,3 +261,105 @@ missing.
 (the vegalab repo's). A panel built from that extract was withdrawn; the boundary
 is adopted here on purpose, as #36 recommends. The amendment planned in #37 (the
 exact planner, the M4 definitions, the bootstrap rule) follows as A9.
+
+### A9. 2026-11-13: the exact planner, the M4 definitions and the bootstrap rule, recorded after the sweep (#37)
+
+**Disclosed first: when these rules were written.** The confirmatory sweep (A7, grid
+7d9d53d340006f02) ran on 2026-10-26, from 08:23 to 12:01. Its raw arm means were posted
+in issue #9. The M4 definitions below were written on 2026-10-28
+(`optspread/m4analysis.py`; the commits of that day, 13d37ab and c802e6c, no longer
+resolve since the branch was rewritten, and the code is on main as bff28c8, author date
+2026-10-29). That was after the sweep had run and after its arm means had been seen,
+but before the analysis code read the sweep's files. D1 asks for the
+floor's rule to be fixed before the data, so these rules are **not pre-registered**. This
+amendment records them; it does not backdate them. Every number they produce, including
+the PPO floor of 0.88 vol points, the gap of 0.821 and "every level agrees; the t test
+stands", is a post-sweep analysis of a pre-registered test. The only pre-registered
+decisions are A1's event and A2's test.
+
+**Changes** nothing in the confirmatory test (A1, A2), the design (A7) or any run. The
+hashed configuration is unchanged (`config_hash(RunConfig()) == 17c15aa74ce473a9`).
+
+**A3, corrected.** A3 calls `episodes_for`, `seeds_for` and `frontier` normal-approximation
+planners for orientation only. That is no longer true. Since #20 they are built on the
+exact `power_t` (`optspread/power.py`), and an audit checked them by brute force (272 and
+200 random cases): each returns the minimal design at exact power. Only `power`,
+`detectable_effect` and `variance_budget` are still the normal approximation. The
+80%-power noncentrality has one solver, `power.t_noncentrality` (3.040 at S = 5), and the
+analysis uses it too.
+
+**The M4 definitions, as `optspread/m4analysis.py` implements them.**
+
+- **Curve.** At each premium p > 0, the noncentrality lambda is estimated from the
+  decision's t statistic on S - 1 df by inverting the noncentral t:
+  - the point is the median-unbiased lambda;
+  - the band is the exact 95% interval for lambda, pointwise.
+
+  The curve point is the power of a fresh S x N experiment at that lambda. Between sweep
+  points each lambda is linear in premium, through an anchor at (0, 0), where the power
+  is alpha. At S = 5 a curve estimated this way dips by sampling noise; it is reported and
+  read as it is, not smoothed.
+- **Floor.** The first premium at which the piecewise-linear lambda reaches the
+  80%-power noncentrality. Its interval runs to where the band's upper and lower edges
+  reach it, and its bracket is the pair of sweep points around it. The status is one of:
+  - `reached`;
+  - `below_grid` (under the first sweep point, resting on the anchor);
+  - `not_reached` (the floor is above the grid).
+- **Gap.** PPO's floor minus the fixed-delta seller's. If only PPO fails to reach 80%,
+  the gap is a lower bound. The band range and bracket pair opposite ends; they are
+  ranges, not confidence intervals.
+- **Homogeneity of tau^2 (section 5.4).** Brown-Forsythe (Levene centred on the median)
+  across premiums on seed-level means, alpha 0.05. It is run on each arm's contrasts and
+  on the arm's own means.
+- **Bootstrap check (section 5.3).** At each level, 10,000 resamples of the S seed means.
+  The gap between the t test's detection rate and the analytic rate agrees when its
+  two-sided p-value is at least 0.05 / k, where k is the arm's number of levels. The
+  p-value is taken against 1,000 sets of S normal seed means with the observed mean and
+  spread. An arm that diverges anywhere switches to the bootstrap rule: the one-sided 95%
+  percentile lower bound above zero. Each level resamples with its own seed, derived from
+  the base seed, the arm and the premium.
+
+**Their limits at S = 5**, stated in the M4 report:
+
+- **The floor reads low.** As a first crossing of a noisy curve, the median floor estimate
+  is 8 to 11% below the true floor on linear truths. Its band covers the true floor 97 to
+  99% of the time.
+- **The seller's floor is interpolated.** It is 0.0594 vol points, below the first sweep
+  point, so it rests on interpolation from the anchor. The seller's measured lambda per vol
+  point (51, 42, 56, 32, 12) is not proportional to premium.
+- **Brown-Forsythe barely rejects.** At 5 groups of 5 its simulated size is 0.003 and its
+  power is low, so a non-rejection does not show that tau^2 is constant.
+- **The bootstrap check barely sees non-normality.** It switches rules at about the same
+  rate for normal, t(3) and lognormal seed means (0.025, 0.050, 0.062).
+- **The bootstrap rule is anticonservative.** Its size is about 0.10 against 0.05.
+- **A switch changes only the verdict.** The curve, floor and gap stay t-based whichever
+  rule is in force.
+
+**The design's power, measured.** A7's power of 0.898 and floor of 698.3 dollars are
+estimates from the pilot. With the sweep's own PPO contrast variances at 1 vol point
+(tau^2 = 4.09e5, sigma^2 = 1.31e8), the same S = 5 x N = 500 design has power 0.584 at
+delta = 824.3 and a floor of 1,114 dollars. The M4 report gives both, labelled. Only the
+measured figures may be quoted as the power the confirmatory design had.
+
+**The training budget (A4, #4).** The learning-curve rule was stated before its run and
+followed: it levelled at 251,904 steps, so the budget is 1M. That outcome depends on which
+se the rule uses:
+
+- the within-seed se alone gives 1,001,472 steps, and the budget stays 1M;
+- the smaller of the two se's gives 1,251,328 steps, which would have made the budget 2M.
+
+All seeds score on the same paths, so the within-seed se ignores their correlation. The
+budget stays at 1M as the stated rule gives it. This sensitivity is recorded here.
+
+
+**What "reproducible" means (#36, finding 5).** The claim is: bit for bit on the machine
+that made the run; across platforms, within 1e-9 relative for scripted runs and for
+scoring a saved policy; a retrained PPO policy only statistically. PPO training is not
+bit-reproducible across platforms even at the same library versions (the reference cell
+e608f959c816fc46-s102000 retrained on macOS has mean 4,661 against 4,958 on Windows).
+`optspread/reproduction.py` states the tolerances and `scripts/reproduce.py` applies them.
+
+**This amendment and the M4 report.** It is committed before `make m4` writes
+`docs/M4_ANALYSIS.md` from grid 7d9d53d340006f02 (#34). The figures quoted above come
+from read-only runs of the analysis on the sweep on 2026-10-28 (#12, #36); the committed
+report is to be generated after this amendment and under these definitions, unchanged.
