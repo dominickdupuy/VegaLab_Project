@@ -16,6 +16,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 from fake_learner import fake_trainer
+from links import link
 
 from optspread.analysis import ALPHA, Decision, decide, decide_premium
 from optspread.config import (
@@ -309,7 +310,7 @@ def test_the_grid_check_refuses_a_file_that_drifted_from_its_runs(
     for f in root.iterdir():
         target = copy / f.name
         if f.is_dir():
-            target.symlink_to(f, target_is_directory=True)
+            link(target, f)
         else:
             target.write_bytes(f.read_bytes())
     raw = copy / f"matrix_delta_seller_p{PILOT_PREMIUM:g}.npy"

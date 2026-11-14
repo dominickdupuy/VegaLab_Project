@@ -17,6 +17,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
+from links import link
 
 from optspread.actions import IRON_CONDOR
 from optspread.config import CostConfig, EnvConfig, MarketConfig
@@ -993,13 +994,13 @@ def test_ranges_are_refused_on_a_symlink_or_a_copy_of_the_team_panel(
     team = _team(tmp_path, monkeypatch)
     linked = tmp_path / "linked"
     linked.mkdir()
-    (linked / "panel").symlink_to(team / "panel")  # bypass (a) of the audit
+    link(linked / "panel", team / "panel")  # bypass (a) of the audit
     copied = tmp_path / "copied"
     shutil.copytree(team / "panel", copied / "panel")
     files = tmp_path / "files"
     (files / "panel").mkdir(parents=True)
     for name in ("surface_grid.parquet", "spx_daily.parquet"):
-        (files / "panel" / name).symlink_to(team / "panel" / name)
+        link(files / "panel" / name, team / "panel" / name)
     for root in (team, linked, copied, files):
         with pytest.raises(ValueError, match="A8"):
             OptionMetricsSource(root=root, split="eval", ranges=OWN)
@@ -1055,7 +1056,7 @@ def test_load_store_and_the_provider_refuse_ranges_on_the_team_panel(
         load_store(team / "panel", "eval", OWN)
     linked = tmp_path / "linked"
     linked.mkdir()
-    (linked / "panel").symlink_to(team / "panel")
+    link(linked / "panel", team / "panel")
     with pytest.raises(ValueError, match="A8"):
         load_store(linked / "panel", "eval", OWN)
     # The team panel on A8's own split loads, and its store records what it read.
