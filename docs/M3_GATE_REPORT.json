@@ -1,0 +1,39 @@
+{
+  "milestone": "M3",
+  "report_date": "2026-11-14",
+  "verdict": "NOT CLEARED",
+  "items": [
+    {
+      "name": "Sweep complete",
+      "owner": "Dominick Dupuy",
+      "verdict": "PASS",
+      "criterion": "the A7 grid record (grid-7d9d53d340006f02.json) under the runs root is readable, is of the A7 design (grid hash 7d9d53d340006f02) and lists exactly its 60 cells; every cell is valid under the runs root by sweep.valid_run (manifest and run.json keyed by the cell's config hash and run id, run on the generator, every recorded digest matching its file, a PPO cell trained by optspread.train.train_ppo) with its headline in the record equal to its run.json; every cell was written from a clean tree at a commit at or after the cutoff-2026-11-01 tag; and every grid cell a replay spot-check replayed (replay.log beside the record, an IDENTICAL line naming the sha256 of the run.json on disk, or --replay N run by the report) reproduced. The evidence says what the spot-check covered, or that none was run",
+      "evidence": "grid-7d9d53d340006f02.json: the A7 design, 60 of 60 cells (6 premiums x 2 arms x 5 blocks), all valid under $VEGALAB_DATA/runs (digests match, headlines agree; 30 PPO cells by optspread.train.train_ppo, 30 of them told by their Stable-Baselines3 policy.zip); written at 8b47f99d (clean, at or after cutoff-2026-11-01 34872b2f); replay spot-check: 5 cell(s) bit-identical (4 delta_seller, 1 ppo; 3 in replay.log, 2 replayed here) (30 PPO cell(s) trained on another platform are not comparable here: PPO training is not reproducible across platforms)",
+      "failed_first": ""
+    },
+    {
+      "name": "Leak detection floor measured",
+      "owner": "Dominick Dupuy",
+      "verdict": "PASS",
+      "criterion": "leaks.leak_floor on the M1 design (spot leaks eps = 1, 0.5, 0.25, 0.1, 0.05 of tomorrow's return planted by PoisonedChainProvider, 10 seeds, Bonferroni alpha 0.01) is measured by this report: some leak is caught, the caught set is every eps at or above the smallest caught (the floor), the clean world (eps = 0) is quiet at the same seeds, and the floor equals the one docs/M1_GATE_REPORT.json records (the detector is deterministic in the seed, so a different floor means the detector or the world moved since M1)",
+      "evidence": "leak_floor over 10 seeds (630 pairs a level, 3.8s): 1 caught, 0.5 caught, 0.25 caught, 0.1 caught, 0.05 missed; clean world quiet (worst unrealized_frac p = 0.11, threshold 0.00077); floor eps = 0.1 (eps = 0.05 missed), the floor docs/M1_GATE_REPORT.json records (2026-09-28)",
+      "failed_first": ""
+    },
+    {
+      "name": "Poisoned-environment demo live",
+      "owner": "Ilan Danial",
+      "verdict": "PASS",
+      "criterion": "optspread.server.create_app builds the dashboard's app, which routes a leak demo (an API path holding 'leak'); posted to in-process (FastAPI's TestClient) at eps = 0.5 over 10 seeds it answers 200 and fails the poisoned variant on purpose (the detector flags it and resampling the future moves its past) while passing the clean one (not flagged, its past unchanged), its caught flag true; and the built site (web/out) has its index.html, the leak page (leaks/index.html or leaks.html) and calls the route",
+      "evidence": "POST /api/leaks/demo (eps 0.5, 10 seeds) answered 200 in 1.3s: poisoned flagged True (worst ret_1d, p = 3.7e-99), past moved True; clean flagged False (worst p = 0.11 against 0.00077), past moved False; caught True; the built site at ..\\VegaLab_Project-wt-a9\\web\\out has leaks/index.html and calls /api/leaks/demo from _next/static/chunks/250-096332ce0439dbf1.js, _next/static/chunks/359-47fed79dfe8349ae.js",
+      "failed_first": ""
+    },
+    {
+      "name": "Partner team reproduces the gates",
+      "owner": "All members",
+      "verdict": "FAIL",
+      "criterion": "docs/M3_PARTNER_REPRODUCTION.json, written by scripts/reproduce.py on the partner team's clone, reads as schema 1 and names a commit of this repository at or after the cutoff-2026-11-01 tag, checked out clean; every step (ruff, mypy --strict, pytest, wave0 gate, cost drag, leak suite, poisoned demo, sweep cells) is present and passed, and any other recorded (the PPO cell) passed too; every regenerated cell is a cell of the A7 grid at its place and within the stated tolerance (a fixed-delta seller relative 1e-09, 1e-06 dollars near zero, counts and identifiers exact; a PPO cell statistically, since PPO training is not bit-reproducible across platforms: its mean within 3 standard errors of the reference's, trading, no refused open and the residual share under the M4 bound), at least one seller cell; and it was compared against docs/SWEEP_EXPECTED.json as committed at that commit (its sha256 with git's LF line endings), whose every run.json digest is the sweep's under the runs root. Bytes are reported, not required: the sweep ran on Windows and a last-bit libm difference reaches the printed digits",
+      "evidence": "not received",
+      "failed_first": "no docs\\M3_PARTNER_REPRODUCTION.json: the partner team has not sent back what python scripts/reproduce.py wrote"
+    }
+  ]
+}
