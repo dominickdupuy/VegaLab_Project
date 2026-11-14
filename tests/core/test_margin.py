@@ -258,3 +258,42 @@ def _strangle_at_open(cfg: RunConfig, seed: int) -> tuple[Position, Chain, Chain
     pos = build_position(SHORT_STRANGLE, today, cfg.env)
     assert pos is not None
     return pos, today, provider.step()
+
+
+# -- the defined-risk check at a high spot (GH-31) ---------------------------------- #
+
+# The iron condor the fixed-delta seller opens on the real chain at the 2026-10-02 close
+# (spot 7,721.12, 42 trading days): the legs ``webviews.seller_out`` builds there, entry
+# prices to full precision. Its two far-end payoffs differ by -1.1e-9 dollars of rounding.
+CONDOR_2026_10_02 = (
+    OptionLeg("P", 6900.0, 42, 1, 26.989371069455615),
+    OptionLeg("P", 7250.0, 42, -1, 50.9507515689761),
+    OptionLeg("C", 8150.0, 42, -1, 29.48013413588751),
+    OptionLeg("C", 8400.0, 42, 1, 7.077296280691314),
+)
+
+
+def test_a_condor_at_spot_7700_is_defined_risk_and_margined_at_its_max_loss() -> None:
+    from optspread.margin import is_defined_risk, max_loss
+
+    legs = CONDOR_2026_10_02
+    credit = -sum(leg.qty * leg.entry_price for leg in legs) * MULTIPLIER
+    assert credit == pytest.approx(4_636.42, abs=CENT)
+    assert is_defined_risk(legs), "rounding at 10x the top strike is not an unbounded loss"
+    expected = 350.0 * MULTIPLIER - credit  # the wider (put) wing less the credit
+    assert max_loss(legs) == pytest.approx(expected, abs=CENT)
+    assert max_loss(legs) == pytest.approx(30_363.58, abs=CENT)
+    chain = default_chain()  # the defined-risk margin reads the legs only, not the chain
+    assert margin_requirement(legs, chain) == pytest.approx(expected, abs=CENT)
+
+
+def test_naked_legs_at_spot_7700_are_still_undefined_risk() -> None:
+    from optspread.margin import is_defined_risk
+
+    p6900, p7250, c8150, c8400 = CONDOR_2026_10_02
+    assert not is_defined_risk((p7250, c8150)), "the strangle"
+    assert not is_defined_risk((p6900, p7250, c8150)), "a naked call side"
+    assert not is_defined_risk((p7250, c8150, c8400)), "a naked put side"
+    # a call ratio: two short against one long is unbounded above
+    ratio = (OptionLeg("C", 8150.0, 42, -2, 29.48013413588751), c8400)
+    assert not is_defined_risk(ratio)

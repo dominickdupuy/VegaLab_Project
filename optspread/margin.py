@@ -42,6 +42,7 @@ from optspread.types import MULTIPLIER, Chain, OptionLeg
 
 NAKED_PCT = 0.15  # broad-based index: 15% of the underlying, less OTM, plus the premium
 NAKED_FLOOR_PCT = 0.10  # floor: 10% of the underlying (call) or of the strike (put)
+RISK_RTOL = 1e-9  # defined-risk check: relative to the legs' gross dollar level, see below
 
 
 def expiry_payoff(legs: tuple[OptionLeg, ...], spots: NDArray[np.float64]) -> NDArray[np.float64]:
@@ -61,11 +62,21 @@ def _strike_grid(legs: tuple[OptionLeg, ...]) -> NDArray[np.float64]:
 
 
 def is_defined_risk(legs: tuple[OptionLeg, ...]) -> bool:
-    """True when the expiry payoff is bounded below beyond both ends of the strike grid."""
+    """True when the expiry payoff is bounded below beyond both ends of the strike grid.
+
+    The comparison is relative to the gross dollar level of the legs at the far end of
+    the grid (``RISK_RTOL`` times multiplier x total contracts x 10 x top strike). Each
+    leg's payoff there is that large, so the rounding left in their sum scales with it:
+    near spot 7,700 a 4-leg condor's two far-end payoffs differ by about 1e-9 dollars of
+    pure rounding, which an absolute 1e-9 read as an unbounded loss. A structure that
+    really is unbounded loses at least one contract's slope over 9 x the top strike,
+    some 1e8 times this tolerance for four contracts, so no undefined-risk structure passes.
+    """
     strikes = _strike_grid(legs)
     grid = np.concatenate(([0.0], strikes, [10.0 * strikes.max()]))
     payoff = expiry_payoff(legs, grid)
-    return bool(payoff[0] >= payoff[1] - 1e-9 and payoff[-1] >= payoff[-2] - 1e-9)
+    tol = RISK_RTOL * MULTIPLIER * sum(abs(leg.qty) for leg in legs) * float(grid[-1])
+    return bool(payoff[0] >= payoff[1] - tol and payoff[-1] >= payoff[-2] - tol)
 
 
 def max_loss(legs: tuple[OptionLeg, ...]) -> float:

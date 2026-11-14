@@ -798,8 +798,9 @@ def test_the_launch_preview_shows_the_run_or_every_reason_it_would_be_refused(
 
 @pytest.mark.behaviour
 def test_the_seller_view_shows_the_loss_its_wings_cap_when_the_frozen_check_says_naked() -> None:
-    """The dashboard's 2026-10-02 condor (#39): the wings cap the loss at $30,364, but the
-    frozen margin check margins it as naked; the view says both, not "not capped"."""
+    """The dashboard's 2026-10-02 condor (#39): the wings cap the loss at $30,364. The
+    margin check the sweep ran margined it as naked, and the view's line for such a run
+    says both, not "not capped"; with the check fixed the condor is no longer naked."""
     from optspread.margin import is_defined_risk
     from optspread.types import OptionLeg
 
@@ -809,9 +810,9 @@ def test_the_seller_view_shows_the_loss_its_wings_cap_when_the_frozen_check_says
         OptionLeg("C", 8150.0, 21, -1, 29.48013413588751),
         OptionLeg("C", 8400.0, 21, 1, 7.077296280691314),
     )
-    assert not is_defined_risk(legs)  # the open defect, left as the harness ran it
+    assert is_defined_risk(legs)  # fixed (#39): the sweep's harness read this as naked
     capped, naked = capped_loss(legs)
-    assert naked and capped == pytest.approx(30_363.58, abs=0.01)
+    assert not naked and capped == pytest.approx(30_363.58, abs=0.01)
     # a condor the check reads right is capped and not naked; a strangle is neither
     calm = tuple(OptionLeg(x.right, x.strike / 2, 21, x.qty, x.entry_price / 2) for x in legs)
     assert capped_loss(calm)[1] is False and capped_loss(calm)[0] is not None
