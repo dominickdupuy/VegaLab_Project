@@ -45,6 +45,16 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from optspread import __version__
+from optspread.alpha.benchmark import Benchmark, list_benchmarks
+from optspread.alpha.dataset import (
+    DatasetError,
+    SynthDataset,
+    SynthSpec,
+    build_dataset,
+    list_datasets,
+    load_dataset,
+)
+from optspread.alpha.jobs import AlphaJobManager, BenchSpec
 from optspread.api import builders as w
 from optspread.api.cache import Answers, file_stamp, tree_stamp
 from optspread.attribution import default_root
@@ -207,6 +217,8 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
     cfg = settings if settings is not None else Settings.from_env()
     reader = w.PanelReader(cfg.data)
     jobs: dict[str, JobManager] = {}
+    # benchmarks share the run queue's pool, read at each submit (it may be rebuilt)
+    benches = AlphaJobManager(cfg.runs, lambda: jobs["manager"].executor)
     tasks = w.Tasks()
     attribution_root = cfg.attribution if cfg.attribution is not None else default_root()
     redact = redactor(
@@ -472,6 +484,63 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
     def synth(request: Request, params: Annotated[w.SynthParams, Query()]) -> Response:
         """Sample paths of the simulated market the knobs set, before a run is launched."""
         return answer(request, "synth", (), lambda: w.synth_paths(params))
+
+    # -- synthetic alpha (optspread.alpha) ----------------------------------- #
+
+    def _alpha_dataset(dataset_hash: str) -> SynthDataset:
+        try:
+            return load_dataset(cfg.runs, dataset_hash)
+        except DatasetError as exc:
+            raise HTTPException(404, str(exc)) from exc
+
+    @app.get("/api/alpha/options")
+    def alpha_options() -> w.AlphaOptionsOut:
+        return w.alpha_options()
+
+    @app.get("/api/alpha/datasets")
+    def alpha_datasets() -> list[w.AlphaManifestOut]:
+        return w.alpha_manifests(list_datasets(cfg.runs))
+
+    @app.post("/api/alpha/datasets", status_code=201)
+    def alpha_build(spec: dict[str, object]) -> w.AlphaDatasetOut:
+        """Generate and freeze a dataset, or return the one already on disk for this spec."""
+        try:
+            parsed = SynthSpec.model_validate(spec)
+            return w.alpha_dataset(build_dataset(parsed, cfg.runs))
+        except ValidationError as exc:
+            raise HTTPException(422, [e["msg"] for e in exc.errors()]) from exc
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
+
+    @app.get("/api/alpha/datasets/{dataset_hash}")
+    def alpha_dataset(dataset_hash: str) -> w.AlphaDatasetOut:
+        return w.alpha_dataset(_alpha_dataset(dataset_hash))
+
+    @app.get("/api/alpha/datasets/{dataset_hash}/benchmarks")
+    def alpha_saved(dataset_hash: str) -> list[Benchmark]:
+        """Every benchmark already written for the dataset, newest first."""
+        return list_benchmarks(cfg.runs, _alpha_dataset(dataset_hash).hash)
+
+    @app.post("/api/alpha/benchmarks", status_code=201)
+    def alpha_bench(spec: dict[str, object]) -> w.AlphaJobOut:
+        try:
+            parsed = BenchSpec.model_validate(spec)
+        except ValidationError as exc:
+            raise HTTPException(422, [e["msg"] for e in exc.errors()]) from exc
+        _alpha_dataset(parsed.dataset)
+        try:
+            job_id = benches.submit(parsed)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        except QueueFullError as exc:
+            raise HTTPException(429, str(exc)) from exc
+        return w.alpha_job(benches.status(job_id), cfg.runs)
+
+    @app.get("/api/alpha/benchmarks/{job_id}")
+    def alpha_bench_status(job_id: str) -> w.AlphaJobOut:
+        if job_id not in benches.jobs:
+            raise HTTPException(404, f"no benchmark job {job_id!r}")
+        return w.alpha_job(benches.status(job_id), cfg.runs)
 
     @app.post("/api/leaks/demo")
     def leaks(params: w.LeakDemoParams) -> w.LeakDemoOut:

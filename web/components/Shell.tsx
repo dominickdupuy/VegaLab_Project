@@ -13,6 +13,7 @@ import { CopyLink, WorkflowStrip } from "./Workflow";
 
 const TABS: { href: string; label: string }[] = [
   { href: "/", label: "Home" },
+  { href: "/alpha/", label: "Synthetic alpha" },
   { href: "/runs/", label: "Runs" },
   { href: "/launch/", label: "Launch" },
   { href: "/synth/", label: "Synth data" },

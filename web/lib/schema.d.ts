@@ -4,6 +4,115 @@
  */
 
 export interface paths {
+    "/api/alpha/benchmarks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Alpha Bench */
+        post: operations["alpha_bench_api_alpha_benchmarks_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/alpha/benchmarks/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Alpha Bench Status */
+        get: operations["alpha_bench_status_api_alpha_benchmarks__job_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/alpha/datasets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Alpha Datasets */
+        get: operations["alpha_datasets_api_alpha_datasets_get"];
+        put?: never;
+        /**
+         * Alpha Build
+         * @description Generate and freeze a dataset, or return the one already on disk for this spec.
+         */
+        post: operations["alpha_build_api_alpha_datasets_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/alpha/datasets/{dataset_hash}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Alpha Dataset */
+        get: operations["alpha_dataset_api_alpha_datasets__dataset_hash__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/alpha/datasets/{dataset_hash}/benchmarks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Alpha Saved
+         * @description Every benchmark already written for the dataset, newest first.
+         */
+        get: operations["alpha_saved_api_alpha_datasets__dataset_hash__benchmarks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/alpha/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Alpha Options */
+        get: operations["alpha_options_api_alpha_options_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/checks": {
         parameters: {
             query?: never;
@@ -983,6 +1092,149 @@ export interface components {
             path: string;
             run: components["schemas"]["RunActionMix"] | null;
         };
+        /** AlphaDatasetOut */
+        AlphaDatasetOut: {
+            /** Edge */
+            edge: string;
+            /** Hash */
+            hash: string;
+            /** N Heldout */
+            n_heldout: number;
+            /** N Train */
+            n_train: number;
+            preview: components["schemas"]["AlphaPreviewOut"];
+            /** Signal Label */
+            signal_label: string;
+            /** Source */
+            source: string;
+            spec: components["schemas"]["SynthSpec"];
+            /** Taker */
+            taker: string;
+            /** Title */
+            title: string;
+        };
+        /** AlphaGeneratorOut */
+        AlphaGeneratorOut: {
+            /**
+             * Edge
+             * @description What was planted.
+             */
+            edge: string;
+            /** Kind */
+            kind: string;
+            /** Knobs */
+            knobs: components["schemas"]["AlphaKnobOut"][];
+            /** Signal Label */
+            signal_label: string;
+            /**
+             * Taker
+             * @description Which policy can take it, and whether the agent sees it.
+             */
+            taker: string;
+            /** Title */
+            title: string;
+        };
+        /** AlphaJobOut */
+        AlphaJobOut: {
+            benchmark: components["schemas"]["Benchmark"] | null;
+            /** Created At */
+            created_at: string;
+            /** Done */
+            done: number;
+            /** Error */
+            error: string;
+            /** Fraction */
+            fraction: number;
+            /** Job Id */
+            job_id: string;
+            /** Log Tail */
+            log_tail: string[];
+            /** Phase */
+            phase: string;
+            /** Policy */
+            policy: string;
+            /** Run Id */
+            run_id: string;
+            /** Run Key */
+            run_key: string;
+            /**
+             * Source
+             * @default synthetic
+             */
+            source: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "queued" | "running" | "done" | "failed" | "cancelled";
+            /** Total */
+            total: number;
+        };
+        /** AlphaKnobOut */
+        AlphaKnobOut: {
+            /** Default */
+            default: number;
+            /**
+             * Help
+             * @default
+             */
+            help: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "number" | "integer";
+            /** Label */
+            label: string;
+            /** Maximum */
+            maximum: number | null;
+            /** Minimum */
+            minimum: number | null;
+            /** Name */
+            name: string;
+        };
+        /** AlphaManifestOut */
+        AlphaManifestOut: {
+            /** Created At */
+            created_at: string;
+            /** Hash */
+            hash: string;
+            /** Kind */
+            kind: string;
+            /** Title */
+            title: string;
+        };
+        /** AlphaOptionsOut */
+        AlphaOptionsOut: {
+            /** Arms */
+            arms: string[];
+            /** Default Timesteps */
+            default_timesteps: number;
+            /** Generators */
+            generators: components["schemas"]["AlphaGeneratorOut"][];
+            /** Learned Arms */
+            learned_arms: string[];
+            /** Learners Available */
+            learners_available: boolean;
+            /** Spec Knobs */
+            spec_knobs: components["schemas"]["AlphaKnobOut"][];
+        };
+        /** AlphaPreviewOut */
+        AlphaPreviewOut: {
+            /** Days */
+            days: number[];
+            signal: components["schemas"]["AlphaWorldOut"];
+            twin: components["schemas"]["AlphaWorldOut"];
+        };
+        /** AlphaWorldOut */
+        AlphaWorldOut: {
+            /** Iv */
+            iv: number[][];
+            /** Signal */
+            signal: number[][];
+            /** Spot */
+            spot: number[][];
+        };
         /**
          * ArmMeanOut
          * @description One arm at one premium over the seed blocks: the grand mean and the se of block means.
@@ -1049,6 +1301,72 @@ export interface components {
             p50: (number | null)[];
             /** P90 */
             p90: (number | null)[];
+        };
+        /** BenchMenuRow */
+        BenchMenuRow: {
+            /** Mean */
+            mean: number;
+            /** Policy */
+            policy: string;
+            /** Se */
+            se: number;
+        };
+        /** BenchRow */
+        BenchRow: {
+            /** Mean */
+            mean: number;
+            /** N */
+            n: number;
+            /** Policy */
+            policy: string;
+            /** Se */
+            se: number;
+            /**
+             * Split
+             * @enum {string}
+             */
+            split: "train" | "heldout";
+            /**
+             * World
+             * @enum {string}
+             */
+            world: "signal" | "twin";
+        };
+        /** BenchStat */
+        BenchStat: {
+            /** Se */
+            se: number | null;
+            /** Value */
+            value: number | null;
+            /** Verdict */
+            verdict: string;
+        };
+        /** Benchmark */
+        Benchmark: {
+            /**
+             * Arm
+             * @enum {string}
+             */
+            arm: "ppo" | "a2c" | "dqn" | "delta_seller" | "always_on" | "flat";
+            attainable: components["schemas"]["BenchStat"];
+            capture_ratio: components["schemas"]["BenchStat"];
+            captured: components["schemas"]["BenchStat"];
+            /** Dataset */
+            dataset: string;
+            /** Generator */
+            generator: string;
+            /** Menu */
+            menu: components["schemas"]["BenchMenuRow"][];
+            /** Noise Control */
+            noise_control: boolean;
+            noise_fit: components["schemas"]["BenchStat"] | null;
+            /** Oracle */
+            oracle: string;
+            overfit_gap: components["schemas"]["BenchStat"];
+            /** Rows */
+            rows: components["schemas"]["BenchRow"][];
+            /** Total Timesteps */
+            total_timesteps: number | null;
         };
         /** CapitalEpisodeOut */
         CapitalEpisodeOut: {
@@ -1323,6 +1641,22 @@ export interface components {
             verdict: string;
         };
         /**
+         * ConstVrpParams
+         * @description Every option priced ``premium_pts`` vol points over the vol that drives the path.
+         */
+        ConstVrpParams: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "const_vrp";
+            /**
+             * Premium Pts
+             * @default 3
+             */
+            premium_pts: number;
+        };
+        /**
          * ContrastOut
          * @description The detection event read off the grid: the arm at p minus itself at 0, block by block.
          *
@@ -1472,6 +1806,22 @@ export interface components {
             b: unknown;
             /** Key */
             key: string;
+        };
+        /**
+         * DriftParams
+         * @description The underlying drifts ``bps_per_day`` basis points a day.
+         */
+        DriftParams: {
+            /**
+             * Bps Per Day
+             * @default 5
+             */
+            bps_per_day: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "drift";
         };
         /**
          * EdgeFileOut
@@ -2506,6 +2856,43 @@ export interface components {
              */
             state: "cached" | "lean" | "computing" | "absent" | "failed";
         };
+        /**
+         * MrVrpParams
+         * @description The implied-vol premium is an OU process in vol points: rich some days, cheap others.
+         */
+        MrVrpParams: {
+            /**
+             * Half Life Days
+             * @default 10
+             */
+            half_life_days: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "mr_vrp";
+            /**
+             * Mean Pts
+             * @default 0
+             */
+            mean_pts: number;
+            /**
+             * Vol Pts
+             * @default 4
+             */
+            vol_pts: number;
+        };
+        /**
+         * NoiseParams
+         * @description Zero-drift GBM priced at its own vol: nothing to earn, costs to pay.
+         */
+        NoiseParams: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "noise";
+        };
         /** OraclePointOut */
         OraclePointOut: {
             /** Lift */
@@ -3534,6 +3921,22 @@ export interface components {
             /** Source */
             source: string;
         };
+        /**
+         * SpotMrParams
+         * @description Log spot mean-reverts to its start; options still priced at the GBM vol.
+         */
+        SpotMrParams: {
+            /**
+             * Half Life Days
+             * @default 10
+             */
+            half_life_days: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "spot_mr";
+        };
         /** StripOut */
         StripOut: {
             /** Date */
@@ -3757,6 +4160,36 @@ export interface components {
             /** Spots */
             spots: number[][];
         };
+        /** SynthSpec */
+        SynthSpec: {
+            /** Generator */
+            generator: components["schemas"]["NoiseParams"] | components["schemas"]["ConstVrpParams"] | components["schemas"]["MrVrpParams"] | components["schemas"]["SpotMrParams"] | components["schemas"]["DriftParams"];
+            /**
+             * N Days
+             * @default 63
+             */
+            n_days: number;
+            /**
+             * N Heldout
+             * @default 256
+             */
+            n_heldout: number;
+            /**
+             * N Train
+             * @default 64
+             */
+            n_train: number;
+            /**
+             * Seed
+             * @default 0
+             */
+            seed: number;
+            /**
+             * Sigma
+             * @default 0.2
+             */
+            sigma: number;
+        };
         /** TermOut */
         TermOut: {
             /** Atm Iv */
@@ -3870,6 +4303,209 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    alpha_bench_api_alpha_benchmarks_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlphaJobOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    alpha_bench_status_api_alpha_benchmarks__job_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlphaJobOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    alpha_datasets_api_alpha_datasets_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlphaManifestOut"][];
+                };
+            };
+        };
+    };
+    alpha_build_api_alpha_datasets_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlphaDatasetOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    alpha_dataset_api_alpha_datasets__dataset_hash__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_hash: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlphaDatasetOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    alpha_saved_api_alpha_datasets__dataset_hash__benchmarks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_hash: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Benchmark"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    alpha_options_api_alpha_options_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlphaOptionsOut"];
+                };
+            };
+        };
+    };
     checks_api_checks_get: {
         parameters: {
             query?: never;

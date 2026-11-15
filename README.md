@@ -89,6 +89,7 @@ module they drive.
 | `pricing.py` | Hemdutt | Black-Scholes prices and analytic greeks, NaN-free at the limits. |
 | `market.py` | Hemdutt | Zero-drift GBM with the chain priced off the path vol, plus a plantable premium. |
 | `effects.py` | Hemdutt | The `PlantedEffect` interface: the constant premium (D2), and skew and term examples. |
+| `alpha/` | Dominick | Synthetic alpha (#46): generators with a planted, time-varying edge and their null twin, frozen hashed datasets, a provider that replays them, and the benchmark that scores an arm against the oracle, the twin and a copy trained on noise. |
 | `costs.py` | Hemdutt | Quoted half-spread plus commission. |
 | `margin.py` | Hemdutt | Max-loss for defined risk; Cboe Rule 10.3(c)(5)(A), the broad-based index rule, for undefined risk. |
 | `actions.py` | Hemdutt | The locked action library: FLAT, iron condor, short strangle, put credit spread. |
@@ -751,6 +752,39 @@ make edge ARGS="--grid $VEGALAB_DATA/runs --first 50 --workers 2"
   the dashboard's Attribution page reads. The split is descriptive; only the P&L edge
   is the pre-registered test.
 
+## Synthetic alpha: does the agent find an edge we planted?
+
+The null world asks whether anything earns where nothing can. `optspread.alpha` asks the
+converse (#46): plant an edge of known size, train an agent on exactly that data, and
+measure how much of it the agent took, and how much of what it "earned" exists only in
+sample.
+
+- **Generate.** Five generators, each a pure function of the per-step RNG streams, so the
+  leak suite's splice test applies: `noise` (the null world, bit for bit), `const_vrp`,
+  `mr_vrp` (an OU premium, rich some days and cheap on others, visible through `atm_iv`),
+  `spot_mr` (log spot mean-reverts, so realised vol over a multi-day hold sits below
+  implied) and `drift`. A dataset is frozen to `<runs root>/alpha/datasets/<hash>/`
+  (`paths.npz`, digest-checked on every read, and `dataset.json`) together with its **noise
+  twin**: the same seeds and spot shocks with nothing planted. The time-varying edges are
+  what `PlantedEffect` cannot express; it shapes the surface, not its path through time.
+- **Train.** `DatasetChainProvider` replays the frozen paths through the ordinary
+  environment; `train(config, provider=...)` trains PPO, A2C or DQN on the train paths
+  only, and a second copy, same seed and budget, on the twin's.
+- **Compare**, on held-out paths unless stated, each with a standard error: the
+  *attainable* edge (the oracle on the signal world minus the twin; the oracle is the best
+  of a scripted menu chosen on 200 fresh paths, and must beat flat by 2 se there or flat
+  stands); the edge *captured* (the agent, signal minus twin, so cost drag and path luck
+  cancel) and the capture ratio; the *overfit gap* (train minus held-out); and the *noise
+  fit* (the noise-trained copy in sample minus out of sample: memorised noise).
+
+Short premium is negatively skewed, which is what the oracle rule is for: on 16 noise paths
+a short strangle beat flat at z = 2.8 because the rare large loss was not drawn; on 200 none
+does. On `mr_vrp` at 4 vol points, 32 train paths, the timing seller takes $5,607 a path
+(se $1,056) while PPO at 20,480 steps does worse on the signal world than on its twin
+(capture ratio -15%, se 6%): the timing is there to learn and that budget does not learn
+it. The page is **Synthetic alpha**; its data and results load from the URL
+(`/alpha/?dataset=<hash>`).
+
 ## The dashboard
 
 The dashboard only shows what the harness recorded, so every number traces back to a
@@ -785,6 +819,7 @@ from the committed file: `cd web && npm ci && npm run build && npm run typecheck
 | Sweep | `grid-<hash>.json` (or a `sweep.json`) and their cells; `docs/M4_ANALYSIS.json` | per-arm means by premium (± se of block means), every cell, each arm against itself at zero block by block; power curves with bands, floors, the gap, the real premium read off each curve, the decision per premium, tau^2 homogeneity and the bootstrap check, once `make m4` has written the analysis |
 | Attribution | `<attribution root>/edge/edge-<hash>.json` (`make edge`) | per arm and premium, each component's edge (delta, gamma, vega, theta, carry, cost, residual) with its se and one-sided 95% bound, diverging and stacked across premiums with the P&L edge marked; the same split by structure held; residual share per cell; reproduces, agrees or differs per cell, each cell linked to its run's own attribution; the grid's action mix by arm and premium (`actionmix/grid-<hash>.json`) |
 | Synth data | `optspread.api.synth`, `MarketConfig` | the simulated market before a run is launched on it: sample index paths, the near-tenor ATM vol along each and the smile half way through, for the path vol and the research knobs (drift in bps a day, vol of vol, skew slope; each left out of the config hash at zero), and a link that launches a run on that market |
+| Synthetic alpha | `<runs root>/alpha/datasets/<hash>/`, `<runs root>/alpha/bench/` | plant an edge (constant or mean-reverting premium, mean-reverting spot, drift, or none), freeze the paths and their noise twin, train PPO, A2C or DQN on exactly the train paths (a second copy on the twin), and read the attainable edge, the edge taken, the capture ratio, the overfit gap and the noise fit, each with its se and z |
 | How it works | the site | five steps, from the market to whether a result can be trusted, each one sentence and a link to the page that does it; reached from the footer and the Vega Lab label, not the nav |
 
 Every page keeps its settings in the URL, so any view links as it stands (the link
@@ -876,7 +911,8 @@ Where the project stands against the project document's schedule (section 12):
 - **Final (Dec 2).** The final report, the consolidated gate reports and the demo (#19).
 - **After the course.** The model lab (#46): a dataset generator with planted alpha that a
   researcher's own model plugs into, to compare how well models find it and how they
-  overfit. The research knobs, the A2C and DQN arms and the Synth data page are its start.
+  overfit. The research knobs, the A2C and DQN arms, the Synth data page and the Synthetic alpha
+  benchmark (`optspread.alpha`) are its start; a researcher's own model is what is left.
 
 A strategy run on real chains reads one fixed date range: training to 2018-12-31,
 evaluation 2019-01-02 to 2022-08-24, and nothing after that (pre-registration A8, #28).

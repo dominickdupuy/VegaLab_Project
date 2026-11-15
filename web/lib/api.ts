@@ -69,6 +69,24 @@ export type SynthParams = Schemas["SynthParams"];
 
 export type SynthPaths = Schemas["SynthPathsOut"];
 
+// ---------- synthetic alpha ----------
+
+export type AlphaOptions = Schemas["AlphaOptionsOut"];
+
+export type AlphaKnob = Schemas["AlphaKnobOut"];
+
+export type AlphaDataset = Schemas["AlphaDatasetOut"];
+
+export type AlphaManifest = Schemas["AlphaManifestOut"];
+
+export type AlphaJob = Schemas["AlphaJobOut"];
+
+export type Benchmark = Schemas["Benchmark"];
+
+export type BenchRow = Schemas["BenchRow"];
+
+export type BenchStat = Schemas["BenchStat"];
+
 // ---------- leak demo ----------
 
 export type LeakSide = Schemas["LeakSideOut"];
@@ -587,6 +605,13 @@ export const api = {
   launch: (spec: Spec) => request<Job>("POST", "/api/jobs", spec),
   power: (p: Partial<PowerParams>, s?: AbortSignal) => get<Power>("/api/power", p as Params, s),
   synth: (p: SynthParams, s?: AbortSignal) => get<SynthPaths>("/api/synth", p as Params, s),
+  alphaOptions: (s?: AbortSignal) => get<AlphaOptions>("/api/alpha/options", undefined, s),
+  alphaDatasets: (s?: AbortSignal) => get<AlphaManifest[]>("/api/alpha/datasets", undefined, s),
+  alphaDataset: (hash: string, s?: AbortSignal) => get<AlphaDataset>(`/api/alpha/datasets/${encodeURIComponent(hash)}`, undefined, s),
+  alphaSaved: (hash: string, s?: AbortSignal) => get<Benchmark[]>(`/api/alpha/datasets/${encodeURIComponent(hash)}/benchmarks`, undefined, s),
+  alphaBuild: (spec: Spec) => request<AlphaDataset>("POST", "/api/alpha/datasets", spec),
+  alphaBench: (spec: Spec) => request<AlphaJob>("POST", "/api/alpha/benchmarks", spec),
+  alphaJob: (id: string, s?: AbortSignal) => get<AlphaJob>(`/api/alpha/benchmarks/${encodeURIComponent(id)}`, undefined, s),
   leakDemo: (eps: number, n_seeds: number) => request<LeakDemo>("POST", "/api/leaks/demo", { eps, n_seeds }),
   sweeps: (s?: AbortSignal) => get<SweepList>("/api/sweeps", undefined, s),
   sweep: (key: string, s?: AbortSignal) => get<Sweep>("/api/sweeps/detail", { key }, s),
