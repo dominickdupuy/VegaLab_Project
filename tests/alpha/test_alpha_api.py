@@ -85,7 +85,7 @@ def test_build_benchmark_and_read_back(client: TestClient) -> None:
     assert ds["source"].startswith("<runs root>/alpha/datasets/")
     assert client.get(f"/api/alpha/datasets/{ds['hash']}").json()["hash"] == ds["hash"]
     listed = client.get("/api/alpha/datasets").json()
-    assert [(m["hash"], m["kind"]) for m in listed] == [(ds["hash"], "const_vrp")]
+    assert [(m["hash"], m["kind"], m["n_train"]) for m in listed] == [(ds["hash"], "const_vrp", 2)]
     assert client.get(f"/api/alpha/datasets/{ds['hash']}/benchmarks").json() == []
 
     job = client.post(

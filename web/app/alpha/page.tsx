@@ -150,14 +150,16 @@ function GenerateCard({ options, dataset, onOpen }: { options: AlphaOptions; dat
               <thead>
                 <tr>
                   <th>Earlier datasets</th>
+                  <th className={ui.num}>Train</th>
                   <th>Hash</th>
                   <th>Built</th>
                 </tr>
               </thead>
               <tbody>
-                {recent.data.slice(0, 6).map((m) => (
+                {recent.data.slice(0, 8).map((m) => (
                   <tr key={m.hash} className={`${ui.clickRow} ${m.hash === dataset?.hash ? ui.rowSelected : ""}`} onClick={() => open(m.hash)}>
                     <td>{m.title}</td>
+                    <td className={ui.num}>{num(m.n_train)}</td>
                     <td className="mono">{short(m.hash)}</td>
                     <td style={{ whiteSpace: "nowrap" }}>{when(m.created_at)}</td>
                   </tr>

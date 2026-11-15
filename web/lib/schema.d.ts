@@ -1251,6 +1251,10 @@ export interface components {
             hash: string;
             /** Kind */
             kind: string;
+            /** N Heldout */
+            n_heldout: number;
+            /** N Train */
+            n_train: number;
             /** Title */
             title: string;
         };

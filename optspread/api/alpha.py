@@ -164,19 +164,24 @@ class AlphaManifestOut(Out):
     hash: str
     kind: str
     title: str
+    n_train: int
+    n_heldout: int
     created_at: str
 
 
 def alpha_manifests(manifests: list[dict[str, Any]]) -> list[AlphaManifestOut]:
     out = []
     for m in manifests:
-        kind = str(m.get("spec", {}).get("generator", {}).get("kind", ""))
+        spec = m.get("spec", {})
+        kind = str(spec.get("generator", {}).get("kind", ""))
         info = GENERATORS.get(kind)
         out.append(
             AlphaManifestOut(
                 hash=str(m.get("hash", "")),
                 kind=kind,
                 title=info.title if info else kind,
+                n_train=int(spec.get("n_train", 0)),
+                n_heldout=int(spec.get("n_heldout", 0)),
                 created_at=str(m.get("created_at", "")),
             )
         )
