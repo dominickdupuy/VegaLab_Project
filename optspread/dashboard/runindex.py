@@ -94,6 +94,14 @@ class RunRow:
     problems: tuple[str, ...] = ()
     data_source: str = ""  # empty: the manifest predates the data record
     panel: str = ""  # DataRecord.panel_id; empty unless the run read the real panel
+    # the market's research knobs (MarketConfig); 0.0 when the config leaves one out (it is
+    # at zero), None when the manifest's market does not read
+    alpha_bps: float | None = None
+    vol_of_vol: float | None = None
+    skew_slope: float | None = None
+    # the rate its options were priced at (MarketConfig.r); None on real data, which reads
+    # its own rate, or when the manifest's market does not read
+    rate: float | None = None
 
     @property
     def commit(self) -> str:
@@ -323,8 +331,20 @@ def _read_run_dir(
         problems=tuple(problems),
         data_source=data_source,
         panel=panel,
+        alpha_bps=_research_knob(raw, "alpha_bps"),
+        vol_of_vol=_research_knob(raw, "vol_of_vol"),
+        skew_slope=_research_knob(raw, "skew_slope"),
+        rate=_as_float(_get(raw, "config", "market", "r"))
+        if (data_source or "synthetic") == "synthetic"
+        else None,
     )
     return row, raw, record, checks
+
+
+def _research_knob(raw: Any, name: str) -> float | None:
+    """A research knob of the run's market: left out of the config at zero, so 0.0 then."""
+    market = _get(raw, "config", "market")
+    return _as_float(market.get(name, 0.0)) if isinstance(market, dict) else None
 
 
 def is_matrix_manifest(run_dir: Path) -> bool:

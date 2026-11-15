@@ -46,6 +46,10 @@ export type MixView = Schemas["MixViewOut"];
 
 export type { MixSummary };
 
+// ---------- where a launched run's policy acted ----------
+
+export type PolicyHeatmap = Schemas["PolicyHeatmapOut"];
+
 // ---------- compare, paired ----------
 
 /** The compare payload: Compare already carries the paired interval, the seeds and the verdict. */
@@ -66,6 +70,7 @@ export const runsApi = {
   catalog: (s?: AbortSignal) => get<Catalog>("/api/runs/catalog", undefined, s),
   capital: (key: string, s?: AbortSignal) => get<CapitalPaths>("/api/runs/capital", { key }, s),
   mix: (key: string, s?: AbortSignal) => get<MixView>("/api/runs/mixview", { key }, s),
+  policy: (key: string, s?: AbortSignal) => get<PolicyHeatmap>("/api/runs/policy", { key }, s),
   computeMix: (key: string) => request<MixView>("POST", `/api/runs/mixview?key=${encodeURIComponent(key)}`),
   compare: (a: string, b: string, group?: string, s?: AbortSignal) => get<PairedCompare>("/api/runs/compare", { a, b, group }, s),
   preview: (spec: Spec, s?: AbortSignal) => request<Preview>("POST", "/api/launch/preview", spec, s),

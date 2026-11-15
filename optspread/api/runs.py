@@ -4,6 +4,10 @@ Lane: Ilan Danial (machinery).
 
 Every payload read from a run names it by its key under the runs root and its config hash.
 ``index`` is the run index every run route lists from. Moved from ``optspread.webapi``.
+
+``policy_heatmap`` reads a launched run's ``action_log.json`` (``dashboard.jobs.worker``):
+how often each action was chosen in each cell of (time through the episode, ATM implied
+vol). Only a log the run's manifest hashed, and that still matches, is read.
 """
 
 from __future__ import annotations
@@ -17,9 +21,11 @@ import numpy as np
 from numpy.typing import NDArray
 from pydantic import Field
 
+from optspread.actions import ACTION_NAMES
 from optspread.api._base import Out, _from_attrs, _inside
 from optspread.artifacts import RUN_FILENAME
-from optspread.dashboard.jobs.spec import EQUITY_FILENAME, JOBS_DIR
+from optspread.config import MarketConfig
+from optspread.dashboard.jobs.spec import ACTION_LOG_FILENAME, EQUITY_FILENAME, JOBS_DIR
 from optspread.dashboard.runindex import (
     RiskStats,
     RunDetail,
@@ -31,7 +37,7 @@ from optspread.dashboard.runindex import (
     run_facets,
     scan_runs,
 )
-from optspread.manifest import MANIFEST_FILENAME
+from optspread.manifest import MANIFEST_FILENAME, RunManifest, file_sha256
 
 MAX_EQUITY_SENT = 60  # equity paths sent to the browser; the file keeps up to 200
 
@@ -49,6 +55,11 @@ class RunRowOut(Out):
     seed: int | None
     policy: str
     premium: float | None
+    alpha_bps: float | None = None  # the market's research knobs (MarketConfig)
+    vol_of_vol: float | None = None
+    skew_slope: float | None = None
+    rate: float | None = None  # the rate its options were priced at; None on real data
+    rate_default: float = MarketConfig().r  # the rate a run launched now is priced at
     source: str
     source_recorded: bool  # False: the manifest predates the data record (all synthetic)
     panel: str  # the id of the SPX panel a real-data run read; empty otherwise
@@ -225,6 +236,82 @@ def _equity(run_dir: Path) -> EquityOut | None:
         seeds=[int(s) for s in seeds[:MAX_EQUITY_SENT]],
         paths=[[float(v) for v in p] for p in paths[:MAX_EQUITY_SENT]],
         n_recorded=len(paths),
+    )
+
+
+HEATMAP_BINS = 10  # bins on each axis of the policy heatmap
+
+
+class PolicyHeatmapOut(Out):
+    """How often each action was chosen, by time through the episode and the ATM vol the
+    policy saw. ``counts[t][v][a]``: steps in time bin ``t`` and vol bin ``v`` that chose
+    action ``a`` (``action_names[a]``). One vol bin when the vol never moved (a constant
+    vol world: the study's)."""
+
+    available: bool
+    reason: str = ""  # why there is no heatmap, when there is none
+    file: str = ACTION_LOG_FILENAME
+    time_frac_edges: list[float] = Field(default_factory=list)
+    atm_iv_edges: list[float] = Field(default_factory=list)  # decimal vol
+    action_names: list[str] = Field(default_factory=list)
+    counts: list[list[list[int]]] = Field(default_factory=list)
+    n_episodes: int = 0
+    n_steps: int = 0
+
+
+def _flat(raw: Any, name: str, kind: type[float] | type[int]) -> NDArray[Any]:
+    return np.asarray([kind(x) for ep in raw[name] for x in ep], dtype=np.float64)
+
+
+def policy_heatmap(run_dir: Path) -> PolicyHeatmapOut:
+    """The policy heatmap of ``run_dir`` from its action log; ``available`` False, with the
+    reason, for a run without one (not launched from the dashboard, or launched before the
+    log was written), a log its manifest does not vouch for, or one that does not read."""
+    target = run_dir / ACTION_LOG_FILENAME
+    if not target.is_file():
+        return PolicyHeatmapOut(
+            available=False,
+            reason="this run records no action log: only runs launched from the dashboard do",
+        )
+    try:
+        recorded = RunManifest.read(run_dir).artifacts.get(ACTION_LOG_FILENAME)
+    except (OSError, ValueError):
+        recorded = None
+    if recorded is None or recorded != file_sha256(target):
+        return PolicyHeatmapOut(
+            available=False, reason=f"{ACTION_LOG_FILENAME} does not match the run's manifest"
+        )
+    try:
+        raw: Any = json.loads(target.read_text(encoding="utf-8"))
+        actions = _flat(raw, "actions", int).astype(np.int64)
+        time_frac, atm_iv = _flat(raw, "time_frac", float), _flat(raw, "atm_iv", float)
+        n_episodes = len(raw["actions"])
+    except (OSError, ValueError, KeyError, TypeError):
+        return PolicyHeatmapOut(available=False, reason=f"{ACTION_LOG_FILENAME} does not read")
+    n = len(actions)
+    if n == 0 or len(time_frac) != n or len(atm_iv) != n:
+        return PolicyHeatmapOut(available=False, reason=f"{ACTION_LOG_FILENAME} records no steps")
+    if actions.min() < 0 or actions.max() >= len(ACTION_NAMES):
+        return PolicyHeatmapOut(
+            available=False, reason="the log names an action not in the library"
+        )
+    lo, hi = float(atm_iv.min()), float(atm_iv.max())
+    n_iv = HEATMAP_BINS if hi > lo else 1
+    iv_edges = np.linspace(lo, hi, n_iv + 1) if hi > lo else np.array([lo, lo])
+    tf_edges = np.linspace(0.0, 1.0, HEATMAP_BINS + 1)
+    # the last edge closes its bin: a step at the top lands in the last bin, not past it
+    iv_bin = np.clip(np.searchsorted(iv_edges, atm_iv, side="right") - 1, 0, n_iv - 1)
+    tf_bin = np.clip(np.searchsorted(tf_edges, time_frac, side="right") - 1, 0, HEATMAP_BINS - 1)
+    counts = np.zeros((HEATMAP_BINS, n_iv, len(ACTION_NAMES)), dtype=np.int64)
+    np.add.at(counts, (tf_bin, iv_bin, actions), 1)
+    return PolicyHeatmapOut(
+        available=True,
+        time_frac_edges=[float(e) for e in tf_edges],
+        atm_iv_edges=[float(e) for e in iv_edges],
+        action_names=list(ACTION_NAMES),
+        counts=counts.tolist(),
+        n_episodes=n_episodes,
+        n_steps=n,
     )
 
 

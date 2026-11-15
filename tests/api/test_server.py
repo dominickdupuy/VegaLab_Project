@@ -189,6 +189,14 @@ def test_a_job_launched_over_http_lands_as_a_listed_run(
     detail = client.get("/api/runs/detail", params={"key": job["run_key"]}).json()
     assert detail["equity"]["seeds"] == [0, 1]
     assert client.get("/api/jobs/nope").status_code == 404
+    # its policy heatmap: every step binned; a sweep cell has none, an unknown key is a 404
+    heat = client.get("/api/runs/policy", params={"key": job["run_key"]}).json()
+    assert heat["available"] and heat["n_steps"] == 2 * 21 and heat["n_episodes"] == 2
+    assert sum(sum(sum(v) for v in t) for t in heat["counts"]) == heat["n_steps"]
+    cell = client.get("/api/runs", params={"sweep": "tiny"}).json()["rows"][0]["key"]
+    none = client.get("/api/runs/policy", params={"key": cell})
+    assert none.status_code == 200 and not none.json()["available"] and none.json()["reason"]
+    assert client.get("/api/runs/policy", params={"key": "../x"}).status_code == 404
 
 
 @pytest.mark.behaviour
@@ -216,6 +224,16 @@ def test_the_power_lab(client: TestClient) -> None:
     out = client.get("/api/power", params={"n_seeds": 5, "n_episodes": 50}).json()
     assert out["design"]["n_seeds"] == 5 and len(out["curve"]["delta"]) == 81
     assert client.get("/api/power", params={"alpha": 0.9}).status_code == 422
+
+
+@pytest.mark.behaviour
+def test_the_synth_preview(client: TestClient) -> None:
+    params = {"n_days": 10, "n_paths": 3, "vol_of_vol": 0.4, "skew_slope": 0.2}
+    out = client.get("/api/synth", params=params).json()
+    assert len(out["spots"]) == 3 and {len(p) for p in out["spots"]} == {11}
+    assert out["params"]["vol_of_vol"] == 0.4 and out["smile_day"] == 5
+    assert client.get("/api/synth", params={"alpha_bps": -1}).status_code == 422
+    assert client.get("/api/synth", params={"n_paths": 50}).status_code == 422
 
 
 @pytest.mark.behaviour

@@ -82,11 +82,14 @@ from optspread.api.readings import PremiumOut as PremiumOut
 from optspread.api.readings import QualityOut as QualityOut
 from optspread.api.readings import ShapeOut as ShapeOut
 from optspread.api.readings import SimulatedOut as SimulatedOut
+from optspread.api.runs import PolicyHeatmapOut as PolicyHeatmapOut
 from optspread.api.runs import RunDetailOut as RunDetailOut
 from optspread.api.runs import RunFilters as RunFilters
 from optspread.api.runs import RunListOut as RunListOut
 from optspread.api.runs import index as index
 from optspread.api.runs import load_detail as load_detail
+from optspread.api.runs import policy_heatmap as policy_heatmap
+from optspread.api.runs import resolve_run as resolve_run
 from optspread.api.runs import run_detail as run_detail
 from optspread.api.runs import run_list as run_list
 from optspread.api.runwork import AttributionOut as AttributionOut
@@ -116,4 +119,7 @@ from optspread.api.sweeps import SweepListOut as SweepListOut
 from optspread.api.sweeps import SweepOut as SweepOut
 from optspread.api.sweeps import sweep_detail as sweep_detail
 from optspread.api.sweeps import sweeps as sweeps
+from optspread.api.synth import SynthParams as SynthParams
+from optspread.api.synth import SynthPathsOut as SynthPathsOut
+from optspread.api.synth import synth_paths as synth_paths
 from optspread.dashboard.tasks import Tasks as Tasks

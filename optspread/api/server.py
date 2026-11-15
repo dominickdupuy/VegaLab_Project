@@ -364,6 +364,19 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
 
         return answer(request, "runs/detail", runs_stamp(), build)
 
+    @app.get("/api/runs/policy", response_model=w.PolicyHeatmapOut)
+    def run_policy(request: Request, key: str) -> Response:
+        """Where a launched run's policy acted, by time in the episode and ATM vol."""
+
+        def build() -> w.PolicyHeatmapOut:
+            try:
+                run_dir = w.resolve_run(cfg.runs, key)
+            except KeyError as exc:
+                raise HTTPException(404, f"no run at {key!r} under the runs root") from exc
+            return w.policy_heatmap(run_dir)
+
+        return answer(request, "runs/policy", runs_stamp(), build)
+
     @app.get("/api/runs/compare", response_model=w.CompareOut)
     def run_compare(request: Request, a: str, b: str, group: str = "") -> Response:
         def build() -> w.CompareOut:
@@ -454,6 +467,11 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
                 raise HTTPException(422, f"this design cannot be computed: {exc}") from exc
 
         return answer(request, "power/surface", (), build)
+
+    @app.get("/api/synth", response_model=w.SynthPathsOut)
+    def synth(request: Request, params: Annotated[w.SynthParams, Query()]) -> Response:
+        """Sample paths of the simulated market the knobs set, before a run is launched."""
+        return answer(request, "synth", (), lambda: w.synth_paths(params))
 
     @app.post("/api/leaks/demo")
     def leaks(params: w.LeakDemoParams) -> w.LeakDemoOut:
