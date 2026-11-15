@@ -26,7 +26,7 @@ import pytest
 from dying_jobs import DIES_ON_START, DIES_RUNNING, dying_job
 from pydantic import ValidationError
 
-from optspread.config import RunConfig, config_hash
+from optspread.config import STUDY_R, RunConfig, canonical_json, config_hash
 from optspread.dashboard.jobs.queue import (
     WORKER_DIED,
     JobManager,
@@ -35,6 +35,7 @@ from optspread.dashboard.jobs.queue import (
     QueueFullError,
 )
 from optspread.dashboard.jobs.spec import (
+    ACTION_LOG_FILENAME,
     EQUITY_FILENAME,
     LAUNCH_DIR,
     PRESETS,
@@ -51,6 +52,7 @@ from optspread.dashboard.jobs.worker import (
 )
 from optspread.dashboard.runindex import load_run_detail, load_run_row
 from optspread.harness import build_env, run_episode
+from optspread.manifest import RunManifest
 from optspread.policies import make_policy
 
 SMALL = JobSpec(n_days=21, tenor_days=(7, 14), n_episodes=3, seed=11)
@@ -99,6 +101,17 @@ def test_knobs_map_onto_every_config_field() -> None:
 
 
 @pytest.mark.behaviour
+def test_the_research_knobs_reach_the_market_and_at_zero_re_key_nothing() -> None:
+    c = to_run_config(JobSpec(alpha_bps=25.0, vol_of_vol=0.3, skew_slope=-0.05))
+    assert (c.market.alpha_bps, c.market.vol_of_vol, c.market.skew_slope) == (25.0, 0.3, -0.05)
+    zero = to_run_config(JobSpec(alpha_bps=0.0, vol_of_vol=0.0, skew_slope=0.0))
+    assert config_hash(zero) == config_hash(to_run_config(JobSpec()))
+    # the study's rate keys the study's config; the launch default is the fair world (A11)
+    assert config_hash(to_run_config(JobSpec(policy="flat", r=STUDY_R))) == "17c15aa74ce473a9"
+    assert JobSpec().r == 0.0
+
+
+@pytest.mark.behaviour
 @pytest.mark.parametrize(
     ("knobs", "message"),
     [
@@ -111,6 +124,9 @@ def test_knobs_map_onto_every_config_field() -> None:
         ({"policy": "ppo"}, "exactly when"),
         ({"n_episodes": 0}, "greater than or equal"),
         ({"bogus": 1}, "Extra inputs"),
+        ({"alpha_bps": -5.0}, "greater than or equal"),
+        ({"vol_of_vol": 3.0}, "less than or equal"),
+        ({"skew_slope": -2.0}, "greater than or equal"),
         ({"policy": "ppo", "total_timesteps": 1000, "seed": 32768}, "below 32,768"),
     ],
 )
@@ -146,6 +162,26 @@ def test_ppo_is_hidden_without_the_learner() -> None:
     assert ppo_available() is (("ppo") in available_arms())
     if not ppo_available():
         assert available_arms() == ("flat", "always_on", "random", "delta_seller")
+    else:  # the research arms come with the same learner
+        assert available_arms()[-3:] == ("ppo", "a2c", "dqn")
+
+
+@pytest.mark.behaviour
+@pytest.mark.parametrize("arm", ["a2c", "dqn"])
+def test_a_research_arm_job_trains_with_its_own_algorithm(arm: str) -> None:
+    spec = SMALL.model_copy(update={"policy": arm, "total_timesteps": 200})
+    config = to_run_config(JobSpec.model_validate(spec.model_dump()))
+    assert config.policy == arm and config.train is not None
+    assert (config.train.algorithm, config.train.total_timesteps, config.train.seed) == (
+        arm,
+        200,
+        11,
+    )
+    assert "hyperparameters" not in json.loads(canonical_json(config))["train"]
+    with pytest.raises(ValidationError, match="exactly when the arm is learned"):
+        JobSpec(policy=arm)
+    with pytest.raises(ValidationError, match=f"{arm.upper()} run trains on its first seed"):
+        JobSpec(policy=arm, total_timesteps=100, seed=40_000)
 
 
 @pytest.mark.invariant
@@ -160,6 +196,36 @@ def test_the_traced_episode_is_the_harness_episode() -> None:
 
 
 @pytest.mark.invariant
+def test_the_action_log_is_what_the_policy_chose_on_what_it_saw(tmp_path: Path) -> None:
+    (tmp_path / ".jobs").mkdir()
+    run_dir = tmp_path / execute_job("j1", SMALL.model_dump_json(), str(tmp_path))
+    log = json.loads((run_dir / ACTION_LOG_FILENAME).read_text())
+    assert log["schema_version"] == 1 and log["seeds"] == [11, 12, 13]
+    assert {len(log[k]) for k in ("actions", "time_frac", "atm_iv")} == {3}
+    # one entry per step, each on the observation the action was chosen from
+    config = to_run_config(SMALL)
+    env, policy = build_env(config), make_policy("delta_seller", roll_dte=config.env.roll_dte)
+    obs, info = env.reset(seed=11)
+    policy.reset(11)
+    actions, seen, done = [], [], False
+    while not done:
+        actions.append(policy.act(obs, info))
+        seen.append((round(float(obs[0]), 6), round(float(obs[8]), 6)))
+        obs, _, done, _, info = env.step(actions[-1])
+    assert log["actions"][0] == actions and len(actions) == SMALL.n_days
+    assert list(zip(log["time_frac"][0], log["atm_iv"][0], strict=True)) == seen
+    assert log["time_frac"][0][0] == 0.0 and set(log["atm_iv"][0]) == {0.2}
+    # a launched run from before the log is computed again, once, and then has it
+    manifest = RunManifest.read(run_dir)
+    del manifest.artifacts[ACTION_LOG_FILENAME]
+    manifest.write(run_dir)
+    (run_dir / ACTION_LOG_FILENAME).unlink()
+    execute_job("j2", SMALL.model_dump_json(), str(tmp_path))
+    assert json.loads((tmp_path / ".jobs" / "j2.json").read_text())["phase"] == "written"
+    assert ACTION_LOG_FILENAME in RunManifest.read(run_dir).artifacts
+
+
+@pytest.mark.invariant
 def test_a_launched_run_is_an_ordinary_hashed_run(tmp_path: Path) -> None:
     (tmp_path / ".jobs").mkdir()
     rel = execute_job("j1", SMALL.model_dump_json(), str(tmp_path))
@@ -168,7 +234,8 @@ def test_a_launched_run_is_an_ordinary_hashed_run(tmp_path: Path) -> None:
     row = load_run_row(tmp_path / rel)
     assert row.status == "OK" and row.digests_ok and row.n_episodes == 3
     detail = load_run_detail(tmp_path / rel)
-    assert {a.path for a in detail.artifacts} == {"run.json", EQUITY_FILENAME}
+    assert {a.path for a in detail.artifacts} == {"run.json", EQUITY_FILENAME, ACTION_LOG_FILENAME}
+    assert all(a.ok for a in detail.artifacts)
     equity = json.loads((tmp_path / rel / EQUITY_FILENAME).read_text())
     assert equity["seeds"] == [11, 12, 13] and len(equity["paths"]) == 3
     state = json.loads((tmp_path / ".jobs" / "j1.json").read_text())
@@ -435,8 +502,9 @@ def test_cancelling_a_training_job_stops_the_training(tmp_path: Path) -> None:
     assert not (tmp_path / LAUNCH_DIR).exists(), "nothing is written after a cancel"
 
 
-def _fake_ppo(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Train the jobs' PPO arm with the stand-in learner: no torch, still a Trainer."""
+def _fake_ppo(monkeypatch: pytest.MonkeyPatch, arm: str = "ppo") -> None:
+    """Train the jobs' ``arm`` (PPO by default) with the stand-in learner: no torch,
+    still a Trainer."""
     from fake_learner import fake_trainer
 
     import optspread.train as train
@@ -444,7 +512,30 @@ def _fake_ppo(monkeypatch: pytest.MonkeyPatch) -> None:
     def trainer(config: RunConfig, should_stop: object = None) -> object:
         return fake_trainer(config)
 
-    monkeypatch.setattr(train, "train_ppo", trainer)
+    monkeypatch.setattr(train, f"train_{arm}", trainer)
+
+
+@pytest.mark.behaviour
+@pytest.mark.parametrize("arm", ["a2c", "dqn"])
+def test_a_launched_research_arm_is_trained_by_its_own_trainer_and_reused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, arm: str
+) -> None:
+    from optspread.manifest import RunManifest, callable_name
+    from optspread.train import POLICY_FILENAME, trainer_for
+
+    _fake_ppo(monkeypatch, arm)
+    (tmp_path / ".jobs").mkdir()
+    spec = SMALL.model_copy(update={"policy": arm, "total_timesteps": 100})
+    rel = execute_job("j1", spec.model_dump_json(), str(tmp_path))
+    log = (tmp_path / ".jobs" / "j1.log").read_text()
+    assert f"training {arm.upper()} at the Stable-Baselines3 defaults" in log
+    manifest = RunManifest.read(tmp_path / rel)
+    assert manifest.trainer == callable_name(trainer_for(arm))  # the stand-in, by name
+    assert manifest.config.train is not None and manifest.config.train.algorithm == arm
+    assert POLICY_FILENAME in manifest.artifacts
+    # the run on disk is reused by a job of the same arm and trainer
+    assert execute_job("j2", spec.model_dump_json(), str(tmp_path)) == rel
+    assert json.loads((tmp_path / ".jobs" / "j2.json").read_text())["phase"] == "reused"
 
 
 @pytest.mark.invariant
@@ -462,7 +553,12 @@ def test_a_launched_ppo_run_saves_its_policy_as_the_orchestrator_does(
     spec = SMALL.model_copy(update={"policy": "ppo", "total_timesteps": 100})
     run_dir = tmp_path / execute_job("j1", spec.model_dump_json(), str(tmp_path))
     manifest = RunManifest.read(run_dir)
-    assert set(manifest.artifacts) == {"run.json", EQUITY_FILENAME, POLICY_FILENAME}
+    assert set(manifest.artifacts) == {
+        "run.json",
+        EQUITY_FILENAME,
+        ACTION_LOG_FILENAME,
+        POLICY_FILENAME,
+    }
     assert manifest.artifacts[POLICY_FILENAME] == file_sha256(run_dir / POLICY_FILENAME)
     # the orchestrator's run of the same config: the same results and the same policy
     cli = tmp_path / "cli"

@@ -19,7 +19,8 @@ stopped. ``--root`` defaults to ``$VEGALAB_DATA/runs/pilot`` when ``VEGALAB_DATA
 set, else ``runs/pilot``: the pilot root ``make m2`` reads.
 
 ``--timesteps`` has no default: D3 fixes the hyperparameters, not the training
-budget, and the pilot does not get to pick one silently. Costs are on.
+budget, and the pilot does not get to pick one silently. Costs are on. ``--rate``
+defaults to the study's 0.04, as ``scripts/sweep.py``'s does (pre-registration A11).
 
 ``--source optionmetrics`` runs it on the real SPX panel instead of the generator:
 every policy trains on the ``train`` split and is evaluated on ``eval`` (the dates of
@@ -44,6 +45,7 @@ from optspread.experiment.cli import (
     add_run_options,
     add_source_arguments,
     chosen_source,
+    market_config,
     plan_and_run,
     premium_note,
     runs_root,
@@ -82,7 +84,7 @@ def main(argv: Sequence[str] | None = None, trainer: Trainer = train_ppo) -> int
     source = chosen_source(parser, args)
 
     grid = pilot_grid(
-        RunConfig(seed=int(args.seed), cost=CostConfig(enabled=True)),
+        RunConfig(market=market_config(args), seed=int(args.seed), cost=CostConfig(enabled=True)),
         n_seeds=int(args.seeds),
         n_episodes=int(args.episodes),
         premium=float(args.premium),

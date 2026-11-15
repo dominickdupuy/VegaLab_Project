@@ -10,28 +10,57 @@ A learned arm carries its training in the config too (``RunConfig.train``), so t
 hash of a PPO run covers the hyperparameters, the training budget and the training
 seed, not just the world it was evaluated in. A scripted run has no ``train`` and
 serialises without the key, so adding the learner re-keyed no existing run.
+
+The market's research knobs (``alpha_bps``, ``vol_of_vol``, ``skew_slope``) follow the
+same rule: at their defaults they are left out of the serialised form, so the
+confirmatory world, every run directory already on disk and ``config_hash(RunConfig())``
+are unchanged. The same holds for the research arms (A2C and DQN): a run of either
+carries a ``TrainConfig`` naming its algorithm, and drops the PPO hyperparameters it
+never reads.
+
+The rate is the one default that moved. The path is a zero-drift GBM and the book earns
+nothing on cash, so only ``r = 0`` prices every contract at its expected payoff under
+the path; the study (the pilot, the A7 sweep and every record made from them) ran at
+``r = 0.04``, whose null world was not fair by the carry docs/DRIFT_SENSITIVITY.md
+measures (pre-registration amendment A11). The default is now ``r = 0.0``, the fair
+world, for runs made from here on; ``STUDY_R`` and ``STUDY_MARKET`` are the study's
+world, pinned wherever code rebuilds the study's configs, so the confirmatory grid, its
+hashes and every run on disk read as they did. A manifest records its full config, so
+a run on disk never depended on the default.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
     SerializerFunctionWrapHandler,
-    field_validator,
     model_serializer,
     model_validator,
 )
 
 # The scripted policies ``optspread.policies.make_policy`` builds from a name alone.
 PolicyName = Literal["flat", "always_on", "random", "delta_seller"]
-# Every arm a run can have: the scripted ones plus the learner, which needs training.
-ArmName = Literal[PolicyName, "ppo"]
+# The learned arms, each trained before it is evaluated. PPO is the confirmatory learner
+# (D3); A2C and DQN are research arms at the Stable-Baselines3 defaults, not pre-registered.
+LearnedArm = Literal["ppo", "a2c", "dqn"]
+LEARNED_ARMS: tuple[LearnedArm, ...] = ("ppo", "a2c", "dqn")
+# Every arm a run can have: the scripted ones plus the learners, which need training.
+ArmName = Literal[PolicyName, LearnedArm]
+
+
+def scripted_name(policy: ArmName) -> PolicyName | None:
+    """The scripted policy ``policy`` names, or None for a learned arm (it needs training)."""
+    return None if policy in LEARNED_ARMS else cast(PolicyName, policy)
+
+
+# The market knobs a research run may move, each left out of the hash at its default.
+RESEARCH_KNOBS: tuple[str, ...] = ("alpha_bps", "vol_of_vol", "skew_slope")
 
 
 class MarketConfig(BaseModel):
@@ -39,13 +68,35 @@ class MarketConfig(BaseModel):
 
     spot0: float = 5000.0
     sigma: float = 0.20  # annualised vol driving the path
-    r: float = 0.04
+    # 0.0: forward = spot under the zero-drift path, the fair world. The study ran at
+    # STUDY_R (module docstring); a real source reads its own rate and ignores this.
+    r: float = 0.0
     n_days: int = 63  # path horizon in trading days
     tenor_days: tuple[int, ...] = (21, 42)  # tenors listed at every step
     n_strikes_each_side: int = 16
     strike_step: float = 50.0
     iv_premium_vol_pts: float = 0.0  # planted premium; 0.0 is the null world
     trading_days_per_year: int = 252
+    # Research knobs, not part of the confirmatory design (optspread.market says how each
+    # moves the world). 0.0 everywhere is the world the study ran in.
+    alpha_bps: float = Field(default=0.0, ge=0.0, le=200.0)  # drift per day, basis points
+    vol_of_vol: float = Field(default=0.0, ge=0.0)  # annualised vol of the path vol
+    skew_slope: float = 0.0  # IV change in vol (decimal) per unit of ln(S / K)
+
+    @model_serializer(mode="wrap")
+    def _omit_default_knobs(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
+        # A world with every research knob at zero serialises exactly as it did before the
+        # knobs existed, so its config hash, its run id and its run directory are unchanged.
+        data: dict[str, Any] = handler(self)
+        for name in RESEARCH_KNOBS:
+            if getattr(self, name) == 0.0:
+                data.pop(name, None)
+        return data
+
+
+# The study's world: the rate the pilot and the A7 sweep ran at (module docstring, A11).
+STUDY_R = 0.04
+STUDY_MARKET = MarketConfig(r=STUDY_R)
 
 
 class CostConfig(BaseModel):
@@ -130,16 +181,29 @@ class TrainConfig(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    algorithm: Literal["ppo"] = "ppo"
+    algorithm: LearnedArm = "ppo"
     total_timesteps: int = Field(gt=0, lt=2**32)
     seed: int = Field(default=0, ge=0, lt=2**15)
     device: str = "cpu"
     hyperparameters: PPOHyperparameters = Field(default_factory=PPOHyperparameters)
 
-    @field_validator("hyperparameters")
-    @classmethod
-    def _frozen(cls, value: PPOHyperparameters) -> PPOHyperparameters:
-        return require_frozen(value)
+    @model_validator(mode="after")
+    def _frozen(self) -> TrainConfig:
+        # D3 binds PPO only; A2C and DQN train at their own library defaults and never
+        # read this field.
+        if self.algorithm == "ppo":
+            require_frozen(self.hyperparameters)
+        return self
+
+    @model_serializer(mode="wrap")
+    def _omit_unread_hyperparameters(
+        self, handler: SerializerFunctionWrapHandler
+    ) -> dict[str, Any]:
+        # A2C and DQN read no PPO hyperparameter, so their hash does not depend on one.
+        data: dict[str, Any] = handler(self)
+        if self.algorithm != "ppo":
+            data.pop("hyperparameters", None)
+        return data
 
 
 class RunConfig(BaseModel):
@@ -155,10 +219,16 @@ class RunConfig(BaseModel):
 
     @model_validator(mode="after")
     def _train_iff_learned(self) -> RunConfig:
-        if (self.policy == "ppo") != (self.train is not None):
+        learned = self.policy in LEARNED_ARMS
+        if learned != (self.train is not None):
+            arm = self.policy if learned else "learned"
             raise ValueError(
-                f"policy {self.policy!r} with train={self.train!r}: a ppo run needs its "
+                f"policy {self.policy!r} with train={self.train!r}: a {arm} run needs its "
                 "TrainConfig and a scripted run must not carry one"
+            )
+        if self.train is not None and self.train.algorithm != self.policy:
+            raise ValueError(
+                f"train.algorithm {self.train.algorithm!r} must match policy {self.policy!r}"
             )
         return self
 

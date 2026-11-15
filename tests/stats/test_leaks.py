@@ -17,7 +17,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from optspread.config import EnvConfig, MarketConfig
+from optspread.config import STUDY_MARKET, EnvConfig, MarketConfig
 from optspread.data import SyntheticSource, conformance_report
 from optspread.env import OBS_NAMES, SpreadEnv
 from optspread.leaks import (
@@ -44,7 +44,7 @@ from optspread.realdata.provider import HistoricalChainProvider, SurfaceStore
 from optspread.rng import SeededStepRNG
 from optspread.types import Chain, FloatArray
 
-MARKET = MarketConfig()
+MARKET = STUDY_MARKET  # the suite's world, leaks.default_env's (r = 0.04)
 AtmVol = Callable[[FloatArray], FloatArray]
 
 

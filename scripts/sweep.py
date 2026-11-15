@@ -17,7 +17,9 @@ line per cell, with an ETA. ``--root`` defaults to ``$VEGALAB_DATA/runs`` when
 ``VEGALAB_DATA`` is set, else ``runs``: the runs root ``make m2`` and ``make m4`` read.
 
 ``--timesteps`` has no default and is required whenever the ppo arm is in the
-grid. Costs are on. On the generator (the default) every number is synthetic (D2: the
+grid. Costs are on. ``--rate`` defaults to the study's 0.04, not to ``MarketConfig``'s
+fair 0.0, so the A7 command still rebuilds the A7 grid; ``--rate 0`` is a sweep in the
+fair world (pre-registration A11). On the generator (the default) every number is synthetic (D2: the
 null world by design).
 
 ``--source optionmetrics`` runs the grid on the real SPX panel: every cell is evaluated
@@ -35,7 +37,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import cast, get_args
 
-from optspread.config import ArmName, CostConfig, RunConfig
+from optspread.config import ArmName, CostConfig, PolicyName, RunConfig
 
 # The ``name as name`` imports: what this script imported before its flow moved to
 # optspread.experiment.cli, still importable from here.
@@ -45,6 +47,7 @@ from optspread.experiment.cli import (
     add_source_arguments,
     chosen_source,
     describe,
+    market_config,
     plan_and_run,
     premium_note,
     runs_root,
@@ -63,7 +66,9 @@ from optspread.experiment.schedule import plan_cells as plan_cells
 from optspread.experiment.schedule import run_grid as run_grid
 from optspread.train import Trainer, train_ppo
 
-ARM_NAMES: tuple[str, ...] = get_args(ArmName)
+# The confirmatory arms. The research arms (A2C, DQN) are launched from the dashboard,
+# whose jobs train them with their own trainers; this command trains with train_ppo.
+ARM_NAMES: tuple[str, ...] = (*get_args(PolicyName), "ppo")
 
 
 def main(argv: Sequence[str] | None = None, trainer: Trainer = train_ppo) -> int:
@@ -94,7 +99,10 @@ def main(argv: Sequence[str] | None = None, trainer: Trainer = train_ppo) -> int
         train = train_config(args)
     grid = GridConfig(
         base=RunConfig(
-            seed=int(args.seed), n_episodes=int(args.episodes), cost=CostConfig(enabled=True)
+            market=market_config(args),
+            seed=int(args.seed),
+            n_episodes=int(args.episodes),
+            cost=CostConfig(enabled=True),
         ),
         premiums=tuple(float(p) for p in args.premiums),
         arms=arms,

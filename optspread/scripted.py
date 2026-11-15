@@ -37,7 +37,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from optspread.actions import ACTION_NAMES, IRON_CONDOR, PUT_CREDIT_SPREAD
-from optspread.config import CostConfig, RunConfig
+from optspread.config import STUDY_MARKET, CostConfig, MarketConfig, RunConfig
 from optspread.costs import CostModel, make_cost_model, trade_cost
 from optspread.harness import build_env
 from optspread.policies import AlwaysOnPolicy, DeltaSellerPolicy, Policy
@@ -245,12 +245,15 @@ def cost_drag_check(
     seed: int = 2000,
     sellers: Sequence[str] | None = None,
     costs: CostModel | None = None,
+    market: MarketConfig = STUDY_MARKET,
 ) -> DragReport:
     """Run the scripted sellers against the drag the cost model predicts.
 
-    ``costs`` is the model under test; the default is the one ``CostConfig`` builds."""
+    ``costs`` is the model under test; the default is the one ``CostConfig`` builds.
+    ``market`` defaults to the study's world (r = 0.04), whose drags the M1 report and
+    docs/COSTS.md record (pre-registration A11)."""
     wanted = set(sellers) if sellers is not None else {s[0] for s in SELLERS}
-    base = RunConfig(seed=seed, n_episodes=n_episodes)
+    base = RunConfig(market=market, seed=seed, n_episodes=n_episodes)
     return DragReport(
         tuple(
             drag_row(base, name, action_id, roll, n_episodes, costs)

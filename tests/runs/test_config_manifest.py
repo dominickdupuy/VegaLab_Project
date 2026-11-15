@@ -13,7 +13,15 @@ from pathlib import Path
 
 import pytest
 
-from optspread.config import CostConfig, MarketConfig, RunConfig, config_hash
+from optspread.config import (
+    STUDY_MARKET,
+    STUDY_R,
+    CostConfig,
+    MarketConfig,
+    RunConfig,
+    canonical_json,
+    config_hash,
+)
 from optspread.data import DataUnavailableError, OptionMetricsSource, make_source
 from optspread.manifest import (
     MANIFEST_FILENAME,
@@ -230,3 +238,50 @@ def test_the_commit_is_the_code_checkouts_from_any_working_directory(
     monkeypatch.chdir(tmp_path)  # not a repository
     assert git_sha() == here and RunManifest.create(RunConfig()).git_sha == here
     assert git_sha(tmp_path) == "unknown" and git_dirty(tmp_path) is True
+
+
+# -- the fair world's default rate (GH-36, pre-registration A11) ------------ #
+
+
+@pytest.mark.invariant
+def test_the_default_is_the_fair_world_and_the_study_keeps_its_rate_and_hash() -> None:
+    # The default moved to r = 0 for runs made from here on; the study's world is pinned
+    # where its configs are rebuilt, and hashes as every manifest on disk records it.
+    assert MarketConfig().r == 0.0 and STUDY_MARKET.r == STUDY_R == 0.04
+    assert MarketConfig().model_copy(update={"r": STUDY_R}) == STUDY_MARKET
+    assert config_hash(RunConfig(market=STUDY_MARKET)) == "17c15aa74ce473a9"
+    assert config_hash(RunConfig()) == "f0a9ae8c7df9116d" != "17c15aa74ce473a9"
+    assert json.loads(canonical_json(MarketConfig()))["r"] == 0.0  # the rate stays hashed
+
+
+# -- the market's research knobs (GH-46) ------------------------------------ #
+
+
+@pytest.mark.invariant
+def test_the_research_knobs_at_zero_re_key_nothing() -> None:
+    # The study must not move: at zero the knobs are left out of the serialised form, so
+    # the study's config, and every run already on disk, keeps its hash.
+    assert config_hash(RunConfig(market=STUDY_MARKET)) == "17c15aa74ce473a9"
+    zero = MarketConfig(r=STUDY_R, alpha_bps=0.0, vol_of_vol=0.0, skew_slope=0.0)
+    assert config_hash(RunConfig(market=zero)) == "17c15aa74ce473a9"
+    dumped = json.loads(canonical_json(MarketConfig()))
+    assert not {"alpha_bps", "vol_of_vol", "skew_slope"} & set(dumped)
+
+
+@pytest.mark.invariant
+@pytest.mark.parametrize("knob", ["alpha_bps", "vol_of_vol", "skew_slope"])
+def test_a_research_knob_off_zero_is_its_own_world(knob: str) -> None:
+    moved = MarketConfig.model_validate({knob: 0.1})
+    assert config_hash(moved) != config_hash(MarketConfig())
+    assert json.loads(canonical_json(moved))[knob] == 0.1
+    assert MarketConfig.model_validate_json(moved.model_dump_json()) == moved
+
+
+@pytest.mark.invariant
+def test_the_research_knobs_refuse_what_the_market_cannot_be() -> None:
+    with pytest.raises(ValueError, match="greater than or equal"):
+        MarketConfig(alpha_bps=-1.0)
+    with pytest.raises(ValueError, match="less than or equal"):
+        MarketConfig(alpha_bps=201.0)
+    with pytest.raises(ValueError, match="greater than or equal"):
+        MarketConfig(vol_of_vol=-0.1)

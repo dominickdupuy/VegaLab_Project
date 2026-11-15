@@ -13,6 +13,7 @@ seed the learner resets with. The tests that need Stable-Baselines3 itself are i
 from __future__ import annotations
 
 import importlib.metadata
+import json
 from pathlib import Path
 
 import numpy as np
@@ -20,6 +21,7 @@ import pytest
 
 from optspread.config import (
     FROZEN_PPO,
+    STUDY_MARKET,
     PPOHyperparameters,
     RunConfig,
     TrainConfig,
@@ -52,9 +54,11 @@ def test_adding_the_learner_re_keyed_no_existing_run() -> None:
     # Re-pinned once, on purpose: adopting the fitted cost parameters for the Nov 1
     # freeze (#8, docs/COSTS.md) re-keys every costed config. Adding the learner
     # did not.
-    assert config_hash(RunConfig()) == "17c15aa74ce473a9"
-    assert config_hash(RunConfig(policy="delta_seller", seed=1)) == "377f82c6d51a937e"
-    assert config_hash(SweepConfig()) == "1c7a87a7c73c3636"
+    # Pinned to the study's rate (A11): the default moved to the fair r = 0 after.
+    assert config_hash(RunConfig(market=STUDY_MARKET)) == "17c15aa74ce473a9"
+    seller = RunConfig(market=STUDY_MARKET, policy="delta_seller", seed=1)
+    assert config_hash(seller) == "377f82c6d51a937e"
+    assert config_hash(SweepConfig(base=RunConfig(market=STUDY_MARKET))) == "1c7a87a7c73c3636"
     assert "train" not in canonical_json(RunConfig())
 
 
@@ -121,6 +125,80 @@ def test_a_ppo_config_is_never_evaluated_with_a_scripted_stand_in() -> None:
         run_episodes(PPO_RUN)
     with pytest.raises(ValueError, match="no training config"):
         train_ppo(RunConfig(policy="delta_seller"))
+
+
+# -- the research arms: A2C and DQN (GH-46) --------------------------------- #
+
+
+@pytest.mark.invariant
+@pytest.mark.parametrize("arm", ["a2c", "dqn"])
+def test_a_research_arm_carries_its_algorithm_and_no_ppo_hyperparameters(arm: str) -> None:
+    run = RunConfig(policy=arm, train=TrainConfig(algorithm=arm, total_timesteps=500))
+    train = json.loads(canonical_json(run))["train"]
+    assert train["algorithm"] == arm and "hyperparameters" not in train
+    # D3 binds PPO only: the field a research arm never reads is not checked or hashed
+    tuned = TrainConfig(
+        algorithm=arm, total_timesteps=500, hyperparameters=PPOHyperparameters(ent_coef=0.01)
+    )
+    assert config_hash(RunConfig(policy=arm, train=tuned)) == config_hash(run)
+    with pytest.raises(ValueError, match="frozen by decision D3"):
+        TrainConfig(total_timesteps=500, hyperparameters=PPOHyperparameters(ent_coef=0.01))
+    back = RunConfig.model_validate_json(run.model_dump_json())
+    assert back == run and config_hash(back) == config_hash(run)
+
+
+@pytest.mark.invariant
+def test_a_learned_arm_needs_a_training_config_of_its_own_algorithm() -> None:
+    for arm in ("a2c", "dqn"):
+        with pytest.raises(ValueError, match=f"a {arm} run needs its TrainConfig"):
+            RunConfig(policy=arm)
+    with pytest.raises(ValueError, match="must match policy 'a2c'"):
+        RunConfig(policy="a2c", train=TrainConfig(algorithm="dqn", total_timesteps=10))
+    with pytest.raises(ValueError, match="must match policy 'ppo'"):
+        RunConfig(policy="ppo", train=TrainConfig(algorithm="a2c", total_timesteps=10))
+    with pytest.raises(ValueError, match="scripted run must not carry one"):
+        RunConfig(policy="flat", train=TrainConfig(algorithm="dqn", total_timesteps=10))
+    # PPO's hash is untouched: its algorithm and frozen set were always in it
+    assert config_hash(PPO_RUN) == config_hash(
+        RunConfig(policy="ppo", train=TrainConfig(algorithm="ppo", total_timesteps=10_000, seed=3))
+    )
+
+
+@pytest.mark.behaviour
+def test_train_dispatches_on_the_algorithm_to_the_module_trainer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import optspread.train as train_mod
+
+    called: list[tuple[str, str]] = []
+    for arm in ("ppo", "a2c", "dqn"):
+
+        def stand_in(
+            config: RunConfig, *, source: str, should_stop: object, _arm: str = arm
+        ) -> str:
+            called.append((_arm, source))
+            return _arm
+
+        monkeypatch.setattr(train_mod, f"train_{arm}", stand_in)
+        assert train_mod.trainer_for(arm) is stand_in
+    for arm in ("a2c", "dqn", "ppo"):
+        run = RunConfig(policy=arm, train=TrainConfig(algorithm=arm, total_timesteps=1))
+        assert train_mod.train(run) == arm
+    assert called == [("a2c", "synthetic"), ("dqn", "synthetic"), ("ppo", "synthetic")]
+    with pytest.raises(ValueError, match="no training config"):
+        train_mod.train(RunConfig(policy="flat"))
+
+
+@pytest.mark.invariant
+def test_a_research_trainer_refuses_another_arm_before_it_imports_the_learner() -> None:
+    from optspread.train import train_a2c, train_dqn
+
+    with pytest.raises(ValueError, match="no training config"):
+        train_a2c(RunConfig(policy="delta_seller"))
+    with pytest.raises(ValueError, match="train_dqn cannot train a ppo arm"):
+        train_dqn(PPO_RUN)
+    with pytest.raises(ValueError, match="a dqn run is evaluated with its trained policy"):
+        run_episodes(RunConfig(policy="dqn", train=TrainConfig(algorithm="dqn", total_timesteps=1)))
 
 
 # -- training paths ---------------------------------------------------------- #

@@ -41,7 +41,7 @@ from pathlib import Path
 
 import numpy as np
 
-from optspread.config import CostConfig, MarketConfig, RunConfig, TrainConfig, config_hash
+from optspread.config import STUDY_MARKET, CostConfig, RunConfig, TrainConfig, config_hash
 from optspread.harness import run_episodes
 from optspread.train import SB3Policy, train_ppo
 
@@ -54,7 +54,8 @@ def ppo_config(
     premium: float, seed: int, episodes: int, timesteps: int, train_seed: int
 ) -> RunConfig:
     return RunConfig(
-        market=MarketConfig(iv_premium_vol_pts=premium),
+        # the study's world (A4 chose the budget on it), r = 0.04 whatever the default
+        market=STUDY_MARKET.model_copy(update={"iv_premium_vol_pts": premium}),
         cost=CostConfig(enabled=True),
         policy="ppo",
         seed=seed,

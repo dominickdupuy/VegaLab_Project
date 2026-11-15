@@ -33,7 +33,15 @@ from fake_learner import FakeLearned, fake_trainer
 from optspread import m4analysis as m4
 from optspread import m4gate
 from optspread.attribution import attribute_run, output_name, write_attribution
-from optspread.config import CostConfig, EnvConfig, MarketConfig, RunConfig, TrainConfig
+from optspread.config import (
+    STUDY_MARKET,
+    STUDY_R,
+    CostConfig,
+    EnvConfig,
+    MarketConfig,
+    RunConfig,
+    TrainConfig,
+)
 from optspread.config import config_hash as hash_of
 from optspread.experiment.grid import GridConfig, GridRecord, grid_filename, read_grid
 from optspread.experiment.schedule import run_grid
@@ -42,7 +50,7 @@ from optspread.gatereport import GateItem, GateReport
 SHORT = RunConfig(
     seed=7000,
     n_episodes=3,
-    market=MarketConfig(n_days=21, tenor_days=(10, 21)),
+    market=MarketConfig(r=STUDY_R, n_days=21, tenor_days=(10, 21)),  # the study's rate
     env=EnvConfig(episode_days=21),
     cost=CostConfig(enabled=True),
 )
@@ -145,7 +153,7 @@ def test_the_real_sidecar_of_the_stand_in_grid_is_the_analysis_the_items_accept(
     assert "exploratory, not confirmatory" in m4gate.analysis_problem(sweep.exploratory, TINY)
     # the real A7 grid is not the stand-in's, and its hash has not moved
     assert "not 7d9d53d340006f02" in m4gate.analysis_problem(sweep.analysis, m4.CONFIRMATORY_GRID)
-    assert hash_of(RunConfig()) == "17c15aa74ce473a9"
+    assert hash_of(RunConfig(market=STUDY_MARKET)) == "17c15aa74ce473a9"
 
 
 @pytest.mark.behaviour

@@ -27,7 +27,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import cast, get_args
 
-from optspread.config import TrainConfig
+from optspread.config import STUDY_R, MarketConfig, TrainConfig
 from optspread.data import DataUnavailableError, SourceName, make_source
 from optspread.experiment.grid import GridConfig, GridRecord, grid_cells
 from optspread.experiment.schedule import IncompleteGridError, plan_cells, run_grid
@@ -106,9 +106,21 @@ def add_run_options(parser: argparse.ArgumentParser, *, seed: int, train_seed: i
     parser.add_argument(
         "--train-seed", type=int, default=train_seed, help="training seed of block 0"
     )
+    parser.add_argument(
+        "--rate",
+        type=float,
+        default=STUDY_R,
+        help=f"the chain's rate r (default {STUDY_R:g}, the study's world, so the documented "
+        "commands rebuild the study; 0 is the fair world, pre-registration A11)",
+    )
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--workers", type=int, default=1)
     parser.add_argument("--dry-run", action="store_true", help="print the plan and stop")
+
+
+def market_config(args: argparse.Namespace) -> MarketConfig:
+    """The ``MarketConfig`` of ``--rate``, every other field at its default."""
+    return MarketConfig(r=float(args.rate))
 
 
 def train_config(args: argparse.Namespace) -> TrainConfig:

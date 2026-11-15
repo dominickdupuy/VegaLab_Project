@@ -205,7 +205,14 @@ from scipy.stats import levene, nct
 from scipy.stats import t as student_t
 
 from optspread.analysis import ALPHA, NULL_PREMIUM, Decision, decide_premium
-from optspread.config import ArmName, CostConfig, RunConfig, TrainConfig, config_hash
+from optspread.config import (
+    STUDY_MARKET,
+    ArmName,
+    CostConfig,
+    RunConfig,
+    TrainConfig,
+    config_hash,
+)
 from optspread.experiment.grid import GridConfig, GridRecord, grid_cells, grid_filename
 from optspread.manifest import RunManifest
 from optspread.power import (
@@ -258,9 +265,12 @@ A7_FLOOR = 698.3
 A7_PREMIUM = 1.0  # the premium the pilot measured A7_DELTA at
 
 # A7: the confirmatory sweep as `python -m scripts.sweep --seeds 5 --episodes 500
-# --timesteps 1000000` builds it (paths from 100,000, training seeds from 1,000).
+# --timesteps 1000000` builds it (paths from 100,000, training seeds from 1,000), in the
+# study's world: r = 0.04 pinned, whatever the default (A11, optspread.config).
 CONFIRMATORY_GRID = GridConfig(
-    base=RunConfig(seed=100_000, n_episodes=500, cost=CostConfig(enabled=True)),
+    base=RunConfig(
+        market=STUDY_MARKET, seed=100_000, n_episodes=500, cost=CostConfig(enabled=True)
+    ),
     n_seeds=5,
     train=TrainConfig(total_timesteps=1_000_000, seed=1000),
 )

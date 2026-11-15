@@ -26,7 +26,15 @@ from scipy.stats import nct
 from optspread import m4analysis as m4
 from optspread.analysis import decide_contrast
 from optspread.artifacts import RUN_FILENAME
-from optspread.config import CostConfig, EnvConfig, MarketConfig, RunConfig, TrainConfig
+from optspread.config import (
+    STUDY_MARKET,
+    STUDY_R,
+    CostConfig,
+    EnvConfig,
+    MarketConfig,
+    RunConfig,
+    TrainConfig,
+)
 from optspread.config import config_hash as hash_of
 from optspread.experiment.grid import (
     GridCell,
@@ -80,7 +88,10 @@ def test_the_confirmatory_grid_is_the_a7_sweep_and_its_hash_has_not_moved() -> N
     )
     assert g.train is not None and (g.train.total_timesteps, g.train.seed) == (1_000_000, 1000)
     assert g.premiums == (0.0, 0.25, 0.5, 1.0, 2.0, 4.0) and g.arms == ("delta_seller", "ppo")
-    assert hash_of(RunConfig()) == "17c15aa74ce473a9"  # the freeze: nothing re-keyed
+    assert g.base.market == STUDY_MARKET and g.base.market.r == STUDY_R == 0.04  # A11
+    # the freeze: the study's config keeps its hash; the fair default (r = 0) has its own
+    assert hash_of(RunConfig(market=STUDY_MARKET)) == "17c15aa74ce473a9"
+    assert hash_of(RunConfig()) != "17c15aa74ce473a9"
 
 
 def fake_record(grid: GridConfig, grid_hash: str | None = None) -> GridRecord:

@@ -39,7 +39,7 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy import stats
 
-from optspread.config import CostConfig, EnvConfig, MarketConfig
+from optspread.config import STUDY_MARKET, CostConfig, EnvConfig, MarketConfig
 from optspread.costs import CostModel, make_cost_model
 from optspread.env import OBS_NAMES, SpreadEnv
 from optspread.market import SyntheticChainProvider
@@ -69,9 +69,11 @@ def default_env(
 
     Costs are off, because the detector asks whether the world leaks and a cost
     model cannot create or hide look-ahead. Lives here rather than in the tests so
-    the gate report and the test suite probe exactly the same environment.
+    the gate report and the test suite probe exactly the same environment. The market
+    defaults to the study's (r = 0.04): the world M1 measured its floor in, which M3
+    measures again. A rate cannot create or hide look-ahead.
     """
-    cfg = market if market is not None else MarketConfig()
+    cfg = market if market is not None else STUDY_MARKET
     provider: ChainProvider = (
         PoisonedChainProvider(cfg, eps) if eps else SyntheticChainProvider(cfg)
     )

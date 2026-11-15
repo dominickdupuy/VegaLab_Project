@@ -11,13 +11,18 @@ exactly the modelled cost drag (plus any margin-breach liquidation).
     3. RANDOM, which churns, bleeds faster than ALWAYS-ON.
 
 Break any one and the build fails (``tests/gates/test_wave0_gate.py``).
+
+The gate runs in the study's world by default (``config.STUDY_MARKET``, r = 0.04), the one
+the M1 report and docs/COSTS.md record; there the no-cost always-on carries the rate's
+bias (pre-registration A11), well inside |t| <= 3 at 100 episodes. Pass
+``MarketConfig()`` for the fair world (``python -m scripts.wave0_gate --rate 0``).
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-from optspread.config import CostConfig, PolicyName, RunConfig
+from optspread.config import STUDY_MARKET, CostConfig, MarketConfig, PolicyName, RunConfig
 from optspread.harness import EvalSummary, evaluate
 
 
@@ -56,12 +61,18 @@ class Wave0Report:
         return "\n".join(lines)
 
 
-def wave0_gate(n_episodes: int = 100, seed: int = 1000) -> Wave0Report:
+def wave0_gate(
+    n_episodes: int = 100, seed: int = 1000, market: MarketConfig = STUDY_MARKET
+) -> Wave0Report:
     arms: dict[tuple[PolicyName, bool], EvalSummary] = {}
     for policy in ("flat", "always_on", "random"):
         for costed in (False, True):
             cfg = RunConfig(
-                policy=policy, seed=seed, n_episodes=n_episodes, cost=CostConfig(enabled=costed)
+                market=market,
+                policy=policy,
+                seed=seed,
+                n_episodes=n_episodes,
+                cost=CostConfig(enabled=costed),
             )
             arms[(policy, costed)] = evaluate(cfg)
 

@@ -13,7 +13,7 @@ import time
 from dataclasses import dataclass, field
 from functools import partial
 
-from optspread.config import MarketConfig
+from optspread.config import STUDY_MARKET, MarketConfig
 from optspread.leaks import (
     PASS_CRITERION,
     LeakReport,
@@ -71,7 +71,7 @@ def run_leak_demo(
     """Run both detectors on the clean and the poisoned env, on the same seeds."""
     if eps <= 0.0:
         raise ValueError(f"the poisoned variant needs eps > 0, got {eps}")
-    cfg = market if market is not None else MarketConfig()
+    cfg = market if market is not None else STUDY_MARKET  # leaks.default_env's world
     seeds = tuple(range(n_seeds))
     start = time.perf_counter()
     clean = detect_leak(partial(default_env, 0.0, cfg), seeds)

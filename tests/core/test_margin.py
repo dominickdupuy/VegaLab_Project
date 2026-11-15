@@ -19,7 +19,7 @@ import numpy as np
 import pytest
 
 from optspread.actions import SHORT_STRANGLE, build_position
-from optspread.config import CostConfig, EnvConfig, MarketConfig, RunConfig
+from optspread.config import STUDY_MARKET, CostConfig, EnvConfig, RunConfig
 from optspread.costs import make_cost_model, trade_cost
 from optspread.env import OBS_NAMES
 from optspread.harness import build_env
@@ -33,8 +33,9 @@ CENT = 0.005  # "to the cent": within half a cent of dollars
 
 
 def default_chain() -> Chain:
-    """The t=0 chain of the default world: spot 5,000, flat 20% vol, tenors 21 and 42 days."""
-    return SyntheticChainProvider(MarketConfig()).reset(SeededStepRNG(0))
+    """The t=0 chain of the study's world: spot 5,000, flat 20% vol, tenors 21 and 42 days,
+    r = 0.04 (the hand-worked figures below were worked at that rate)."""
+    return SyntheticChainProvider(STUDY_MARKET).reset(SeededStepRNG(0))
 
 
 def mid(chain: Chain, leg: OptionLeg) -> float:

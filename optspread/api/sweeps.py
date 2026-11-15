@@ -107,6 +107,7 @@ class GridDetailOut(Out):
     total_timesteps: int | None
     first_path_seed: int
     costs: bool
+    rate: float  # the rate the chain was priced at; the study's 0.04 against a driftless path (A11)
     cells: list[GridCellOut]
     means: dict[str, list[ArmMeanOut]]
     contrasts: dict[str, list[ContrastOut]]
@@ -298,6 +299,7 @@ def grid_detail(path: Path, root: Path) -> SweepOut:
             total_timesteps=None if grid.train is None else grid.train.total_timesteps,
             first_path_seed=grid.base.seed,
             costs=grid.base.cost.enabled,
+            rate=grid.base.market.r,
             cells=cells,
             means=means,
             contrasts=contrasts,
