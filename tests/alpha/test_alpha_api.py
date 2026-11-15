@@ -52,7 +52,7 @@ def client(
 
 def _finish(client: TestClient, job_id: str) -> dict[str, object]:
     deadline = time.monotonic() + 120
-    while (out := client.get(f"/api/alpha/benchmarks/{job_id}").json())["state"] in (
+    while (out := client.get(f"/api/alpha/jobs/{job_id}").json())["state"] in (
         "queued",
         "running",
     ):
@@ -118,4 +118,36 @@ def test_refusals(client: TestClient) -> None:
     assert client.post("/api/alpha/benchmarks", json=missing).status_code == 404
     unbudgeted = {"dataset": "0123456789abcdef", "arm": "flat"}
     assert client.post("/api/alpha/benchmarks", json=unbudgeted).status_code == 422
-    assert client.get("/api/alpha/benchmarks/nope").status_code == 404
+    assert client.get("/api/alpha/jobs/nope").status_code == 404
+
+
+def test_a_sweep_runs_as_a_job_and_is_listed_on_every_dataset_it_touched(
+    client: TestClient,
+) -> None:
+    ds = client.post("/api/alpha/datasets", json=SPEC).json()
+    sweep = {"dataset": ds["hash"], "arm": "delta_seller", "axis": "n_train", "values": [2, 3]}
+    job = client.post("/api/alpha/sweeps", json=sweep)
+    assert job.status_code == 201, job.text
+    assert job.json()["kind"] == "sweep"
+    out = _finish(client, job.json()["job_id"])
+    assert out["state"] == "done", out["error"]
+    result = out["sweep"]
+    assert isinstance(result, dict) and out["benchmark"] is None
+    assert [p["n_train"] for p in result["points"]] == [2, 3]
+    for point in result["points"]:
+        listed = client.get(f"/api/alpha/datasets/{point['dataset']}/sweeps").json()
+        assert [s["key"] for s in listed] == [result["key"]]
+
+
+def test_seeds_and_sweeps_are_refused_with_the_reason(client: TestClient) -> None:
+    ds = client.post("/api/alpha/datasets", json=SPEC).json()
+    seeded = {"dataset": ds["hash"], "arm": "flat", "total_timesteps": None, "n_seeds": 3}
+    assert "deterministic" in str(client.post("/api/alpha/benchmarks", json=seeded).json())
+    flat_budget = {
+        "dataset": ds["hash"],
+        "arm": "flat",
+        "axis": "total_timesteps",
+        "values": [2048, 4096],
+    }
+    response = client.post("/api/alpha/sweeps", json=flat_budget)
+    assert response.status_code == 422 and "learned arm" in str(response.json())

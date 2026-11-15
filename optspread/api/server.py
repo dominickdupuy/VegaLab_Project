@@ -32,7 +32,7 @@ from dataclasses import dataclass
 from datetime import date
 from functools import partial
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.encoders import jsonable_encoder
@@ -54,7 +54,8 @@ from optspread.alpha.dataset import (
     list_datasets,
     load_dataset,
 )
-from optspread.alpha.jobs import AlphaJobManager, BenchSpec
+from optspread.alpha.jobs import AlphaJobManager, AlphaSpec, BenchSpec
+from optspread.alpha.sweep import AlphaSweep, AlphaSweepSpec, list_sweeps
 from optspread.api import builders as w
 from optspread.api.cache import Answers, file_stamp, tree_stamp
 from optspread.attribution import default_root
@@ -521,26 +522,51 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
         """Every benchmark already written for the dataset, newest first."""
         return list_benchmarks(cfg.runs, _alpha_dataset(dataset_hash).hash)
 
-    @app.post("/api/alpha/benchmarks", status_code=201)
-    def alpha_bench(spec: dict[str, object]) -> w.AlphaJobOut:
+    @app.get("/api/alpha/datasets/{dataset_hash}/sweeps")
+    def alpha_sweeps(dataset_hash: str) -> list[AlphaSweep]:
+        """Every sweep that ran on the dataset, as its base or one of its points."""
+        return list_sweeps(cfg.runs, _alpha_dataset(dataset_hash).hash)
+
+    def _alpha_submit(spec: AlphaSpec) -> w.AlphaJobOut:
+        _alpha_dataset(spec.dataset)
         try:
-            parsed = BenchSpec.model_validate(spec)
-        except ValidationError as exc:
-            raise HTTPException(422, [e["msg"] for e in exc.errors()]) from exc
-        _alpha_dataset(parsed.dataset)
-        try:
-            job_id = benches.submit(parsed)
+            job_id = benches.submit(spec)
         except ValueError as exc:
             raise HTTPException(422, str(exc)) from exc
         except QueueFullError as exc:
             raise HTTPException(429, str(exc)) from exc
-        return w.alpha_job(benches.status(job_id), cfg.runs)
+        return _alpha_status(job_id)
 
-    @app.get("/api/alpha/benchmarks/{job_id}")
-    def alpha_bench_status(job_id: str) -> w.AlphaJobOut:
+    def _alpha_status(job_id: str) -> w.AlphaJobOut:
+        spec = benches.jobs[job_id].spec
+        kind: Literal["benchmark", "sweep"] = (
+            "sweep" if isinstance(spec, AlphaSweepSpec) else "benchmark"
+        )
+        return w.alpha_job(benches.status(job_id), cfg.runs, kind)
+
+    @app.post("/api/alpha/benchmarks", status_code=201)
+    def alpha_bench(spec: dict[str, object]) -> w.AlphaJobOut:
+        """Train (if learned) and score one arm on one dataset, on n_seeds training seeds."""
+        try:
+            parsed = BenchSpec.model_validate(spec)
+        except ValidationError as exc:
+            raise HTTPException(422, [e["msg"] for e in exc.errors()]) from exc
+        return _alpha_submit(parsed)
+
+    @app.post("/api/alpha/sweeps", status_code=201)
+    def alpha_sweep(spec: dict[str, object]) -> w.AlphaJobOut:
+        """One benchmark per value of the number of train paths or the training budget."""
+        try:
+            parsed = AlphaSweepSpec.model_validate(spec)
+        except ValidationError as exc:
+            raise HTTPException(422, [e["msg"] for e in exc.errors()]) from exc
+        return _alpha_submit(parsed)
+
+    @app.get("/api/alpha/jobs/{job_id}")
+    def alpha_job(job_id: str) -> w.AlphaJobOut:
         if job_id not in benches.jobs:
-            raise HTTPException(404, f"no benchmark job {job_id!r}")
-        return w.alpha_job(benches.status(job_id), cfg.runs)
+            raise HTTPException(404, f"no synthetic alpha job {job_id!r}")
+        return _alpha_status(job_id)
 
     @app.post("/api/leaks/demo")
     def leaks(params: w.LeakDemoParams) -> w.LeakDemoOut:

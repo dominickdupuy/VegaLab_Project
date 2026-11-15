@@ -15,10 +15,11 @@ from typing import Any, Literal, get_args
 
 from pydantic import Field
 
-from optspread.alpha.benchmark import ARMS, Benchmark, load_benchmark
+from optspread.alpha.benchmark import ARMS, BENCH_FILE, MAX_SEEDS, Benchmark, load_benchmark
 from optspread.alpha.dataset import DATASETS_DIR, PATHS_FILE, SynthDataset, SynthSpec, preview
 from optspread.alpha.generators import GENERATORS, GeneratorParams
-from optspread.alpha.jobs import DEFAULT_TIMESTEPS
+from optspread.alpha.jobs import DEFAULT_SEEDS, DEFAULT_TIMESTEPS
+from optspread.alpha.sweep import AlphaSweep, load_sweep
 from optspread.api._base import Out
 from optspread.api.jobs import JobOut, job_out
 from optspread.config import LEARNED_ARMS
@@ -85,6 +86,8 @@ class AlphaOptionsOut(Out):
     learned_arms: list[str]
     learners_available: bool
     default_timesteps: int
+    default_seeds: int
+    max_seeds: int
 
 
 def alpha_options() -> AlphaOptionsOut:
@@ -111,6 +114,8 @@ def alpha_options() -> AlphaOptionsOut:
         learned_arms=list(LEARNED_ARMS),
         learners_available=available,
         default_timesteps=DEFAULT_TIMESTEPS,
+        default_seeds=DEFAULT_SEEDS,
+        max_seeds=MAX_SEEDS,
     )
 
 
@@ -179,11 +184,18 @@ def alpha_manifests(manifests: list[dict[str, Any]]) -> list[AlphaManifestOut]:
 
 
 class AlphaJobOut(JobOut):
+    kind: Literal["benchmark", "sweep"] = "benchmark"
     benchmark: Benchmark | None = None
+    sweep: AlphaSweep | None = None
 
 
-def alpha_job(status: JobStatus, root: Any) -> AlphaJobOut:
-    bench = None
+def alpha_job(status: JobStatus, root: Any, kind: Literal["benchmark", "sweep"]) -> AlphaJobOut:
+    """A benchmark or sweep job's status, with its result once it is written."""
+    bench, sweep = None, None
     if status.state == "done" and status.run_key:
-        bench = load_benchmark(root / status.run_key)
-    return AlphaJobOut(**job_out(status).model_dump(), benchmark=bench)
+        path = root / status.run_key
+        if path.name == BENCH_FILE:
+            bench = load_benchmark(path)
+        else:
+            sweep = load_sweep(path)
+    return AlphaJobOut(**job_out(status).model_dump(), kind=kind, benchmark=bench, sweep=sweep)
