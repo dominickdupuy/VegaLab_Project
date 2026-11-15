@@ -20,9 +20,12 @@ import { useQuery, useQuerySync } from "@/lib/url";
  * at-the-money vol a policy would see along each, and the smile half way through, for
  * the path vol and the research knobs (drift, vol of vol, skew). Path i is the episode
  * on seed seed + i, so a run launched from here with the same first seed plays them.
+ * The first seed starts where the launch panel does (20,000, the example runs' seed).
  */
 
-const DEFAULTS: SynthParams = { sigma: 0.2, alpha_bps: 0, vol_of_vol: 0, skew_slope: 0, n_days: 63, n_paths: 5, seed: 0 };
+const DEFAULTS: SynthParams = { sigma: 0.2, alpha_bps: 0, vol_of_vol: 0, skew_slope: 0, n_days: 63, n_paths: 5, seed: 20_000 };
+// a launch from here may be PPO, which trains on its first seed: below 2^15
+const MAX_SEED = 32_767;
 const KEYS = Object.keys(DEFAULTS) as (keyof SynthParams)[];
 // the knobs a launch carries over; n_paths is this page's own
 const LAUNCH_KEYS: (keyof SynthParams)[] = ["sigma", "alpha_bps", "vol_of_vol", "skew_slope", "n_days", "seed"];
@@ -44,13 +47,28 @@ function Slider({ id, label, term, value, min, max, step, onChange, show }: { id
   );
 }
 
-function pathsOption(t: Tokens, d: SynthPaths, ys: number[][], name: string, fmt: (v: number) => string): EChartsOption {
+/**
+ * A vol axis at least 4 vol points tall, centred on the data: a vol that barely moves (the
+ * at-the-money vol at zero vol of vol, a smile at a steep skew's clamp) reads as flat, not
+ * as noise blown up to fill the chart. Undefined lets the chart scale itself.
+ */
+function volRange(xs: number[][]): { min: number; max: number } | undefined {
+  const v = xs.flat().filter(Number.isFinite);
+  if (!v.length) return undefined;
+  const lo = Math.min(...v);
+  const hi = Math.max(...v);
+  if (hi - lo >= 0.04) return undefined;
+  const mid = (lo + hi) / 2;
+  return { min: Math.max(0, Math.floor((mid - 0.02) * 100) / 100), max: Math.ceil((mid + 0.02) * 100) / 100 };
+}
+
+function pathsOption(t: Tokens, d: SynthPaths, ys: number[][], name: string, fmt: (v: number) => string, range?: { min: number; max: number }): EChartsOption {
   return {
     ...base(t),
     tooltip: { ...base(t).tooltip, valueFormatter: (v: unknown) => fmt(v as number) },
     grid: { ...base(t).grid, left: 64 },
     xAxis: { type: "value", min: 0, max: d.params.n_days, name: "Trading day", nameLocation: "middle", ...axis(t) },
-    yAxis: { type: "value", scale: true, name, nameLocation: "middle", ...axis(t, { nameGap: 48 }), axisLabel: { ...axis(t).axisLabel, formatter: fmt } },
+    yAxis: { type: "value", scale: !range, ...range, name, nameLocation: "middle", ...axis(t, { nameGap: 48 }), axisLabel: { ...axis(t).axisLabel, formatter: fmt } },
     series: ys.map((path, i) => ({
       name: `Seed ${d.params.seed + i}`,
       type: "line" as const,
@@ -68,7 +86,7 @@ function smileOption(t: Tokens, d: SynthPaths): EChartsOption {
     tooltip: { ...base(t).tooltip, valueFormatter: (v: unknown) => pct(v as number, 1) },
     grid: { ...base(t).grid, left: 64 },
     xAxis: { type: "value", scale: true, name: "ln(strike / spot)", nameLocation: "middle", ...axis(t), axisLabel: { ...axis(t).axisLabel, formatter: (v: number) => num(v, 2) } },
-    yAxis: { type: "value", scale: true, name: "Implied vol", nameLocation: "middle", ...axis(t, { nameGap: 48 }), axisLabel: { ...axis(t).axisLabel, formatter: (v: number) => pct(v, 0) } },
+    yAxis: { type: "value", scale: !volRange(d.smile_ivs), ...volRange(d.smile_ivs), name: "Implied vol", nameLocation: "middle", ...axis(t, { nameGap: 48 }), axisLabel: { ...axis(t).axisLabel, formatter: (v: number) => pct(v, 0) } },
     series: d.smile_ivs.map((ivs, i) => ({
       name: `Seed ${d.params.seed + i}`,
       type: "line" as const,
@@ -102,7 +120,7 @@ function initial(q: ReturnType<typeof useQuery>): SynthParams {
     skew_slope: q.num("skew_slope", DEFAULTS.skew_slope, -1, 1),
     n_days: q.int("n_days", DEFAULTS.n_days, 5, 252),
     n_paths: q.int("n_paths", DEFAULTS.n_paths, 1, 20),
-    seed: q.int("seed", DEFAULTS.seed, 0, 9999),
+    seed: q.int("seed", DEFAULTS.seed, 0, MAX_SEED),
   };
 }
 
@@ -131,7 +149,9 @@ function Synth() {
   }, [paths.data]);
   const d = paths.data ?? last;
   const set = (k: keyof SynthParams) => (v: number) => setP((x) => ({ ...x, [k]: v }));
+  // every carried knob away from its default, and `from` so Launch can say where they came from
   const launch = new URLSearchParams(LAUNCH_KEYS.filter((k) => p[k] !== DEFAULTS[k]).map((k) => [k, String(p[k])]));
+  if (launch.toString()) launch.set("from", "synth");
   const launchHref = `/launch/${launch.toString() ? `?${launch.toString()}` : ""}`;
 
   return (
@@ -156,7 +176,7 @@ function Synth() {
               <Slider id="synth-skew" label="Skew slope" term="skew_slope" value={p.skew_slope} min={-1} max={1} step={0.05} onChange={set("skew_slope")} show={num(p.skew_slope, 2)} />
               <Slider id="synth-days" label="Days per path" term="n_days" value={p.n_days} min={5} max={252} step={1} onChange={set("n_days")} />
               <Slider id="synth-paths" label="Paths shown" value={p.n_paths} min={1} max={20} step={1} onChange={set("n_paths")} />
-              <Slider id="synth-seed" label="First seed" term="seed_first" value={p.seed} min={0} max={9999} step={1} onChange={set("seed")} />
+              <Slider id="synth-seed" label="First seed" term="seed_first" value={p.seed} min={0} max={MAX_SEED} step={1} onChange={set("seed")} />
               <Link href={launchHref} className={`${ui.btn} ${ui.btnPrimary}`} style={{ textAlign: "center" }}>
                 Launch a run on this market →
               </Link>
@@ -176,7 +196,7 @@ function Synth() {
               </Card>
               <div className={ui.grid2}>
                 <Card title="At-the-money vol" sub="The near tenor at spot: the atm_iv a policy observes each day.">
-                  <Chart option={pathsOption(t, d, d.atm_ivs, "Implied vol", (v) => pct(v, 1))} height={260} label="Near-tenor at-the-money implied vol by trading day, one line per seed" rows={() => d.atm_ivs.flatMap((s, i) => s.map((v, day) => ({ seed: d.params.seed + i, day, atm_iv: v })))} />
+                  <Chart option={pathsOption(t, d, d.atm_ivs, "Implied vol", (v) => pct(v, 1), volRange(d.atm_ivs))} height={260} label="Near-tenor at-the-money implied vol by trading day, one line per seed" rows={() => d.atm_ivs.flatMap((s, i) => s.map((v, day) => ({ seed: d.params.seed + i, day, atm_iv: v })))} />
                 </Card>
                 <Card title={`The smile on day ${d.smile_day}`} sub="The near tenor's listed strikes, half way through each path.">
                   <Chart option={smileOption(t, d)} height={260} label="Near-tenor implied vol against log-moneyness on the middle day, one line per seed" rows={() => d.smile_ivs.flatMap((s, i) => s.map((v, j) => ({ seed: d.params.seed + i, log_moneyness: d.smile_log_moneyness[i]?.[j] ?? null, iv: v })))} />

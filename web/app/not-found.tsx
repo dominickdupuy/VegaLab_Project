@@ -5,7 +5,7 @@ export default function NotFound() {
   return (
     <Empty title="Nothing here">
       <p>
-        <Link href="/">Overview</Link>
+        <Link href="/">Home</Link>
       </p>
     </Empty>
   );

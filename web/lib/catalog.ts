@@ -62,21 +62,27 @@ export const PAIRS = {
   regime: { id: "regime", group: "regime", a: has("sigma", 0.2), b: has("sigma", 0.3) },
   real: { id: "real", group: "real", a: all(arm("delta_seller"), has("short_delta", 0.16)), b: arm("flat") },
   arms: { id: "arms", group: "arms", a: all(arm("delta_seller"), prem(1)), b: all(arm("ppo"), prem(1)) },
-  sample: { id: "sample", group: "sample", a: has("n_episodes", 200), b: has("n_episodes", 50) },
+  // the catalog pairs each size against its largest run (500 episodes)
+  sample: { id: "sample", group: "sample", a: has("n_episodes", 500), b: has("n_episodes", 50) },
   training: { id: "training", group: "training", a: has("total_timesteps", 200_000), b: has("total_timesteps", 500_000) },
 } satisfies Record<string, PairSpec>;
 
 const run = (r: CatalogRun): PairRun => ({ key: r.key, label: r.label, present: r.present });
 
-/** The pair in the served catalog, or why there is none. */
+/** How to put the example runs on this server, from the command the catalog payload names. */
+export const buildHint = (cat: Catalog | undefined) => `Build them with ${cat?.command || 'make showcase ARGS="--root <the runs root>"'}, then reload.`;
+
+/** The reason a step's example runs are missing: one plain sentence and how to build them. */
+export const notBuilt = (cat: Catalog | undefined, what = "The example runs for this question aren't") => `${what} on this server yet. ${buildHint(cat)}`;
+
+/** The pair in the served catalog, or why there is none (a full sentence, with how to build it). */
 export function resolvePair(cat: Catalog | undefined, spec: PairSpec): Pair | string | undefined {
   if (!cat) return undefined; // still loading
-  if (!cat.available) return "this runs root has no catalog.json (the showcase's questions)";
+  if (!cat.available) return cat.problem ? `This runs root's catalog.json did not read (${cat.problem}). ${buildHint(cat)}` : notBuilt(cat);
   const g: CatalogGroup | undefined = cat.groups.find((x) => x.group === spec.group);
-  if (!g) return `the catalog has no “${spec.group}” question`;
-  const a = g.runs.find(spec.a);
-  const b = g.runs.find(spec.b);
-  if (!a || !b) return `the catalog's “${spec.group}” question lacks one of the two runs this step compares`;
+  const a = g?.runs.find(spec.a);
+  const b = g?.runs.find(spec.b);
+  if (!g || !a || !b) return notBuilt(cat); // an older catalog, made before this question or pair
   return { id: spec.id, group: g.group, question: g.question, a: run(a), b: run(b) };
 }
 

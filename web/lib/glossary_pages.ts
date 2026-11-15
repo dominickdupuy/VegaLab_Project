@@ -29,7 +29,7 @@ export const POWER_TIPS = {
 } as const;
 
 export const SWEEP_TIPS = {
-  view: "Means: each arm's P&L at each premium. Contrasts: each arm against itself at zero premium, seed block by block. Power: how often each arm's edge is detected, measured from the sweep (the Power lab predicts it for a design you set).",
+  view: "Profit by premium: each arm's P&L at each premium. Edge over zero premium: each arm against itself at zero premium, seed block by block. How often it's caught: how often each arm's edge is detected, measured from the sweep (the Power lab predicts it for a design you set).",
   arm: "Show one arm or all of them.",
   sweep: "Which grid to read. The confirmatory grid is the pre-registered one; the pilot measured the variance it was sized on.",
   sweepPower: "The power analysis reads the confirmatory grid only.",
@@ -44,6 +44,14 @@ export const SWEEP_TIPS = {
   decisions: "The test at each premium, per arm: estimate, standard error, t, the lower bound and the verdict.",
   homogeneity: "Whether between-seed noise is the same at every premium (Brown-Forsythe). The power curve assumes it is.",
   bootstrap: "A resampling check of the t test: does it reject as often as theory says?",
+  estimate: "Estimate: the profit the premium adds, the mean over seed blocks of the arm at premium p minus the same arm at 0, in dollars per episode.",
+  lowerBound: "Lower bound: the one-sided 95% lower bound on the estimate, estimate − critical t × se. The edge is detected when it is above zero.",
+  critical: "Critical t: the score the test must pass, the one-sided 95% point of a t distribution with S − 1 degrees of freedom.",
+  pluginPower: "Plug-in power: the chance of detecting this premium, computed by plugging the estimate and its noise into the power formula; with few seeds it is rough.",
+  brownForsythe: "Brown-Forsythe W: tests whether the seed-to-seed spread is the same at every premium; a small p rejects that.",
+  bootRate: "How often the bootstrap rejects at this premium, over the resamples.",
+  analytic: "How often the t test should reject at this premium, by theory.",
+  lift: "Lift: this arm's mean P&L minus its own at the first premium of the sweep.",
 } as const;
 
 export const ATTRIBUTION_TIPS = {
@@ -61,15 +69,15 @@ export const ATTRIBUTION_TIPS = {
 } as const;
 
 export const LEAK_TIPS = {
-  eps: "How much of tomorrow's return is planted into today's observation. 0.5 means half of it: a large, obvious leak.",
+  eps: "eps: the share of tomorrow's move planted into what the trader sees today. 0.5 is half of it, a large, obvious leak; 0.1 is a tenth.",
   seeds: "How many 63-day paths the detector reads. More paths make a small leak easier to see.",
-  run: "Runs the detector on a clean and a poisoned simulator, and plants the leak in every field in turn (about ten seconds).",
-  caught: "The poisoned simulator must be flagged: some field correlates with tomorrow's return beyond the threshold.",
+  run: "Runs the detector on a clean and a poisoned copy of the market, and plants the leak in every field in turn (about ten seconds).",
+  caught: "The poisoned copy must be flagged: some field predicts tomorrow's return beyond the alarm line (Bonferroni, alpha 0.01).",
   everyField: "A leak planted into each observation field alone must be caught, and on that field. A detector that never fired on a field cannot vouch for it.",
-  quiet: "The clean simulator must not be flagged: no field may correlate with tomorrow's return beyond the threshold.",
-  strength: "How strongly each observation field predicts tomorrow's return, as |t|. Past the threshold line: flagged. Bonferroni across the fields tested, alpha 0.01.",
-  threshold: "The |t| a field must exceed to be flagged: alpha 0.01 split across the fields tested.",
-  floor: "The smallest planted leak the detector still catches, found by planting smaller and smaller ones.",
+  quiet: "The clean copy must not be flagged: no field may predict tomorrow's return beyond the alarm line, and resampling the future must leave the past unchanged. A field that never moves in the clean market has nothing to test there.",
+  strength: "Signal strength: how well each field predicts tomorrow's return, as |t|. Past the alarm line: flagged. The line is Bonferroni across the fields tested, alpha 0.01, so the chance a clean field crosses it by luck is under 1%.",
+  threshold: "The alarm line: the |t| a field must exceed to be flagged, alpha 0.01 split across the fields tested (Bonferroni).",
+  floor: "The smallest planted leak the detector still catches, found by planting smaller and smaller ones (eps 1 down to 0.025).",
   field: "Plant the leak into one field only, sized in that field's own standard deviation, and see whether the detector names it.",
 } as const;
 

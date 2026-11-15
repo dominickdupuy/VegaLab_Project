@@ -223,7 +223,7 @@ function RiskTiles({ d }: { d: RunDetail }) {
   const r = d.risk;
   return (
     <div className={ui.grid4}>
-      <Tile label="Mean P&L / episode" value={usd(r.mean)} note={<>se {usd(r.se)} · <InfoTip term="t">t</InfoTip> {num(d.row.t_stat, 2)}</>} />
+      <Tile label="Mean P&L / episode" value={usd(r.mean)} note={r.se ? <>se {usd(r.se)} · <InfoTip term="t">t</InfoTip> {num(d.row.t_stat, 2)}</> : "no spread across episodes: no se or t"} />
       <Tile label="Sortino" value={num(r.sortino, 2)} note="mean over downside spread" />
       <Tile label="CVaR 5%" value={usd(r.cvar5)} note="the worst 5% of episodes" />
       <Tile label="Hit rate" value={pct(r.hit_rate)} note="episodes that made money" />
@@ -368,11 +368,13 @@ function Detail({ d, label, question, t }: { d: RunDetail; label: string; questi
   const cap = useCapital(d);
   const stamp = runStamp(d.row);
   const id = `${short(d.row.config_hash, 16)}-s${d.row.seed ?? "?"}`;
+  // a run the catalog does not name is titled by its arm and world, its id beside
+  const title = label || `${ARM_LABEL[d.row.policy] ?? d.row.policy}, ${d.row.source !== "synthetic" ? "real SPX history" : `premium ${prem(d.row.premium)}`}`;
   return (
     <>
       <PageHead
         eyebrow={question ? `Run record · ${question}` : "Run record"}
-        title={label || id}
+        title={title}
         lede={
           <>
             <Chip color={armColor(t, d.row.policy)}>{ARM_LABEL[d.row.policy] ?? d.row.policy}</Chip>{" "}
@@ -390,15 +392,17 @@ function Detail({ d, label, question, t }: { d: RunDetail; label: string; questi
                 ) : null}
               </>
             )}{" "}
-            · {label ? <span className="mono">{id} · </span> : null}created {when(d.row.created_at)}
+            · <span className="mono">{id}</span> · created {when(d.row.created_at)}
             {d.row.commit ? (
               <>
                 {" "}
-                · commit{" "}
-                <a href="#provenance" className="mono" title={`${d.row.git_sha}: the code that made this run (Provenance)`}>
-                  {d.row.commit}
-                  {d.row.git_dirty ? " +dirty" : ""}
-                </a>
+                <span style={{ whiteSpace: "nowrap" }}>
+                  · commit{" "}
+                  <a href="#provenance" className="mono" title={`${d.row.git_sha}: the code that made this run (Provenance)`}>
+                    {d.row.commit}
+                    {d.row.git_dirty ? " +dirty" : ""}
+                  </a>
+                </span>
               </>
             ) : null}
           </>

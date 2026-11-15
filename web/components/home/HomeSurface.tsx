@@ -22,20 +22,13 @@ const PER_VOL = 824.3;
 const A7 = { tau2: 51_838, sigma2: 105_996_836, n_seeds: 5, n_episodes: 500, delta: PER_VOL, alpha: 0.05, target_power: 0.8, train_steps: 1_000_000, episode_days: 63, train_rate: 804, eval_rate: 1538, cores: 1 };
 const vp = (x: number | null | undefined) => (x === null || x === undefined ? "–" : `${x < 0 ? MINUS : "+"}${Math.abs(x).toFixed(2)}`);
 
-/** One computed sentence: the market's premium against what the study can detect. */
+/** The real premium in a sentence, for a server without the analysis; with it, the finding card above says it all. */
 function sentence(m4?: M4, vrp?: Vrp): string | null {
   const est = m4?.vrp?.estimate ?? vrp?.mapping?.headline.mean ?? null;
   if (est === null || est === undefined) return null;
   const lo = m4?.vrp?.interval[0] ?? vrp?.mapping?.headline.mean_low ?? null;
   const hi = m4?.vrp?.interval[1] ?? vrp?.mapping?.headline.mean_high ?? null;
-  const head = `The real SPX premium averages ${vp(est)} vol pts (95% ${vp(lo)} to ${vp(hi)})`;
-  const a = m4?.analysis;
-  const f = a?.arms.ppo?.floor;
-  if (!a || !f) return `${head}.`;
-  if (f.status === "not_reached") return `${head}; PPO is not detected anywhere on the sweep's grid, so a study of this size cannot see a premium that small.`;
-  const floor = f.premium ?? 0;
-  const how = f.status === "below_grid" ? ", estimated from the sweep, below its smallest premium" : "";
-  return `${head}; PPO's detection floor, the smallest premium caught ${pct(a.settings.target_power)} of the time, is ${vp(floor).replace("+", "")} vol pts at S = ${a.design.n_seeds}${how}, so ${est < floor ? "a study of this size would most likely miss a premium that small" : "a study of this size would see it"}.`;
+  return `The real SPX premium averages ${vp(est)} vol pts (95% ${vp(lo)} to ${vp(hi)}).`;
 }
 
 /** The 2D stand-in when there is no panel or no WebGL: power against premium, the real premium marked. */
@@ -71,7 +64,8 @@ function Fallback({ vrp }: { vrp?: Vrp }) {
   return <Chart option={powerOption(t, power.data.curve, vrp)} height={360} label="Detection probability against the planted premium for a 5-seed PPO study, with the real premium marked" name="power against premium" />;
 }
 
-export default function HomeSurface({ m4, vrp, built }: { m4?: M4; vrp?: Vrp; built?: boolean }) {
+/** `finding`: the study's finding card is shown above, so no second power chart and no sentence here. */
+export default function HomeSurface({ m4, vrp, built, finding = false }: { m4?: M4; vrp?: Vrp; built?: boolean; finding?: boolean }) {
   const t = useTokens();
   const reduced = useReducedMotion();
   const dates = useFetch((s) => api.gridDates(s), "home-grid-dates", built === true);
@@ -133,9 +127,10 @@ export default function HomeSurface({ m4, vrp, built }: { m4?: M4; vrp?: Vrp; bu
     return { ...o, grid3D: { ...g, viewControl: { ...((g.viewControl ?? {}) as GLOption), autoRotate: rotate, autoRotateSpeed: 4, autoRotateAfterStill: 5 } } };
   }, [t, day, z, pts, rotate]);
   const nav = useMemo(() => (day ? gridNav(day, pts) : undefined), [day, pts]);
-  const text = sentence(m4, vrp);
+  const text = finding ? null : sentence(m4, vrp);
   const words = termsIn(text);
   const noPanel = built === false || dates.error || frames.error || (dates.data && !dates.data.length);
+  if (noPanel && finding) return null; // the 2D stand-in is a power curve, and the card above has the measured ones
 
   return (
     <div className={ui.heroSide} ref={stage}>
@@ -150,7 +145,7 @@ export default function HomeSurface({ m4, vrp, built }: { m4?: M4; vrp?: Vrp; bu
             // the day shown is the date under the slider; the figure's name keeps to the span it plays, so the two never disagree mid-play
             label={`The SPX implied-volatility surface, ${f?.frames[0]?.date} to ${f?.frames[n - 1]?.date}: log-moneyness by tenor by implied vol`}
             rows={() => rowsFromOption(option).map((r) => ({ date: shown.date, ...r }))}
-            fallback={<Fallback vrp={vrp} />}
+            fallback={finding ? undefined : <Fallback vrp={vrp} />}
             hint="The real SPX vol surface, from our panel · drag to rotate"
             stamp={`panel/surface_grid.parquet · ${f?.frames[0]?.date} to ${f?.frames[n - 1]?.date}`}
           />

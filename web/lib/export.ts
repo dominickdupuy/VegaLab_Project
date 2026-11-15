@@ -6,7 +6,8 @@
 export type Row = Record<string, unknown>;
 
 function cell(v: unknown): string {
-  if (v === null || v === undefined) return "";
+  // a gap (null, or a NaN a surface leaves where nothing is quoted) is an empty cell
+  if (v === null || v === undefined || (typeof v === "number" && !Number.isFinite(v))) return "";
   const s = typeof v === "object" ? JSON.stringify(v) : String(v);
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
@@ -46,13 +47,26 @@ function valueOf(d: Datum): unknown {
 
 const AXES = ["x", "y", "z", "w"];
 
+/** The columns x, y, z named as the chart's axes are ("Planted premium (vol pts)"), else by letter. */
+function columns(option: Record<string, unknown>): string[] {
+  const names: string[] = [];
+  for (const letter of AXES) {
+    const axis = ([] as unknown[]).concat(option[`${letter}Axis`] ?? option[`${letter}Axis3D`] ?? [])[0] as Record<string, unknown> | undefined;
+    const name = typeof axis?.name === "string" ? axis.name.replace(/\s+/g, " ").trim() : "";
+    names.push(name && name !== "series" && !names.includes(name) ? name : letter);
+  }
+  return names;
+}
+
 /**
  * A chart's data as rows, read off its option: one row per point, the series named,
- * a category axis resolved to its label. What a chart without explicit rows exports.
+ * a category axis resolved to its label, each value under its axis's name. What a chart
+ * without explicit rows exports.
  */
 export function rowsFromOption(option: Record<string, unknown>): Row[] {
   const series = ([] as unknown[]).concat(option.series ?? []) as Record<string, unknown>[];
   const xAxis = ([] as unknown[]).concat(option.xAxis ?? []) as Record<string, unknown>[];
+  const col = columns(option);
   const rows: Row[] = [];
   series.forEach((s, si) => {
     const data = Array.isArray(s.data) ? (s.data as Datum[]) : [];
@@ -63,10 +77,10 @@ export function rowsFromOption(option: Record<string, unknown>): Row[] {
       const v = valueOf(d);
       if (v === null || v === undefined) return;
       const row: Row = { series: name };
-      if (Array.isArray(v)) v.forEach((x, j) => (row[AXES[j] ?? `v${j}`] = x));
+      if (Array.isArray(v)) v.forEach((x, j) => (row[col[j] ?? `v${j}`] = x));
       else {
-        row.x = cats ? cats[i] : i;
-        row.y = v;
+        row[col[0] ?? "x"] = cats ? cats[i] : i;
+        row[col[1] ?? "y"] = v;
       }
       rows.push(row);
     });

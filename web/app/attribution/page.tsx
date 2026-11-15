@@ -43,7 +43,8 @@ function episodesText(bad: number, n: number, cells: number): string {
 }
 
 function stampOf(g: GridEdge): string {
-  return `grid ${g.grid_hash} · S = ${g.n_seeds} × N = ${num(g.n_episodes)}${g.first ? ` (first ${g.first})` : ""} · ${g.source} · ${g.reproduction}`;
+  const replay = g.reproduction === "reproduces" ? "every run re-simulates bit for bit" : g.reproduction === "agrees" ? "every run re-simulates within 1e-9" : "re-simulated, an episode differs from its saved P&L (Cells and reproduction)";
+  return `grid ${g.grid_hash} · S = ${g.n_seeds} × N = ${num(g.n_episodes)}${g.first ? ` (first ${g.first})` : ""} · ${g.source} · ${replay}`;
 }
 
 /** A whisker from the one-sided lower bound to estimate + t·se, horizontal or vertical. */
@@ -620,6 +621,20 @@ function NoEdge({ list }: { list: EdgeList }) {
   );
 }
 
+// Why only these arms: an edge needs an arm at a premium against itself at 0 on the same
+// seeds, and the study's grid ran two. Every run's own split, any arm, is on its run page.
+function Scope({ arms }: { arms: string[] }) {
+  // "Fixed-delta seller" reads "the fixed-delta seller" mid-sentence; "PPO" stays as it is
+  const names = arms.map((a) => ARM_LABEL[a] ?? a).map((n) => (/^[A-Z][a-z]/.test(n) ? n.charAt(0).toLowerCase() + n.slice(1) : n));
+  const ran = names.length === 2 ? `two strategies, the ${names[0]} and ${names[1]}` : names.length ? `${names.length === 1 ? "one strategy" : `${names.length} strategies`}, ${names.join(", ")}` : "";
+  return (
+    <>
+      {ran ? `The study ran ${ran}, so ${names.length === 1 ? "that is the one" : names.length === 2 ? "those are the two" : "those are the ones"} split here; ` : ""}
+      {ran ? "any" : "Any"} single run&apos;s own P&L split, for any strategy, is on its <Link href="/runs/">run page</Link>.
+    </>
+  );
+}
+
 function Attribution() {
   const q = useQuery();
   const list = useFetch((s) => api.edges(s), "edges");
@@ -641,7 +656,7 @@ function Attribution() {
   const mixCommand = detail.data?.actionmix_command ?? grid?.actionmix_command ?? 'make actionmix ARGS="--grid <runs root>/grid-<hash>.json --workers 2"';
   return (
     <>
-      <PageHead eyebrow="Attribution" title="Where does the edge come from?" />
+      <PageHead eyebrow="Attribution" title="Where does the edge come from?" lede={<Scope arms={g?.arms ?? file?.arms ?? []} />} />
       {files.length ? (
         <Card>
           <div className={lab.bar}>
@@ -691,7 +706,7 @@ function Attribution() {
       {mixGrid ? <EdgeMix grid={mixGrid} command={mixCommand} episodesPerCell={g?.n_episodes} /> : null}
       {detail.data?.grid_key ? (
         <p className={ui.dim} style={{ fontSize: 12.5 }}>
-          The P&L contrast itself: <Link href={`/sweep/?key=${encodeURIComponent(detail.data.grid_key)}&view=contrasts`}>Sweep · contrasts</Link>.
+          The P&L contrast itself: <Link href={`/sweep/?key=${encodeURIComponent(detail.data.grid_key)}&view=contrasts`}>Sweep · Edge over zero premium</Link>.
         </p>
       ) : null}
     </>

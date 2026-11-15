@@ -77,7 +77,7 @@ export function RunTable({
   const commits = !compact && new Set(rows.map((r) => r.commit)).size > 1;
 
   const head = (c: (typeof COLUMNS)[number]) => (
-    <th key={c.key} className={c.num ? ui.num : undefined} aria-sort={sort.key === c.key ? (sort.dir === 1 ? "ascending" : "descending") : "none"}>
+    <th key={c.key} className={c.num ? ui.num : undefined} style={{ whiteSpace: "nowrap" }} aria-sort={sort.key === c.key ? (sort.dir === 1 ? "ascending" : "descending") : "none"}>
       <button type="button" className={ui.sortBtn} onClick={() => setSort((s) => ({ key: c.key, dir: s.key === c.key ? ((-s.dir) as 1 | -1) : -1 }))}>
         {c.label}
         <span aria-hidden="true">{sort.key === c.key ? (sort.dir === 1 ? "▲" : "▼") : ""}</span>
@@ -131,13 +131,15 @@ export function RunTable({
                       </span>
                     );
                   else if (c.key === "status") cell = <Verdict value={r.status} />;
+                  // a run with no spread (flat: every episode $0) has no standard error and no t
+                  else if ((c.key === "se_pnl" || c.key === "t_stat") && !r.se_pnl) cell = <span className={ui.dim}>–</span>;
                   else if (c.key === "mean_pnl" || c.key === "se_pnl" || c.key === "mean_cost") cell = usd(v as number | null);
                   else if (c.key === "t_stat") cell = num(v as number | null, 2);
                   else if (c.key === "premium") cell = prem(v as number | null);
                   else if (c.key === "mean_trades") cell = num(v as number | null, 1);
                   else cell = num(v as number | null);
                   return (
-                    <td key={c.key} className={c.num ? ui.num : undefined}>
+                    <td key={c.key} className={c.num ? ui.num : undefined} style={c.num || c.key === "created_at" ? { whiteSpace: "nowrap" } : undefined}>
                       {cell}
                     </td>
                   );

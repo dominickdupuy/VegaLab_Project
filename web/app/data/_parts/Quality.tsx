@@ -247,6 +247,11 @@ export function QualityBody({ date, status }: { date: string; status: DataStatus
               </table>
             </div>
           ) : null}
+          {qd?.fred.some((r) => r.rate_minus_sofr_bp === null || r.spot_vs_sp500_bp === null) ? (
+            <p className={ui.dim} style={{ fontSize: 12.5, margin: "8px 0 0" }}>
+              A dash is a year with nothing to compare against: SOFR starts in April 2018, and the S&amp;P 500 close this check reads starts in 2016.
+            </p>
+          ) : null}
           {qd?.checked.length ? (
             <p className={ui.dim} style={{ fontSize: 13, marginTop: 10 }}>
               {qd.checked.map((ck) => (

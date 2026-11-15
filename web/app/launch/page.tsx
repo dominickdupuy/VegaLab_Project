@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { type ReactNode, Suspense, useEffect, useMemo, useState } from "react";
 import { Card, Chip, PageHead, Progress, Segmented, SelectField, Verdict } from "@/components/Bits";
 import { InfoTip, Labelled } from "@/components/InfoTip";
 import { Fold } from "@/components/PageBits";
@@ -16,7 +16,7 @@ import { hours, num, pct, prem, short, usd, when } from "@/lib/format";
 import { guide } from "@/lib/guide";
 import { useFetch } from "@/lib/useFetch";
 import { usePoll } from "@/lib/usePoll";
-import { type QueryValue, useQuery, useQuerySync } from "@/lib/url";
+import { type QueryValue, setQuery, useQuery, useQuerySync } from "@/lib/url";
 import s from "./launch.module.css";
 
 // the knobs the guided steps set; every other one folds away under Advanced
@@ -38,6 +38,18 @@ const ARM_DOES: Record<string, string> = {
 const learned = (policy: unknown) => LEARNED_ARMS.has(String(policy));
 const armName = (policy: unknown) => ARM_LABEL[String(policy)] ?? String(policy);
 const MAX_TRAIN_SEED = 32768;
+const LEDE = "Launch one to find out, in three choices: what trades, where, and for how long. The panel on the right shows what the run will do before you start it.";
+
+// the market the Synth data page sets, in the order its dials run; its launch link
+// carries each one away from its default, with from=synth
+const SYNTH_KNOBS: [string, (v: number) => string][] = [
+  ["sigma", (v) => `vol ${pct(v, Number.isInteger(Math.round(v * 1e6) / 1e4) ? 0 : 1)}`],
+  ["alpha_bps", (v) => `drift ${num(v, Number.isInteger(v) ? 0 : 1)} bps a day`],
+  ["vol_of_vol", (v) => `vol of vol ${v}`],
+  ["skew_slope", (v) => `skew slope ${v}`],
+  ["n_days", (v) => `${num(v)} days per episode`],
+  ["seed", (v) => `first seed ${num(v)}`],
+];
 
 /** A knob's value from the URL, parsed by its kind; undefined when absent or malformed. */
 function fromUrl(k: Knob, raw: string | null): unknown {
@@ -94,6 +106,8 @@ function checkSpec(spec: Spec): Record<string, string> {
   if ((spec.wing_delta as number) >= (spec.short_delta as number)) errs.wing_delta = "must be smaller than the short delta";
   const opening = tenors[idx];
   if (opening !== undefined && (spec.roll_dte as number) >= opening) errs.roll_dte = `must be shorter than the opening tenor (${opening})`;
+  const iv = Number(spec.sigma) + Number(spec.iv_premium_vol_pts) / 100;
+  if ((spec.source ?? "synthetic") === "synthetic" && Number.isFinite(iv) && iv <= 0) errs.iv_premium_vol_pts = "too negative: the options' vol (path vol plus the premium) must stay above zero";
   if (learned(spec.policy) && !spec.total_timesteps) errs.total_timesteps = `${armName(spec.policy)} needs a training budget`;
   if (learned(spec.policy) && Number(spec.seed) >= MAX_TRAIN_SEED) errs.seed = `${armName(spec.policy)} trains on its first seed, which must be below ${MAX_TRAIN_SEED.toLocaleString("en-US")}`;
   return errs;
@@ -299,8 +313,9 @@ function Choices<T extends number>({ value, options, render, onChange, label }: 
   );
 }
 
-function PreviewCard({ p, loading, spec, rate }: { p: Preview | undefined; loading: boolean; spec: Spec; /** the rate a run gets by default */ rate: number }) {
+function PreviewCard({ p, loading, spec, rate, marked }: { p: Preview | undefined; loading: boolean; spec: Spec; /** the rate a run gets by default */ rate: number; /** the form marks a field in red: its message stands there */ marked: boolean }) {
   const t = useTokens();
+  if (marked) return <Card title="Preview" sub="This run cannot start yet: fix the field marked in red.">{null}</Card>;
   if (!p) return <Card title="Preview">{loading ? <Loading what="the preview" /> : null}</Card>;
   if (!p.ok)
     return (
@@ -423,6 +438,38 @@ function Form({ options }: { options: JobOptions }) {
   const [start] = useState(() => initial(options, q));
   const [spec, setSpec] = useState<Spec>(start.spec);
   const [preset, setPreset] = useState<string>(start.preset);
+  // what arrived from Synth data and differs from the defaults; named while it stands
+  const [carried, setCarried] = useState<Record<string, unknown>>(() =>
+    q.str("from") === "synth" ? Object.fromEntries(SYNTH_KNOBS.map(([k]) => k).filter((k) => JSON.stringify(start.spec[k]) !== JSON.stringify(options.defaults[k])).map((k) => [k, start.spec[k]])) : {},
+  );
+  const standing = SYNTH_KNOBS.filter(([k]) => k in carried && JSON.stringify(spec[k]) === JSON.stringify(carried[k]));
+  const resetCarried = () => {
+    const next = { ...spec };
+    for (const [k] of standing) next[k] = options.defaults[k];
+    setSpec(next);
+    // nothing else moved: the page is back where a plain visit starts it
+    if (options.knobs.every((k) => k.name === "source" || JSON.stringify(next[k.name]) === JSON.stringify(options.defaults[k.name]))) setPreset("null_world");
+    setCarried({});
+    setQuery({ from: null });
+  };
+  const lede: ReactNode = standing.length ? (
+    <>
+      {LEDE}
+      <br />
+      Settings carried over from Synth data: {standing.map(([k, show]) => show(Number(spec[k]))).join(", ")}. Change any below, or{" "}
+      <a
+        href="/launch/"
+        onClick={(e) => {
+          e.preventDefault();
+          resetCarried();
+        }}>
+        reset to defaults
+      </a>
+      .
+    </>
+  ) : (
+    LEDE
+  );
   // the URL: the preset, or every knob that differs from the defaults
   const changed: Record<string, QueryValue> = {};
   for (const k of options.knobs) changed[k.name] = (preset && k.name !== "source") || JSON.stringify(spec[k.name]) === JSON.stringify(options.defaults[k.name]) ? null : toUrl(spec[k.name]);
@@ -488,163 +535,175 @@ function Form({ options }: { options: JobOptions }) {
   const sigma = Number(spec.sigma ?? 0.2);
   const episodes = Number(spec.n_episodes ?? 0);
   const fieldOf = (name: string) => knobs.find((k) => k.name === name);
-  const errorList = [...Object.entries(errs).map(([k, v]) => `${fieldOf(k)?.label || k}: ${v}`), ...serverErrors.filter((e) => !Object.values(errs).some((v) => e.includes(v)))];
+  // each field's error shows once, by its field: here only the ones folded under Advanced, and
+  // the server's own reasons when the form has none of its own
+  const inSteps = Object.keys(errs).filter((k) => STEP_KNOBS.has(k));
+  const errorList = Object.keys(errs).length
+    ? [...(inSteps.length ? ["Fix the field marked in red above."] : []), ...Object.entries(errs).filter(([k]) => !STEP_KNOBS.has(k)).map(([k, v]) => `${fieldOf(k)?.label || k} (Advanced knobs): ${v}`)]
+    : serverErrors;
 
   return (
-    <div className={s.layout}>
-      <div className={ui.stack}>
-        <div className={ui.row} aria-label="Quick starts">
-          <span className={ui.fieldLabel}>Quick start</span>
-          {allPresets(options).map((p) => (
-            <button
-              key={p.name}
-              type="button"
-              {...guide(`launch-preset-${p.name}`)}
-              disabled={learned(p.spec.policy) && !options.ppo_available}
-              title={p.description}
-              aria-pressed={preset === p.name}
-              className={`${ui.btn} ${ui.btnSmall} ${preset === p.name ? ui.btnPrimary : ""}`}
-              onClick={() => {
-                setSpec({ ...options.defaults, ...p.spec, source: spec.source });
-                setPreset(p.name);
-              }}
-            >
-              {p.label}
-            </button>
-          ))}
+    <>
+      <PageHead eyebrow="Launch" title="What would a strategy make?" lede={lede} />
+      <div className={s.layout}>
+        <div className={ui.stack}>
+          <div className={ui.row} aria-label="Quick starts">
+            <span className={ui.fieldLabel}>Quick start</span>
+            {allPresets(options).map((p) => (
+              <button
+                key={p.name}
+                type="button"
+                {...guide(`launch-preset-${p.name}`)}
+                disabled={learned(p.spec.policy) && !options.ppo_available}
+                title={p.description}
+                aria-pressed={preset === p.name}
+                className={`${ui.btn} ${ui.btnSmall} ${preset === p.name ? ui.btnPrimary : ""}`}
+                onClick={() => {
+                  setSpec({ ...options.defaults, ...p.spec, source: spec.source });
+                  setPreset(p.name);
+                }}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+
+          <Card title={<StepHead n={1} title="Pick a strategy" />} sub="What trades. Each arm is a fixed rule except the learners: PPO, and the research arms A2C and DQN.">
+            <div className={s.arms}>
+              {arms.map((a) => {
+                const off = learned(a) && !options.ppo_available;
+                return (
+                  <button key={a} type="button" disabled={off} aria-pressed={spec.policy === a} className={`${s.arm} ${spec.policy === a ? s.armOn : ""}`} onClick={() => set("policy", a)} title={off ? `${armName(a)} needs the train extra on the server` : undefined}>
+                    <span className={s.armName}>
+                      <span className={ui.swatch} style={{ background: armColor(t, a) }} aria-hidden="true" />
+                      {ARM_LABEL[a] ?? a}
+                    </span>
+                    <span className={s.armText}>{ARM_DOES[a]}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {spec.policy ? <p className={s.explain} style={{ marginTop: 10 }}>{define(String(spec.policy))}</p> : null}
+          </Card>
+
+          <Card title={<StepHead n={2} title="Pick a world" tip="world" />} sub="Where it trades: a simulated market with a premium you plant, or real SPX history.">
+            <div className={ui.stack}>
+              <Segmented label="World" value={source} options={sources.map((x) => ({ value: x, label: x === "synthetic" ? "Simulated, with a planted premium" : `Real SPX history (${SOURCE_LABEL[x] ?? x})` }))} onChange={(v) => set("source", v)} />
+              {real ? (
+                <p className={s.explain}>
+                  Episodes start on real closes and trade each day&apos;s real option surface; nothing is planted, so the premium is whatever the market paid. Every arm is scored only on {evalFirst} to {evalLast}
+                  {learned(spec.policy) ? `, and ${armName(spec.policy)} first trains on ${trainFirst} to ${trainLast}, so it is never scored on a date it learned from` : ""}. <InfoTip term="a8_dates" />
+                </p>
+              ) : (
+                <>
+                  <span className={ui.fieldLabel}>
+                    <Labelled term="premium">Planted premium (vol points)</Labelled>
+                  </span>
+                  <div className={s.choices}>
+                    <Choices label="Planted premium" value={premium} options={PREMIUMS.includes(premium) || errs.iv_premium_vol_pts || !Number.isFinite(premium) ? PREMIUMS : [...PREMIUMS, premium].sort((a, b) => a - b)} render={(v) => (v === 0 ? "0 (null world)" : String(v))} onChange={(v) => set("iv_premium_vol_pts", v)} />
+                    <input className={ui.input} style={{ width: 90 }} type="number" step="any" aria-label="Planted premium, any value" value={String(spec.iv_premium_vol_pts ?? "")} onChange={(e) => set("iv_premium_vol_pts", e.target.value === "" ? null : Number(e.target.value))} />
+                  </div>
+                  <p className={s.explain}>
+                    {errs.iv_premium_vol_pts
+                      ? null
+                      : premium > 0
+                        ? `Options are priced at ${pct(sigma + premium / 100, 0)} vol while the index moves at ${pct(sigma, 0)}: a seller who is paid ${prem(premium)} vol point${premium === 1 ? "" : "s"} too much should earn it, a learner should find it.`
+                        : premium < 0
+                          ? `A negative premium is a discount: options are priced at ${pct(sigma + premium / 100, 0)} vol while the index moves at ${pct(sigma, 0)}, so a seller is paid ${prem(-premium)} vol point${premium === -1 ? "" : "s"} too little and should lose it. The study plants 0 to 4.`
+                          : `Options are priced at the same ${pct(sigma, 0)} vol the index moves at. Nothing is there to earn, so a good arm should not make money here before costs; this is the control every premium is compared with.`}
+                  </p>
+                </>
+              )}
+              {errs.iv_premium_vol_pts ? <span className={ui.fieldError}>{errs.iv_premium_vol_pts}</span> : null}
+            </div>
+          </Card>
+
+          <Card title={<StepHead n={3} title="Pick a size" />} sub="More episodes narrow the interval; the time on the right follows every choice.">
+            <div className={ui.stack}>
+              <span className={ui.fieldLabel}>
+                <Labelled term="n_episodes">Episodes</Labelled>
+              </span>
+              <div className={s.choices}>
+                <Choices label="Episodes" value={episodes} options={EPISODES.includes(episodes) || errs.n_episodes || !Number.isFinite(episodes) ? EPISODES : [...EPISODES, episodes].sort((a, b) => a - b)} render={(v) => num(v)} onChange={(v) => set("n_episodes", v)} />
+                <input className={ui.input} style={{ width: 90 }} type="number" step={1} aria-label="Episodes, any number" value={String(spec.n_episodes ?? "")} onChange={(e) => set("n_episodes", e.target.value === "" ? null : Number(e.target.value))} />
+              </div>
+              {errs.n_episodes ? <span className={ui.fieldError}>{errs.n_episodes}</span> : null}
+              <label className={ui.field} style={{ maxWidth: 260 }}>
+                <span className={ui.fieldLabel}>
+                  <Labelled term="seed_first">First seed</Labelled>
+                </span>
+                <input className={`${ui.input} ${errs.seed ? ui.inputBad : ""}`} type="number" step={1} value={String(spec.seed ?? "")} onChange={(e) => set("seed", e.target.value === "" ? null : Number(e.target.value))} />
+                <span className={errs.seed ? ui.fieldError : ui.fieldHelp}>{errs.seed || "Runs that share a first seed share their paths, so they compare as pairs; the example runs start at 20,000."}</span>
+              </label>
+              {learned(spec.policy) ? (
+                <>
+                  <span className={ui.fieldLabel}>
+                    <Labelled term="total_timesteps">Training steps</Labelled>
+                  </span>
+                  <Choices label="Training steps" value={Number(spec.total_timesteps ?? 0)} options={STEPS} render={(v) => (v >= 1_000_000 ? `${v / 1_000_000}M` : `${v / 1000}k`)} onChange={(v) => set("total_timesteps", v)} />
+                  {errs.total_timesteps ? <span className={ui.fieldError}>{errs.total_timesteps}</span> : null}
+                </>
+              ) : null}
+            </div>
+          </Card>
+
+          <Fold title="Advanced knobs" sub="the market, costs, structure and account; defaults are the study's">
+            <div className={ui.stack}>
+              {advanced.map(({ g, ks }) => (
+                <div key={g}>
+                  <p className={ui.groupTitle}>{g}</p>
+                  <div className={ui.grid3}>
+                    {ks.map((k) => (
+                      <KnobField key={k.name} k={k} value={spec[k.name]} error={errs[k.name]} onChange={(v) => set(k.name, v)} off={real && k.synthetic_only ? `Not used on ${SOURCE_LABEL[source] ?? source}: the real chain brings its own surface, path and carry.` : undefined} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Fold>
+
+          <Card title="Jobs this session">
+            {jobs.error ? <ErrorBox what="jobs" error={jobs.error} onRetry={jobs.reload} /> : null}
+            {jobs.data && sessionJobs(jobs.data).length === 0 ? <Empty title="No jobs launched from this tab yet" /> : null}
+            <div className={ui.stack}>
+              {sessionJobs(jobs.data ?? []).map(({ job: j, times }) => (
+                <div key={j.job_id} className={ui.card} style={{ boxShadow: "none", border: "1px solid var(--line)" }}>
+                  <JobCard job={j} />
+                  <p className={ui.dim} style={{ fontSize: 12, marginTop: 6 }}>
+                    submitted {when(j.created_at)}
+                    {times > 1 ? ` · launched ${times} times, the same run` : ""}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </Card>
         </div>
 
-        <Card title={<StepHead n={1} title="Pick a strategy" />} sub="What trades. Each arm is a fixed rule except the learners: PPO, and the research arms A2C and DQN.">
-          <div className={s.arms}>
-            {arms.map((a) => {
-              const off = learned(a) && !options.ppo_available;
-              return (
-                <button key={a} type="button" disabled={off} aria-pressed={spec.policy === a} className={`${s.arm} ${spec.policy === a ? s.armOn : ""}`} onClick={() => set("policy", a)} title={off ? `${armName(a)} needs the train extra on the server` : undefined}>
-                  <span className={s.armName}>
-                    <span className={ui.swatch} style={{ background: armColor(t, a) }} aria-hidden="true" />
-                    {ARM_LABEL[a] ?? a}
-                  </span>
-                  <span className={s.armText}>{ARM_DOES[a]}</span>
-                </button>
-              );
-            })}
-          </div>
-          {spec.policy ? <p className={s.explain} style={{ marginTop: 10 }}>{define(String(spec.policy))}</p> : null}
-        </Card>
-
-        <Card title={<StepHead n={2} title="Pick a world" tip="world" />} sub="Where it trades: a simulated market with a premium you plant, or real SPX history.">
-          <div className={ui.stack}>
-            <Segmented label="World" value={source} options={sources.map((x) => ({ value: x, label: x === "synthetic" ? "Simulated, with a planted premium" : `Real SPX history (${SOURCE_LABEL[x] ?? x})` }))} onChange={(v) => set("source", v)} />
-            {real ? (
-              <p className={s.explain}>
-                Episodes start on real closes and trade each day&apos;s real option surface; nothing is planted, so the premium is whatever the market paid. Every arm is scored only on {evalFirst} to {evalLast}
-                {learned(spec.policy) ? `, and ${armName(spec.policy)} first trains on ${trainFirst} to ${trainLast}, so it is never scored on a date it learned from` : ""}. <InfoTip term="a8_dates" />
-              </p>
-            ) : (
-              <>
-                <span className={ui.fieldLabel}>
-                  <Labelled term="premium">Planted premium (vol points)</Labelled>
-                </span>
-                <div className={s.choices}>
-                  <Choices label="Planted premium" value={premium} options={PREMIUMS.includes(premium) ? PREMIUMS : [...PREMIUMS, premium].sort((a, b) => a - b)} render={(v) => (v === 0 ? "0 (null world)" : String(v))} onChange={(v) => set("iv_premium_vol_pts", v)} />
-                  <input className={ui.input} style={{ width: 90 }} type="number" step="any" aria-label="Planted premium, any value" value={String(spec.iv_premium_vol_pts ?? "")} onChange={(e) => set("iv_premium_vol_pts", e.target.value === "" ? null : Number(e.target.value))} />
-                </div>
-                <p className={s.explain}>
-                  {premium
-                    ? `Options are priced at ${pct(sigma + premium / 100, 0)} vol while the index moves at ${pct(sigma, 0)}: a seller who is paid ${prem(premium)} vol point${premium === 1 ? "" : "s"} too much should earn it, a learner should find it.`
-                    : `Options are priced at the same ${pct(sigma, 0)} vol the index moves at. Nothing is there to earn, so a good arm should not make money here before costs; this is the control every premium is compared with.`}
-                </p>
-              </>
-            )}
-            {errs.iv_premium_vol_pts ? <span className={ui.fieldError}>{errs.iv_premium_vol_pts}</span> : null}
-          </div>
-        </Card>
-
-        <Card title={<StepHead n={3} title="Pick a size" />} sub="More episodes narrow the interval; the time on the right follows every choice.">
-          <div className={ui.stack}>
-            <span className={ui.fieldLabel}>
-              <Labelled term="n_episodes">Episodes</Labelled>
-            </span>
-            <div className={s.choices}>
-              <Choices label="Episodes" value={episodes} options={EPISODES.includes(episodes) ? EPISODES : [...EPISODES, episodes].sort((a, b) => a - b)} render={(v) => num(v)} onChange={(v) => set("n_episodes", v)} />
-              <input className={ui.input} style={{ width: 90 }} type="number" step={1} aria-label="Episodes, any number" value={String(spec.n_episodes ?? "")} onChange={(e) => set("n_episodes", e.target.value === "" ? null : Number(e.target.value))} />
-            </div>
-            {errs.n_episodes ? <span className={ui.fieldError}>{errs.n_episodes}</span> : null}
-            <label className={ui.field} style={{ maxWidth: 260 }}>
-              <span className={ui.fieldLabel}>
-                <Labelled term="seed_first">First seed</Labelled>
-              </span>
-              <input className={`${ui.input} ${errs.seed ? ui.inputBad : ""}`} type="number" step={1} value={String(spec.seed ?? "")} onChange={(e) => set("seed", e.target.value === "" ? null : Number(e.target.value))} />
-              <span className={errs.seed ? ui.fieldError : ui.fieldHelp}>{errs.seed || "Runs that share a first seed share their paths, so they compare as pairs."}</span>
-            </label>
-            {learned(spec.policy) ? (
-              <>
-                <span className={ui.fieldLabel}>
-                  <Labelled term="total_timesteps">Training steps</Labelled>
-                </span>
-                <Choices label="Training steps" value={Number(spec.total_timesteps ?? 0)} options={STEPS} render={(v) => (v >= 1_000_000 ? `${v / 1_000_000}M` : `${v / 1000}k`)} onChange={(v) => set("total_timesteps", v)} />
-                {errs.total_timesteps ? <span className={ui.fieldError}>{errs.total_timesteps}</span> : null}
-              </>
-            ) : null}
-          </div>
-        </Card>
-
-        <Fold title="Advanced knobs" sub="the market, costs, structure and account; defaults are the study's">
-          <div className={ui.stack}>
-            {advanced.map(({ g, ks }) => (
-              <div key={g}>
-                <p className={ui.groupTitle}>{g}</p>
-                <div className={ui.grid3}>
-                  {ks.map((k) => (
-                    <KnobField key={k.name} k={k} value={spec[k.name]} error={errs[k.name]} onChange={(v) => set(k.name, v)} off={real && k.synthetic_only ? `Not used on ${SOURCE_LABEL[source] ?? source}: the real chain brings its own surface, path and carry.` : undefined} />
+        <div className={s.side}>
+          <PreviewCard p={preview.data} loading={preview.loading} spec={spec} rate={Number(options.defaults.r)} marked={Object.keys(errs).length > 0} />
+          <Card>
+            <div className={ui.stack}>
+              <button type="button" className={`${ui.btn} ${ui.btnPrimary}`} disabled={!ok || sent.busy} onClick={launch} {...guide("launch-run")}>
+                {sent.busy ? "Submitting…" : preview.data?.exists ? "Launch (reuses the run on disk)" : `Launch ${ARM_LABEL[String(spec.policy)] ?? "run"}`}
+              </button>
+              {errorList.length ? (
+                <ul className={ui.fieldError} style={{ margin: 0, paddingLeft: 18 }}>
+                  {errorList.map((e) => (
+                    <li key={e}>{e}</li>
                   ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </Fold>
-
-        <Card title="Jobs this session">
-          {jobs.error ? <ErrorBox what="jobs" error={jobs.error} onRetry={jobs.reload} /> : null}
-          {jobs.data && sessionJobs(jobs.data).length === 0 ? <Empty title="No jobs launched from this tab yet" /> : null}
-          <div className={ui.stack}>
-            {sessionJobs(jobs.data ?? []).map(({ job: j, times }) => (
-              <div key={j.job_id} className={ui.card} style={{ boxShadow: "none", border: "1px solid var(--line)" }}>
-                <JobCard job={j} />
-                <p className={ui.dim} style={{ fontSize: 12, marginTop: 6 }}>
-                  submitted {when(j.created_at)}
-                  {times > 1 ? ` · launched ${times} times, the same run` : ""}
-                </p>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
-
-      <div className={s.side}>
-        <PreviewCard p={preview.data} loading={preview.loading} spec={spec} rate={Number(options.defaults.r)} />
-        <Card>
-          <div className={ui.stack}>
-            <button type="button" className={`${ui.btn} ${ui.btnPrimary}`} disabled={!ok || sent.busy} onClick={launch} {...guide("launch-run")}>
-              {sent.busy ? "Submitting…" : preview.data?.exists ? "Launch (reuses the run on disk)" : `Launch ${ARM_LABEL[String(spec.policy)] ?? "run"}`}
-            </button>
-            {errorList.length ? (
-              <ul className={ui.fieldError} style={{ margin: 0, paddingLeft: 18 }}>
-                {errorList.map((e) => (
-                  <li key={e}>{e}</li>
-                ))}
-              </ul>
-            ) : null}
-            {sent.error ? <span className={ui.fieldError}>{sent.error.message}</span> : null}
-          </div>
-        </Card>
-        {currentJob ? (
-          <Card title="Launched">
-            <JobCard job={currentJob} />
+                </ul>
+              ) : null}
+              {sent.error ? <span className={ui.fieldError}>{sent.error.message}</span> : null}
+            </div>
           </Card>
-        ) : null}
+          {currentJob ? (
+            <Card title="Launched">
+              <JobCard job={currentJob} />
+            </Card>
+          ) : null}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -660,7 +719,7 @@ function Launch() {
   const options = useFetch((sig) => api.launchOptions(sig), "options");
   return (
     <>
-      <PageHead eyebrow="Launch" title="What would a strategy make?" lede="Launch one to find out, in three choices: what trades, where, and for how long. The panel on the right shows what the run will do before you start it." />
+      {options.data ? null : <PageHead eyebrow="Launch" title="What would a strategy make?" lede={LEDE} />}
       {options.error ? <ErrorBox what="the launch options" error={options.error} onRetry={options.reload} /> : null}
       {options.loading ? <Loading what="the launch form" /> : null}
       {options.data ? <Form options={options.data} /> : null}

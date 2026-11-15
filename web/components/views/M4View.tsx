@@ -23,7 +23,7 @@ function floorText(a: M4Arm): string {
 }
 
 /** A floor under the grid's smallest premium was not measured: it is interpolated from the anchor at zero. */
-const belowGrid = (f: M4Arm["floor"]) => (f.status === "below_grid" ? `estimated from the sweep, below its smallest premium of ${vp(f.bracket[1])}` : "");
+export const belowGrid = (f: M4Arm["floor"]) => (f.status === "below_grid" ? `estimated from the sweep, below its smallest premium of ${vp(f.bracket[1])}` : "");
 
 type BandPoint = { premium: number; power_lo: number | null; power_hi: number | null };
 
@@ -39,7 +39,9 @@ function band(pts: BandPoint[], color: string) {
   };
 }
 
-function powerOption(t: Tokens, m: M4): EChartsOption {
+/** The measured power curves with the target line and the real premium. `compact` (Home's
+ * finding card): the curves and those lines only, without the bands and the floor marks. */
+export function powerOption(t: Tokens, m: M4, compact = false): EChartsOption {
   const a = m.analysis as M4Analysis;
   const target = a.settings.target_power;
   const series: SeriesOption[] = [];
@@ -50,8 +52,8 @@ function powerOption(t: Tokens, m: M4): EChartsOption {
     const color = armColor(t, arm);
     const name = ARM_LABEL[arm] ?? arm;
     const pts = x.curve.interpolated;
-    series.push(
-      {
+    if (!compact)
+      series.push({
         name,
         type: "custom",
         data: pts.map((p) => [p.premium, p.power_lo, p.power_hi]),
@@ -60,7 +62,8 @@ function powerOption(t: Tokens, m: M4): EChartsOption {
         silent: true,
         tooltip: { show: false },
         z: 1,
-      },
+      });
+    series.push(
       { name, type: "line", data: pts.map((p) => [p.premium, p.power]), showSymbol: false, lineStyle: { width: 2.5, color }, itemStyle: { color }, z: 3 },
       {
         name,
@@ -72,7 +75,7 @@ function powerOption(t: Tokens, m: M4): EChartsOption {
         z: 4,
       },
     );
-    if (x.floor.premium !== null) floors.push({ xAxis: x.floor.premium, name: `${name} floor ${vp(x.floor.premium)}`, lineStyle: { color } });
+    if (x.floor.premium !== null && !compact) floors.push({ xAxis: x.floor.premium, name: `${name} floor ${vp(x.floor.premium)}`, lineStyle: { color } });
   }
   const real = m.vrp;
   series.push({
@@ -84,10 +87,10 @@ function powerOption(t: Tokens, m: M4): EChartsOption {
       silent: true,
       label: { color: t.text2, fontSize: 11, formatter: (q: { name?: string }) => q.name ?? "" },
       lineStyle: { type: "dashed", width: 1 },
-      data: [{ yAxis: target, name: `${pct(target)} power`, label: { position: "insideEndTop" }, lineStyle: { color: t.s5 } }, ...floors, ...(real ? [{ xAxis: real.estimate, name: `real ${vp(real.estimate)}`, lineStyle: { color: t.text } }] : [])] as never,
+      data: [{ yAxis: target, name: `${pct(target)} power`, label: { position: "insideEndTop" }, lineStyle: { color: t.s5 } }, ...floors, ...(real ? [{ xAxis: real.estimate, name: compact ? `real premium ${real.estimate < 0 ? "" : "+"}${vp(real.estimate)}, 95% shaded` : `real ${vp(real.estimate)}`, lineStyle: { color: t.text } }] : [])] as never,
     },
     markArea: real
-      ? { silent: true, itemStyle: { color: t.dark ? "rgba(232,238,247,0.07)" : "rgba(19,35,61,0.06)" }, label: { color: t.muted, fontSize: 11, position: "insideTop", formatter: "real premium, 95%" }, data: [[{ xAxis: Math.max(0, real.interval[0]) }, { xAxis: real.interval[1] }]] as never }
+      ? { silent: true, itemStyle: { color: t.dark ? "rgba(232,238,247,0.07)" : "rgba(19,35,61,0.06)" }, label: { show: !compact, color: t.muted, fontSize: 11, position: "insideBottomRight", distance: 6, formatter: "real premium, 95%" }, data: [[{ xAxis: Math.max(0, real.interval[0]) }, { xAxis: real.interval[1] }]] as never }
       : undefined,
   });
   return {
@@ -103,7 +106,7 @@ function powerOption(t: Tokens, m: M4): EChartsOption {
 }
 
 /** "0.06 vol pts", or "above 4 vol pts" when the grid never reaches the target. */
-function floorShort(a: M4Arm): string {
+export function floorShort(a: M4Arm): string {
   const f = a.floor;
   if (f.status === "not_reached") return `above ${vp(f.bracket[0])} vol pts`;
   return `${vp(f.premium)} vol pts`;
@@ -124,14 +127,22 @@ function m4Reading(m: M4) {
   });
   const listed = floors.length > 1 ? `${floors.slice(0, -1).join(", ")} and ${floors[floors.length - 1]}` : (floors[0] ?? "–");
   const below = a.arm_order.some((arm) => a.arms[arm]?.floor.status === "below_grid");
-  const main = (
-    <>
-      {below ? "Read" : "Measured"} from the sweep&apos;s {a.design.n_seeds} seeds of {num(a.design.n_episodes)} episodes, the smallest premium caught {pct(a.settings.target_power)} of the time (the detection floor) is {listed}.
-    </>
-  );
+  const design = `${below ? "Read" : "Measured"} from the sweep's ${a.design.n_seeds} seeds of ${num(a.design.n_episodes)} episodes, the smallest premium caught ${pct(a.settings.target_power)} of the time (the detection floor) is ${listed}.`;
   const real = m.vrp && m.mapped.length ? `At the real SPX premium, ${vp(m.vrp.estimate)} vol pts, power is ${m.mapped.map((r) => `${pct(r.power, 0)} for ${name(r.arm)}`).join(" and ")}.` : "";
   const gap = a.gap && a.gap.value !== null ? ` ${ArmPhrase(a.gap.learned)} needs ${a.gap.kind === "lower_bound" ? "at least " : ""}${vp(a.gap.value)} vol pts more premium than ${name(a.gap.oracle)} to be detected as often.` : "";
-  return { main, note: `${real}${gap}`.trim() };
+  // the finding in one plain sentence: where the learner's curve crosses the target, against what the real market pays
+  const learned = a.gap ? a.arms[a.gap.learned] : undefined;
+  if (!learned || !a.gap || !m.vrp) return { main: design, note: `${real}${gap}`.trim() };
+  const f = learned.floor;
+  const target = pct(a.settings.target_power);
+  const pays = `the real market pays about ${vp(m.vrp.estimate)}`;
+  const main =
+    f.status === "not_reached"
+      ? `${ArmPhrase(a.gap.learned)} is never caught ${target} of the time on the grid (its floor is ${floorShort(learned)}); ${pays}.`
+      : `${ArmPhrase(a.gap.learned)} is caught ${target} of the time ${f.premium !== null && f.premium > m.vrp.estimate ? "only " : ""}from ${floorShort(learned)} of premium; ${pays}.`;
+  // the floors' bands are in "Floors and the gap"; the note keeps only how rough the learner's is
+  const rough = f.premium !== null && f.lo !== null ? ` From ${a.design.n_seeds} seeds of ${num(a.design.n_episodes)} episodes, ${armPhrase(a.gap.learned)}'s floor is rough: its ${pct(a.settings.curve_level)} band runs from ${vp(f.lo)} to ${f.hi === null ? "above the grid" : vp(f.hi)}.` : "";
+  return { main, note: `${real}${gap}${rough}`.trim() };
 }
 
 export function M4View() {
@@ -172,7 +183,7 @@ export function M4View() {
           </ul>
         </Card>
       ) : null}
-      <Card title="Power against planted premium" info="sweep.powerCurve">
+      <Card title="Power against planted premium" info="sweep.powerCurve" sub={`Find where each curve crosses the ${pct(a.settings.target_power)} line${m.vrp ? `; the dashed line at real ${vp(m.vrp.estimate)} is what the market pays` : ""}.`}>
         <div className={ui.stack}>
           <Reading note={read.note || undefined}>{read.main}</Reading>
           <Chart
@@ -237,13 +248,25 @@ export function M4View() {
               <tr>
                 <th>Arm</th>
                 <th className={ui.num}>Premium</th>
-                <th className={ui.num}>Estimate</th>
-                <th className={ui.num}>SE</th>
-                <th className={ui.num}>t</th>
-                <th className={ui.num}>Lower bound</th>
+                <th className={ui.num}>
+                  <InfoTip term="sweep.estimate">Profit added</InfoTip>
+                </th>
+                <th className={ui.num}>
+                  <InfoTip term="se">Spread across seeds (se)</InfoTip>
+                </th>
+                <th className={ui.num}>
+                  <InfoTip term="t">Score (t)</InfoTip>
+                </th>
+                <th className={ui.num}>
+                  <InfoTip term="sweep.lowerBound">Lower bound</InfoTip>
+                </th>
                 <th className={ui.num}>95% interval</th>
-                <th className={ui.num}>τ²</th>
-                <th className={ui.num}>Plug-in power</th>
+                <th className={ui.num}>
+                  <InfoTip term="tau2">Seed noise (τ²)</InfoTip>
+                </th>
+                <th className={ui.num}>
+                  <InfoTip term="sweep.pluginPower">Chance caught</InfoTip>
+                </th>
                 <th>Verdict</th>
               </tr>
             </thead>
@@ -251,7 +274,7 @@ export function M4View() {
               {a.arm_order.flatMap((arm) =>
                 (a.arms[arm]?.decisions ?? []).map((d) => (
                   <tr key={`${arm}-${d.premium}`}>
-                    <td>{ARM_LABEL[arm] ?? arm}</td>
+                    <td style={{ whiteSpace: "nowrap" }}>{ARM_LABEL[arm] ?? arm}</td>
                     <td className={ui.num}>{vp(d.premium)}</td>
                     <td className={ui.num}>{usd(d.estimate)}</td>
                     <td className={ui.num}>{usd(d.se)}</td>
@@ -288,10 +311,14 @@ export function M4View() {
                 <tr>
                   <th>Arm</th>
                   <th>On</th>
-                  <th className={ui.num}>W</th>
+                  <th className={ui.num}>
+                    <InfoTip term="sweep.brownForsythe">Test statistic (W)</InfoTip>
+                  </th>
                   <th className={ui.num}>df</th>
                   <th className={ui.num}>p</th>
-                  <th>Equal τ²</th>
+                  <th>
+                    <InfoTip term="tau2">Same noise at every premium (equal τ²)</InfoTip>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -332,8 +359,12 @@ export function M4View() {
                 <tr>
                   <th>Arm</th>
                   <th className={ui.num}>Premium</th>
-                  <th className={ui.num}>Rate</th>
-                  <th className={ui.num}>Analytic</th>
+                  <th className={ui.num}>
+                    <InfoTip term="sweep.bootRate">Bootstrap rate</InfoTip>
+                  </th>
+                  <th className={ui.num}>
+                    <InfoTip term="sweep.analytic">t test rate (analytic)</InfoTip>
+                  </th>
                   <th className={ui.num}>Gap</th>
                   <th className={ui.num}>p</th>
                   <th>Agrees</th>

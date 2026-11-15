@@ -13,7 +13,7 @@ from typing import Any, Literal
 from pydantic import Field
 
 from optspread.api._base import Out
-from optspread.api.jobs import JobOptionsOut, PresetOut, job_options
+from optspread.api.jobs import LAUNCH_SEED, JobOptionsOut, PresetOut, job_options
 from optspread.api.study import A7_EVAL_RATE, A7_TRAIN_RATE
 from optspread.dashboard.jobs.spec import JobSpec
 from optspread.dashboard.runindex import RunRow
@@ -29,7 +29,7 @@ PPO_PRESET = PresetOut(
         "the sweep trains 1,000,000."
     ),
     spec={
-        **JobSpec().model_dump(mode="json"),
+        **JobSpec(seed=LAUNCH_SEED).model_dump(mode="json"),
         "policy": "ppo",
         "iv_premium_vol_pts": 4.0,
         "n_episodes": 100,
@@ -210,7 +210,8 @@ def _day_zero(config: Any, source: str) -> DayZeroOut:
     tenor = int(exp - chain.t)
     plain = (
         f"{who} opens {STRUCTURE_PLAIN.get(name, name)} {tenor} trading days to expiry, "
-        f"short strikes at {config.env.short_delta:g} delta, taking in ${credit:,.0f}."
+        f"selling the listed strikes nearest {config.env.short_delta:g} delta and taking in "
+        f"${credit:,.0f}."
     )
     return DayZeroOut(
         policy=config.policy,

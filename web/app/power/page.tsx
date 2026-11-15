@@ -81,7 +81,7 @@ function LogSlider({ id, label, term, value, min, max, onChange, unit }: { id: s
           <label htmlFor={id}>{label}</label>
         </Labelled>
         <span>
-          {value === 0 ? "0" : value.toExponential(2)} {unit}
+          {value.toLocaleString("en-US", { maximumFractionDigits: value < 10 ? 2 : 0 })} {unit}
         </span>
       </span>
       <input id={id} className={ui.range} type="range" min={lo - 0.25} max={hi} step={0.01} value={value === 0 ? lo - 0.25 : pos} onChange={(e) => {
@@ -133,7 +133,7 @@ function powerOption(t: Tokens, p: Power, unit: Unit): EChartsOption {
           label: { color: t.muted, fontSize: 11 },
           lineStyle: { color: t.s5, type: "solid", width: 1 },
           data: [
-            { yAxis: p.params.target_power, label: { formatter: `${pct(p.params.target_power)} target` } },
+            { yAxis: p.params.target_power, label: { formatter: `${pct(p.params.target_power)} target`, position: "insideEndTop" } },
             { xAxis: inUnit(p.params.delta, unit), label: { formatter: "your effect" } },
           ],
         },

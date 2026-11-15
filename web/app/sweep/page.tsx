@@ -18,12 +18,19 @@ import { esc, num, pct, prem, short, usd } from "@/lib/format";
 import { useFetch } from "@/lib/useFetch";
 import { useQuery, useQuerySync } from "@/lib/url";
 
+// plain names on the buttons; the URL keeps view=cells|contrasts|power, so old links still open
 const VIEWS = [
-  { value: "cells", label: "Means" },
-  { value: "contrasts", label: "Contrasts" },
-  { value: "power", label: "Power" },
+  { value: "cells", label: "Profit by premium" },
+  { value: "contrasts", label: "Edge over zero premium" },
+  { value: "power", label: "How often it's caught" },
 ] as const;
 type View = (typeof VIEWS)[number]["value"];
+/** What the view shows, in one line under the switcher (the glossary's sweep.view, split by view). */
+const VIEW_LINE: Record<View, string> = {
+  cells: "Each arm's mean P&L at each planted premium.",
+  contrasts: "Each arm against itself at zero premium, seed block by block: the profit the premium adds.",
+  power: "How often a study this size detects each arm's edge, measured from the sweep: the study's headline.",
+};
 
 function oracleCurves(s: Sweep): Record<string, PremiumPoint[]> {
   return Object.fromEntries(
@@ -72,11 +79,15 @@ function GridCells({ s, arm }: { s: Sweep; arm: string }) {
             <tr>
               <th>Arm</th>
               <th className={ui.num}>Premium</th>
-              <th className={ui.num}>Block</th>
+              <th className={ui.num}>
+                <InfoTip term="seed_block">Seed block</InfoTip>
+              </th>
               <th className={ui.num}>Mean P&L</th>
-              <th className={ui.num}>SE</th>
-              <th className={ui.num}>Cost/ep</th>
-              <th className={ui.num}>Trades/ep</th>
+              <th className={ui.num}>
+                <InfoTip term="se">Spread across episodes (se)</InfoTip>
+              </th>
+              <th className={ui.num}>Cost per episode</th>
+              <th className={ui.num}>Trades per episode</th>
               <th>Run</th>
             </tr>
           </thead>
@@ -120,8 +131,12 @@ function ScriptedCells({ s }: { s: Sweep }) {
               <th>Arm</th>
               <th className={ui.num}>Premium</th>
               <th className={ui.num}>Mean P&L</th>
-              <th className={ui.num}>SE</th>
-              <th className={ui.num}>Lift</th>
+              <th className={ui.num}>
+                <InfoTip term="se">Spread across episodes (se)</InfoTip>
+              </th>
+              <th className={ui.num}>
+                <InfoTip term="sweep.lift">Rise from the first premium (lift)</InfoTip>
+              </th>
               <th>Run</th>
             </tr>
           </thead>
@@ -205,18 +220,28 @@ function Contrasts({ s, arm }: { s: Sweep; arm: string }) {
               <tr>
                 <th>Arm</th>
                 <th className={ui.num}>Premium</th>
-                <th className={ui.num}>Estimate</th>
-                <th className={ui.num}>SE</th>
-                <th className={ui.num}>t</th>
-                <th className={ui.num}>Critical</th>
-                <th className={ui.num}>Lower bound</th>
+                <th className={ui.num}>
+                  <InfoTip term="sweep.estimate">Profit added</InfoTip>
+                </th>
+                <th className={ui.num}>
+                  <InfoTip term="se">Spread across seeds (se)</InfoTip>
+                </th>
+                <th className={ui.num}>
+                  <InfoTip term="t">Score (t)</InfoTip>
+                </th>
+                <th className={ui.num}>
+                  <InfoTip term="sweep.critical">Score to pass (critical)</InfoTip>
+                </th>
+                <th className={ui.num}>
+                  <InfoTip term="sweep.lowerBound">Lower bound</InfoTip>
+                </th>
                 <th>Verdict</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((c) => (
                 <tr key={`${c.arm}-${c.premium}`}>
-                  <td>{ARM_LABEL[c.arm] ?? c.arm}</td>
+                  <td style={{ whiteSpace: "nowrap" }}>{ARM_LABEL[c.arm] ?? c.arm}</td>
                   <td className={ui.num}>{num(c.premium, 2)}</td>
                   <td className={ui.num}>{usd(c.estimate)}</td>
                   <td className={ui.num}>{usd(c.se)}</td>
@@ -273,7 +298,7 @@ function SweepView({ s, view, arm }: { s: Sweep; view: View; arm: string }) {
           <Chart option={premiumChart(t, shown)} height={360} label="Mean P&L against planted premium, by arm" stamp={sweepStamp(s)} rows={() => Object.entries(s.oracle).flatMap(([a, pts]) => pts.map((p) => ({ arm: a, ...p })))} />
         </div>
       </Card>
-      <Fold id="cells" title="Cells" term="sweep.cells" sub={g ? `${g.cells.length} runs${g.missing.length ? `, ${g.missing.length} missing under this runs root` : ""}` : "Lift: against the first premium, same arm."}>
+      <Fold id="cells" title={g ? "Every run" : "Profit at each premium"} term="sweep.cells" sub={g ? `${g.cells.length} runs${g.missing.length ? `, ${g.missing.length} missing under this runs root` : ""}` : "Lift: against the first premium, same arm."}>
         {g ? <GridCells s={s} arm={arm} /> : <ScriptedCells s={s} />}
       </Fold>
     </>
@@ -305,7 +330,7 @@ function Sweeps() {
   const q = useQuery();
   const list = useFetch((s) => api.sweeps(s), "sweeps");
   const [chosen, setChosen] = useState(() => q.str("key"));
-  const [view, setView] = useState<View>(() => q.oneOf("view", ["cells", "contrasts", "power"] as const, "cells"));
+  const [view, setView] = useState<View>(() => q.oneOf("view", ["cells", "contrasts", "power"] as const, "power"));
   const [arm, setArm] = useState(() => q.str("arm"));
   const study = useFetch((s) => api.study(s), "study");
   const sweeps = list.data?.sweeps ?? [];
@@ -314,7 +339,8 @@ function Sweeps() {
   const confirmatory = study.data ? sweeps.find((s) => s.kind === "grid" && s.sweep_hash === study.data?.grid_hash) : undefined;
   const fallback = confirmatory?.key ?? [...sweeps].reverse().find((s) => s.kind === "grid")?.key ?? sweeps[sweeps.length - 1]?.key ?? "";
   const key = sweeps.some((s) => s.key === chosen) ? chosen : study.loading && !study.data ? "" : fallback;
-  useQuerySync({ key: chosen || null, view, arm }, { view: "cells" });
+  // the power view is the study's headline, so a bare /sweep/ opens on it
+  useQuerySync({ key: chosen || null, view, arm }, { view: "power" });
   const sweep = useFetch((s) => api.sweep(key, s), key, Boolean(key));
   const arms = sweeps.find((s) => s.key === key)?.arms ?? [];
   // the bar keeps every control in place: one that does not apply to a view is disabled, not removed
@@ -328,6 +354,9 @@ function Sweeps() {
         <div className={lab.bar}>
           <div className={lab.barItem}>
             <Segmented label="View" title="View" term="sweep.view" guide="sweep-view" value={view} options={VIEWS} onChange={setView} />
+            <span className={ui.dim} style={{ fontSize: 12.5 }}>
+              {VIEW_LINE[view]}
+            </span>
           </div>
           <div className={lab.barItem}>
             <SelectField id="sweep-arm" label="Arm" term={power ? "sweep.sweepPower" : "sweep.arm"} guide="sweep-arm" all="All arms" disabled={power} value={power ? "" : armNow} options={arms} render={(a) => ARM_LABEL[a] ?? a} onChange={setArm} />
@@ -348,6 +377,9 @@ function Sweeps() {
               onChange={(v) => v && setChosen(v)}
             />
           </div>
+          {power ? (
+            <span className={lab.barNote}>Arm and Grid set the other two views; this one reads the confirmatory grid, both arms.</span>
+          ) : null}
           {sweep.data && !power ? (
             <span className={lab.barNote}>
               {designLine(sweep.data)}

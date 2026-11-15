@@ -40,10 +40,12 @@ import time
 from pathlib import Path
 from typing import Any
 
+from optspread.api.catalog import display_label
+from optspread.api.jobs import LAUNCH_SEED
 from optspread.dashboard.jobs.spec import JOBS_DIR, JobSpec, available_sources
 from optspread.dashboard.jobs.worker import execute_job
 
-SEED = 20_000
+SEED = LAUNCH_SEED  # 20,000: the launch panel's first seed, so its runs pair with these
 EPISODES = 200
 PPO_STEPS = 200_000
 
@@ -53,7 +55,8 @@ def plan() -> list[tuple[str, str, str, dict[str, Any]]]:
     out: list[tuple[str, str, str, dict[str, Any]]] = []
 
     def add(group: str, question: str, label: str, **kw: Any) -> None:
-        out.append((group, question, label, {"n_episodes": EPISODES, "seed": SEED, **kw}))
+        settings = {"n_episodes": EPISODES, "seed": SEED, **kw}
+        out.append((group, question, display_label(label), settings))
 
     q = "Which short-strike delta captures the most edge, and at what tail risk?"
     for d in (0.10, 0.16, 0.25, 0.35):

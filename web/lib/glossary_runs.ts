@@ -9,7 +9,9 @@ export const RUNS_GLOSSARY: Record<string, string> = {
   real: "Real SPX history: episodes start on real closes and trade the day's real surface; nothing is planted.",
   a8_dates: "A8 dates: real data is split in time. PPO trains on the earlier dates and every arm is evaluated only on the later ones, so no run is scored on data it learned from.",
   world: "World: everything about a run except its arm, seeds, episode count and premium. Runs compare fairly only within one world.",
-  paired_seeds: "Seeds: an episode's seed fixes its market path. Two runs on the same seeds saw the same markets, so they pair.",
+  paired_seeds: "Seeds: an episode's seed fixes its market path. Two runs on the same seeds and the same data saw the same markets, so they pair.",
+  diff_by_seed: "P&L difference by seed: on each seed both runs ran, run B's P&L less run A's. The two saw the same market path, so each bar is what the setting changed on that path; the line is their mean, the paired difference.",
+  identical_pair: "Identical on the shared paths: the two runs made exactly the same P&L on every seed both ran. More episodes only add new paths, so a bigger run replays the smaller one's exactly; two policies that pick the same trade every day replay each other too.",
   seed_first: "First seed: episodes use seed, seed+1, ... Runs with the same first seed share paths and pair. PPO also trains on this seed, so it must be below 32,768.",
   // the numbers
   interval: "95% interval: the range the true mean sits in, 19 times out of 20, given this sample.",

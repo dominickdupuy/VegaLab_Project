@@ -479,8 +479,8 @@ def seller_reading(
         out += f", can lose at most ${max_loss:,.0f}"
     if naked and max_loss is not None:
         out += (
-            f", and posts ${margin:,.0f} of margin: the wings cap the loss, but the frozen "
-            "harness margins this condor as naked shorts (#39)."
+            f", and posts ${margin:,.0f} of margin, an estimate on this day: the wings cap "
+            "the loss, but the margin check reads this condor as naked shorts."
         )
     else:
         out += f", and posts ${margin:,.0f} of margin."

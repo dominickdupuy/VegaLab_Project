@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Sequence
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -112,6 +113,11 @@ def compare_verdict(
     the interval says the gap is real. ``names`` are the catalog's labels, when it has them."""
     na, nb = names[0] or _label(a), names[1] or _label(b)
     lead = nb[:1].upper() + nb[1:]  # the sentence opens on B's name
+    if run_source(a) != run_source(b):
+        return (
+            "One run is on simulated paths and the other on real SPX history, so a seed is "
+            "not the same market in both: they cannot be compared episode by episode."
+        )
     if n == 0 or mean is None:
         return "The two runs share no seeds, so they cannot be compared episode by episode."
     paths = f"the same {n} path{'s' if n != 1 else ''}"
@@ -188,6 +194,16 @@ def compare(
     if _baseline_last(a, b, (ka, kb), pairs, cmp.config_diff):
         a, b, ka, kb = b, a, kb, ka
         cmp = compare_runs(a, b)
+    # the data source is not in the config (its hash), so the same config on simulated
+    # paths and on real history looks identical: the source is a difference, and a seed
+    # names a different market in each, so nothing pairs
+    source_diff = (
+        [DiffOut(key="data_source", a=run_source(a.row), b=run_source(b.row))]
+        if run_source(a.row) != run_source(b.row)
+        else []
+    )
+    if source_diff:
+        cmp = replace(cmp, shared_seeds=(), diff_mean=None, diff_se=None)
     both = [
         g
         for g in (listed.groups if listed is not None else [])
@@ -216,7 +232,7 @@ def compare(
     return CompareOut(
         a=run_detail(a, root, index),
         b=run_detail(b, root, index),
-        config_diff=[DiffOut(key=k, a=va, b=vb) for k, va, vb in cmp.config_diff],
+        config_diff=source_diff + [DiffOut(key=k, a=va, b=vb) for k, va, vb in cmp.config_diff],
         code_diff=code_diff(a.row, b.row),
         shared_seeds=len(cmp.shared_seeds),
         diff_mean=cmp.diff_mean,

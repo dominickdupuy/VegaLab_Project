@@ -278,9 +278,9 @@ export function RealVsSim({
         <>
           <div className={ui.grid4}>
             <Tile info="data.sim_level" label="Simulator IV" value={(s.level * 100).toFixed(2)} note={`σ ${(s.sigma * 100).toFixed(2)} + ${num(s.premium, 2)} planted · ${SIGMA.find((o) => o.value === s.sigma_from)?.label ?? s.sigma_from}`} />
-            <Tile info="data.regions" label="Put wing gap" value={gap("put")} note={`real − sim, vol pts · ${region("put")?.n ?? 0} contracts`} />
-            <Tile info="data.regions" label="Near the money gap" value={gap("atm")} note={`real − sim, vol pts · ${region("atm")?.n ?? 0} contracts`} />
-            <Tile info="data.regions" label="Call wing gap" value={gap("call")} note={`real − sim, vol pts · ${region("call")?.n ?? 0} contracts`} />
+            <Tile info="data.gap_put" label="Put wing gap" value={gap("put")} note={`real − sim, vol pts · ${region("put")?.n ?? 0} contracts`} />
+            <Tile info="data.gap_atm" label="Near the money gap" value={gap("atm")} note={`real − sim, vol pts · ${region("atm")?.n ?? 0} contracts`} />
+            <Tile info="data.gap_call" label="Call wing gap" value={gap("call")} note={`real − sim, vol pts · ${region("call")?.n ?? 0} contracts`} />
           </div>
           <Card
             title={

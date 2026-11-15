@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import { StudyFinding } from "@/components/home/StudyFinding";
 import { TrustBand } from "@/components/home/TrustBand";
 import { WorkflowCard } from "@/components/home/WorkflowCard";
 import { InfoTip } from "@/components/InfoTip";
@@ -111,7 +112,11 @@ function Home() {
             ))}
           </div>
         </div>
-        {idle ? <HomeSurface m4={m4.data} vrp={vrp.data} built={ov.data ? ov.data.data.built : undefined} /> : <div className={ui.heroStage} aria-hidden="true" />}
+        {/* the study's result first, beside the questions; the real vol surface under it */}
+        <div className={ui.homeSide}>
+          <StudyFinding m4={m4.data} vrp={vrp.data} />
+          {idle ? <HomeSurface m4={m4.data} vrp={vrp.data} built={ov.data ? ov.data.data.built : undefined} finding={Boolean(m4.data?.available && m4.data.analysis)} /> : <div className={ui.heroStage} aria-hidden="true" />}
+        </div>
       </section>
 
       {ov.error ? <ErrorBox what="the overview" error={ov.error} onRetry={ov.reload} /> : null}

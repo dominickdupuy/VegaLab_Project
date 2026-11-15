@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, Literal
@@ -24,7 +25,18 @@ from optspread.dashboard.runindex import RunRow
 # -- a designed matrix of runs: <runs root>/catalog.json, optional ------------------- #
 
 CATALOG_FILENAME = "catalog.json"
+# What builds a root's example runs and their catalog (scripts/showcase.py); runs on disk stay.
+SHOWCASE_COMMAND = 'make showcase ARGS="--root {root}"'
 _NOT_A_VARIANT = ("iv_premium_vol_pts", "seed")
+# an arm's id as a label reads it: "delta_seller, premium 4" is "seller, premium 4"
+_ARM_WORDS = {"delta_seller": "seller", "always_on": "always-on condor", "ppo": "PPO"}
+_ARM_ID = re.compile(r"\b(" + "|".join(_ARM_WORDS) + r")\b")
+
+
+def display_label(label: str) -> str:
+    """A catalog label in the words the pages use: an arm's id ("delta_seller", "always_on",
+    "ppo") as its name, so a catalog written before the showcase named them reads the same."""
+    return _ARM_ID.sub(lambda m: _ARM_WORDS[m.group(1)], label)
 
 
 class CatalogRunOut(Out):
@@ -73,6 +85,7 @@ class CatalogOut(Out):
     questions: dict[str, str] = Field(default_factory=dict)  # run key -> its group's question
     groups_of: dict[str, str] = Field(default_factory=dict)  # run key -> group
     problem: str = ""  # why a catalog that is there did not read
+    command: str = ""  # what builds this root's example runs and their catalog
 
 
 def _distance(settings: dict[str, Any]) -> int:
@@ -159,13 +172,15 @@ def catalog(root: Path, rows: Sequence[RunRow]) -> CatalogOut:
     with their labels and the comparisons that answer it. ``available`` is False when the
     root has none, and every page then reads as it would without it."""
     path = root / CATALOG_FILENAME
+    command = SHOWCASE_COMMAND.format(root=root)
     if not path.is_file():
-        return CatalogOut(available=False, file=str(path))
+        return CatalogOut(available=False, file=str(path), command=command)
     try:
         raw: Any = json.loads(path.read_text(encoding="utf-8"))
         entries = list(raw["runs"])
     except (OSError, ValueError, KeyError, TypeError) as exc:
-        return CatalogOut(available=False, file=str(path), problem=str(exc).splitlines()[0])
+        problem = str(exc).splitlines()[0]
+        return CatalogOut(available=False, file=str(path), problem=problem, command=command)
     by_key = {row_out(r, root).key: r for r in rows}
     groups: dict[str, CatalogGroupOut] = {}
     labels: dict[str, str] = {}
@@ -177,7 +192,7 @@ def catalog(root: Path, rows: Sequence[RunRow]) -> CatalogOut:
         key = str(e["key"]).strip("/")
         group = str(e.get("group", "other"))
         question = str(e.get("question", ""))
-        label = str(e.get("label", key))
+        label = display_label(str(e.get("label", key)))
         given = e.get("settings")
         settings: dict[str, Any] = given if isinstance(given, dict) else {}
         row = by_key.get(key)
@@ -224,4 +239,5 @@ def catalog(root: Path, rows: Sequence[RunRow]) -> CatalogOut:
         labels=labels,
         questions=questions,
         groups_of=groups_of,
+        command=command,
     )

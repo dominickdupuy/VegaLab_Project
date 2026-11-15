@@ -76,19 +76,27 @@ function ServerStatus() {
 function Nav({ path }: { path: string }) {
   const nav = useRef<HTMLElement>(null);
   const [track, setTrack] = useState<{ x: number; w: number } | null>(null);
+  // on a phone the tabs scroll sideways: a chevron says more are off to the right
+  const [more, setMore] = useState(false);
   useLayoutEffect(() => {
     const el = nav.current;
     if (!el) return;
     const measure = () => {
       const on = el.querySelector<HTMLElement>('[aria-current="page"]');
       setTrack(on ? { x: on.offsetLeft + 10, w: Math.max(0, on.offsetWidth - 20) } : null);
+      setMore(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
     };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
-    return () => ro.disconnect();
+    el.addEventListener("scroll", measure, { passive: true });
+    return () => {
+      ro.disconnect();
+      el.removeEventListener("scroll", measure);
+    };
   }, [path]);
   return (
+    <div className={ui.navWrap}>
     <nav ref={nav} className={ui.nav} aria-label="Views" data-track={track ? "" : undefined}>
       {TABS.map((t) => (
         <Link
@@ -102,6 +110,12 @@ function Nav({ path }: { path: string }) {
       ))}
       {track ? <span className={ui.navTrack} style={{ width: track.w, transform: `translateX(${track.x}px)` }} aria-hidden="true" /> : null}
     </nav>
+      {more ? (
+        <span className={ui.navMore} aria-hidden="true">
+          ›
+        </span>
+      ) : null}
+    </div>
   );
 }
 

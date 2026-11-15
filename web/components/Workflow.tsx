@@ -89,8 +89,7 @@ function useRing(target: Target | Target[] | undefined, active: boolean, stepKey
   const scrolled = useRef("");
   const [found, setFound] = useState(false);
   const list = target === undefined ? [] : Array.isArray(target) ? target : [target];
-  const spec = JSON.stringify(list.map((x) => ({ ...x, text: x.text?.source, label: x.label?.source, aria: x.aria?.source })));
-  useEffect(() => {
+  const spec = JSON.stringify(list.map((x) => ({ ...x, text: x.text?.source, label: x.label?.source, aria: x.aria?.source })));  useEffect(() => {
     const clear = () => {
       for (const e of ringed.current) e.removeAttribute(GUIDE_ON_ATTR);
       ringed.current = [];
@@ -101,7 +100,9 @@ function useRing(target: Target | Target[] | undefined, active: boolean, stepKey
       return;
     }
     const tick = () => {
-      const els = list.flatMap(resolve);
+      // a fallback target is ringed only while none of the step's main targets is drawn
+      const main = list.filter((x) => !x.fallback).flatMap(resolve);
+      const els = main.length ? main : list.filter((x) => x.fallback).flatMap(resolve);
       setFound(els.length > 0);
       const same = els.length === ringed.current.length && els.every((e, i) => e === ringed.current[i]);
       if (!same) {
@@ -110,7 +111,8 @@ function useRing(target: Target | Target[] | undefined, active: boolean, stepKey
         ringed.current = els;
       }
       const first = els[0];
-      const want = `${stepKey}|${nudge}`;
+      // scroll once per step, and again when the main target appears after a fallback was shown
+      const want = `${stepKey}|${nudge}|${main.length ? "main" : "fallback"}`;
       if (first && scrolled.current !== want) {
         scrolled.current = want;
         if (!inView(first)) first.scrollIntoView({ block: "center", behavior: reducedMotion() ? "auto" : "smooth" });
@@ -319,7 +321,7 @@ export function WorkflowStrip() {
             <span className={ui.wfRead}>Done. Reading the result…</span>
           ) : blocked ? (
             <span>
-              <span className={ui.wfDo}>{task}</span> Not on this server: {blocked}.
+              <span className={ui.wfDo}>{task}</span> {/^[A-Z]/.test(blocked) ? blocked : `Not on this server: ${blocked}.`}
             </span>
           ) : here ? (
             <span className={ui.wfDo}>{task}</span>

@@ -209,8 +209,8 @@
   border-radius: var(--radius-sm);
   border: 1px solid var(--line);
   background: var(--surface-solid);
-  font-family: var(--mono);
-  font-size: 12px;
+  font-size: 12.5px;
+  text-align: left;
   color: var(--text-2);
   cursor: pointer;
   text-align: left;

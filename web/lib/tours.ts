@@ -34,11 +34,12 @@
  */
 
 import type { Activity, Call } from "./activity";
-import type { Attribution, Check, EdgeDetail, Grid, Job, LeakDemo, LeakField, LeakFloor, M4, Power, Replay, RunDetail, Seller, Simulated, Study, Sweep, Term, Vrp } from "./api";
+import type { Attribution, Check, EdgeDetail, Grid, Job, LeakCoverage, LeakDemo, LeakField, LeakFloor, M4, Power, Replay, RunDetail, Seller, Simulated, Study, Sweep, Term, Vrp } from "./api";
 import { api } from "./api";
 import { type Catalog, type PairedCompare, runsApi } from "./api_runs";
-import { groupName, type Pair, PAIRS, type PairSpec, pairGuide, resolvePair, runIdOf } from "./catalog";
+import { groupName, notBuilt, type Pair, PAIRS, type PairSpec, pairGuide, resolvePair, runIdOf } from "./catalog";
 import { MINUS, num, pct, prem, short, usd } from "./format";
+import { fieldWord, luck, shareOf, shareWord } from "./leakwords";
 
 /** $ of mean P&L per episode for one vol point of premium (pre-registration A6). */
 export const PER_VOL = 824.3;
@@ -58,6 +59,8 @@ export interface Target {
   css?: string;
   /** Ring every match, not only the first. */
   all?: boolean;
+  /** Ring this one only while no other target of the step is on the page. */
+  fallback?: boolean;
 }
 
 export interface Ctx {
@@ -99,7 +102,8 @@ export interface Step {
   merge?: boolean;
   /** Always open the step's own href, even from the same page (the runs table after a comparison). */
   open?: boolean;
-  /** Why the action cannot be done on this server (Next unlocks, saying so), or null. */
+  /** Why the action cannot be done on this server (Next unlocks, saying so), or null: a
+   * lower-case fragment the strip puts after "Not on this server:", or a full sentence it shows as is. */
   blocked?: (ctx: Ctx) => string | null;
 }
 
@@ -184,6 +188,13 @@ function dates(ctx: Ctx): { now: string | undefined; changed: boolean } {
   return { now, changed: prior ? seen.some((d) => d !== prior) : new Set(seen).size > 1 };
 }
 
+/**
+ * The reader picked a day in this step. The data page keeps a date in its address only
+ * when it is not the latest, so one change counts even when the answer for the day it
+ * opened on was cut short (a quick change aborts it, and the log then has one date only).
+ */
+const pickedDay = (c: Ctx) => dates(c).changed || Boolean(c.q.get("date") && dates(c).now === c.q.get("date"));
+
 /** At-the-money vol per tenor from the gridded surface: the column nearest ln(K/F) = 0. */
 function atmOfGrid(g: Grid): { date: string; pts: { d: number; v: number | null }[] } {
   let j = 0;
@@ -193,12 +204,29 @@ function atmOfGrid(g: Grid): { date: string; pts: { d: number; v: number | null 
   return { date: g.date, pts: g.tenor_days.map((d, i) => ({ d, v: g.iv[i]?.[j] ?? null })) };
 }
 
-function leakRead(d: LeakDemo): string {
-  if (d.caught && !d.clean.flagged)
-    return `Caught: with tomorrow's return planted at eps ${d.eps}, the poisoned simulator was flagged on ${d.poisoned.worst_feature} (|t| ${num(Math.abs(d.poisoned.worst_t ?? 0), 1)}) while the clean one stayed quiet, so a backtest that peeks ahead cannot hide here.`;
-  if (d.caught) return `The poisoned simulator was caught on ${d.poisoned.worst_feature}, but the clean one was flagged too: a false alarm, which the pass criterion counts as a failure.`;
-  return `Missed: at eps ${d.eps} the planted leak stayed under the line with ${d.seeds.length} paths, an honest miss; smaller leaks need more data to see.`;
+/**
+ * The detector's run in a sentence, in the page's own verdict: caught on the poisoned copy,
+ * and (once the page has planted it in each field alone at the same size) in every field.
+ */
+function leakRead(d: LeakDemo, cov?: LeakCoverage): string {
+  const caught = cov ? cov.controls.filter((x) => x.flagged && x.named_correctly).length : null;
+  if (d.caught && !d.clean.flagged) {
+    const head = `with ${shareOf(d.eps)} of tomorrow's move leaking into today, the poisoned copy set the alarm off on ${fieldWord(d.poisoned.worst_feature)} (signal ${num(Math.abs(d.poisoned.worst_t ?? 0), 1)}) while the clean one stayed quiet`;
+    if (cov && !cov.passed)
+      return `Partly caught, so the test reads FAIL: ${head}, but planted in each field alone it was caught in only ${caught} of ${cov.controls.length}; a leak this small slips past in some fields with ${d.seeds.length} paths.`;
+    return `Caught${cov ? ` in all ${cov.controls.length} fields too` : ""}: ${head}, so a backtest that peeks ahead cannot hide here.`;
+  }
+  if (d.caught) return `The poisoned copy set the alarm off on ${fieldWord(d.poisoned.worst_feature)}, but the clean one did too: a false alarm, which counts as a failure.`;
+  return `Missed: with ${shareOf(d.eps)} of tomorrow leaking and ${d.seeds.length} paths, the alarm stayed quiet, an honest miss; smaller leaks need more data to see.`;
 }
+
+/** The page's every-field check at the same size as this demo, when it has answered. */
+const coverageAt = (c: Ctx, eps: number) =>
+  c
+    .calls("POST /api/leaks/coverage")
+    .filter((a) => near(Number(body(a).eps), eps, 1e-9))
+    .map((a) => a.data as LeakCoverage)
+    .pop();
 
 
 /** Whether a run is under this server's runs root: false on a 404, true otherwise. */
@@ -218,6 +246,15 @@ function pairOf(ctx: Ctx, spec: PairSpec): Pair | string | undefined {
 }
 
 const isPair = (p: Pair | string | undefined): p is Pair => typeof p === "object";
+
+/** A comparison is open on the Runs page, and it is not this pair. */
+function otherPair(c: Ctx, p: Pair): boolean {
+  const a = c.q.get("a");
+  const b = c.q.get("b");
+  if (!c.path.startsWith("/runs") || !a || !b) return false;
+  const want = new Set([p.a.key, p.b.key]);
+  return !(want.has(a) && want.has(b) && a !== b);
+}
 
 /** The paired comparison of the pair (B against the baseline A), whichever order the reader opened them in. */
 function pairCompare(ctx: Ctx, p: Pair): { a: RunDetail; b: RunDetail; d: Paired } | undefined {
@@ -265,12 +302,21 @@ function compareStep(spec: PairSpec, say: (a: RunDetail, b: RunDetail, d: Paired
     task: (c) => {
       const p = pairOf(c, spec);
       if (!isPair(p)) return `Open the ${groupName(spec.group)} question on the Runs page and compare its two runs.`;
-      return task ? task(p) : `${p.question} Under ${groupName(p.group)}, press Compare on “${p.b.label}” (against “${p.a.label}”).`;
+      const ask = task ? task(p) : `${p.question} Under ${groupName(p.group)}, press Compare on “${p.b.label}” (against “${p.a.label}”).`;
+      return otherPair(c, p) ? `This is another comparison: go back to the questions, then ${ask.charAt(0).toLowerCase()}${ask.slice(1)}` : ask;
     },
     target: (c) => {
       const p = pairOf(c, spec);
-      if (!isPair(p) || (c.q.get("a") && c.q.get("b"))) return undefined;
-      return [{ guide: pairGuide(p.a.key, p.b.key) }, { guide: `runs-pick-${p.a.key}`, aria: new RegExp(`^Compare ${runIdOf(p.a.key)}$`) }, { guide: `runs-pick-${p.b.key}`, aria: new RegExp(`^Compare ${runIdOf(p.b.key)}$`) }];
+      if (!isPair(p)) return undefined;
+      // another pair open: the way back to the questions
+      if (otherPair(c, p)) return { guide: "runs-back", text: /back to the questions|all runs/i };
+      if (c.q.get("a") && c.q.get("b")) return undefined;
+      // the question's own Compare button; the table's ticks only while the questions are not drawn
+      return [
+        { guide: pairGuide(p.a.key, p.b.key) },
+        { guide: `runs-pick-${p.a.key}`, aria: new RegExp(`^Compare ${runIdOf(p.a.key)}$`), fallback: true },
+        { guide: `runs-pick-${p.b.key}`, aria: new RegExp(`^Compare ${runIdOf(p.b.key)}$`), fallback: true },
+      ];
     },
     done: (c) => {
       const p = pairOf(c, spec);
@@ -280,7 +326,7 @@ function compareStep(spec: PairSpec, say: (a: RunDetail, b: RunDetail, d: Paired
       const p = pairOf(c, spec);
       if (typeof p === "string") return p;
       const miss = isPair(p) ? [p.a, p.b].find((r) => !r.present) : undefined;
-      return miss ? `the run “${miss.label}” (${miss.key}) is not under this runs root` : null;
+      return miss ? notBuilt(catalogOf(c), `The example run “${miss.label}” (${miss.key}) isn't`) : null;
     },
     read: (c) => {
       const p = pairOf(c, spec);
@@ -290,17 +336,30 @@ function compareStep(spec: PairSpec, say: (a: RunDetail, b: RunDetail, d: Paired
   };
 }
 
-const noise = (d: Paired) => (d.clear ? "" : ", though the paired interval still includes zero at this sample size");
-
 /** "$447 more per episode" or "$447 less". */
 const diffText = (x: number) => `${usd(Math.abs(x))} ${x >= 0 ? "more" : "less"}`;
 
-/** The plain verdict on a change: did it earn more, and did its tail get worse? */
+/**
+ * How the worst 5% of episodes moved, B against A: "fatter" or "thinner" by `by` (a share
+ * of A's), or null when it moved less than a tenth, too little to call.
+ */
+function tailMove(tailB: number | null | undefined, tailA: number | null | undefined): { way: "fatter" | "thinner"; by: number } | null {
+  if (tailB === null || tailB === undefined || tailA === null || tailA === undefined || tailA === 0) return null;
+  const by = Math.abs(tailB - tailA) / Math.abs(tailA);
+  if (by < 0.1) return null;
+  return { way: tailB < tailA ? "fatter" : "thinner", by };
+}
+
+/** "its tail came out 62% fatter", "… about half as fat", or that it barely moved. */
+const tailWords = (m: { way: "fatter" | "thinner"; by: number } | null) =>
+  !m ? "the tail barely moved" : `its tail came out ${m.way === "thinner" && m.by >= 0.4 && m.by <= 0.6 ? "materially thinner, about half as fat" : `${pct(m.by, 0)} ${m.way}`}`;
+
+/** The plain verdict on a change: did it earn more, and did its tail move (by a tenth or more)? */
 function tradeOff(d: Paired, tailB: number | null, tailA: number | null, change: string): string {
-  const worse = (tailB ?? 0) < (tailA ?? 0);
-  if (!d.clear) return `${change} made no difference to the mean you could tell from luck at this sample size${worse ? ", but it fattened the tail" : ""}`;
-  if (d.diff > 0) return worse ? `${change} earned more, at the price of a fatter tail` : `${change} earned more without a worse tail`;
-  return worse ? `${change} earned less and fattened the tail` : `${change} earned less, with a thinner tail`;
+  const m = tailMove(tailB, tailA);
+  const tail = tailWords(m);
+  if (!d.clear) return `${change} made no difference to the mean you could tell from luck at this sample size, ${m ? "but" : "and"} ${tail}`;
+  return `${change} earned ${d.diff > 0 ? "more" : "less"}, and ${tail}`;
 }
 
 // ---------------------------------------------------------------- the workflows
@@ -421,7 +480,11 @@ export const WORKFLOWS: Workflow[] = [
       compareStep(PAIRS.spreads, (a, b, d) => `Doubling the spreads moved the seller from ${usd(a.risk.mean)} to ${usd(b.risk.mean)} per episode (${signedUsd(d.diff)}, ${ci(d)}): at ${num(a.risk.turnover, 1)} trades an episode, execution is a first-order part of the edge.`),
       compareStep(PAIRS.commission, (a, b, d) => `Doubling the commission moved the seller from ${usd(a.risk.mean)} to ${usd(b.risk.mean)} per episode (${signedUsd(d.diff)}): ${Math.abs(d.diff) < 0.1 * Math.abs(a.row.mean_cost ?? 1) ? "beside the bid-ask spread, commission is small change for a condor seller" : "at this turnover commission is a real part of the cost"}.`),
       compareStep(PAIRS.account, (a, b, d) => `With $50,000 the seller traded ${num(b.risk.turnover, 1)} times an episode against ${num(a.risk.turnover, 1)} with $1,000,000, averaging ${usd(b.risk.mean)} against ${usd(a.risk.mean)} (${ci(d)}): ${(b.risk.turnover ?? 0) < (a.risk.turnover ?? 0) ? "below a certain size, margin refuses some of the trades the strategy needs" : "at this size margin did not bind"}.`),
-      compareStep(PAIRS.regime, (a, b, d) => `With the same 1 vol pt planted, the seller averaged ${usd(b.risk.mean)} per episode in a 30% vol world against ${usd(a.risk.mean)} in the default 20% one, with the worst 5% at ${usd(b.risk.cvar5)} against ${usd(a.risk.cvar5)}: ${(b.risk.cvar5 ?? 0) < (a.risk.cvar5 ?? 0) ? "the same premium comes with far bigger swings when vol is high" : "the regime changed little here"}${noise(d)}.`),
+      compareStep(PAIRS.regime, (a, b, d) => {
+        const m = tailMove(b.risk.cvar5, a.risk.cvar5);
+        const mean = d.clear ? (d.diff < 0 ? "the wilder market cost the seller money" : "the wilder market paid the seller more") : `the wilder market moved the mean by ${signedUsd(d.diff)}, but the paired interval still includes zero at this sample size`;
+        return `With the same 1 vol pt planted, the seller averaged ${usd(b.risk.mean)} per episode in a 30% vol world against ${usd(a.risk.mean)} in the default 20% one (${signedUsd(d.diff)} on the same paths, ${ci(d)}), with the worst 5% at ${usd(b.risk.cvar5)} against ${usd(a.risk.cvar5)}: ${mean}, and ${tailWords(m)}.`;
+      }),
     ],
   },
   {
@@ -438,7 +501,7 @@ export const WORKFLOWS: Workflow[] = [
         href: "/data/?q=surface",
         task: "Pick a day to look at: set Trading day to 2020-03-16 (the Covid crash), or any trading day you like.",
         target: { guide: "data-date", label: /^\s*Trading day/ },
-        done: (c) => dates(c).changed,
+        done: pickedDay,
         blocked: (c) => {
           const s = at(c.call("GET /api/data/status") ?? c.before("GET /api/data/status")) as { built?: boolean } | undefined;
           return s && s.built === false ? "the SPX panel is not built on this server" : null;
@@ -502,9 +565,15 @@ export const WORKFLOWS: Workflow[] = [
         },
         read: (c) => {
           const v = (c.get("vrp", () => api.vrp()) as Vrp | undefined)?.mapping?.headline;
-          const p = v ? powerWhere(c, (x) => Math.abs(x.params.delta / PER_VOL - (v.mean ?? 0)) <= 0.051) : undefined;
-          if (!v || !p) return null;
-          return `At the market's average premium of ${vp(v.mean)} vol pts (95% ${vp(v.mean_low)} to ${vp(v.mean_high)}), an S = ${p.params.n_seeds} backtest catches it ${pct(p.power, 0)} of the time${p.power < 0.5 ? ": most backtests of that size would call a real premium noise" : p.power < 0.8 ? `, short of the 80% a design should have: ${Math.round((1 - p.power) * 10)} in 10 backtests of that size would call a real premium noise` : ": large enough to see at this size"}.`;
+          const hit = v ? powerWhere(c, (x) => Math.abs(x.params.delta / PER_VOL - (v.mean ?? 0)) <= 0.051) : undefined;
+          if (!v || !hit || v.mean === null || v.mean === undefined) return null;
+          // the slider moves in 0.05s: the power at the premium itself, with the reader's design and noise
+          const exact = { ...hit.params, delta: Math.round(v.mean * PER_VOL * 100) / 100 };
+          const p = c.get(`power|vrp|${JSON.stringify(exact)}`, () => api.power(exact)) ?? hit;
+          const whose = hit.params.tau2 === A7.tau2 && hit.params.sigma2 === A7.sigma2 ? "with PPO's noise" : near(hit.params.tau2, 1026, 0.5) ? "with the fixed-delta seller's noise" : "with the noise you set";
+          const m4 = c.get("m4", () => api.m4()) as M4 | undefined;
+          const study = m4?.mapped?.length ? `; the study's sweep measured ${m4.mapped.map((r) => `${pct(r.power, 0)} for ${ARM[r.arm] ?? r.arm}`).join(" and ")} at this premium` : "";
+          return `At the market's average premium of ${vp(v.mean)} vol pts (95% ${vp(v.mean_low)} to ${vp(v.mean_high)}), a backtest of S = ${p.params.n_seeds} seeds × ${num(p.params.n_episodes)} episodes ${whose} catches it ${pct(p.power, 0)} of the time${p.power < 0.5 ? ", so most backtests of that size would call a real premium noise" : p.power < 0.8 ? `, short of the 80% a design should have` : ", large enough to see at this size"}${study}.`;
         },
       },
       compareStep(PAIRS.real, (a, b, d) => {
@@ -525,11 +594,7 @@ export const WORKFLOWS: Workflow[] = [
       {
         id: "seller",
         href: "/attribution/",
-        task: (c) => {
-          const g = (at(c.call("GET /api/edge/detail") ?? c.before("GET /api/edge/detail")) as EdgeDetail | undefined)?.edge;
-          const low = g?.premiums.filter((p) => p > 0)[0];
-          return `Pick ${low === undefined ? "the smallest premium" : `${prem(low)} vol pts`} in Planted premium, then the fixed-delta seller in Details for.`;
-        },
+        task: "Pick the smallest premium above zero in Planted premium, with the fixed-delta seller in Details for (the default).",
         target: (c) => (c.q.get("p") ? { guide: "attribution-arm", label: /^\s*Details for/ } : { guide: "attribution-premium", label: /^\s*Planted premium/ }),
         done: (c) => {
           const g = (at(c.call("GET /api/edge/detail") ?? c.before("GET /api/edge/detail")) as EdgeDetail | undefined)?.edge;
@@ -562,7 +627,11 @@ export const WORKFLOWS: Workflow[] = [
           if (!ppo || !sel) return null;
           const a = ppo.pnl.estimate ?? 0;
           const b = sel.pnl.estimate ?? 0;
-          return `At ${prem(p)} vol pts PPO's edge is ${usd(a)} per episode against the seller's ${usd(b)}: ${a < b ? `the learner keeps ${b > 0 ? pct(a / b, 0) : "less"} of what the rule earns${top(ppo) ? `, mostly through ${top(ppo)}` : ""}` : "the learner earns at least as much as the rule"}.`;
+          const via = greeks(ppo);
+          const how = via ? `; it earns ${via}` : "";
+          if (!ppo.pnl.rejected)
+            return `At ${prem(p)} vol pts PPO's estimated edge is ${usd(a)} per episode against the seller's ${usd(b)}, but it is not detected (one-sided 95% ≥ ${signedUsd(ppo.pnl.lower_bound)}): the sweep cannot yet tell it from zero, let alone from the rule${how}.`;
+          return `At ${prem(p)} vol pts PPO's edge is ${usd(a)} per episode against the seller's ${usd(b)}, detected (one-sided 95% ≥ ${signedUsd(ppo.pnl.lower_bound)}): ${a < b ? `the learner keeps ${b > 0 ? pct(a / b, 0) : "less"} of what the rule earns` : "the learner earns more than the rule here"}${how}.`;
         },
       },
       {
@@ -638,7 +707,11 @@ export const WORKFLOWS: Workflow[] = [
         (a, b, d) => {
           const half = (r: RunDetail) => (r.risk.se === null ? null : 1.96 * r.risk.se);
           const zero = (r: RunDetail) => (r.risk.mean ?? 0) - (half(r) ?? 0) <= 0;
-          return `The same seller at 0.5 vol pts made ${usd(b.risk.mean)} ± ${usd(half(b))} per episode over ${num(b.risk.n)} episodes and ${usd(a.risk.mean)} ± ${usd(half(a))} over ${num(a.risk.n)}: four times the episodes halves the interval, ${zero(a) && zero(b) ? "and neither run alone tells a half-point edge from zero" : zero(b) ? "and only the larger run tells the edge from zero" : "and both clear zero"}; on the ${num(d.n)} paths they share the two ${Math.abs(d.diff) < 0.5 ? "agree exactly" : `agree to ${usd(Math.abs(d.diff))}`}, because more episodes add paths, they do not change the old ones.`;
+          const ha = half(a);
+          const hb = half(b);
+          const times = (b.risk.n ?? 0) > 0 ? (a.risk.n ?? 0) / (b.risk.n ?? 1) : null;
+          const narrower = ha && hb ? hb / ha : null;
+          return `The same seller at 0.5 vol pts made ${usd(b.risk.mean)} ± ${usd(hb)} per episode over ${num(b.risk.n)} episodes and ${usd(a.risk.mean)} ± ${usd(ha)} over ${num(a.risk.n)}: ${times === null || narrower === null ? "more episodes narrow the interval" : `${num(times, 0)} times the episodes makes the interval ${num(narrower, 1)} times narrower (about √${num(times, 0)})`}, ${zero(a) && zero(b) ? "and neither run alone tells a half-point edge from zero" : zero(b) ? "and only the larger run tells the edge from zero" : "and both clear zero"}; on the ${num(d.n)} paths they share the two ${Math.abs(d.diff) < 0.5 ? "agree exactly" : `agree to ${usd(Math.abs(d.diff))}`}, because more episodes add paths, they do not change the old ones.`;
         },
         (p) => `Now see it in real runs: under ${groupName(p.group)}, press Compare on “${p.b.label}” (against “${p.a.label}”).`,
       ),
@@ -659,23 +732,24 @@ export const WORKFLOWS: Workflow[] = [
         task: (c) =>
           c.q.get("view") === "floor" || c.q.get("view") === "field"
             ? `Step 1 of 4 first: press Run the detector above; ${c.q.get("view") === "floor" ? "Smallest leak caught is step 3" : "Every field is step 4"}.`
-            : "Press Run the detector: it tests a clean simulator and a twin we poisoned with tomorrow's return.",
+            : "Press Run the detector: it tests a clean copy of the market and a twin we poisoned with tomorrow's move.",
         target: { guide: "leaks-run", text: /run the detector/i },
         done: (c) => Boolean(c.call("POST /api/leaks/demo")),
         read: (c) => {
           const d = at(c.call("POST /api/leaks/demo")) as LeakDemo | undefined;
-          return d ? leakRead(d) : null;
+          return d ? leakRead(d, coverageAt(c, d.eps)) : null;
         },
       },
       {
         id: "small",
         href: "/leaks/",
-        task: "Shrink the leak: drag Leak size, eps down to 0.10 or less and press Run again.",
-        target: (c) => (c.call("POST /api/leaks/demo") || Number(c.q.get("eps") ?? 0.5) > 0.1 + 1e-9 ? { guide: "leaks-eps", label: /Leak size/ } : { guide: "leaks-run", text: /run (the detector|again)/i }),
-        done: (c) => c.calls("POST /api/leaks/demo").some((a) => Number(body(a).eps) <= 0.1 + 1e-9),
+        task: "Shrink the leak: drag How much of tomorrow leaks down to a tenth (0.1) or less and press Run again.",
+        target: (c) => (c.call("POST /api/leaks/demo") || Number(c.q.get("eps") ?? 0.5) > 0.1 + 1e-9 ? { guide: "leaks-eps", label: /How much of tomorrow leaks/ } : { guide: "leaks-run", text: /run (the detector|again)/i }),
+        // done once the page has also planted it in each field alone at that size, so the reading says what the page's verdict says
+        done: (c) => c.calls("POST /api/leaks/demo").some((a) => Number(body(a).eps) <= 0.1 + 1e-9 && Boolean(coverageAt(c, Number(body(a).eps)))),
         read: (c) => {
           const d = c.calls("POST /api/leaks/demo").filter((a) => Number(body(a).eps) <= 0.1 + 1e-9).map((a) => a.data as LeakDemo).pop();
-          return d ? leakRead(d) : null;
+          return d ? leakRead(d, coverageAt(c, d.eps)) : null;
         },
       },
       {
@@ -689,21 +763,21 @@ export const WORKFLOWS: Workflow[] = [
           if (!f) return null;
           return f.floor === null
             ? `With ${f.seeds.length} paths the detector caught none of the planted leaks: more paths are needed before it can vouch for a backtest.`
-            : `With ${f.seeds.length} paths the detector catches ${f.flagged.filter(Boolean).length} of ${f.eps.length} leak sizes, down to eps ${f.floor} of a day's return; anything smaller can slip through, so a clean verdict means "no leak above ${f.floor}".`;
+            : `With ${f.seeds.length} paths the alarm catches ${f.flagged.filter(Boolean).length} of ${f.eps.length} leak sizes, down to ${shareOf(f.floor)} of tomorrow's move; anything smaller can slip through, so a quiet alarm means "no leak of ${shareWord(f.floor)} or more".`;
         },
       },
       {
         id: "field",
         href: "/leaks/",
-        task: "Plant it in one field only: switch the view to Every field, pick atm_iv in One field and press Plant in atm_iv.",
+        task: "Plant it in one field only: switch the view to Every field, pick at-the-money implied vol (atm_iv) in One field and press Plant.",
         target: (c) => (c.q.get("view") !== "field" ? { guide: "leaks-view", text: /every field/i } : c.q.get("field") !== "atm_iv" ? { guide: "leaks-field", label: /^\s*One field/ } : { guide: "leaks-plant", text: /^\s*plant in/i }),
         done: (c) => Boolean(c.call("POST /api/leaks/field")),
         read: (c) => {
           const f = at(c.call("POST /api/leaks/field")) as LeakField | undefined;
           if (!f) return null;
           return f.flagged
-            ? `Planted only in ${f.field}, the leak was caught${f.named_correctly ? " and pinned on the right field" : `, though blamed on ${f.worst_feature}`} (p ${(f.p_value ?? 0) < 1e-6 ? "< 0.000001" : `= ${num(f.p_value ?? 0, 6)}`}): the detector says where to look, not just that something is wrong.`
-            : `Planted only in ${f.field} at ${f.eps} sd, the leak was missed: a one-field leak this small needs more paths.`;
+            ? `Planted only in ${fieldWord(f.field)}, the leak was caught${f.named_correctly ? " and pinned on the right field" : `, though blamed on ${fieldWord(f.worst_feature)}`} (chance this is luck: ${luck(f.p_value)}): the detector says where to look, not just that something is wrong.`
+            : `Planted only in ${fieldWord(f.field)} at ${shareWord(f.eps)} of its usual swing, the leak was missed: a one-field leak this small needs more paths.`;
         },
       },
     ],
@@ -719,9 +793,10 @@ export const WORKFLOWS: Workflow[] = [
     steps: [
       {
         id: "means",
-        href: "/sweep/",
-        task: "Pick PPO in Arm.",
-        target: { guide: "sweep-arm", label: /^\s*Arm/ },
+        href: "/sweep/?view=cells",
+        task: "Open Profit by premium and pick PPO in Arm.",
+        // the Arm field is off in the power view the page opens on: ring the view switch first
+        target: (c) => (["cells", "contrasts"].includes(c.q.get("view") ?? "") ? { guide: "sweep-arm", label: /^\s*Arm/ } : { guide: "sweep-view", text: /^\s*profit by premium\s*$/i }),
         done: (c) => c.q.get("arm") === "ppo",
         blocked: (c) => {
           const s = at(c.call("GET /api/sweeps") ?? c.before("GET /api/sweeps")) as { sweeps?: { arms: string[] }[] } | undefined;
@@ -741,9 +816,9 @@ export const WORKFLOWS: Workflow[] = [
       },
       {
         id: "contrasts",
-        href: "/sweep/",
-        task: "Switch the view to Contrasts: each premium tested against the same arm at 0.",
-        target: { guide: "sweep-view", text: /^\s*contrasts\s*$/i },
+        href: "/sweep/?view=cells",
+        task: "Switch the view to Edge over zero premium: each premium tested against the same arm at 0.",
+        target: { guide: "sweep-view", text: /^\s*edge over zero premium\s*$/i },
         done: (c) => c.q.get("view") === "contrasts",
         read: (c) => {
           const g = (at(c.call("GET /api/sweeps/detail") ?? c.before("GET /api/sweeps/detail")) as Sweep | undefined)?.grid;
@@ -757,10 +832,11 @@ export const WORKFLOWS: Workflow[] = [
       },
       {
         id: "floors",
-        href: "/sweep/",
-        task: "Switch the view to Power: the chance of detection at each premium, for both arms.",
-        target: { guide: "sweep-view", text: /^\s*power\s*$/i },
-        done: (c) => c.q.get("view") === "power",
+        href: "/sweep/?view=contrasts",
+        task: "Switch the view to How often it's caught: the chance of detection at each premium, for both arms.",
+        target: { guide: "sweep-view", text: /^\s*how often it.s caught\s*$/i },
+        // the page's default view, so the URL drops it: a bare /sweep/ is the power view
+        done: (c) => c.path.startsWith("/sweep") && (c.q.get("view") ?? "power") === "power",
         blocked: (c) => {
           const m = at(c.call("GET /api/m4") ?? c.before("GET /api/m4")) as M4 | undefined;
           return m && !m.available ? "the M4 analysis has not been written on this server" : null;
@@ -786,7 +862,7 @@ export const WORKFLOWS: Workflow[] = [
   },
   {
     id: "reviewer",
-    title: "Verify our claims",
+    title: "Can you trust these numbers?",
     question: "Is every number backed by evidence, reproducible and free of look-ahead?",
     minutes: 6,
     icon: "review",
@@ -815,7 +891,7 @@ export const WORKFLOWS: Workflow[] = [
         read: (c) => {
           const s = at(c.call("GET /api/study") ?? c.before("GET /api/study")) as Study | undefined;
           if (!s) return null;
-          return `Fixed in advance: a ${s.test}, one-sided α = ${s.alpha}, on S = ${s.n_seeds} seed blocks × N = ${num(s.n_episodes)} episodes at premiums ${s.premiums.join(", ")} vol pts; the sweep is judged against this, not against what looked good afterwards.`;
+          return `Fixed in advance: a ${s.test}, α = ${s.alpha}, on S = ${s.n_seeds} seed blocks × N = ${num(s.n_episodes)} episodes at premiums ${s.premiums.join(", ")} vol pts; the sweep is judged against this, not against what looked good afterwards.`;
         },
       },
       {
@@ -859,7 +935,7 @@ export const WORKFLOWS: Workflow[] = [
         done: (c) => Boolean(c.call("POST /api/leaks/demo")),
         read: (c) => {
           const d = at(c.call("POST /api/leaks/demo")) as LeakDemo | undefined;
-          return d ? leakRead(d) : null;
+          return d ? leakRead(d, coverageAt(c, d.eps)) : null;
         },
       },
       {
@@ -880,11 +956,16 @@ export const WORKFLOWS: Workflow[] = [
   },
 ];
 
-function top(e: { components: Record<string, { estimate: number | null }> }): string {
-  const [c] = Object.entries(e.components)
-    .filter(([k]) => k !== "residual")
+/** The greek an edge is earned through, and the one that gives most of it back: "through theta (+$1,909), giving back gamma (−$1,700)". */
+function greeks(e: { components: Record<string, { estimate: number | null }> }): string {
+  const xs = Object.entries(e.components)
+    .filter(([k, v]) => k !== "residual" && v.estimate !== null)
     .sort((a, b) => Math.abs(b[1].estimate ?? 0) - Math.abs(a[1].estimate ?? 0));
-  return c ? c[0] : "";
+  const gain = xs.find(([, v]) => (v.estimate ?? 0) > 0);
+  const loss = xs.find(([, v]) => (v.estimate ?? 0) < 0);
+  if (!gain) return "";
+  const back = loss && Math.abs(loss[1].estimate ?? 0) > 0.25 * (gain[1].estimate ?? 0) ? `, giving back ${loss[0]} (${signedUsd(loss[1].estimate)})` : "";
+  return `through ${gain[0]} (${signedUsd(gain[1].estimate)})${back}`;
 }
 
 function edgeRead(c: Ctx, arm: string, p: number): string | null {

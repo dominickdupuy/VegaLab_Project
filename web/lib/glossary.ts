@@ -138,8 +138,8 @@ const BASE: Record<string, Entry> = {
   },
   digest: { text: "Digest: a sha256 of each saved file, recomputed now. A mismatch means the file changed after it was written.", aliases: ["Artifact digests", "DIGEST MISMATCH"] },
   leak: {
-    text: "A leak: information from the future getting into what the agent sees. It makes any backtest look profitable. The detector plants one on purpose and must catch it.",
-    aliases: ["leak size eps", "eps", "Leak size eps"],
+    text: "A leak: while deciding today, the trader can see a bit of tomorrow. Index at 5,000 today and 5,050 tomorrow, a bug that shows 5,025 today gives the rise away, and any backtest looks profitable. The detector plants one on purpose and must catch it.",
+    aliases: ["leak size eps", "eps", "Leak size eps", "How much of tomorrow leaks"],
   },
   bonferroni: { text: "Bonferroni threshold: the p-value line, divided by the number of fields tested, that a field must cross to be flagged.", aliases: ["Bonferroni threshold"] },
 
@@ -149,7 +149,7 @@ const BASE: Record<string, Entry> = {
   alpha_bps: { text: "Drift, a research knob: basis points the simulated index gains each trading day on average (25 is 0.25% a day). Zero is the study's driftless world; above it a long position has an edge to find.", aliases: ["drift", "drift (bps per day)"] },
   vol_of_vol: { text: "Vol of vol, a research knob: how much the path's own volatility wanders day to day, annualised. Zero keeps it at σ; options are priced at each day's vol.", aliases: ["vol of vol"] },
   skew_slope: { text: "Skew slope, a research knob: implied vol added per unit of ln(spot / strike), so lower strikes cost more when it is positive, as SPX's do. Zero is a flat smile.", aliases: ["skew slope"] },
-  n_days: { text: "Days per path: trading days simulated in each market path (63 is one quarter).", aliases: ["days per path"] },
+  n_days: { text: "Days per path: trading days simulated in each market path (63 is one quarter). An episode trades one whole path, so it is also the days per episode.", aliases: ["days per path", "days per episode"] },
   tenor_days: { text: "Tenors: the expiries listed, in trading days.", aliases: ["tenors"] },
   short_delta: { text: "Short delta: the delta of the options sold (0.16 is about one standard deviation out). Smaller is further out: less credit, rarer losses.", aliases: ["short delta"] },
   wing_delta: { text: "Wing delta: the delta of the protective options bought further out; must be smaller than the short delta.", aliases: ["wing delta"] },

@@ -53,16 +53,20 @@ export const GLOSSARY_DATA: Record<string, string> = {
   diff_abs: "The mean size of the gap, either direction, in vol points.",
   diff_max: "The largest gap at any one of the simulator's contracts, in vol points.",
   regions: "The simulator's contracts split by moneyness: the put wing below ln(K/F) = -0.03, near the money within 0.03, the call wing above.",
+  gap_put: "Real less simulated implied vol, averaged over the simulator's put-wing contracts (ln(K/F) below -0.03), in vol points. Positive: the market prices downside protection above the simulator's single vol.",
+  gap_atm: "Real less simulated implied vol, averaged over the simulator's contracts near the money (ln(K/F) within 0.03), in vol points: how well its one vol matches the at-the-money level.",
+  gap_call: "Real less simulated implied vol, averaged over the simulator's call-wing contracts (ln(K/F) above 0.03), in vol points. Negative: the real call wing trades below the simulator's single vol.",
 
   // the seller question
   iron_condor: "Short a put and a call near the 16-delta strikes, long a put and a call further out (5 delta) as wings: the seller collects a credit and its loss is capped by the wings.",
   credit: "Dollars received at the open for one condor (100 multiplier): the most it can make.",
-  max_loss: "The worst case at expiry, computed from the four legs: the wider wing less the credit, in dollars. The wings cap it even on a day the margin check misreads the condor as naked (#39).",
-  margin: "Dollars of buying power the structure ties up at the open, by optspread.margin: its max loss when the check reads the risk as defined, the naked-short rule when it does not (on some high-spot days it misreads a condor, #39).",
+  max_loss: "The worst case at expiry, computed from the four legs: the wider wing less the credit, in dollars. The wings cap it, whatever the margin figure says.",
+  margin: "Dollars of buying power the structure ties up at the open, by optspread.margin: its max loss when the risk reads as defined, the naked-short rule when it does not. An estimate: on some high-spot days it reads a condor as naked and asks for more than the condor can lose.",
   breakevens: "The SPX levels at expiry where the condor neither makes nor loses: the short strikes less and plus the credit per share.",
   legs: "Each leg on the real chain the provider builds for the day: strike, strike over spot, delta, implied vol and mid price per share.",
 
   // data quality
+  quality: "How far the panel can be trusted: which vendor priced each day and the days missing, how closely the two vendors agree where both quote, FRED's rates and the S&P 500 close as a sanity check, and whether the files match the manifest.",
   coverage: "Contracts quoted per trading day by vendor. The panel takes each day from one vendor; a missing day is listed, never interpolated.",
   missing_days: "Trading days with no quote from the vendor that should cover them. A day the other vendor quotes is not missing from the panel.",
   seam: "OptionMetrics and Databento priced the same way on the days both quote (July and August 2025). The figure: on each shared day, the 95th percentile of the IV gap over the contracts both quote, averaged over the days (the worst day beside it), as docs/DATA.md states it.",

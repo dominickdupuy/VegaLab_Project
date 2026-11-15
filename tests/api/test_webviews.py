@@ -840,5 +840,7 @@ def test_the_seller_view_shows_the_loss_its_wings_cap_when_the_frozen_check_says
         naked=True,
     )
     assert (
-        "can lose at most $30,364" in line and "margins this condor as naked shorts (#39)" in line
+        "can lose at most $30,364" in line
+        and "reads this condor as naked shorts" in line
+        and "#39" not in line
     )

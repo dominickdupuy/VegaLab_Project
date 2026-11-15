@@ -35,7 +35,7 @@ from dashboard_fixtures import (
 )
 from pydantic import BaseModel
 
-from optspread.api.catalog import CATALOG_FILENAME, catalog
+from optspread.api.catalog import CATALOG_FILENAME, catalog, display_label
 from optspread.api.compare import code_diff, compare, compare_verdict
 from optspread.api.gates import gates
 from optspread.api.jobs import job_options
@@ -51,7 +51,7 @@ from optspread.api.power import (
     power_surface,
     surface_seeds,
 )
-from optspread.api.premiums import _premium_contrast, _world_label, premium_view
+from optspread.api.premiums import _premium_contrast, _world, _world_label, premium_view, world_name
 from optspread.api.runs import (
     HEATMAP_BINS,
     RunFilters,
@@ -65,7 +65,7 @@ from optspread.api.runs import (
     run_list,
 )
 from optspread.api.sweeps import sweep_detail, sweeps
-from optspread.config import STUDY_R, MarketConfig
+from optspread.config import STUDY_MARKET, STUDY_R, CostConfig, MarketConfig, RunConfig
 from optspread.dashboard.jobs.queue import JobManager
 from optspread.dashboard.jobs.spec import (
     ACTION_LOG_FILENAME,
@@ -337,6 +337,23 @@ def test_a_compare_puts_the_baseline_first_whichever_order_it_is_asked(run_root:
     assert asked.verdict == usual.verdict and asked.verdict[0].isupper()
 
 
+@pytest.mark.behaviour
+def test_a_compare_of_simulated_against_real_data_is_not_paired(run_root: Path) -> None:
+    import dataclasses
+
+    rows = index(run_root)
+    row = next(r for r in rows if r.status == "OK" and r.policy == "delta_seller")
+    sim = load_run_detail(row.path)
+    real = dataclasses.replace(sim, row=dataclasses.replace(sim.row, data_source="optionmetrics"))
+    out = compare(sim, real, run_root, rows)
+    # the same config hash, but the data source differs, so no seed is the same market
+    assert [(d.key, d.a, d.b) for d in out.config_diff] == [
+        ("data_source", "synthetic", "optionmetrics")
+    ]
+    assert out.shared_seeds == 0 and out.diff_mean is None and not out.diffs
+    assert "cannot be compared episode by episode" in out.verdict
+
+
 # -- gates ------------------------------------------------------------------------------ #
 
 
@@ -388,6 +405,8 @@ def test_job_options_describe_every_knob_with_its_bounds() -> None:
     assert {p.name for p in out.presets} >= {"null_world", "planted_1", "costs_off"}
     planted = next(p for p in out.presets if p.name == "planted_1")
     assert planted.spec["iv_premium_vol_pts"] == 1.0
+    # the panel starts on the example runs' first seed, so a default launch pairs with them
+    assert out.defaults["seed"] == knobs["seed"].default == planted.spec["seed"] == 20_000
     # the source toggle: the generator always, where each source's jobs land, A8's dates
     assert out.sources[0] == "synthetic" and set(out.sources) <= set(knobs["source"].choices)
     assert out.landing == {"synthetic": "launched", "optionmetrics": "optionmetrics/launched"}
@@ -864,7 +883,9 @@ def test_the_run_payload_carries_the_recorded_source_and_panel(
 def test_premiums_pool_each_arm_and_pair_it_with_itself_at_zero(run_root: Path) -> None:
     out = premium_view(index(run_root), run_root, RunFilters(sweep=["tiny"]))
     assert out.n_runs == 4 and out.n_skipped == 0 and len(out.worlds) == 1
-    assert out.worlds[0].label == "" and out.worlds[0].arms == ["delta_seller", "flat"]
+    # named by how it differs from today's defaults: the tiny sweep's three-week world
+    assert out.worlds[0].label == "21-day episodes, 21-day path, tenors 7, 14"
+    assert out.worlds[0].arms == ["delta_seller", "flat"]
     cells = {(g.arm, g.premium): g for g in out.groups}
     seller = cells[("delta_seller", 2.0)]
     assert seller.n_runs == 1 and seller.n_episodes == 3 and seller.interval == "episodes"
@@ -888,6 +909,24 @@ def test_premiums_pool_each_arm_and_pair_it_with_itself_at_zero(run_root: Path) 
     flat = next(c for c in out.contrasts if c.arm == "flat")
     assert flat.estimate == 0.0 and not flat.detected  # flat earns nothing anywhere
     assert {c.premium for c in out.contrasts} == {2.0}  # zero is the control, never a contrast
+
+
+@pytest.mark.behaviour
+def test_worlds_are_named_against_todays_defaults_not_the_most_common_world() -> None:
+    def name(config: RunConfig, source: str = "synthetic") -> str:
+        return world_name(_world(config.model_dump(mode="json"), source)[1])
+
+    # the launch form's world is the default one however few runs it has on this root,
+    # and the confirmatory study's world (r = 0.04) is named as such however many it has
+    assert name(RunConfig()) == ""
+    assert name(RunConfig(market=STUDY_MARKET)) == "Study world (rate 4%)"
+    seller = STUDY_MARKET.model_copy(update={"iv_premium_vol_pts": 2.0})
+    assert name(RunConfig(market=seller, policy="delta_seller", seed=9)) == "Study world (rate 4%)"
+    # a world one step off the study's is described, not called the study's
+    off = RunConfig(market=STUDY_MARKET, cost=CostConfig(enabled=False))
+    assert name(off) == "costs off, rate 4%"
+    # a real chain reads its own rate, so its world never names the config's
+    assert name(RunConfig(market=STUDY_MARKET), "optionmetrics") == ""
 
 
 @pytest.mark.invariant
@@ -925,9 +964,25 @@ def test_a_compare_says_in_one_sentence_what_the_pair_shows(run_root: Path) -> N
 
 
 @pytest.mark.behaviour
+def test_a_catalog_label_names_its_arm_in_words() -> None:
+    assert display_label("delta_seller, premium 4") == "seller, premium 4"
+    assert display_label("always_on on real data") == "always-on condor on real data"
+    assert (
+        display_label("ppo premium 2 trained 100,000 steps")
+        == "PPO premium 2 trained 100,000 steps"
+    )
+    assert (
+        display_label("seller short delta 0.16, premium 1") == "seller short delta 0.16, premium 1"
+    )
+
+
+@pytest.mark.behaviour
 def test_a_catalog_groups_runs_by_question_and_pairs_them(run_root: Path, tmp_path: Path) -> None:
     rows = index(run_root)
-    assert not catalog(run_root, rows).available  # no catalog: every page as before
+    bare = catalog(run_root, rows)
+    assert not bare.available  # no catalog: every page as before
+    # and the payload says what builds this root's example runs, for the workflows to show
+    assert bare.command == f'make showcase ARGS="--root {run_root}"'
     root = tmp_path / "runs"
     import shutil
 
@@ -955,13 +1010,10 @@ def test_a_catalog_groups_runs_by_question_and_pairs_them(run_root: Path, tmp_pa
     # at each premium, the arm away from the launch defaults against the seller (the default)
     assert {(p.premium, p.varies[0]) for p in group.pairs} == {(0.0, "policy"), (2.0, "policy")}
     pair = next(p for p in group.pairs if p.premium == 2.0)
-    assert (
-        pair.a == keys[("delta_seller", 2.0)]
-        and pair.title == "flat at 2 against delta_seller at 2"
-    )
+    assert pair.a == keys[("delta_seller", 2.0)] and pair.title == "flat at 2 against seller at 2"
     assert pair.n_shared == 3 and pair.diff_mean is not None and pair.diff_ci_low is not None
     cmp = compare(load_run_detail(root / pair.a), load_run_detail(root / pair.b), root, rows, out)
-    assert cmp.question == group.question and cmp.a_label == "delta_seller at 2"
+    assert cmp.question == group.question and cmp.a_label == "seller at 2"
     (root / CATALOG_FILENAME).write_text("{not json")
     broken = catalog(root, rows)
     assert not broken.available and broken.problem

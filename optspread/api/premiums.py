@@ -20,6 +20,7 @@ from optspread.analysis import ALPHA, NULL_PREMIUM, decide_contrast
 from optspread.api._base import Out
 from optspread.api.runs import RunFilters, _filtered, row_out, run_source
 from optspread.artifacts import SchemaVersionError, read_run
+from optspread.config import STUDY_MARKET, RunConfig
 from optspread.dashboard.runindex import RunRow, flatten_config
 from optspread.manifest import RunManifest
 
@@ -53,7 +54,7 @@ P_LEVELS = (5, 25, 50, 75, 95)
 
 class WorldOut(Out):
     id: str
-    label: str  # what sets it apart from the most common world here; "" for that one
+    label: str  # what sets it apart from today's defaults (RunConfig()); "" for that one
     source: str
     n_runs: int
     arms: list[str]
@@ -123,14 +124,34 @@ def _world(config: dict[str, Any], source: str) -> tuple[str, dict[str, Any]]:
     return hashlib.sha256(blob.encode()).hexdigest()[:10], flat
 
 
-def _world_label(flat: dict[str, Any], main: dict[str, Any]) -> str:
+def _world_label(flat: dict[str, Any], base: dict[str, Any]) -> str:
     parts: list[str] = []
-    for k in sorted(set(flat) | set(main)):
-        if k == "source" or k.startswith("train.") or flat.get(k) == main.get(k):
+    for k in sorted(set(flat) | set(base)):
+        if k == "source" or k.startswith("train.") or flat.get(k) == base.get(k):
             continue
         v = flat.get(k)
         parts.append(_PLAIN_KEYS[k](v) if k in _PLAIN_KEYS and v is not None else f"{k} {v}")
     return ", ".join(parts)
+
+
+def _defaults(source: str) -> dict[str, Any]:
+    """Today's defaults as a world: ``RunConfig()``, what the launch form starts from."""
+    return _world(RunConfig().model_dump(mode="json"), source)[1]
+
+
+# The confirmatory study's world: today's defaults but for the rate (config.STUDY_MARKET).
+_STUDY = _world(RunConfig(market=STUDY_MARKET).model_dump(mode="json"), "synthetic")[1]
+
+
+def world_name(flat: dict[str, Any]) -> str:
+    """A world named by how it differs from today's defaults, not from the most common world
+    on the root: "" for the default world, "Study world (rate 4%)" for the study's own."""
+    source = str(flat["source"])
+    base = _defaults(source)
+    if source != "synthetic":  # a real chain reads its own rate, so the config's is moot
+        flat, base = ({k: v for k, v in d.items() if k != "market.r"} for d in (flat, base))
+    label = _world_label(flat, base)
+    return f"Study world ({label})" if flat == _STUDY else label
 
 
 def _arm_variant(config: dict[str, Any]) -> str:
@@ -303,7 +324,6 @@ def premium_view(rows: Sequence[RunRow], root: Path, filters: RunFilters) -> Pre
         counts[world] = counts.get(world, 0) + 1
         flats[world] = flat
         arms.setdefault(world, set()).add(arm)
-    main = flats[max(counts, key=lambda w_: (counts[w_], w_))] if counts else {}
     cells: dict[tuple[str, str, str, str, float], list[tuple[str, int, dict[int, float]]]] = {}
     for key, arm, variant, world, premium, source, first, eps, _ in read:
         cells.setdefault((arm, variant, world, source, premium), []).append((key, first, eps))
@@ -324,7 +344,7 @@ def premium_view(rows: Sequence[RunRow], root: Path, filters: RunFilters) -> Pre
     worlds = [
         WorldOut(
             id=w_,
-            label=_world_label(flats[w_], main),
+            label=world_name(flats[w_]),
             source=str(flats[w_]["source"]),
             n_runs=counts[w_],
             arms=sorted(arms[w_]),

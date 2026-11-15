@@ -63,7 +63,7 @@ export function SellerDay({ date, gridded }: { date: string; gridded: boolean })
         <>
           {d.margined_as_naked ? (
             <p className={ui.callout}>
-              Why the margin is above the max loss: the frozen harness decides whether risk is defined with an absolute tolerance that this condor&apos;s payoffs, at SPX {num(d.spot, 0)}, round past, so it margins the condor as naked shorts (open defect #39, docs/DEFECTS.md). The sweep ran with that check, so the margin is shown as the harness computes it; the max loss is computed from the legs.
+              Why the margin is above the max loss: the margin is an estimate on some days. At SPX {num(d.spot, 0)} the check that decides whether this condor&apos;s risk is defined rounds past its tolerance, so it margins the condor as naked shorts (docs/DEFECTS.md). The study ran with the same check, so the margin is shown as it computes it; the max loss is computed from the legs.
             </p>
           ) : null}
           <div className={ui.grid4}>
@@ -74,7 +74,7 @@ export function SellerDay({ date, gridded }: { date: string; gridded: boolean })
               value={d.capped_loss !== null ? usd(d.capped_loss) : d.max_loss !== null ? usd(d.max_loss) : "not capped"}
               note={d.margined_as_naked ? "capped by the wings, from the legs" : d.capped_loss !== null || d.max_loss !== null ? "the wider wing less the credit" : "no wing on one side"}
             />
-            <Tile info="data.margin" label="Margin" value={usd(d.margin)} note={d.margined_as_naked ? "margined as naked shorts (#39)" : "posted at the open: the max loss"} />
+            <Tile info="data.margin" label="Margin" value={usd(d.margin)} note={d.margined_as_naked ? "an estimate: margined as naked shorts" : "posted at the open: the max loss"} />
             <Tile info="data.breakevens" label="Breakevens" value={d.breakevens.map((b) => num(b, 0)).join(" – ")} note={`SPX ${num(d.spot, 0)} at the close`} />
           </div>
           <div className={ui.grid2}>

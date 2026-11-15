@@ -167,7 +167,7 @@ function Data() {
         </section>
       ) : null}
       {usable && status.data ? (
-        <Fold id="quality" title="Data quality" term="data.coverage" sub="coverage, the vendor seam, FRED and the build's version" open={qualityOpen} onToggle={setQualityOpen}>
+        <Fold id="quality" title="Data quality" term="data.quality" sub="coverage, the vendor seam, FRED and the build's version" open={qualityOpen} onToggle={setQualityOpen}>
           <QualityBody date={date || latest || ""} status={status.data} />
         </Fold>
       ) : null}

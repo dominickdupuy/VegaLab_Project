@@ -28,6 +28,9 @@ function Forest({ lo, hi, mean, scale }: { lo: number | null; hi: number | null;
   );
 }
 
+/** The two runs made the same P&L on every shared path: a difference of exactly zero, with no spread. */
+const identical = (p: CatalogPair) => p.diff_mean !== null && Math.abs(p.diff_mean) < 1e-6 && p.diff_ci_low !== null && p.diff_ci_high !== null && Math.abs(p.diff_ci_high - p.diff_ci_low) < 1e-6;
+
 /** Each setting against the group's baseline on the same paths: the paired difference first. */
 function GroupCard({ g }: { g: CatalogGroup }) {
   const t = useTokens();
@@ -68,13 +71,22 @@ function GroupCard({ g }: { g: CatalogGroup }) {
                   <tr key={`${p.a}|${p.b}`}>
                     <td>{label.get(p.b) ?? p.b}</td>
                     <td className={ui.dim}>{label.get(p.a) ?? p.a}</td>
-                    <td className={ui.num} style={{ whiteSpace: "nowrap" }}>
-                      {p.diff_mean !== null ? (p.diff_mean >= 0 ? "+" : "") : ""}
-                      {usd(p.diff_mean)}
-                      <div className={ui.dim} style={{ fontSize: 12 }}>
-                        {p.diff_ci_low !== null && p.diff_ci_high !== null ? `± ${usd((p.diff_ci_high - p.diff_ci_low) / 2)}` : ""} · {p.clear ? "clear" : "noise"}
-                      </div>
-                    </td>
+                    {identical(p) ? (
+                      <td className={ui.num} style={{ whiteSpace: "nowrap" }}>
+                        $0
+                        <div className={ui.dim} style={{ fontSize: 12 }}>
+                          identical on the shared paths <InfoTip term="identical_pair" />
+                        </div>
+                      </td>
+                    ) : (
+                      <td className={ui.num} style={{ whiteSpace: "nowrap" }}>
+                        {p.diff_mean !== null ? (p.diff_mean >= 0 ? "+" : "") : ""}
+                        {usd(p.diff_mean)}
+                        <div className={ui.dim} style={{ fontSize: 12 }}>
+                          {p.diff_ci_low !== null && p.diff_ci_high !== null ? `± ${usd((p.diff_ci_high - p.diff_ci_low) / 2)}` : ""} · {p.clear ? "clear" : "noise"}
+                        </div>
+                      </td>
+                    )}
                     <td>
                       <Forest lo={p.diff_ci_low} hi={p.diff_ci_high} mean={p.diff_mean} scale={scale} />
                     </td>
@@ -111,7 +123,7 @@ function GroupCard({ g }: { g: CatalogGroup }) {
                     </td>
                     <td className={ui.num}>
                       {usd(r.mean_pnl)}
-                      {r.se_pnl !== null ? ` ± ${usd(r.se_pnl)}` : ""}
+                      {r.se_pnl ? ` ± ${usd(r.se_pnl)}` : ""}
                     </td>
                   </tr>
                 ))}

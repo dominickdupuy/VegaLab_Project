@@ -199,9 +199,18 @@ def _knob(name: str, info: Any, arms: Sequence[str]) -> KnobOut:
     )
 
 
+# The launch panel's first seed: the showcase's (scripts/showcase.py), so a run launched with
+# the panel's defaults or a quick start pairs with the example runs on their paths. JobSpec
+# keeps the config's default (0); only the panel starts here. Below 2**15, so PPO takes it.
+LAUNCH_SEED = 20_000
+
+
 def job_options() -> JobOptionsOut:
     arms = available_arms()
     knobs = [_knob(name, info, arms) for name, info in JobSpec.model_fields.items()]
+    knobs = [
+        k.model_copy(update={"default": LAUNCH_SEED}) if k.name == "seed" else k for k in knobs
+    ]
     if "ppo" not in arms:
         knobs = [k for k in knobs if k.name != "total_timesteps"]
     return JobOptionsOut(
@@ -211,8 +220,11 @@ def job_options() -> JobOptionsOut:
         landing={s: (source_root(Path(), s) / LAUNCH_DIR).as_posix() for s in SOURCES},
         splits={k: [a.isoformat(), b.isoformat()] for k, (a, b) in SPLITS.items()},
         knobs=knobs,
-        presets=[_from_attrs(PresetOut, p, spec=p.spec.model_dump(mode="json")) for p in PRESETS],
-        defaults=JobSpec().model_dump(mode="json"),
+        presets=[
+            _from_attrs(PresetOut, p, spec={**p.spec.model_dump(mode="json"), "seed": LAUNCH_SEED})
+            for p in PRESETS
+        ],
+        defaults=JobSpec(seed=LAUNCH_SEED).model_dump(mode="json"),
     )
 
 

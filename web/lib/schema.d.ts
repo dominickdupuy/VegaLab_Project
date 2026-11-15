@@ -1143,6 +1143,11 @@ export interface components {
         CatalogOut: {
             /** Available */
             available: boolean;
+            /**
+             * Command
+             * @default
+             */
+            command: string;
             /** File */
             file: string;
             /** Groups */

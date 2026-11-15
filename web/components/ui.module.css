@@ -55,6 +55,13 @@
   color: var(--hero-text);
 }
 
+.navWrap {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
 .nav {
   position: relative;
   display: flex;
@@ -63,6 +70,23 @@
   flex: 1;
   min-width: 0;
   scrollbar-width: none;
+}
+
+/* more tabs off to the right (a phone): a chevron over the fade */
+.navMore {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 4px 2px 18px;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--hero-text);
+  background: linear-gradient(90deg, transparent, var(--hero) 55%);
+  pointer-events: none;
 }
 
 .navLink {
@@ -361,15 +385,16 @@
     flex: none;
     gap: 8px;
   }
-  .nav {
+  .navWrap {
     order: 3;
     flex: 1 0 100%;
     margin: 0 -16px;
+  }
+  .nav {
     padding: 0 6px;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scroll-snap-type: x proximity;
-    mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 28px), transparent);
   }
   .navLink {
     padding: 11px 10px 13px;
@@ -378,9 +403,17 @@
   }
 }
 
+/* a narrow phone keeps VEGA LAB, the link to How it works, a little smaller */
 @media (max-width: 420px) {
+  .brandName {
+    font-size: 16px;
+  }
+  .brand {
+    gap: 8px;
+  }
   .brandLab {
-    display: none;
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
   }
 }
 
@@ -1435,7 +1468,8 @@
 }
 
 /* a knob that does not apply here: shown greyed, its value kept */
-.input:disabled {
+.input:disabled,
+.select:disabled {
   background: var(--surface-2);
   color: var(--muted);
   border-style: dashed;
@@ -1719,6 +1753,10 @@ button.statusItem:hover {
     border-left: 0;
     border-top: 1px solid var(--line);
   }
+  /* two to a row on a phone: the note wraps rather than cut off */
+  .statusNote {
+    white-space: normal;
+  }
 }
 
 /* ---------- the trust band: set apart by structure, not by colour ---------- */
@@ -1883,6 +1921,14 @@ button.statusItem:hover {
 
 .wfCardBig .wfCardTitle {
   font-size: var(--fs-lg);
+}
+
+/* the hero's right column: the study's finding, then the vol surface */
+.homeSide {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
 }
 
 .heroSide {

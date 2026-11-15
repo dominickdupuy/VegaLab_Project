@@ -13,8 +13,9 @@ import ui from "@/components/ui.module.css";
 import { Fold, Reading } from "@/components/PageBits";
 import { api, COMPONENTS, type MixSummary, type RunDetail, STRUCTURES } from "@/lib/api";
 import { type PairedCompare, runsApi } from "@/lib/api_runs";
-import { ARM_LABEL, armColor, axis, base, histBars, type Tokens, useTokens } from "@/lib/chart";
+import { ARM_LABEL, armColor, axis, base, histBars, SOURCE_LABEL, type Tokens, useTokens } from "@/lib/chart";
 import { esc, MINUS, num, pct, prem, short, usd } from "@/lib/format";
+import { guide } from "@/lib/guide";
 import { useFetch } from "@/lib/useFetch";
 
 export function histOption(t: Tokens, edges: number[], counts: number[], color: string, name: string, xName = "P&L per episode ($)"): EChartsOption {
@@ -68,6 +69,7 @@ function name(d: RunDetail, label: string): string {
  * premium (vol pts)"), else its last part in words; `brief` drops the unit in brackets.
  */
 function fieldLabel(key: string, labels: Record<string, string>, brief = false): string {
+  if (key === "data_source") return "Data source";
   const last = key.split(".").pop() ?? key;
   const label = labels[last] ?? last.replaceAll("_", " ");
   return brief ? label.replace(/\s*\([^)]*\)\s*$/, "") : label;
@@ -173,39 +175,53 @@ function Paired({ c }: { c: PairedCompare }) {
   const differs = [...(c.code_diff ? [c.code_diff] : []), ...c.config_diff];
   const labels = Object.fromEntries((options.data?.knobs ?? []).map((k) => [k.name, k.label || k.name]));
   const sharedNote = c.shared_seeds < Math.min(c.a.episodes.length, c.b.episodes.length) ? ` of ${Math.min(c.a.episodes.length, c.b.episodes.length)}` : "";
+  // nothing to pair: no shared seed, or a seed that is not the same market in both (other data)
+  const paired = c.shared_seeds > 0;
+  const otherData = c.a.row.source !== c.b.row.source;
+  const value = (x: unknown) => (typeof x === "string" && SOURCE_LABEL[x] ? SOURCE_LABEL[x] : JSON.stringify(x));
   return (
     <>
       <PageHead
-        eyebrow={c.question ? "Compare · answering" : "Compare, paired on shared seeds"}
+        eyebrow={!paired ? "Compare · not paired" : c.question ? "Compare · answering" : "Compare, paired on shared seeds"}
         title={c.question || `${nb} against ${na}`}
-        lede="B is tested against A, the baseline: every difference on this page is B − A."
+        lede={paired ? "B is tested against A, the baseline: every difference on this page is B − A." : otherData ? "One run is on simulated paths, the other on real SPX history: a seed is not the same market in both, so each run is read on its own." : "The two runs share no seeds, so no episode pairs: each run is read on its own."}
         right={
-          <Link href="/runs/" className={`${ui.btn} ${ui.btnSmall}`}>
-            ← All runs
+          <Link href={c.group ? `/runs/?question=${encodeURIComponent(c.group)}` : "/runs/"} className={`${ui.btn} ${ui.btnSmall}`} {...guide("runs-back")}>
+            {c.group ? "← Back to the questions" : "← All runs"}
           </Link>
         }
       />
       <Reading>{c.verdict}</Reading>
       <div className={ui.grid4}>
-        <Tile
-          label="Paired difference, B − A"
-          info="paired_difference"
-          value={signedUsd(c.diff_mean)}
-          note={
-            <>
-              per episode, ± {c.diff_ci_low !== null && c.diff_ci_high !== null ? usd((c.diff_ci_high - c.diff_ci_low) / 2) : "–"} (95%){" "}
-              {c.diff_ci_low !== null && c.diff_ci_high !== null ? (c.diff_ci_low > 0 || c.diff_ci_high < 0 ? "· clear" : "· within noise") : ""}
-            </>
-          }
-        />
-        <Tile label="B ahead on" value={pct(c.b_better_share, 0)} note="of the shared seeds" />
-        <Tile label="Shared seeds" value={`${num(c.shared_seeds)}${sharedNote}`} note="the same paths in both" info="paired_seeds" />
+        {paired ? (
+          <>
+            <Tile
+              label="Paired difference, B − A"
+              info="paired_difference"
+              value={signedUsd(c.diff_mean)}
+              note={
+                <>
+                  per episode, ± {c.diff_ci_low !== null && c.diff_ci_high !== null ? usd((c.diff_ci_high - c.diff_ci_low) / 2) : "–"} (95%){" "}
+                  {c.diff_ci_low !== null && c.diff_ci_high !== null ? (c.diff_ci_low > 0 || c.diff_ci_high < 0 ? "· clear" : "· within noise") : ""}
+                </>
+              }
+            />
+            <Tile label="B ahead on" value={pct(c.b_better_share, 0)} note="of the shared seeds" />
+          </>
+        ) : (
+          <>
+            <Tile label="A's mean" info={false} value={usd(c.a.risk.mean)} note={`per episode, se ${usd(c.a.risk.se)}`} />
+            <Tile label="B's mean" info={false} value={usd(c.b.risk.mean)} note={`per episode, se ${usd(c.b.risk.se)}`} />
+          </>
+        )}
+        <Tile label="Shared seeds" value={paired ? `${num(c.shared_seeds)}${sharedNote}` : "none"} note={paired ? "the same paths in both" : otherData ? "other data: a seed is not the same market" : "no seed both ran"} info="paired_seeds" />
         <Tile label="What differs" value={num(differs.length)} note={differs.slice(0, 3).map((x) => (x === c.code_diff ? `code: ${x.a} against ${x.b}` : fieldLabel(x.key, labels, true))).join(", ") || "identical configs, one clean commit"} />
       </div>
+      {paired ? (
       <Card
         title="P&L difference by seed"
-      info="paired_seeds"
-        sub={`B − A on each shared path: the market's luck is the same in both, so it cancels. The line is the mean, the shaded band its 95% interval (${signedUsd(c.diff_ci_low)} to ${signedUsd(c.diff_ci_high)}).`}
+        info="diff_by_seed"
+        sub={`B − A on each shared path: the market's luck is the same in both, so it cancels. The line is the mean${c.diff_ci_low !== null && c.diff_ci_high !== null ? `, the shaded band its 95% interval (${signedUsd(c.diff_ci_low)} to ${signedUsd(c.diff_ci_high)})` : ""}.`}
       >
         {c.diffs.length ? (
           <div className={ui.grid2}>
@@ -218,8 +234,9 @@ function Paired({ c }: { c: PairedCompare }) {
           </Empty>
         )}
       </Card>
+      ) : null}
       <p className={ui.groupTitle} style={{ margin: 0 }}>
-        Each run on its own: its mean is noisy at this sample size; the paired difference above is the precise number
+        {paired ? "Each run on its own: its mean is noisy at this sample size; the paired difference above is the precise number" : "Each run on its own"}
       </p>
       <div className={ui.grid2}>
         {(
@@ -351,8 +368,8 @@ function Paired({ c }: { c: PairedCompare }) {
                 {c.config_diff.map((r) => (
                   <tr key={r.key}>
                     <td title={r.key}>{fieldLabel(r.key, labels)}</td>
-                    <td>{JSON.stringify(r.a)}</td>
-                    <td>{JSON.stringify(r.b)}</td>
+                    <td>{value(r.a)}</td>
+                    <td>{value(r.b)}</td>
                   </tr>
                 ))}
               </tbody>

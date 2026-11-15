@@ -33,7 +33,8 @@ function leakCounts(evidence: string): string | null {
   const tested = /(\d+) of (\d+) fields tested, untested: ([^;]+)/.exec(evidence);
   const controls = /all (\d+) controls fire/.exec(evidence);
   if (!tested || !controls || tested[3]?.trim() === "none") return null;
-  return ` Two counts: a leak planted in each field alone is caught in all ${controls[1]}; the clean test reads ${tested[1]} of ${tested[2]} fields, since ${tested[3]?.trim()} is constant in the simulator (implied vol is flat there) and has nothing to test. The Leak detector page shows both.`;
+  const flat = tested[3]?.trim() ?? "";
+  return ` In plain words: planted in each of the ${tested[2]} fields alone, a leak is caught all ${controls[1]} times; with nothing planted, ${tested[1]} of the ${tested[2]} fields are checked for a false alarm, because ${flat === "atm_iv" ? "at-the-money implied vol (atm_iv)" : flat} never moves in the simulator and has nothing to check. The Leak detector page shows both.`;
 }
 
 /** One line of evidence: a mark, what is claimed, the live figure, and its evidence on hover. */
