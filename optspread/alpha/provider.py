@@ -25,6 +25,7 @@ from optspread.types import Chain
 
 class DatasetChainProvider:
     def __init__(self, ds: SynthDataset, world: World, split: Split) -> None:
+        self.world, self.split = world, split
         self.market: MarketConfig = ds.spec.market()
         self._spot = ds.spot(world, split)
         self._iv = ds.iv(world, split)
