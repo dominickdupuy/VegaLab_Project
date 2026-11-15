@@ -74,6 +74,7 @@ from optspread.env import Action
 from optspread.harness import build_env
 from optspread.manifest import callable_name
 from optspread.policies import Info, Observation, Policy
+from optspread.types import ChainProvider
 
 POLICY_FILENAME = "policy.zip"
 TORCH_THREADS = 1
@@ -215,8 +216,12 @@ def train_ppo(
     *,
     source: SourceName = "synthetic",
     should_stop: Callable[[], bool] | None = None,
+    provider: ChainProvider | None = None,
 ) -> SB3Policy:
     """Train the PPO arm of ``config`` and return it. Needs the ``train`` extra.
+
+    ``provider`` replaces the chains ``source`` would serve; the synthetic-alpha benchmark
+    (``optspread.alpha``) passes one that replays a frozen dataset's train paths.
 
     On the generator (the default) the training paths are ``TrainingPaths``' seeds; on
     another ``source`` the episodes are windows from its ``train`` split, which the run's
@@ -244,7 +249,7 @@ def train_ppo(
 
     torch.set_num_threads(TORCH_THREADS)
     train = config.train
-    env = TrainingPaths(build_env(config, source, split="train"), train.seed)
+    env = TrainingPaths(build_env(config, source, provider=provider, split="train"), train.seed)
     model = PPO(
         train.hyperparameters.policy,
         env,
@@ -296,6 +301,7 @@ def _train_default(
     config: RunConfig,
     source: SourceName,
     should_stop: Callable[[], bool] | None,
+    provider: ChainProvider | None = None,
 ) -> SB3Policy:
     """Train ``config``'s research arm at the Stable-Baselines3 defaults, on the training
     paths and split ``train_ppo`` uses, stopped as it is stopped."""
@@ -308,7 +314,7 @@ def _train_default(
 
     torch.set_num_threads(TORCH_THREADS)
     train = config.train
-    env = TrainingPaths(build_env(config, source, split="train"), train.seed)
+    env = TrainingPaths(build_env(config, source, provider=provider, split="train"), train.seed)
     learner: Any = getattr(stable_baselines3, algorithm.upper())
     model = learner("MlpPolicy", env, seed=train.seed, device=train.device, verbose=0)
     if should_stop is None:
@@ -340,9 +346,10 @@ def train_a2c(
     *,
     source: SourceName = "synthetic",
     should_stop: Callable[[], bool] | None = None,
+    provider: ChainProvider | None = None,
 ) -> SB3Policy:
     """Train the A2C arm of ``config`` and return it. Needs the ``train`` extra."""
-    return _train_default("a2c", config, source, should_stop)
+    return _train_default("a2c", config, source, should_stop, provider)
 
 
 def train_dqn(
@@ -350,9 +357,10 @@ def train_dqn(
     *,
     source: SourceName = "synthetic",
     should_stop: Callable[[], bool] | None = None,
+    provider: ChainProvider | None = None,
 ) -> SB3Policy:
     """Train the DQN arm of ``config`` and return it. Needs the ``train`` extra."""
-    return _train_default("dqn", config, source, should_stop)
+    return _train_default("dqn", config, source, should_stop, provider)
 
 
 def trainer_for(algorithm: LearnedArm) -> Callable[..., SB3Policy]:
@@ -368,12 +376,16 @@ def train(
     *,
     source: SourceName = "synthetic",
     should_stop: Callable[[], bool] | None = None,
+    provider: ChainProvider | None = None,
 ) -> SB3Policy:
-    """Train ``config``'s learned arm with the trainer ``config.train.algorithm`` names."""
+    """Train ``config``'s learned arm with the trainer ``config.train.algorithm`` names,
+    on ``provider``'s chains when one is given."""
     if config.train is None:
         raise ValueError(f"policy {config.policy!r} has no training config")
     trainer = trainer_for(config.train.algorithm)
-    return trainer(config, source=source, should_stop=should_stop)
+    if provider is None:  # exactly the call a stand-in trainer without the keyword takes
+        return trainer(config, source=source, should_stop=should_stop)
+    return trainer(config, source=source, should_stop=should_stop, provider=provider)
 
 
 # -- what the M2 gate report states about D3 -------------------------------- #
