@@ -1,7 +1,7 @@
 {
   "milestone": "M4",
   "report_date": "2026-11-14",
-  "verdict": "NOT CLEARED",
+  "verdict": "PASS",
   "items": [
     {
       "name": "Power curve analysis",
@@ -40,23 +40,23 @@
       "owner": "Ilan Danial",
       "verdict": "PASS",
       "criterion": "optspread.server.create_app builds the dashboard's app, and the app routes an API path holding 'attribution' (the attribution view) and one with an 'm4' segment or holding 'power-curve' (the power curve view), matched by name and named in the evidence; and the built site (web/out) has its index.html and calls each matched path from a built page or script",
-      "evidence": "54 API routes; attribution view: /api/runs/attribution; power curve view: /api/m4; the built site at ..\\VegaLab_Project-wt-a9\\web\\out calls /api/runs/attribution from _next/static/chunks/250-096332ce0439dbf1.js, _next/static/chunks/359-47fed79dfe8349ae.js; /api/m4 from _next/static/chunks/250-096332ce0439dbf1.js, _next/static/chunks/359-47fed79dfe8349ae.js",
+      "evidence": "56 API routes; attribution view: /api/runs/attribution; power curve view: /api/m4; the built site at ~/VegaLab_Project/web/out calls /api/runs/attribution from _next/static/chunks/359-4e43ea1dabb0fdfb.js, _next/static/chunks/392-565f78af82464c4e.js; /api/m4 from _next/static/chunks/359-4e43ea1dabb0fdfb.js, _next/static/chunks/392-565f78af82464c4e.js",
       "failed_first": ""
     },
     {
       "name": "Collaboration report",
       "owner": "All members",
-      "verdict": "FAIL",
+      "verdict": "PASS",
       "criterion": "the collaboration report due at Evaluation 3 is in docs/ as COLLABORATION.md or COLLABORATION_REPORT.md (the project document names no file) and holds more than whitespace",
-      "evidence": "not written",
-      "failed_first": "no COLLABORATION.md or COLLABORATION_REPORT.md under docs"
+      "evidence": "docs/COLLABORATION.md: 6,648 bytes, 108 lines, beginning 'Collaboration report'",
+      "failed_first": ""
     },
     {
       "name": "Attribution residual near zero",
       "owner": "Dominick Dupuy",
       "verdict": "PASS",
       "criterion": "for every arm of the A7 grid at least one of its cells (a run the grid record under the runs root lists) has an attribution under the attribution root made from its run directory that agrees with its run.json episode by episode (P&L and cost within attribution.PNL_RTOL, the same trades and steps; bit-for-bit reproduction is reported beside it, since a cell attributed on another platform agrees without reproducing); no attribution of a grid cell fails to agree; and every one of them has a residual share (the summed absolute residual over gross mark-to-market) under 5% (section 10.9; the scripted arms measure 1.5% to 2.6%). The evidence states whether vega was exercised: on the flat synthetic surface it is zero and this residual cannot see a vega error",
-      "evidence": "7 attribution(s) of grid-7d9d53d340006f02.json's 60 cells under ..\\VegaLab_Project-wt-a9\\attribution (7 readable, 0 refused); delta_seller: 1 cell(s) at premiums 1, residual share at most 1.72% of gross (a9cd378ebf25db26-s100000, largest step residual $189.99), every one agreeing with its run.json (1 of 1 bit for bit); ppo: 6 cell(s) at premiums 0, 0.25, 0.5, 1, 2, 4, residual share at most 3.21% of gross (8189379004c15610-s100000, largest step residual $15.91), every one agreeing with its run.json (6 of 6 bit for bit); vega is zero on every attributed sweep cell (the synthetic surface does not move), so this residual checks delta, gamma and theta, not vega; vega's sign and units are checked by tests/test_attribution.py on a moving surface; no other attribution under the root exercises vega",
+      "evidence": "7 attribution(s) of grid-7d9d53d340006f02.json's 60 cells under ~/VegaLab_Project/attribution (11 readable, 0 refused); delta_seller: 1 cell(s) at premiums 1, residual share at most 1.63% of gross (a9cd378ebf25db26-s100000, largest step residual $846.81), every one agreeing with its run.json (0 of 1 bit for bit); ppo: 6 cell(s) at premiums 0, 0.25, 0.5, 1, 2, 4, residual share at most 3.34% of gross (8189379004c15610-s100000, largest step residual $63.96), every one agreeing with its run.json (0 of 6 bit for bit); vega is zero on every attributed sweep cell (the synthetic surface does not move), so this residual checks delta, gamma and theta, not vega; vega's sign and units are checked by tests/test_attribution.py on a moving surface; no other attribution under the root exercises vega",
       "failed_first": ""
     }
   ]

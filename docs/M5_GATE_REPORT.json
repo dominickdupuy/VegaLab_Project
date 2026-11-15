@@ -1,0 +1,39 @@
+{
+  "milestone": "M5",
+  "report_date": "2026-11-14",
+  "verdict": "PASS",
+  "items": [
+    {
+      "name": "Dashboard views on sweep data",
+      "owner": "Ilan Danial",
+      "verdict": "PASS",
+      "criterion": "optspread.server.create_app builds the dashboard's app, which routes an API for every required view (home /api/overview, runs /api/runs, launch /api/launch/..., power /api/power, real data /api/data/..., leaks /api/leaks/..., sweep /api/sweeps..., attribution /api/edge... or /api/runs/attribution), matched by name and named in the evidence; with the A7 grid record under the runs root, the app queried in-process (FastAPI's TestClient) answers 200 with content for the sweep's detail (/api/sweeps/detail: every cell of the grid record listed), the M4 analysis (/api/m4: available) and the sweep's attribution (/api/edge/detail: the grid's edge with its cells); and the built site (web/out) has each view's index.html",
+      "evidence": "56 API routes; home: /api/overview; runs: /api/runs; launch: /api/launch/estimate, /api/launch/options, /api/launch/preview; power: /api/power; real data: /api/data/chain, /api/data/coverage, /api/data/daily and 15 more; leaks: /api/leaks/coverage, /api/leaks/demo, /api/leaks/field and 2 more; sweep: /api/sweeps, /api/sweeps/detail; attribution: /api/edge, /api/edge/detail, /api/runs/attribution; GET /api/sweeps/detail?key=grid-7d9d53d340006f02.json 200: 60 cells, 60 present; GET /api/m4 200: M4_ANALYSIS.json of 2026-11-14 (delta_seller, ppo); GET /api/edge/detail?grid=7d9d53d340006f02 200: the edge of 60 cells (delta_seller, ppo), re-simulated against run.json: differs; <built site> has all 8 views' index.html",
+      "failed_first": ""
+    },
+    {
+      "name": "Usability testing conducted, findings applied",
+      "owner": "All members",
+      "verdict": "PASS",
+      "criterion": "docs/USABILITY.md records at least 2 sessions in its Sessions table with a date, a tester's role and 'yes' (or 'simulated') in Outside the team, the evidence saying how many of each; and every row of its Findings table names a recorded session and has a Response and a Commit or reason, every commit cited (a 7 to 40 hex sha) resolving in the repository (section 10.10)",
+      "evidence": "docs/USABILITY.md: 9 session rows, 9 recorded, 9 sessions (all simulated); 59 findings (0 high, 17 medium, 42 low); 59 responses, citing 3 commits, every one in the repository",
+      "failed_first": ""
+    },
+    {
+      "name": "Documentation drafted",
+      "owner": "All members",
+      "verdict": "PASS",
+      "criterion": "README.md and docs/REPRODUCE.md, docs/EXTENDING.md, docs/DATA.md, docs/DEFECTS.md, docs/PRE_REGISTRATION.md, docs/M1_GATE_REPORT.md, docs/M2_GATE_REPORT.md, docs/M3_GATE_REPORT.md, docs/M4_GATE_REPORT.md exist and each holds more than whitespace; the evidence lists what is missing",
+      "evidence": "10 of 10 files written (lines: README.md 882, docs/REPRODUCE.md 141, docs/EXTENDING.md 414, docs/DATA.md 463, docs/DEFECTS.md 390, docs/PRE_REGISTRATION.md 441, docs/M1_GATE_REPORT.md 16, docs/M2_GATE_REPORT.md 17, docs/M3_GATE_REPORT.md 20, docs/M4_GATE_REPORT.md 23)",
+      "failed_first": ""
+    },
+    {
+      "name": "Adapter conformance suite and OptionMetrics stub",
+      "owner": "Hemdutt Rao",
+      "verdict": "PASS",
+      "criterion": "optspread.data's SourceName names optionmetrics_stub, make_source builds it as that source, available, and its provider builds; and the conformance suite (data.conformance_suite, the check m2gate's adapter item runs: the provider contract and the leak suite's structural invariants) passes optionmetrics_stub and every other source it checks. The real optionmetrics source is reported beside them: SKIPPED where its panel is absent, which is not a failure of this item (its conformance was M2's)",
+      "evidence": "SourceName names optionmetrics_stub; make_source('optionmetrics_stub') builds OptionMetricsStubSource, its provider a SyntheticChainProvider of 63 days; conformance_suite: synthetic PASS (64 chains); optionmetrics_stub PASS (64 chains); optionmetrics PASS (64 chains)",
+      "failed_first": ""
+    }
+  ]
+}
