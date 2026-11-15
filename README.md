@@ -769,21 +769,39 @@ sample.
   what `PlantedEffect` cannot express; it shapes the surface, not its path through time.
 - **Train.** `DatasetChainProvider` replays the frozen paths through the ordinary
   environment; `train(config, provider=...)` trains PPO, A2C or DQN on the train paths
-  only, and a second copy, same seed and budget, on the twin's.
+  only, on `n_seeds` training seeds, and a second copy per seed, same budget, on the twin's.
 - **Compare**, on held-out paths unless stated, each with a standard error: the
   *attainable* edge (the oracle on the signal world minus the twin; the oracle is the best
   of a scripted menu chosen on 200 fresh paths, and must beat flat by 2 se there or flat
-  stands); the edge *captured* (the agent, signal minus twin, so cost drag and path luck
-  cancel) and the capture ratio; the *overfit gap* (train minus held-out); and the *noise
-  fit* (the noise-trained copy in sample minus out of sample: memorised noise).
+  stands; it is chosen once per generator and cached); the edge *captured* (the agent,
+  signal minus twin, so cost drag and path luck cancel) and the capture ratio; the *overfit
+  gap* (train minus held-out); and the *noise fit* (the noise-trained copy in sample minus
+  out of sample: memorised noise). Each se is the seed spread of the per-seed figure plus the
+  path noise of the seed-averaged one, the tau^2/S + sigma^2/(S N) split of the power lab;
+  with one seed it is path noise alone and says nothing about training luck.
+- **Sweep** one setting, the number of train paths or the training budget, one benchmark
+  per value. Held-out path seeds do not depend on the train size, so every point is scored
+  on the same held-out paths and each train set is the start of the next.
 
 Short premium is negatively skewed, which is what the oracle rule is for: on 16 noise paths
 a short strangle beat flat at z = 2.8 because the rare large loss was not drawn; on 200 none
-does. On `mr_vrp` at 4 vol points, 32 train paths, the timing seller takes $5,607 a path
-(se $1,056) while PPO at 20,480 steps does worse on the signal world than on its twin
-(capture ratio -15%, se 6%): the timing is there to learn and that budget does not learn
-it. The page is **Synthetic alpha**; its data and results load from the URL
-(`/alpha/?dataset=<hash>`).
+does. On `const_vrp` at 4 vol points, 128 held-out paths, 20,480 steps and 3 seeds, the
+oracle (the rolled strangle) takes $5,966 a path (se $327):
+
+| Train paths | Arm | Capture ratio | Overfit gap | Noise fit |
+|---|---|---|---|---|
+| 4 | PPO | 58% (se 21%) | $5,267 (se $2,310) | $7,234 (se $2,972) |
+| 16 | PPO | 62% (se 21%) | $482 (se $2,482) | $2,217 (se $2,955) |
+| 64 | PPO | 62% (se 21%) | -$267 (se $1,286) | -$215 (se $1,145) |
+| 32 | PPO | 57% (se 17%) | $748 (se $1,328) | -$319 (se $1,227) |
+| 32 | A2C | 46% (se 11%) | $577 (se $1,299) | $1,246 (se $1,262) |
+| 32 | DQN | 31% (se 23%) | -$491 (se $935) | $228 (se $1,116) |
+
+On four train paths both learners memorise them: the agent does $5,267 better on its own
+paths than on new ones and a copy trained on pure noise "earns" $7,234 in sample, each over
+2 se; by 64 paths both are gone. The three arms are not told apart on this dataset, and one
+seed would have misled: PPO's three seeds took 29%, 55% and 86% of the edge. The page is
+**Synthetic alpha**; its data and results load from the URL (`/alpha/?dataset=<hash>`).
 
 ## The dashboard
 
@@ -819,7 +837,7 @@ from the committed file: `cd web && npm ci && npm run build && npm run typecheck
 | Sweep | `grid-<hash>.json` (or a `sweep.json`) and their cells; `docs/M4_ANALYSIS.json` | per-arm means by premium (± se of block means), every cell, each arm against itself at zero block by block; power curves with bands, floors, the gap, the real premium read off each curve, the decision per premium, tau^2 homogeneity and the bootstrap check, once `make m4` has written the analysis |
 | Attribution | `<attribution root>/edge/edge-<hash>.json` (`make edge`) | per arm and premium, each component's edge (delta, gamma, vega, theta, carry, cost, residual) with its se and one-sided 95% bound, diverging and stacked across premiums with the P&L edge marked; the same split by structure held; residual share per cell; reproduces, agrees or differs per cell, each cell linked to its run's own attribution; the grid's action mix by arm and premium (`actionmix/grid-<hash>.json`) |
 | Synth data | `optspread.api.synth`, `MarketConfig` | the simulated market before a run is launched on it: sample index paths, the near-tenor ATM vol along each and the smile half way through, for the path vol and the research knobs (drift in bps a day, vol of vol, skew slope; each left out of the config hash at zero), and a link that launches a run on that market |
-| Synthetic alpha | `<runs root>/alpha/datasets/<hash>/`, `<runs root>/alpha/bench/` | plant an edge (constant or mean-reverting premium, mean-reverting spot, drift, or none), freeze the paths and their noise twin, train PPO, A2C or DQN on exactly the train paths (a second copy on the twin), and read the attainable edge, the edge taken, the capture ratio, the overfit gap and the noise fit, each with its se and z |
+| Synthetic alpha | `<runs root>/alpha/datasets/<hash>/`, `<runs root>/alpha/bench/`, `<runs root>/alpha/sweeps/` | plant an edge (constant or mean-reverting premium, mean-reverting spot, drift, or none), freeze the paths and their noise twin, train PPO, A2C or DQN (or all three) on exactly the train paths on several seeds (a second copy on the twin), and read the attainable edge, the edge taken, the capture ratio, the overfit gap and the noise fit, each with its se and z and per seed; every result on the dataset side by side; and sweeps over the train size or the training budget |
 | How it works | the site | five steps, from the market to whether a result can be trusted, each one sentence and a link to the page that does it; reached from the footer and the Vega Lab label, not the nav |
 
 Every page keeps its settings in the URL, so any view links as it stands (the link
