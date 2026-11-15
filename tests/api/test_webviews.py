@@ -797,6 +797,10 @@ def test_the_launch_preview_shows_the_run_or_every_reason_it_would_be_refused(
     assert flat.day0 is not None and flat.day0.structure == "FLAT" and not flat.day0.legs
     ppo = launch_preview({**spec, "policy": "ppo", "total_timesteps": 64}, run_root, rows)
     assert ppo.ok and ppo.day0 is not None and ppo.day0.reference  # the seller, for scale
+    assert "Research knobs" not in out.world
+    moved = launch_preview({**spec, "alpha_bps": 25.0, "skew_slope": 0.1}, run_root, rows)
+    assert moved.ok and moved.run_id != out.run_id
+    assert "Research knobs moved: drift 25 bps a day, skew slope 0.1." in moved.world
 
 
 @pytest.mark.behaviour

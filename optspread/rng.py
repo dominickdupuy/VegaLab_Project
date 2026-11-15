@@ -22,6 +22,7 @@ import numpy as np
 
 PATH_CHANNEL = 0  # the underlying price path
 POLICY_CHANNEL = 1  # scripted policies that need randomness (RandomPolicy)
+VOL_CHANNEL = 2  # the path vol's own shocks (MarketConfig.vol_of_vol)
 
 
 @runtime_checkable

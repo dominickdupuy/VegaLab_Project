@@ -6,6 +6,7 @@ import pytest
 from optspread.actions import IRON_CONDOR, SHORT_STRANGLE, build_position
 from optspread.config import CostConfig, EnvConfig, MarketConfig
 from optspread.costs import QuotedSpreadCost, ZeroCost, trade_cost
+from optspread.leaks import chain_violations, perturbation_check
 from optspread.margin import is_defined_risk, margin_requirement, max_loss
 from optspread.market import SyntheticChainProvider
 from optspread.portfolio import Book
@@ -69,6 +70,97 @@ def test_same_seed_same_path_and_premium_lifts_iv() -> None:
     b = [prov.reset(SeededStepRNG(3)).spot] + [prov.step().spot for _ in range(10)]
     assert a == b
     assert make_chain(premium=2.0).ivs.min() == pytest.approx(0.22)
+
+
+# -- market: the research knobs (GH-46) ----------------------------------- #
+
+
+def walk(config: MarketConfig, seed: int, days: int) -> list[Chain]:
+    provider = SyntheticChainProvider(config)
+    chains = [provider.reset(SeededStepRNG(seed))]
+    chains += [provider.step() for _ in range(days)]
+    return chains
+
+
+def atm_iv(chain: Chain) -> float:
+    return float(chain.ivs[0, chain.ivs.shape[1] // 2])
+
+
+@pytest.mark.invariant
+def test_the_knobs_at_zero_are_the_study_world_bit_for_bit() -> None:
+    zero = MarketConfig(alpha_bps=0.0, vol_of_vol=0.0, skew_slope=0.0)
+    for a, b in zip(walk(MarketConfig(), 7, 63), walk(zero, 7, 63), strict=True):
+        assert a.spot == b.spot
+        assert np.array_equal(a.ivs, b.ivs) and np.array_equal(a.strikes, b.strikes)
+
+
+@pytest.mark.behaviour
+def test_vol_of_vol_moves_the_atm_vol_and_starts_at_sigma() -> None:
+    chains = walk(MarketConfig(vol_of_vol=0.5), 42, 20)
+    assert atm_iv(chains[0]) == pytest.approx(0.20)
+    assert len({round(atm_iv(c), 9) for c in chains}) > 10
+    flat = walk(MarketConfig(), 42, 20)
+    assert {atm_iv(c) for c in flat} == {0.20}
+
+
+@pytest.mark.invariant
+def test_log_return_is_a_pure_read_with_vol_of_vol() -> None:
+    # The leak detector reads log_return(t + 1) to look ahead without stepping; a draw on
+    # each call would move the path it measures.
+    provider = SyntheticChainProvider(MarketConfig(vol_of_vol=0.5, n_days=20))
+    provider.reset(SeededStepRNG(99))
+    first = [provider.log_return(d) for d in range(1, 21)]
+    assert first == [provider.log_return(d) for d in range(1, 21)]
+    spots = [provider.step().spot for _ in range(20)]
+    assert spots[-1] == pytest.approx(5000.0 * float(np.exp(sum(first))))
+    assert provider.log_return(21) == provider.log_return(21)  # past the horizon: still a read
+
+
+@pytest.mark.invariant
+@pytest.mark.parametrize("seed", [0, 1, 2])
+def test_the_knobs_keep_the_no_look_ahead_contract(seed: int) -> None:
+    config = MarketConfig(vol_of_vol=0.8, skew_slope=0.3, alpha_bps=40.0, n_days=21)
+    for t in (0, 5, 20):
+        past_same, future_differs = perturbation_check(
+            lambda: SyntheticChainProvider(config), seed, seed + 100, t
+        )
+        assert past_same and future_differs
+
+
+@pytest.mark.behaviour
+def test_skew_slope_tilts_the_smile_toward_the_downside() -> None:
+    chain = SyntheticChainProvider(MarketConfig(skew_slope=0.10)).reset(SeededStepRNG(0))
+    row = chain.ivs[0]
+    assert np.all(np.diff(row) < 0), "dearer at every lower strike"
+    assert np.array_equal(chain.ivs[0], chain.ivs[1]), "the same smile at every tenor"
+    expected = 0.20 + 0.10 * np.log(chain.spot / chain.strikes)
+    np.testing.assert_allclose(row, expected, rtol=1e-12)
+    assert not chain_violations(chain)
+    flat = SyntheticChainProvider(MarketConfig(skew_slope=0.0)).reset(SeededStepRNG(0))
+    assert float(np.ptp(flat.ivs)) == 0.0
+
+
+@pytest.mark.behaviour
+def test_a_premium_is_planted_on_the_tilted_surface() -> None:
+    fair = SyntheticChainProvider(MarketConfig(skew_slope=-0.2)).reset(SeededStepRNG(4))
+    rich = MarketConfig(skew_slope=-0.2, iv_premium_vol_pts=2.0)
+    planted = SyntheticChainProvider(rich).reset(SeededStepRNG(4))
+    np.testing.assert_allclose(planted.ivs - fair.ivs, 0.02, atol=1e-12)
+
+
+@pytest.mark.behaviour
+def test_alpha_bps_is_a_drift_per_day_not_per_year() -> None:
+    # With almost no vol the return into day 1 is the drift alone: 100 bps is 1% a day.
+    config = MarketConfig(alpha_bps=100.0, sigma=0.001, n_days=5)
+    returns = []
+    for seed in range(200):
+        provider = SyntheticChainProvider(config)
+        provider.reset(SeededStepRNG(seed))
+        returns.append(provider.log_return(1))
+    assert float(np.mean(returns)) == pytest.approx(0.01, abs=1e-4)
+    up = [walk(MarketConfig(alpha_bps=25.0), s, 63)[-1].spot for s in range(40)]
+    level = [walk(MarketConfig(), s, 63)[-1].spot for s in range(40)]
+    assert all(u > v for u, v in zip(up, level, strict=True)), "the same shocks, shifted up"
 
 
 # -- costs: the round-trip gate ------------------------------------------- #

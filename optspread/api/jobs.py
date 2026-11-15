@@ -50,6 +50,9 @@ class KnobOut(Out):
 KNOB_LABELS: dict[str, str] = {
     "policy": "Policy",
     "iv_premium_vol_pts": "Planted premium (vol pts)",
+    "alpha_bps": "Drift (bps per day)",
+    "vol_of_vol": "Vol of vol",
+    "skew_slope": "Skew slope",
     "sigma": "Path volatility",
     "r": "Risk-free rate",
     "n_days": "Days per episode",
@@ -73,7 +76,9 @@ KNOB_LABELS: dict[str, str] = {
 # The generator's knobs a real chain does not read: its surface, path and carry are the
 # day's own (``realdata.provider.HistoricalChainProvider._chain``); strikes, tenors and
 # the episode length still apply.
-SYNTHETIC_ONLY = frozenset({"iv_premium_vol_pts", "sigma", "r"})
+SYNTHETIC_ONLY = frozenset(
+    {"iv_premium_vol_pts", "alpha_bps", "vol_of_vol", "skew_slope", "sigma", "r"}
+)
 
 
 class PresetOut(Out):
@@ -103,6 +108,21 @@ _GROUPS: dict[str, tuple[KnobGroup, str]] = {
         "Which policy runs: the scripted arms, or PPO when the learner is installed.",
     ),
     "iv_premium_vol_pts": ("Market", "Planted premium in vol points. Zero is the null world."),
+    "alpha_bps": (
+        "Market",
+        "Research knob: drift per trading day in basis points, an edge for a long position. "
+        "Zero is the study's driftless world.",
+    ),
+    "vol_of_vol": (
+        "Market",
+        "Research knob: annualised vol of the path vol, which then wanders from sigma. "
+        "Zero is constant vol.",
+    ),
+    "skew_slope": (
+        "Market",
+        "Research knob: implied vol added per unit of ln(spot / strike), decimal; positive "
+        "makes downside strikes dearer, the equity skew. Zero is a flat smile.",
+    ),
     "sigma": ("Market", "Annualised vol driving the path, decimal."),
     "r": ("Market", "Risk-free rate, decimal."),
     "n_days": ("Market", "Path and episode length in trading days."),
