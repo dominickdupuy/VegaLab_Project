@@ -14,6 +14,14 @@ Re-exports only; nothing is defined here. A test that patches what a route calls
 it here, where the server looks it up.
 """
 
+from optspread.api.alpha import AlphaDatasetOut as AlphaDatasetOut
+from optspread.api.alpha import AlphaJobOut as AlphaJobOut
+from optspread.api.alpha import AlphaManifestOut as AlphaManifestOut
+from optspread.api.alpha import AlphaOptionsOut as AlphaOptionsOut
+from optspread.api.alpha import alpha_dataset as alpha_dataset
+from optspread.api.alpha import alpha_job as alpha_job
+from optspread.api.alpha import alpha_manifests as alpha_manifests
+from optspread.api.alpha import alpha_options as alpha_options
 from optspread.api.catalog import CatalogOut as CatalogOut
 from optspread.api.catalog import catalog as catalog
 from optspread.api.compare import CompareOut as CompareOut
