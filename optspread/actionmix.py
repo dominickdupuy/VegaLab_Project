@@ -146,7 +146,7 @@ from pydantic import BaseModel, ConfigDict
 from optspread.actions import ACTION_NAMES, FLAT, N_ACTIONS
 from optspread.artifacts import EpisodeRow, read_run
 from optspread.attribution import PolicyLoader, load_sb3_policy, recorded_provider
-from optspread.config import RunConfig, config_hash
+from optspread.config import RunConfig, config_hash, scripted_name
 from optspread.costs import make_cost_model
 from optspread.data import SourceName, make_source
 from optspread.env import SpreadEnv
@@ -720,12 +720,15 @@ def mix_config(
     ``eval`` split on the real panel, as ``harness.build_env`` builds it). A ppo config needs
     its trained ``policy``. ``rows`` are the saved episodes to check each one against.
     """
+    scripted = scripted_name(config.policy)
     if policy is not None:
         pol = policy
-    elif config.policy == "ppo":
-        raise ValueError("a ppo arm is re-simulated with its trained policy; pass it in")
+    elif scripted is None:
+        raise ValueError(
+            f"a {config.policy} arm is re-simulated with its trained policy; pass it in"
+        )
     else:
-        pol = make_policy(config.policy, roll_dte=config.env.roll_dte)
+        pol = make_policy(scripted, roll_dte=config.env.roll_dte)
     inner = (
         provider
         if provider is not None
@@ -780,15 +783,17 @@ def mix_run(
     record = read_run(run_dir)
     config = manifest.config
     policy = None
-    if config.policy == "ppo":
+    if config.train is not None:
         path = run_dir / POLICY_FILENAME
         if not path.is_file():
-            raise FileNotFoundError(f"a ppo run is re-simulated with its policy; {path} is missing")
+            raise FileNotFoundError(
+                f"a {config.policy} run is re-simulated with its policy; {path} is missing"
+            )
         try:
             policy = load_policy(path, config)
         except ImportError as exc:
             raise LearnerUnavailableError(
-                f"{manifest.run_id} is a ppo run and its {POLICY_FILENAME} needs "
+                f"{manifest.run_id} is a {config.policy} run and its {POLICY_FILENAME} needs "
                 f"stable-baselines3 and torch, which this interpreter cannot import ({exc}); "
                 "install the train extra, or leave the ppo arm out (--arms delta_seller)"
             ) from exc

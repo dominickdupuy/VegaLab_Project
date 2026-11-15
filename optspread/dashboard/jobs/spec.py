@@ -6,10 +6,10 @@ A run started from a browser is an ordinary run. The knobs (``JobSpec``) map ont
 ``RunConfig`` field for field (``to_run_config``); the presets the launch panel offers and
 the on-disk names the worker, the queue and the API share are here too.
 
-PPO is offered only when ``optspread.train`` (W6-5) is importable with its
-learner installed. It is detected, not assumed, so the dashboard never offers an
-arm this checkout cannot run. A source whose data is absent is not offered either
-(``available_sources``).
+The learned arms (PPO, and the A2C and DQN research arms) are offered only when
+``optspread.train`` (W6-5) is importable with its learner installed. They are detected,
+not assumed, so the dashboard never offers an arm this checkout cannot run. A source
+whose data is absent is not offered either (``available_sources``).
 
 Moved from ``optspread.jobs``.
 """
@@ -20,21 +20,22 @@ import importlib
 import importlib.util
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from optspread.config import CostConfig, EnvConfig, MarketConfig, RunConfig
+from optspread.config import LEARNED_ARMS, ArmName, CostConfig, EnvConfig, MarketConfig, RunConfig
 from optspread.data import SourceName, make_source
 from optspread.runs.rundir import SOURCES, JobSource, run_id, source_root
 
 EQUITY_FILENAME = "equity.json"
+ACTION_LOG_FILENAME = "action_log.json"  # each kept step's action and what it was chosen on
 LAUNCH_DIR = "launched"
 JOBS_DIR = ".jobs"
-MAX_EQUITY_PATHS = 200  # episodes whose equity path is kept; the rest are summarised only
-MAX_TRAIN_SEED = 2**15  # TrainConfig.seed's bound: a PPO job trains on its first seed
+MAX_EQUITY_PATHS = 200  # episodes whose equity path and action log are kept; the rest summarised
+MAX_TRAIN_SEED = 2**15  # TrainConfig.seed's bound: a learned job trains on its first seed
 
-Arm = Literal["flat", "always_on", "random", "delta_seller", "ppo"]
+Arm = ArmName
 SCRIPTED_ARMS: tuple[Arm, ...] = ("flat", "always_on", "random", "delta_seller")
 
 _MARKET, _COST, _ENV, _RUN = MarketConfig(), CostConfig(), EnvConfig(), RunConfig()
@@ -53,7 +54,8 @@ def ppo_available() -> bool:
 
 
 def available_arms() -> tuple[Arm, ...]:
-    return (*SCRIPTED_ARMS, "ppo") if ppo_available() else SCRIPTED_ARMS
+    """The scripted arms, and every learned arm when the learner is installed."""
+    return (*SCRIPTED_ARMS, *LEARNED_ARMS) if ppo_available() else SCRIPTED_ARMS
 
 
 def available_sources() -> tuple[JobSource, ...]:
@@ -72,6 +74,9 @@ class JobSpec(BaseModel):
 
     policy: Arm = "delta_seller"
     iv_premium_vol_pts: float = Field(default=_MARKET.iv_premium_vol_pts, ge=-10.0, le=20.0)
+    alpha_bps: float = Field(default=_MARKET.alpha_bps, ge=0.0, le=200.0)
+    vol_of_vol: float = Field(default=_MARKET.vol_of_vol, ge=0.0, le=2.0)
+    skew_slope: float = Field(default=_MARKET.skew_slope, ge=-1.0, le=1.0)
     sigma: float = Field(default=_MARKET.sigma, gt=0.0, le=1.5)
     r: float = Field(default=_MARKET.r, ge=-0.05, le=0.25)
     n_days: int = Field(default=_MARKET.n_days, ge=5, le=504)
@@ -89,7 +94,7 @@ class JobSpec(BaseModel):
     initial_cash: float = Field(default=_ENV.initial_cash, gt=0.0, le=1e9)
     seed: int = Field(default=_RUN.seed, ge=0, lt=2**31)
     n_episodes: int = Field(default=_RUN.n_episodes, ge=1, le=2000)
-    total_timesteps: int | None = Field(default=None, gt=0, le=5_000_000)  # PPO only
+    total_timesteps: int | None = Field(default=None, gt=0, le=5_000_000)  # learned arms only
     # Not part of the config, so not of the run id; the manifest records it.
     source: JobSource = "synthetic"
 
@@ -104,13 +109,16 @@ class JobSpec(BaseModel):
             raise ValueError("wing_delta must sit further out than short_delta (be smaller)")
         if self.roll_dte >= tenors[self.expiry_idx]:
             raise ValueError("roll_dte must be shorter than the tenor new structures open at")
-        if (self.policy == "ppo") != (self.total_timesteps is not None):
-            raise ValueError("total_timesteps is set exactly when the arm is ppo")
-        if self.policy == "ppo" and self.seed >= MAX_TRAIN_SEED:
+        learned = self.policy in LEARNED_ARMS
+        if learned != (self.total_timesteps is not None):
+            raise ValueError(
+                "total_timesteps is set exactly when the arm is learned (ppo, a2c or dqn)"
+            )
+        if learned and self.seed >= MAX_TRAIN_SEED:
             # to_run_config trains on the first seed, and TrainConfig.seed is below 2**15
             raise ValueError(
-                f"a PPO run trains on its first seed, which must be below {MAX_TRAIN_SEED:,} "
-                f"(the training seed's range); got {self.seed:,}"
+                f"a {self.policy.upper()} run trains on its first seed, which must be below "
+                f"{MAX_TRAIN_SEED:,} (the training seed's range); got {self.seed:,}"
             )
         if self.sigma + self.iv_premium_vol_pts / 100.0 <= 0.0:
             raise ValueError(
@@ -137,6 +145,9 @@ def to_run_config(spec: JobSpec) -> RunConfig:
             "n_strikes_each_side": spec.n_strikes_each_side,
             "strike_step": spec.strike_step,
             "iv_premium_vol_pts": spec.iv_premium_vol_pts,
+            "alpha_bps": spec.alpha_bps,
+            "vol_of_vol": spec.vol_of_vol,
+            "skew_slope": spec.skew_slope,
         },
         "cost": {
             "enabled": spec.costs_enabled,
@@ -156,8 +167,12 @@ def to_run_config(spec: JobSpec) -> RunConfig:
         "seed": spec.seed,
         "n_episodes": spec.n_episodes,
     }
-    if spec.policy == "ppo":
-        payload["train"] = {"total_timesteps": spec.total_timesteps, "seed": spec.seed}
+    if spec.policy in LEARNED_ARMS:
+        payload["train"] = {
+            "algorithm": spec.policy,
+            "total_timesteps": spec.total_timesteps,
+            "seed": spec.seed,
+        }
     return RunConfig.model_validate(payload)
 
 

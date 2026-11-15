@@ -124,7 +124,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict
 
 from optspread.artifacts import EpisodeRow, read_run
-from optspread.config import RunConfig, config_hash
+from optspread.config import RunConfig, config_hash, scripted_name
 from optspread.costs import make_cost_model
 from optspread.data import ChainSource, SourceName, make_source
 from optspread.env import SpreadEnv
@@ -455,12 +455,13 @@ def attribute_config(
     ppo config needs its trained ``policy``. ``rows`` are the saved episodes to check
     each re-simulated one against.
     """
+    scripted = scripted_name(config.policy)
     if policy is not None:
         pol = policy
-    elif config.policy == "ppo":
-        raise ValueError("a ppo arm is attributed with its trained policy; pass it in")
+    elif scripted is None:
+        raise ValueError(f"a {config.policy} arm is attributed with its trained policy; pass it in")
     else:
-        pol = make_policy(config.policy, roll_dte=config.env.roll_dte)
+        pol = make_policy(scripted, roll_dte=config.env.roll_dte)
     tap = _Tap(provider if provider is not None else SyntheticChainProvider(config.market))
     env = SpreadEnv(tap, make_cost_model(config.cost), config.env)
     tap.env = env
@@ -499,13 +500,16 @@ def attribute_config(
 
 
 def load_sb3_policy(path: Path, config: RunConfig) -> Policy:  # pragma: no cover - train extra
-    """The saved PPO policy of a run, greedy, on one torch thread as it was evaluated."""
+    """The saved policy of a learned run (PPO, or the A2C or DQN research arm), greedy, on
+    one torch thread as it was evaluated."""
+    import stable_baselines3
     import torch
-    from stable_baselines3 import PPO
 
     torch.set_num_threads(TORCH_THREADS)
     device = config.train.device if config.train is not None else "cpu"
-    model: Any = PPO.load(path, device=device)
+    algorithm = config.train.algorithm if config.train is not None else "ppo"
+    learner: Any = getattr(stable_baselines3, algorithm.upper())
+    model: Any = learner.load(path, device=device)
     return SB3Policy(model)
 
 
@@ -555,10 +559,12 @@ def attribute_run(
     record = read_run(run_dir)
     config = manifest.config
     policy = None
-    if config.policy == "ppo":
+    if config.train is not None:
         path = run_dir / POLICY_FILENAME
         if not path.is_file():
-            raise FileNotFoundError(f"a ppo run is attributed with its policy; {path} is missing")
+            raise FileNotFoundError(
+                f"a {config.policy} run is attributed with its policy; {path} is missing"
+            )
         policy = load_policy(path, config)
     rows = {row.seed: row for row in record.episodes}
     if manifest.data_record.source == "synthetic":  # the generator, as it always was

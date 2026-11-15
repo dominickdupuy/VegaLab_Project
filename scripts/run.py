@@ -32,7 +32,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import cast, get_args
 
-from optspread.config import ArmName, CostConfig, MarketConfig, RunConfig
+from optspread.config import ArmName, CostConfig, MarketConfig, PolicyName, RunConfig
 
 # Imported here before the TrainConfig came from cli.train_config; still importable from here.
 from optspread.config import TrainConfig as TrainConfig
@@ -48,7 +48,9 @@ from optspread.experiment.schedule import run_single
 from optspread.runs.rundir import RootInUseError
 from optspread.train import Trainer, train_ppo
 
-ARM_NAMES: tuple[str, ...] = get_args(ArmName)
+# The confirmatory arms. The research arms (A2C, DQN) are launched from the dashboard,
+# whose jobs train them with their own trainers; this command trains with train_ppo.
+ARM_NAMES: tuple[str, ...] = (*get_args(PolicyName), "ppo")
 SINGLE_DIR = "single"
 
 

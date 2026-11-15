@@ -31,7 +31,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from optspread.config import RunConfig
+from optspread.config import RunConfig, scripted_name
 from optspread.costs import CostModel, make_cost_model
 from optspread.data import SourceName, make_source
 from optspread.env import SpreadEnv
@@ -127,12 +127,13 @@ def run_episodes(
     the episodes come from the ``eval`` split.
     """
     env = build_env(config, source, provider=provider, costs=costs)
+    scripted = scripted_name(config.policy)
     if policy is not None:
         pol = policy
-    elif config.policy == "ppo":
-        raise ValueError("a ppo run is evaluated with its trained policy; pass it in")
+    elif scripted is None:
+        raise ValueError(f"a {config.policy} run is evaluated with its trained policy; pass it in")
     else:
-        pol = make_policy(config.policy, roll_dte=config.env.roll_dte)
+        pol = make_policy(scripted, roll_dte=config.env.roll_dte)
     seeds = range(config.seed, config.seed + config.n_episodes)
     return tuple(run_episode(env, pol, s) for s in seeds)
 

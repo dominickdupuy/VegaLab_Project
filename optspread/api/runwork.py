@@ -21,6 +21,7 @@ from pydantic import Field
 
 from optspread.api._base import Out, _from_attrs, _source_suffix
 from optspread.api.launch import launch_estimate
+from optspread.config import LEARNED_ARMS, scripted_name
 from optspread.dashboard.jobs.spec import available_arms
 from optspread.dashboard.runindex import RunRow
 from optspread.dashboard.tasks import TaskState
@@ -31,7 +32,12 @@ from optspread.train import POLICY_FILENAME
 
 
 def _scripted(policy: str) -> bool:
-    return policy in available_arms() and policy != "ppo"
+    return policy in available_arms() and policy not in LEARNED_ARMS
+
+
+def _arm_label(policy: str) -> str:
+    """A learned arm as the page writes it: PPO, A2C, DQN."""
+    return policy.upper()
 
 
 # attribution
@@ -74,12 +80,14 @@ def real_data_reason(row: RunRow) -> str:
 
 
 def _ppo_reason(row: RunRow) -> str:
-    if row.policy != "ppo":
+    """Why a learned run (PPO, A2C or DQN) cannot be re-simulated here; empty when it can."""
+    if row.policy not in LEARNED_ARMS:
         return ""
-    if "ppo" not in available_arms():
-        return "a PPO run is re-simulated with its policy.zip, which needs the train extra"
+    arm = _arm_label(row.policy)
+    if row.policy not in available_arms():
+        return f"a {arm} run is re-simulated with its policy.zip, which needs the train extra"
     if not (row.path / POLICY_FILENAME).is_file():
-        return "this PPO run saved no policy.zip to re-simulate with"
+        return f"this {arm} run saved no policy.zip to re-simulate with"
     return ""
 
 
@@ -265,15 +273,18 @@ def compute_capital(run_dir: Path, out: Path | None = None) -> CapitalOut:
         source, provider = recorded_provider(manifest)
         env = build_env(config, source, provider=provider)
     policy: Any
-    if config.policy == "ppo":
+    scripted = scripted_name(config.policy)
+    if scripted is None:
         from optspread.attribution import load_sb3_policy
 
         saved_policy = run_dir / POLICY_FILENAME
         if not saved_policy.is_file():
-            raise FileNotFoundError(f"a ppo run is re-simulated with its {POLICY_FILENAME}")
+            raise FileNotFoundError(
+                f"a {config.policy} run is re-simulated with its {POLICY_FILENAME}"
+            )
         policy = load_sb3_policy(saved_policy, config)
     else:
-        policy = make_policy(config.policy, roll_dte=config.env.roll_dte)
+        policy = make_policy(scripted, roll_dte=config.env.roll_dte)
     cash = float(config.env.initial_cash)
     at = OBS_NAMES.index("margin_frac")
     rows: list[CapitalEpisodeOut] = []
@@ -378,7 +389,7 @@ def capital_reason(row: RunRow) -> str:
     run is re-simulated on the panel and split it recorded, as the action mix and replay are."""
     if row.status != "OK":
         return f"the run is {row.status}"
-    if row.policy != "ppo" and not _scripted(row.policy):
+    if row.policy not in LEARNED_ARMS and not _scripted(row.policy):
         return f"no policy named {row.policy!r} to re-simulate with"
     return _ppo_reason(row) or real_data_reason(row)
 
@@ -443,8 +454,8 @@ PPO_NOT_COMPARABLE = (
 
 
 def replay_reason(row: RunRow) -> str:
-    if row.policy == "ppo" and "ppo" not in available_arms():
-        return "a PPO run retrains to replay, which needs the train extra"
+    if row.policy in LEARNED_ARMS and row.policy not in available_arms():
+        return f"a {_arm_label(row.policy)} run retrains to replay, which needs the train extra"
     if row.status in ("INVALID",):
         return "the manifest does not read; there is nothing to replay from"
     return ""
@@ -455,19 +466,23 @@ def _replay_cost(row: RunRow) -> tuple[bool, int | None, float | None]:
     try:
         config = RunManifest.read(row.path).config
     except (OSError, ValueError):
-        return row.policy == "ppo", None, None
+        return row.policy in LEARNED_ARMS, None, None
     steps = config.train.total_timesteps if config.train is not None else None
     est = launch_estimate(max(1, config.n_episodes), max(1, config.env.episode_days), steps)
     return config.train is not None, steps, est.total_hours
 
 
 def run_replay(run_dir: Path) -> ReplayDone:
-    """A scripted run within ``SCRIPTED_RTOL``; a PPO run byte for byte, where a tolerance
-    means nothing off the platform it was trained on."""
+    """A scripted run within ``SCRIPTED_RTOL``; a learned run byte for byte, where a
+    tolerance means nothing off the platform it was trained on, retrained by the trainer
+    of its arm (``train.trainer_for``: PPO's for PPO, A2C's for A2C)."""
     from optspread.replay import platform_differs, replay_run
+    from optspread.train import train_ppo, trainer_for
 
-    learned = RunManifest.read(run_dir).config.train is not None
-    out = replay_run(run_dir, rtol=None if learned else SCRIPTED_RTOL)
+    train = RunManifest.read(run_dir).config.train
+    learned = train is not None
+    trainer = trainer_for(train.algorithm) if train is not None else train_ppo
+    out = replay_run(run_dir, trainer, rtol=None if learned else SCRIPTED_RTOL)
     return _from_attrs(ReplayDone, out, comparable=not (learned and platform_differs(run_dir)))
 
 

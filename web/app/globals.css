@@ -65,6 +65,8 @@
   --s3: #1f8a84; /* always_on */
   --s4: #6b5bb5; /* random */
   --s5: #7a8394; /* flat, reference lines */
+  --s6: #a8436f; /* a2c, a research arm */
+  --s7: #5c7a1f; /* dqn, a research arm */
   --grid: #e3e8ef;
   --axis: #c7d0dc;
 
@@ -138,6 +140,8 @@
   --s3: #3fb3ab;
   --s4: #9a8ce0;
   --s5: #8d98ab;
+  --s6: #e384ad;
+  --s7: #a4c95f;
   --grid: rgba(163, 177, 198, 0.12);
   --axis: rgba(163, 177, 198, 0.3);
 

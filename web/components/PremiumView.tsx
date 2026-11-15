@@ -11,7 +11,7 @@ import type { PremiumContrast, PremiumGroup, Premiums, World } from "@/lib/api_r
 import { ARM_LABEL, armColor, axis, base, type Tokens, useTokens } from "@/lib/chart";
 import { esc, prem, usd } from "@/lib/format";
 
-const ARM_ORDER = ["flat", "always_on", "random", "delta_seller", "ppo"];
+const ARM_ORDER = ["flat", "always_on", "random", "delta_seller", "ppo", "a2c", "dqn"];
 
 /** A series: one arm, or a learned arm at one training budget. */
 interface Series {

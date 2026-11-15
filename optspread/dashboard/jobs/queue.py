@@ -38,6 +38,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
+from optspread.config import LEARNED_ARMS
 from optspread.dashboard.jobs.spec import (
     JOBS_DIR,
     JobSpec,
@@ -183,8 +184,8 @@ class JobManager:
         return sum(not j.future.done() for j in self.jobs.values())
 
     def submit(self, spec: JobSpec) -> str:
-        if spec.policy == "ppo" and not ppo_available():
-            raise ValueError("the PPO arm is not available in this checkout")
+        if spec.policy in LEARNED_ARMS and not ppo_available():
+            raise ValueError(f"the {spec.policy.upper()} arm is not available in this checkout")
         if spec.source not in available_sources():
             raise ValueError(f"the {spec.source} data is not available here (set VEGALAB_DATA)")
         to_run_config(spec)  # refuse here, synchronously, anything the worker would refuse

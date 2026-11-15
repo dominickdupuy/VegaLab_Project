@@ -1,4 +1,4 @@
-"""The PPO arm: training at the frozen D3 hyperparameters, and the trained policy.
+"""The learned arms: PPO at the frozen D3 hyperparameters, the research arms, the policy.
 
 Lane: Ilan Danial (machinery).
 
@@ -34,8 +34,15 @@ a PPO run replays bit for bit on the same machine and library versions, which is
 what ``optspread.replay`` checks. One thread is also the efficient choice: the
 sweep parallelises over processes, and a 64x64 MLP gains nothing from more.
 
+**The research arms** (``train_a2c``, ``train_dqn``) are Stable-Baselines3 A2C and DQN at
+the library's own defaults, on the same observation, actions, training paths and split
+as PPO. They are not part of the confirmatory design and nothing in D3 binds them, so
+their configs carry no hyperparameters (``TrainConfig`` drops them from the hash).
+``trainer_for`` names the trainer of each learned arm, and ``train`` dispatches on
+``config.train.algorithm``; every orchestrator of the study still takes ``train_ppo``.
+
 Stable-Baselines3 and torch are the optional ``train`` extra. Nothing here imports
-them at module import; ``train_ppo`` and ``frozen_hyperparameters`` import them
+them at module import; the trainers and ``frozen_hyperparameters`` import them
 inside the call. Everything that orchestrates training takes a ``Trainer``
 callable, so the orchestration is tested without the learner installed.
 """
@@ -44,10 +51,11 @@ from __future__ import annotations
 
 import importlib.metadata
 import inspect
+import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
 import gymnasium as gym
 import numpy as np
@@ -55,6 +63,7 @@ from numpy.typing import NDArray
 
 from optspread.config import (
     FROZEN_PPO,
+    LearnedArm,
     PPOHyperparameters,
     RunConfig,
     config_hash,
@@ -277,6 +286,94 @@ def train_ppo(
     if on_checkpoint is not None:
         on_checkpoint(model.num_timesteps, policy)
     return policy
+
+
+# -- the research arms: A2C and DQN at the library defaults ------------------- #
+
+
+def _train_default(
+    algorithm: Literal["a2c", "dqn"],
+    config: RunConfig,
+    source: SourceName,
+    should_stop: Callable[[], bool] | None,
+) -> SB3Policy:
+    """Train ``config``'s research arm at the Stable-Baselines3 defaults, on the training
+    paths and split ``train_ppo`` uses, stopped as it is stopped."""
+    if config.train is None:
+        raise ValueError(f"policy {config.policy!r} has no training config")
+    if config.train.algorithm != algorithm:
+        raise ValueError(f"train_{algorithm} cannot train a {config.train.algorithm} arm")
+    import stable_baselines3
+    import torch
+
+    torch.set_num_threads(TORCH_THREADS)
+    train = config.train
+    env = TrainingPaths(build_env(config, source, split="train"), train.seed)
+    learner: Any = getattr(stable_baselines3, algorithm.upper())
+    model = learner("MlpPolicy", env, seed=train.seed, device=train.device, verbose=0)
+    if should_stop is None:
+        model.learn(total_timesteps=train.total_timesteps)
+        return SB3Policy(model)
+    from stable_baselines3.common.callbacks import BaseCallback
+
+    stop = should_stop
+
+    class Stop(BaseCallback):  # type: ignore[misc, unused-ignore]  # untyped without SB3
+        def __init__(self) -> None:
+            super().__init__()
+            self.stopped = False
+
+        def _on_step(self) -> bool:
+            if self.n_calls % STOP_CHECK_STEPS == 0 and stop():
+                self.stopped = True
+            return not self.stopped
+
+    callback = Stop()
+    model.learn(total_timesteps=train.total_timesteps, callback=callback)
+    if callback.stopped:
+        raise TrainingStoppedError(f"training stopped at {model.num_timesteps:,} steps")
+    return SB3Policy(model)
+
+
+def train_a2c(
+    config: RunConfig,
+    *,
+    source: SourceName = "synthetic",
+    should_stop: Callable[[], bool] | None = None,
+) -> SB3Policy:
+    """Train the A2C arm of ``config`` and return it. Needs the ``train`` extra."""
+    return _train_default("a2c", config, source, should_stop)
+
+
+def train_dqn(
+    config: RunConfig,
+    *,
+    source: SourceName = "synthetic",
+    should_stop: Callable[[], bool] | None = None,
+) -> SB3Policy:
+    """Train the DQN arm of ``config`` and return it. Needs the ``train`` extra."""
+    return _train_default("dqn", config, source, should_stop)
+
+
+def trainer_for(algorithm: LearnedArm) -> Callable[..., SB3Policy]:
+    """The trainer of a learned arm (``train_ppo``, ``train_a2c``, ``train_dqn``): what a
+    launched run of it is trained by and its manifest names. Read from this module when
+    asked, so a stand-in set on the module is the one used."""
+    trainer: Callable[..., SB3Policy] = getattr(sys.modules[__name__], f"train_{algorithm}")
+    return trainer
+
+
+def train(
+    config: RunConfig,
+    *,
+    source: SourceName = "synthetic",
+    should_stop: Callable[[], bool] | None = None,
+) -> SB3Policy:
+    """Train ``config``'s learned arm with the trainer ``config.train.algorithm`` names."""
+    if config.train is None:
+        raise ValueError(f"policy {config.policy!r} has no training config")
+    trainer = trainer_for(config.train.algorithm)
+    return trainer(config, source=source, should_stop=should_stop)
 
 
 # -- what the M2 gate report states about D3 -------------------------------- #

@@ -8,9 +8,9 @@ import { readTheme, subscribeTheme } from "./theme";
 /**
  * Chart styling from the CSS tokens, so a chart follows the theme like everything
  * else. Colours are fixed by entity, never by rank: the fixed-delta seller is always
- * --s1, PPO always --s2, OptionMetrics always --s1 and Databento always --s2, so a
- * filter that hides a series never repaints the others. Status colours are not used
- * for series.
+ * --s1, PPO always --s2, the research arms A2C and DQN --s6 and --s7, OptionMetrics always
+ * --s1 and Databento always --s2, so a filter that hides a series never repaints the
+ * others. Status colours are not used for series.
  */
 
 export interface Tokens {
@@ -30,6 +30,8 @@ export interface Tokens {
   s3: string;
   s4: string;
   s5: string;
+  s6: string;
+  s7: string;
   font: string;
   dark: boolean;
 }
@@ -51,6 +53,8 @@ const LIGHT: Tokens = {
   s3: "#1f8a84",
   s4: "#6b5bb5",
   s5: "#7a8394",
+  s6: "#a8436f",
+  s7: "#5c7a1f",
   font: "Calibri, Carlito, 'Segoe UI', system-ui, sans-serif",
   dark: false,
 };
@@ -76,6 +80,8 @@ function readTokens(): Tokens {
     s3: v("--s3", LIGHT.s3),
     s4: v("--s4", LIGHT.s4),
     s5: v("--s5", LIGHT.s5),
+    s6: v("--s6", LIGHT.s6),
+    s7: v("--s7", LIGHT.s7),
     font: v("--font", LIGHT.font),
     dark: document.documentElement.dataset.theme === "dark",
   };
@@ -98,6 +104,8 @@ export function useTokens(): Tokens {
 const ARM_SLOT: Record<string, keyof Tokens> = {
   delta_seller: "s1",
   ppo: "s2",
+  a2c: "s6",
+  dqn: "s7",
   always_on: "s3",
   random: "s4",
   flat: "s5",
@@ -114,6 +122,8 @@ export function sourceColor(t: Tokens, source: string): string {
 export const ARM_LABEL: Record<string, string> = {
   delta_seller: "Fixed-delta seller",
   ppo: "PPO",
+  a2c: "A2C",
+  dqn: "DQN",
   always_on: "Always-on condor",
   random: "Random",
   flat: "Flat",

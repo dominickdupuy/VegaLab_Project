@@ -142,6 +142,34 @@ def test_asking_whether_to_stop_trains_the_same_policy_and_stopping_ends_it() ->
         train_ppo(long, should_stop=lambda: True)
 
 
+@pytest.mark.invariant
+@pytest.mark.parametrize("arm", ["a2c", "dqn"])
+def test_a_research_arm_trains_its_own_learner_and_resimulates_from_its_policy(
+    tmp_path: Path, arm: str
+) -> None:
+    """A2C and DQN at the library defaults: trained on their own paths, deterministic in
+    the training seed, saved as the orchestrator saves PPO and re-simulated from it."""
+    from optspread.actionmix import mix_run
+    from optspread.train import POLICY_FILENAME, train, trainer_for
+
+    run = RUN.model_copy(
+        update={"policy": arm, "train": TrainConfig(algorithm=arm, total_timesteps=512, seed=0)}
+    )
+    run = RunConfig.model_validate(run.model_dump())
+    a, b = train(run), train(run)
+    assert type(a.model).__name__ == arm.upper()
+    assert run_episodes(run, a) == run_episodes(run, b)
+    wrapper = a.model.get_env().envs[0]
+    while not isinstance(wrapper, TrainingPaths):
+        wrapper = wrapper.env
+    assert wrapper.episodes >= 512 // 21
+    execute_run(run, tmp_path, trainer=trainer_for(arm))
+    assert (tmp_path / POLICY_FILENAME).is_file()
+    assert RunManifest.read(tmp_path).trainer == f"optspread.train.train_{arm}"
+    assert mix_run(tmp_path).reproduces is True  # loaded as its own algorithm, not as PPO
+    assert replay_matches(tmp_path, trainer_for(arm))[0]
+
+
 @pytest.mark.behaviour
 def test_mypy_strict_passes_with_the_learner_installed() -> None:
     # The type: ignore on the checkpoint callback is needed only without Stable-Baselines3
