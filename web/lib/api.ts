@@ -87,6 +87,12 @@ export type BenchRow = Schemas["BenchRow"];
 
 export type BenchStat = Schemas["BenchStat"];
 
+export type SeedResult = Schemas["SeedResult"];
+
+export type AlphaSweep = Schemas["AlphaSweep"];
+
+export type AlphaSweepPoint = Schemas["AlphaSweepPoint"];
+
 // ---------- leak demo ----------
 
 export type LeakSide = Schemas["LeakSideOut"];
@@ -611,7 +617,9 @@ export const api = {
   alphaSaved: (hash: string, s?: AbortSignal) => get<Benchmark[]>(`/api/alpha/datasets/${encodeURIComponent(hash)}/benchmarks`, undefined, s),
   alphaBuild: (spec: Spec) => request<AlphaDataset>("POST", "/api/alpha/datasets", spec),
   alphaBench: (spec: Spec) => request<AlphaJob>("POST", "/api/alpha/benchmarks", spec),
-  alphaJob: (id: string, s?: AbortSignal) => get<AlphaJob>(`/api/alpha/benchmarks/${encodeURIComponent(id)}`, undefined, s),
+  alphaSweep: (spec: Spec) => request<AlphaJob>("POST", "/api/alpha/sweeps", spec),
+  alphaSweeps: (hash: string, s?: AbortSignal) => get<AlphaSweep[]>(`/api/alpha/datasets/${encodeURIComponent(hash)}/sweeps`, undefined, s),
+  alphaJob: (id: string, s?: AbortSignal) => get<AlphaJob>(`/api/alpha/jobs/${encodeURIComponent(id)}`, undefined, s),
   leakDemo: (eps: number, n_seeds: number) => request<LeakDemo>("POST", "/api/leaks/demo", { eps, n_seeds }),
   sweeps: (s?: AbortSignal) => get<SweepList>("/api/sweeps", undefined, s),
   sweep: (key: string, s?: AbortSignal) => get<Sweep>("/api/sweeps/detail", { key }, s),

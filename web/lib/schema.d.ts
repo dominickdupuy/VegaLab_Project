@@ -13,25 +13,11 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Alpha Bench */
+        /**
+         * Alpha Bench
+         * @description Train (if learned) and score one arm on one dataset, on n_seeds training seeds.
+         */
         post: operations["alpha_bench_api_alpha_benchmarks_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/alpha/benchmarks/{job_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Alpha Bench Status */
-        get: operations["alpha_bench_status_api_alpha_benchmarks__job_id__get"];
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -96,6 +82,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/alpha/datasets/{dataset_hash}/sweeps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Alpha Sweeps
+         * @description Every sweep that ran on the dataset, as its base or one of its points.
+         */
+        get: operations["alpha_sweeps_api_alpha_datasets__dataset_hash__sweeps_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/alpha/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Alpha Job */
+        get: operations["alpha_job_api_alpha_jobs__job_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/alpha/options": {
         parameters: {
             query?: never;
@@ -107,6 +130,26 @@ export interface paths {
         get: operations["alpha_options_api_alpha_options_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/alpha/sweeps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Alpha Sweep
+         * @description One benchmark per value of the number of train paths or the training budget.
+         */
+        post: operations["alpha_sweep_api_alpha_sweeps_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1147,6 +1190,12 @@ export interface components {
             fraction: number;
             /** Job Id */
             job_id: string;
+            /**
+             * Kind
+             * @default benchmark
+             * @enum {string}
+             */
+            kind: "benchmark" | "sweep";
             /** Log Tail */
             log_tail: string[];
             /** Phase */
@@ -1167,6 +1216,7 @@ export interface components {
              * @enum {string}
              */
             state: "queued" | "running" | "done" | "failed" | "cancelled";
+            sweep: components["schemas"]["AlphaSweep"] | null;
             /** Total */
             total: number;
         };
@@ -1208,6 +1258,8 @@ export interface components {
         AlphaOptionsOut: {
             /** Arms */
             arms: string[];
+            /** Default Seeds */
+            default_seeds: number;
             /** Default Timesteps */
             default_timesteps: number;
             /** Generators */
@@ -1216,6 +1268,8 @@ export interface components {
             learned_arms: string[];
             /** Learners Available */
             learners_available: boolean;
+            /** Max Seeds */
+            max_seeds: number;
             /** Spec Knobs */
             spec_knobs: components["schemas"]["AlphaKnobOut"][];
         };
@@ -1225,6 +1279,60 @@ export interface components {
             days: number[];
             signal: components["schemas"]["AlphaWorldOut"];
             twin: components["schemas"]["AlphaWorldOut"];
+        };
+        /** AlphaSweep */
+        AlphaSweep: {
+            /** Datasets */
+            datasets: string[];
+            /** Generator */
+            generator: string;
+            /** Key */
+            key: string;
+            /** Points */
+            points: components["schemas"]["AlphaSweepPoint"][];
+            spec: components["schemas"]["AlphaSweepSpec"];
+        };
+        /** AlphaSweepPoint */
+        AlphaSweepPoint: {
+            attainable: components["schemas"]["BenchStat"];
+            capture_ratio: components["schemas"]["BenchStat"];
+            captured: components["schemas"]["BenchStat"];
+            /** Dataset */
+            dataset: string;
+            /** N Train */
+            n_train: number;
+            noise_fit: components["schemas"]["BenchStat"] | null;
+            overfit_gap: components["schemas"]["BenchStat"];
+            /** Total Timesteps */
+            total_timesteps: number | null;
+            /** Value */
+            value: number;
+        };
+        /** AlphaSweepSpec */
+        AlphaSweepSpec: {
+            /**
+             * Arm
+             * @default ppo
+             * @enum {string}
+             */
+            arm: "ppo" | "a2c" | "dqn" | "delta_seller" | "always_on" | "flat";
+            /**
+             * Axis
+             * @default n_train
+             * @enum {string}
+             */
+            axis: "n_train" | "total_timesteps";
+            /** Dataset */
+            dataset: string;
+            /**
+             * N Seeds
+             * @default 1
+             */
+            n_seeds: number;
+            /** Total Timesteps */
+            total_timesteps?: number | null;
+            /** Values */
+            values: number[];
         };
         /** AlphaWorldOut */
         AlphaWorldOut: {
@@ -1357,6 +1465,16 @@ export interface components {
             generator: string;
             /** Menu */
             menu: components["schemas"]["BenchMenuRow"][];
+            /**
+             * N Seeds
+             * @default 1
+             */
+            n_seeds: number;
+            /**
+             * N Train
+             * @default 0
+             */
+            n_train: number;
             /** Noise Control */
             noise_control: boolean;
             noise_fit: components["schemas"]["BenchStat"] | null;
@@ -1365,6 +1483,8 @@ export interface components {
             overfit_gap: components["schemas"]["BenchStat"];
             /** Rows */
             rows: components["schemas"]["BenchRow"][];
+            /** Seeds */
+            seeds?: components["schemas"]["SeedResult"][];
             /** Total Timesteps */
             total_timesteps: number | null;
         };
@@ -3719,6 +3839,22 @@ export interface components {
             seed: number;
         };
         /**
+         * SeedResult
+         * @description One training seed's figures, on the same paths as every other seed.
+         */
+        SeedResult: {
+            /** Capture Ratio */
+            capture_ratio: number | null;
+            /** Captured */
+            captured: number;
+            /** Noise Fit */
+            noise_fit: number | null;
+            /** Overfit Gap */
+            overfit_gap: number;
+            /** Seed */
+            seed: number;
+        };
+        /**
          * SellerOut
          * @description The fixed-delta seller's structure on one real close: an illustration, not a backtest.
          */
@@ -4338,37 +4474,6 @@ export interface operations {
             };
         };
     };
-    alpha_bench_status_api_alpha_benchmarks__job_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                job_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AlphaJobOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     alpha_datasets_api_alpha_datasets_get: {
         parameters: {
             query?: never;
@@ -4486,6 +4591,68 @@ export interface operations {
             };
         };
     };
+    alpha_sweeps_api_alpha_datasets__dataset_hash__sweeps_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_hash: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlphaSweep"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    alpha_job_api_alpha_jobs__job_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlphaJobOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     alpha_options_api_alpha_options_get: {
         parameters: {
             query?: never;
@@ -4502,6 +4669,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AlphaOptionsOut"];
+                };
+            };
+        };
+    };
+    alpha_sweep_api_alpha_sweeps_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlphaJobOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
