@@ -9,7 +9,10 @@ import { useSyncExternalStore } from "react";
  * it works on any page that uses the shared client, however that page is laid out, and
  * on the server's real answers rather than on what a page chose to report.
  *
- * Only this tab's memory holds it, newest last, capped. Nothing is sent anywhere.
+ * This tab holds it, newest last, capped, and nothing is sent anywhere. The actions (a
+ * POST: a launch, the leak detector, a replay) and the exports are kept in the tab's
+ * sessionStorage too, so a reload mid-step still knows the run it launched; a GET
+ * answer lives in memory only, since the reloaded page asks for it again.
  */
 
 export interface Activity {
@@ -29,7 +32,40 @@ export interface Activity {
 const CAP = 200;
 // answers no step reads, and big: logged without their payload
 const LIGHT = ["/api/data/grid/frames", "/api/data/landscape", "/api/power/surface", "/api/data/daily", "/api/data/coverage"];
-let log: Activity[] = [];
+const KEY = "optspread.activity";
+const KEEP = 40; // actions kept across a reload
+const KEEP_CHARS = 400_000;
+
+// POSTs that only ask, sent as the reader types: like a GET, no step reads them
+const ASKS = ["/api/launch/preview"];
+const kept = (a: Activity) => !(a.kind === "api" && (a.method === "GET" || ASKS.includes(a.path ?? "")));
+
+function restore(): Activity[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.sessionStorage.getItem(KEY);
+    const xs: unknown = raw ? JSON.parse(raw) : [];
+    return Array.isArray(xs) ? (xs as Activity[]).filter((a) => a && typeof a.kind === "string" && typeof a.at === "number") : [];
+  } catch {
+    return [];
+  }
+}
+
+function persist(): void {
+  try {
+    let xs = log.filter(kept).slice(-KEEP);
+    let raw = JSON.stringify(xs);
+    while (raw.length > KEEP_CHARS && xs.length) {
+      xs = xs.slice(1);
+      raw = JSON.stringify(xs);
+    }
+    window.sessionStorage.setItem(KEY, raw);
+  } catch {
+    /* nowhere to keep it: the actions last as long as the page */
+  }
+}
+
+let log: Activity[] = restore();
 let version = 0;
 const listeners = new Set<() => void>();
 
@@ -41,7 +77,14 @@ function emit(): void {
 /** Add an action to the log. */
 export function notify(a: { kind: string; at?: number; [extra: string]: unknown }): void {
   const entry: Activity = { ...a, kind: a.kind, at: a.at ?? Date.now() };
-  log = [...log.slice(-(CAP - 1)), entry];
+  const next = [...log, entry];
+  if (next.length > CAP) {
+    // a page that polls must not push the reader's own actions out: the oldest answer goes first
+    const i = next.findIndex((x) => !kept(x));
+    next.splice(i >= 0 ? i : 0, 1);
+  }
+  log = next;
+  if (kept(entry)) persist();
   emit();
 }
 

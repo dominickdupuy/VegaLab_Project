@@ -817,6 +817,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/runs/policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Run Policy
+         * @description Where a launched run's policy acted, by time in the episode and ATM vol.
+         */
+        get: operations["run_policy_api_runs_policy_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/runs/premiums": {
         parameters: {
             query?: never;
@@ -895,6 +915,26 @@ export interface paths {
         };
         /** Sweep Detail */
         get: operations["sweep_detail_api_sweeps_detail_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/synth": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Synth
+         * @description Sample paths of the simulated market the knobs set, before a run is launched.
+         */
+        get: operations["synth_api_synth_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1241,6 +1281,7 @@ export interface components {
              * @default
              */
             b_label: string;
+            code_diff: components["schemas"]["DiffOut"] | null;
             /** Config Diff */
             config_diff: components["schemas"]["DiffOut"][];
             /** Diff Ci High */
@@ -1818,6 +1859,8 @@ export interface components {
             n_seeds: number;
             /** Premiums */
             premiums: number[];
+            /** Rate */
+            rate: number;
             /** Total Timesteps */
             total_timesteps: number | null;
         };
@@ -2541,6 +2584,45 @@ export interface components {
             /** Source */
             source: string;
         };
+        /**
+         * PolicyHeatmapOut
+         * @description How often each action was chosen, by time through the episode and the ATM vol the
+         *     policy saw. ``counts[t][v][a]``: steps in time bin ``t`` and vol bin ``v`` that chose
+         *     action ``a`` (``action_names[a]``). One vol bin when the vol never moved (a constant
+         *     vol world: the study's).
+         */
+        PolicyHeatmapOut: {
+            /** Action Names */
+            action_names: string[];
+            /** Atm Iv Edges */
+            atm_iv_edges: number[];
+            /** Available */
+            available: boolean;
+            /** Counts */
+            counts: number[][][];
+            /**
+             * File
+             * @default action_log.json
+             */
+            file: string;
+            /**
+             * N Episodes
+             * @default 0
+             */
+            n_episodes: number;
+            /**
+             * N Steps
+             * @default 0
+             */
+            n_steps: number;
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+            /** Time Frac Edges */
+            time_frac_edges: number[];
+        };
         /** PowerOut */
         PowerOut: {
             curve: components["schemas"]["CurveOut"];
@@ -2557,6 +2639,7 @@ export interface components {
             power: number;
             /** Se */
             se: number;
+            seeds_design: components["schemas"]["DesignOut"];
             /** Seeds Needed */
             seeds_needed: number;
             /** Source */
@@ -2887,6 +2970,11 @@ export interface components {
         /** PreviewOut */
         PreviewOut: {
             /**
+             * Code Git Sha
+             * @default
+             */
+            code_git_sha: string;
+            /**
              * Config Hash
              * @default
              */
@@ -2907,6 +2995,18 @@ export interface components {
             exists: boolean;
             /** Implied Vol */
             implied_vol: number | null;
+            /**
+             * Made At
+             * @default
+             */
+            made_at: string;
+            /** Made Git Dirty */
+            made_git_dirty: boolean | null;
+            /**
+             * Made Git Sha
+             * @default
+             */
+            made_git_sha: string;
             /** Ok */
             ok: boolean;
             /** Peers */
@@ -3125,6 +3225,8 @@ export interface components {
         };
         /** RunRowOut */
         RunRowOut: {
+            /** Alpha Bps */
+            alpha_bps: number | null;
             /** Commit */
             commit: string;
             /** Config Hash */
@@ -3155,12 +3257,21 @@ export interface components {
             premium: number | null;
             /** Problems */
             problems: string[];
+            /** Rate */
+            rate: number | null;
+            /**
+             * Rate Default
+             * @default 0
+             */
+            rate_default: number;
             /** Run Id */
             run_id: string;
             /** Se Pnl */
             se_pnl: number | null;
             /** Seed */
             seed: number | null;
+            /** Skew Slope */
+            skew_slope: number | null;
             /** Source */
             source: string;
             /** Source Recorded */
@@ -3174,6 +3285,8 @@ export interface components {
             sweep: string;
             /** T Stat */
             t_stat: number | null;
+            /** Vol Of Vol */
+            vol_of_vol: number | null;
         };
         /** SeamOut */
         SeamOut: {
@@ -3579,6 +3692,65 @@ export interface components {
             seed: number;
             /** Sweep Hash */
             sweep_hash: string;
+        };
+        /**
+         * SynthParams
+         * @description The knobs the page sets, bounded as the launch form bounds them.
+         */
+        SynthParams: {
+            /**
+             * Alpha Bps
+             * @default 0
+             */
+            alpha_bps: number;
+            /**
+             * N Days
+             * @default 63
+             */
+            n_days: number;
+            /**
+             * N Paths
+             * @default 5
+             */
+            n_paths: number;
+            /**
+             * Seed
+             * @default 0
+             */
+            seed: number;
+            /**
+             * Sigma
+             * @default 0.2
+             */
+            sigma: number;
+            /**
+             * Skew Slope
+             * @default 0
+             */
+            skew_slope: number;
+            /**
+             * Vol Of Vol
+             * @default 0
+             */
+            vol_of_vol: number;
+        };
+        /** SynthPathsOut */
+        SynthPathsOut: {
+            /** Atm Ivs */
+            atm_ivs: number[][];
+            /** Days */
+            days: number[];
+            params: components["schemas"]["SynthParams"];
+            /** Smile Day */
+            smile_day: number;
+            /** Smile Ivs */
+            smile_ivs: number[][];
+            /** Smile Log Moneyness */
+            smile_log_moneyness: number[][];
+            /** Source */
+            source: string;
+            /** Spots */
+            spots: number[][];
         };
         /** TermOut */
         TermOut: {
@@ -5165,6 +5337,37 @@ export interface operations {
             };
         };
     };
+    run_policy_api_runs_policy_get: {
+        parameters: {
+            query: {
+                key: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyHeatmapOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     run_premiums_api_runs_premiums_get: {
         parameters: {
             query?: {
@@ -5323,6 +5526,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SweepOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    synth_api_synth_get: {
+        parameters: {
+            query?: {
+                sigma?: number;
+                alpha_bps?: number;
+                vol_of_vol?: number;
+                skew_slope?: number;
+                n_days?: number;
+                n_paths?: number;
+                seed?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SynthPathsOut"];
                 };
             };
             /** @description Validation Error */

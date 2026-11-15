@@ -4,11 +4,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { EChartsOption } from "echarts";
 import { Chart } from "@/components/Chart";
 import { Chart3D } from "@/components/gl/Chart3D";
+import { InfoTip } from "@/components/InfoTip";
 import { gridNav, gridPoints, ivSurfaceOption } from "@/components/views/IvSurface";
+import { Lines } from "@/components/Workflow";
 import { api, type M4, type Vrp } from "@/lib/api";
 import { axis, base, type Tokens, useTokens } from "@/lib/chart";
 import { finiteRange, type GLOption } from "@/lib/chart3d";
+import { rowsFromOption } from "@/lib/export";
 import { MINUS, pct } from "@/lib/format";
+import { termsIn } from "@/lib/glossary";
 import { useReducedMotion } from "@/lib/motion";
 import { useFetch } from "@/lib/useFetch";
 import ui from "../ui.module.css";
@@ -30,7 +34,8 @@ function sentence(m4?: M4, vrp?: Vrp): string | null {
   if (!a || !f) return `${head}.`;
   if (f.status === "not_reached") return `${head}; PPO is not detected anywhere on the sweep's grid, so a study of this size cannot see a premium that small.`;
   const floor = f.premium ?? 0;
-  return `${head}; PPO's detection floor is ${vp(floor).replace("+", "")} vol pts at S = ${a.design.n_seeds}, so ${est < floor ? "a study of this size would most likely miss a premium that small" : "a study of this size would see it"}.`;
+  const how = f.status === "below_grid" ? ", estimated from the sweep, below its smallest premium" : "";
+  return `${head}; PPO's detection floor, the smallest premium caught ${pct(a.settings.target_power)} of the time, is ${vp(floor).replace("+", "")} vol pts at S = ${a.design.n_seeds}${how}, so ${est < floor ? "a study of this size would most likely miss a premium that small" : "a study of this size would see it"}.`;
 }
 
 /** The 2D stand-in when there is no panel or no WebGL: power against premium, the real premium marked. */
@@ -129,6 +134,7 @@ export default function HomeSurface({ m4, vrp, built }: { m4?: M4; vrp?: Vrp; bu
   }, [t, day, z, pts, rotate]);
   const nav = useMemo(() => (day ? gridNav(day, pts) : undefined), [day, pts]);
   const text = sentence(m4, vrp);
+  const words = termsIn(text);
   const noPanel = built === false || dates.error || frames.error || (dates.data && !dates.data.length);
 
   return (
@@ -141,7 +147,9 @@ export default function HomeSurface({ m4, vrp, built }: { m4?: M4; vrp?: Vrp; bu
             option={option}
             grid={nav}
             height={380}
-            label={`The SPX implied-volatility surface on ${shown.date}: log-moneyness by tenor by implied vol`}
+            // the day shown is the date under the slider; the figure's name keeps to the span it plays, so the two never disagree mid-play
+            label={`The SPX implied-volatility surface, ${f?.frames[0]?.date} to ${f?.frames[n - 1]?.date}: log-moneyness by tenor by implied vol`}
+            rows={() => rowsFromOption(option).map((r) => ({ date: shown.date, ...r }))}
             fallback={<Fallback vrp={vrp} />}
             hint="The real SPX vol surface, from our panel · drag to rotate"
             stamp={`panel/surface_grid.parquet · ${f?.frames[0]?.date} to ${f?.frames[n - 1]?.date}`}
@@ -170,7 +178,17 @@ export default function HomeSurface({ m4, vrp, built }: { m4?: M4; vrp?: Vrp; bu
       ) : (
         <div className={ui.heroStage} aria-hidden="true" />
       )}
-      {text ? <p className={ui.heroSentence}>{text}</p> : null}
+      {text ? (
+        <p className={ui.heroSentence}>
+          {text}
+          {words.length ? (
+            <>
+              {" "}
+              <InfoTip label="The words in this sentence" text={<Lines xs={words} />} />
+            </>
+          ) : null}
+        </p>
+      ) : null}
     </div>
   );
 }

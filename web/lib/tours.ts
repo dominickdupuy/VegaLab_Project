@@ -383,8 +383,8 @@ export const WORKFLOWS: Workflow[] = [
       {
         id: "size",
         href: "/power/?unit=vol",
-        task: "Size the test for a learned strategy: set Effect to detect to 0.25 vol pts, then raise Seeds, S until power at the effect reads 80% or more.",
-        target: (c) => ((latestPower(c)?.params.delta ?? PER_VOL) > 0.25 * PER_VOL + 0.5 ? { guide: "power-effect", label: /Effect to detect/ } : { guide: "power-seeds", label: /^\s*Seeds, S/ }),
+        task: "Size the test for a learned strategy: set Effect to detect to 0.25 vol pts, then raise Seeds (S) until power at the effect reads 80% or more.",
+        target: (c) => ((latestPower(c)?.params.delta ?? PER_VOL) > 0.25 * PER_VOL + 0.5 ? { guide: "power-effect", label: /Effect to detect/ } : { guide: "power-seeds", label: /^\s*Seeds \(S\)/ }),
         done: (c) => Boolean(powerWhere(c, (p) => p.params.delta <= 0.25 * PER_VOL + 0.5 && p.power >= 0.8)),
         read: (c) => {
           const p = powerWhere(c, (x) => x.params.delta <= 0.25 * PER_VOL + 0.5 && x.power >= 0.8);
@@ -595,8 +595,8 @@ export const WORKFLOWS: Workflow[] = [
       {
         id: "seeds",
         href: "/power/?unit=vol",
-        task: "Drag Seeds, S from 5 up to 20 or more.",
-        target: { guide: "power-seeds", label: /^\s*Seeds, S/ },
+        task: "Drag Seeds (S) from 5 up to 20 or more.",
+        target: { guide: "power-seeds", label: /^\s*Seeds \(S\)/ },
         done: (c) => Boolean(powerWhere(c, (p) => p.params.n_seeds >= 20)),
         keep: (c) => ({ floor: latestPower(c)?.floor, S: latestPower(c)?.params.n_seeds }),
         read: (c) => {
@@ -608,8 +608,8 @@ export const WORKFLOWS: Workflow[] = [
       {
         id: "episodes",
         href: "/power/?unit=vol",
-        task: "Now cut Episodes per seed, N to 100 or fewer.",
-        target: { guide: "power-episodes", label: /Episodes per seed, N/ },
+        task: "Now cut Episodes per seed (N) to 100 or fewer.",
+        target: { guide: "power-episodes", label: /Episodes per seed \(N\)/ },
         done: (c) => Boolean(powerWhere(c, (p) => p.params.n_episodes <= 100)),
         read: (c) => {
           const p = powerWhere(c, (x) => x.params.n_episodes <= 100);
@@ -623,7 +623,7 @@ export const WORKFLOWS: Workflow[] = [
       {
         id: "rule",
         href: "/power/?unit=vol",
-        task: "Switch Start from to “Seller contrast (A7)”: the same test for a simple rule.",
+        task: "Switch Start from to “Seller contrast”: the same test for a simple rule.",
         target: { guide: "power-preset", text: /Seller contrast/ },
         done: (c) => Boolean(powerWhere(c, (p) => near(p.params.tau2, 1026, 0.5))),
         read: (c) => {
@@ -655,7 +655,11 @@ export const WORKFLOWS: Workflow[] = [
       {
         id: "demo",
         href: "/leaks/",
-        task: "Press Run the detector: it tests a clean simulator and a twin we poisoned with tomorrow's return.",
+        // the steps run in order: a reader already on a later step's view is told this one comes first
+        task: (c) =>
+          c.q.get("view") === "floor" || c.q.get("view") === "field"
+            ? `Step 1 of 4 first: press Run the detector above; ${c.q.get("view") === "floor" ? "Smallest leak caught is step 3" : "Every field is step 4"}.`
+            : "Press Run the detector: it tests a clean simulator and a twin we poisoned with tomorrow's return.",
         target: { guide: "leaks-run", text: /run the detector/i },
         done: (c) => Boolean(c.call("POST /api/leaks/demo")),
         read: (c) => {
@@ -768,8 +772,8 @@ export const WORKFLOWS: Workflow[] = [
           const f = (arm: string) => a.arms[arm]?.floor;
           const fs = f("delta_seller");
           const fp = f("ppo");
-          const show = (x: typeof fs) => (!x ? "–" : x.status === "not_reached" ? `above ${vp(x.bracket[0])}` : vp(x.premium));
-          return `At ${pct(a.settings.target_power)} power the seller is detected from ${show(fs)} vol pts and PPO from ${show(fp)}${a.gap?.value !== null && a.gap?.value !== undefined ? `: the learner needs ${a.gap.kind === "lower_bound" ? "at least " : ""}${vp(a.gap.value)} vol pts more premium before a ${a.design.n_seeds}-seed test sees it` : ""}.`;
+          const show = (x: typeof fs) => (!x ? "–" : x.status === "not_reached" ? `above ${vp(x.bracket[0])} vol pts` : x.status === "below_grid" ? `${vp(x.premium)} vol pts (estimated from the sweep, below its smallest premium)` : `${vp(x.premium)} vol pts`);
+          return `At ${pct(a.settings.target_power)} power the seller is detected from ${show(fs)} and PPO from ${show(fp)}${a.gap?.value !== null && a.gap?.value !== undefined ? `: the learner needs ${a.gap.kind === "lower_bound" ? "at least " : ""}${vp(a.gap.value)} vol pts more premium before a ${a.design.n_seeds}-seed test sees it` : ""}.`;
         },
       },
       compareStep(PAIRS.arms, (a, b, d) => `At 1 vol pt planted, on the same ${num(d.n)} paths, PPO made ${usd(b.risk.mean)} per episode against the seller's ${usd(a.risk.mean)} (${signedUsd(d.diff)}, ${ci(d)}): ${d.clear ? (d.diff > 0 ? "on this pair the learner out-earned the rule" : "on this pair the rule beat the learner") : "on one run pair the two cannot be told apart, which is why the sweep runs many seeds"}.`),

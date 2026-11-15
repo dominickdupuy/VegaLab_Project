@@ -2,15 +2,17 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type Activity, type Call, activity, calls, lastCall, useActivity } from "@/lib/activity";
+import { termsIn } from "@/lib/glossary";
 import { GUIDE_ATTR, GUIDE_ON_ATTR } from "@/lib/guide";
 import { type Ctx, type Step, type Target, stepHref, stepPath, type Workflow, workflow } from "@/lib/tours";
 import { setQuery } from "@/lib/url";
+import { InfoTip } from "./InfoTip";
 import ui from "./ui.module.css";
 
 /**
- * The workflow strip: one line under the header while a workflow runs (two on a phone).
+ * The workflow strip: a line or two under the header while a workflow runs.
  * It says what to do, rings the control to use, keeps Next locked until the step's
  * action is done ("Do this to continue"), then says what the result means.
  *
@@ -45,6 +47,9 @@ function save(s: Saved | null): void {
     /* nowhere to keep it: the workflow lasts as long as the page */
   }
 }
+
+// the sentence wraps to two lines at most; a click on it shows the rest
+const CLAMP: CSSProperties = { display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 2, overflow: "hidden", whiteSpace: "normal" };
 
 // reads the strip makes itself, shared by every step: key -> answer
 const cache = new Map<string, { data?: unknown; error?: string }>();
@@ -275,6 +280,7 @@ export function WorkflowStrip() {
   };
 
   const canNext = done || Boolean(blocked);
+  const words = termsIn(done ? shownRead : task);
   const status = done ? (
     <span className={`${ui.wfStatus} ${ui.wfOk}`}>✓ Done</span>
   ) : blocked ? (
@@ -301,6 +307,7 @@ export function WorkflowStrip() {
         </span>
         <span className={ui.wfBody}>
         <button type="button" className={`${ui.wfCaption} ${open ? ui.wfCaptionOpen : ""}`} aria-live="polite" title={shownRead ?? task} onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+          <span style={open ? undefined : CLAMP}>
           {done && shownRead ? (
             <span className={ui.wfRead}>
               <span className={ui.wfReadMark} aria-hidden="true">
@@ -321,7 +328,9 @@ export function WorkflowStrip() {
               <span className={ui.wfDo}>{task}</span> This step is on another page.
             </span>
           )}
+          </span>
         </button>
+        {words.length ? <InfoTip label="The words in this sentence" text={<Lines xs={words} />} /> : null}
         {status}
         </span>
         <span className={ui.wfNav}>
@@ -352,6 +361,19 @@ export function WorkflowStrip() {
         </span>
       </div>
     </div>
+  );
+}
+
+/** The glossary's lines for a sentence's jargon, one to a line. */
+export function Lines({ xs }: { xs: string[] }) {
+  return (
+    <>
+      {xs.map((x) => (
+        <span key={x} style={{ display: "block", marginTop: 4 }}>
+          {x}
+        </span>
+      ))}
+    </>
   );
 }
 

@@ -15,6 +15,7 @@ const TABS: { href: string; label: string }[] = [
   { href: "/", label: "Home" },
   { href: "/runs/", label: "Runs" },
   { href: "/launch/", label: "Launch" },
+  { href: "/synth/", label: "Synth data" },
   { href: "/power/", label: "Power lab" },
   { href: "/data/", label: "Real data" },
   { href: "/leaks/", label: "Leak detector" },
@@ -60,9 +61,11 @@ function ServerStatus() {
   usePoll([health], true, 15000);
   const live = Boolean(health.data?.ok);
   const cls = live ? ui.dotLive : health.error ? ui.dotOff : "";
-  const text = live ? `server · ${short(health.data?.git_sha ?? "", 7)}` : health.error ? "server offline" : "connecting";
+  const text = live ? `server code · ${short(health.data?.git_sha ?? "", 7)}` : health.error ? "server offline" : "connecting";
+  // the commit the server runs, not a run's: a run names its own under Provenance
+  const tip = health.error?.message ?? (health.data?.git_sha ? `The commit this server runs: ${health.data.git_sha}. Each run names the commit that made it under Provenance.` : undefined);
   return (
-    <span className={ui.serverStatus} title={health.error?.message ?? health.data?.git_sha}>
+    <span className={ui.serverStatus} title={tip}>
       <span className={`${ui.dot} ${cls}`} aria-hidden="true" />
       <span className={ui.serverStatusText}>{text}</span>
     </span>
@@ -108,10 +111,14 @@ export function Shell({ children }: { children: ReactNode }) {
     <div className={ui.shell}>
       <header className={ui.header}>
         <div className={ui.headerInner}>
-          <Link href="/" className={ui.brand} aria-label="optspread platform, Vega Lab">
-            <span className={ui.brandName}>optspread platform</span>
-            <span className={ui.brandLab}>VEGA LAB</span>
-          </Link>
+          <span className={ui.brand}>
+            <Link href="/" className={ui.brandName} aria-label="optspread platform, home">
+              optspread platform
+            </Link>
+            <Link href="/how-it-works/" className={ui.brandLab} title="How it works" aria-label="Vega Lab: how it works">
+              VEGA LAB
+            </Link>
+          </span>
           <Nav path={path} />
           <div className={ui.headerRight}>
             <ServerStatus />
@@ -126,6 +133,7 @@ export function Shell({ children }: { children: ReactNode }) {
       <main className={ui.main}>{children}</main>
       <footer className={ui.footer}>
         <span>Vega Lab · CIS 4914 · University of Florida</span>
+        <Link href="/how-it-works/">How it works</Link>
       </footer>
     </div>
   );

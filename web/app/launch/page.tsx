@@ -5,13 +5,14 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { Card, Chip, PageHead, Progress, Segmented, SelectField, Verdict } from "@/components/Bits";
 import { InfoTip, Labelled } from "@/components/InfoTip";
 import { Fold } from "@/components/PageBits";
+import { RateChip } from "@/components/RunTable";
 import { Empty, ErrorBox, Loading } from "@/components/States";
 import ui from "@/components/ui.module.css";
 import { ApiError, api, type Job, type JobOptions, type Knob, type Preset, type Spec } from "@/lib/api";
 import { type Preview, runsApi } from "@/lib/api_runs";
 import { ARM_LABEL, armColor, SOURCE_LABEL, useTokens } from "@/lib/chart";
-import { define } from "@/lib/glossary";
-import { hours, num, pct, prem, usd, when } from "@/lib/format";
+import { define, LEARNED_ARMS } from "@/lib/glossary";
+import { hours, num, pct, prem, short, usd, when } from "@/lib/format";
 import { guide } from "@/lib/guide";
 import { useFetch } from "@/lib/useFetch";
 import { usePoll } from "@/lib/usePoll";
@@ -24,14 +25,18 @@ const ADVANCED_ORDER = ["Market", "Costs", "Structure", "Account"];
 const PREMIUMS = [0, 0.5, 1, 2, 4];
 const EPISODES = [50, 100, 200, 500];
 const STEPS = [100_000, 200_000, 500_000, 1_000_000];
-const ARM_ORDER = ["delta_seller", "always_on", "random", "flat", "ppo"];
+const ARM_ORDER = ["delta_seller", "always_on", "random", "flat", "ppo", "a2c", "dqn"];
 const ARM_DOES: Record<string, string> = {
   delta_seller: "Sells an iron condor at a fixed delta and rolls it before expiry. The rule a planted premium should pay.",
   always_on: "Holds an iron condor all the time, to expiry, then reopens. Selling with no timing.",
   random: "Picks a structure at random each day. Shows what trading costs alone do.",
   flat: "Never trades: the zero line.",
   ppo: "Learns when to sell and which structure from simulated paths, then is scored on fresh ones.",
+  a2c: "A research learner (A2C at the library defaults) on the same observations and actions as PPO.",
+  dqn: "A research learner (DQN at the library defaults): value-based, on the same observations and actions.",
 };
+const learned = (policy: unknown) => LEARNED_ARMS.has(String(policy));
+const armName = (policy: unknown) => ARM_LABEL[String(policy)] ?? String(policy);
 const MAX_TRAIN_SEED = 32768;
 
 /** A knob's value from the URL, parsed by its kind; undefined when absent or malformed. */
@@ -89,8 +94,8 @@ function checkSpec(spec: Spec): Record<string, string> {
   if ((spec.wing_delta as number) >= (spec.short_delta as number)) errs.wing_delta = "must be smaller than the short delta";
   const opening = tenors[idx];
   if (opening !== undefined && (spec.roll_dte as number) >= opening) errs.roll_dte = `must be shorter than the opening tenor (${opening})`;
-  if (spec.policy === "ppo" && !spec.total_timesteps) errs.total_timesteps = "PPO needs a training budget";
-  if (spec.policy === "ppo" && Number(spec.seed) >= MAX_TRAIN_SEED) errs.seed = `PPO trains on its first seed, which must be below ${MAX_TRAIN_SEED.toLocaleString("en-US")}`;
+  if (learned(spec.policy) && !spec.total_timesteps) errs.total_timesteps = `${armName(spec.policy)} needs a training budget`;
+  if (learned(spec.policy) && Number(spec.seed) >= MAX_TRAIN_SEED) errs.seed = `${armName(spec.policy)} trains on its first seed, which must be below ${MAX_TRAIN_SEED.toLocaleString("en-US")}`;
   return errs;
 }
 
@@ -164,6 +169,57 @@ function KnobField({ k: knob, value, error, onChange, off }: { k: Knob; value: u
   );
 }
 
+// The jobs this tab launched, by id, so "Jobs this session" is this reader's and survives a
+// reload; the server's own list holds every job any reader launched.
+const MINE = "optspread.jobs";
+
+function myJobs(): string[] {
+  try {
+    return JSON.parse(window.sessionStorage.getItem(MINE) ?? "[]") as string[];
+  } catch {
+    return [];
+  }
+}
+
+function keepJob(id: string): void {
+  try {
+    window.sessionStorage.setItem(MINE, JSON.stringify([...myJobs().filter((x) => x !== id), id].slice(-50)));
+  } catch {
+    /* nowhere to keep it: the list lasts as long as the page */
+  }
+}
+
+/** This tab's jobs, newest first, one card per run: a launch that reused a run joins its card. */
+function sessionJobs(all: Job[]): { job: Job; times: number }[] {
+  const mine = new Set(myJobs());
+  const out: { job: Job; times: number }[] = [];
+  for (const j of all.filter((x) => mine.has(x.job_id))) {
+    const same = j.run_key ? out.find((o) => o.job.run_key === j.run_key) : undefined;
+    if (same) same.times += 1;
+    else out.push({ job: j, times: 1 });
+  }
+  return out;
+}
+
+/** When and from which code a run on disk was made, and whether that is the code the server runs now. */
+function madeLine(at: string, sha: string, dirty: boolean | null | undefined, now: string): string {
+  const made = `Made ${when(at)} at commit ${sha ? short(sha) : "unknown"}${dirty ? " with uncommitted changes, so the commit alone does not pin its code" : ""}`;
+  if (!now || !sha || now === "unknown") return `${made}.`;
+  return now === sha ? `${made}; the server runs that commit now.` : `${made}; the server now runs ${short(now)}, so this run is from other code.`;
+}
+
+/** A reused run's line on its job card, read from the run's manifest. */
+function ReusedLine({ runKey }: { runKey: string }) {
+  const run = useFetch((sig) => api.run(runKey, sig), runKey);
+  const health = useFetch((sig) => api.health(sig), "health");
+  const r = run.data?.row;
+  return (
+    <p className={ui.dim}>
+      Already on disk with these settings, so the saved run is shown, not computed again.{r ? ` ${madeLine(r.created_at, r.git_sha, r.git_dirty, health.data?.git_sha ?? "")}` : ""}
+    </p>
+  );
+}
+
 function JobCard({ job }: { job: Job }) {
   return (
     <div className={ui.stack}>
@@ -184,6 +240,7 @@ function JobCard({ job }: { job: Job }) {
           <span className={`${ui.dim} mono`}>{job.run_id}</span>
         ) : null}
       </div>
+      {job.phase === "reused" ? (job.run_key ? <ReusedLine runKey={job.run_key} /> : <p className={ui.dim}>Already on disk with these settings, so the saved run is shown, not computed again.</p>) : null}
       {job.error ? <p className={ui.fieldError}>{job.error}</p> : null}
       {job.log_tail.length ? <pre className={ui.log}>{job.log_tail.join("\n")}</pre> : null}
     </div>
@@ -192,7 +249,7 @@ function JobCard({ job }: { job: Job }) {
 
 function initial(options: JobOptions, q: ReturnType<typeof useQuery>): { spec: Spec; preset: string } {
   const named = allPresets(options).find((p) => p.name === q.str("preset"));
-  const usable = named && (named.spec.policy !== "ppo" || options.ppo_available) ? named : undefined;
+  const usable = named && (!learned(named.spec.policy) || options.ppo_available) ? named : undefined;
   const spec: Spec = { ...options.defaults, ...(usable?.spec ?? {}) };
   let edited = false;
   for (const k of options.knobs) {
@@ -202,7 +259,7 @@ function initial(options: JobOptions, q: ReturnType<typeof useQuery>): { spec: S
       if (k.name !== "source") edited = true; // the data source rides along with a preset
     }
   }
-  if (spec.policy !== "ppo") spec.total_timesteps = null;
+  if (!learned(spec.policy)) spec.total_timesteps = null;
   if (!(options.sources ?? ["synthetic"]).includes(String(spec.source ?? "synthetic"))) spec.source = "synthetic";
   return { spec, preset: usable && !edited ? usable.name : usable ? "" : edited ? "" : "null_world" };
 }
@@ -224,7 +281,7 @@ function StepHead({ n, title, tip }: { n: number; title: string; tip?: string })
         {n}
       </span>
       <span>
-        {title} {tip ? <InfoTip term={tip} /> : null}
+        {title} {tip ? <InfoTip term={tip} label={`About ${title}`} /> : null}
       </span>
     </span>
   );
@@ -242,7 +299,7 @@ function Choices<T extends number>({ value, options, render, onChange, label }: 
   );
 }
 
-function PreviewCard({ p, loading, spec }: { p: Preview | undefined; loading: boolean; spec: Spec }) {
+function PreviewCard({ p, loading, spec, rate }: { p: Preview | undefined; loading: boolean; spec: Spec; /** the rate a run gets by default */ rate: number }) {
   const t = useTokens();
   if (!p) return <Card title="Preview">{loading ? <Loading what="the preview" /> : null}</Card>;
   if (!p.ok)
@@ -258,11 +315,22 @@ function PreviewCard({ p, loading, spec }: { p: Preview | undefined; loading: bo
   const d = p.day0;
   const est = p.estimate;
   return (
-    <Card title="What this run will do" sub={p.world} source={`Run id ${p.run_id}: the config hash and the first seed. The same choices always give the same id and the same numbers.`}>
+    <Card
+      title="What this run will do"
+      sub={
+        String(spec.source ?? "synthetic") === "synthetic" && Number(spec.r) !== rate ? (
+          <>
+            {p.world} <RateChip rate={Number(spec.r)} now={rate} />
+          </>
+        ) : (
+          p.world
+        )
+      }
+      source={`Run id ${p.run_id}: the config hash and the first seed. The same choices always give the same id and the same numbers.`}>
       <div className={ui.stack}>
         <div>
           <p className={ui.groupTitle} style={{ margin: "0 0 4px" }}>
-            Day 0 of the first episode {d?.reference ? <InfoTip text="PPO decides for itself once trained; shown is what the fixed-delta seller opens on the same day, for scale." /> : null}
+            Day 0 of the first episode {d?.reference ? <InfoTip text={`${armName(spec.policy)} decides for itself once trained; shown is what the fixed-delta seller opens on the same day, for scale.`} /> : null}
           </p>
           {d ? (
             <>
@@ -315,7 +383,7 @@ function PreviewCard({ p, loading, spec }: { p: Preview | undefined; loading: bo
           </span>
           {p.exists ? (
             <p className={ui.fieldHelp} style={{ margin: "4px 0 0" }}>
-              This exact run is already on disk: launching opens it instead of running it again.
+              This exact run is already on disk: launching opens it instead of running it again. {p.made_at || p.made_git_sha ? madeLine(p.made_at, p.made_git_sha, p.made_git_dirty, p.code_git_sha) : null}
             </p>
           ) : null}
         </div>
@@ -362,7 +430,7 @@ function Form({ options }: { options: JobOptions }) {
   const settled = useSettled(spec);
   const body = useMemo(() => {
     const b = { ...settled };
-    if (b.policy !== "ppo") delete b.total_timesteps;
+    if (!learned(b.policy)) delete b.total_timesteps;
     return b;
   }, [settled]);
   const preview = useFetch((sig) => runsApi.preview(body, sig), `preview|${JSON.stringify(body)}`);
@@ -372,7 +440,7 @@ function Form({ options }: { options: JobOptions }) {
   const running = (jobs.data ?? []).some((j) => j.state === "queued" || j.state === "running");
   usePoll([jobs], running, 700);
 
-  const knobs = options.knobs.filter((k) => k.name !== "source" && (k.name !== "total_timesteps" || spec.policy === "ppo"));
+  const knobs = options.knobs.filter((k) => k.name !== "source" && (k.name !== "total_timesteps" || learned(spec.policy)));
   const sources = options.sources?.length ? options.sources : ["synthetic"];
   const source = String(spec.source ?? "synthetic");
   const real = source !== "synthetic";
@@ -382,7 +450,7 @@ function Form({ options }: { options: JobOptions }) {
     const out = checkSpec(spec);
     for (const k of knobs) {
       const e = checkKnob(k, spec[k.name]);
-      if (e && !(k.name === "total_timesteps" && spec.policy !== "ppo")) out[k.name] = e;
+      if (e && !(k.name === "total_timesteps" && !learned(spec.policy))) out[k.name] = e;
     }
     return out;
   }, [spec, knobs]);
@@ -393,7 +461,7 @@ function Form({ options }: { options: JobOptions }) {
     if (name !== "source") setPreset("");
     setSpec((x) => {
       const next = { ...x, [name]: v };
-      if (name === "policy") next.total_timesteps = v === "ppo" ? (x.total_timesteps ?? 100_000) : null;
+      if (name === "policy") next.total_timesteps = learned(v) ? (x.total_timesteps ?? 100_000) : null;
       return next;
     });
   };
@@ -402,8 +470,9 @@ function Form({ options }: { options: JobOptions }) {
     setSent({ busy: true });
     try {
       const b = { ...spec };
-      if (b.policy !== "ppo") delete b.total_timesteps;
+      if (!learned(b.policy)) delete b.total_timesteps;
       const job = await api.launch(b);
+      keepJob(job.job_id);
       setCurrent(job.job_id);
       setSent({ busy: false });
       jobs.reload();
@@ -431,7 +500,7 @@ function Form({ options }: { options: JobOptions }) {
               key={p.name}
               type="button"
               {...guide(`launch-preset-${p.name}`)}
-              disabled={p.spec.policy === "ppo" && !options.ppo_available}
+              disabled={learned(p.spec.policy) && !options.ppo_available}
               title={p.description}
               aria-pressed={preset === p.name}
               className={`${ui.btn} ${ui.btnSmall} ${preset === p.name ? ui.btnPrimary : ""}`}
@@ -445,12 +514,12 @@ function Form({ options }: { options: JobOptions }) {
           ))}
         </div>
 
-        <Card title={<StepHead n={1} title="Pick a strategy" />} sub="What trades. Each arm is a fixed rule except PPO, which learns.">
+        <Card title={<StepHead n={1} title="Pick a strategy" />} sub="What trades. Each arm is a fixed rule except the learners: PPO, and the research arms A2C and DQN.">
           <div className={s.arms}>
             {arms.map((a) => {
-              const off = a === "ppo" && !options.ppo_available;
+              const off = learned(a) && !options.ppo_available;
               return (
-                <button key={a} type="button" disabled={off} aria-pressed={spec.policy === a} className={`${s.arm} ${spec.policy === a ? s.armOn : ""}`} onClick={() => set("policy", a)} title={off ? "PPO needs the train extra on the server" : undefined}>
+                <button key={a} type="button" disabled={off} aria-pressed={spec.policy === a} className={`${s.arm} ${spec.policy === a ? s.armOn : ""}`} onClick={() => set("policy", a)} title={off ? `${armName(a)} needs the train extra on the server` : undefined}>
                   <span className={s.armName}>
                     <span className={ui.swatch} style={{ background: armColor(t, a) }} aria-hidden="true" />
                     {ARM_LABEL[a] ?? a}
@@ -469,7 +538,7 @@ function Form({ options }: { options: JobOptions }) {
             {real ? (
               <p className={s.explain}>
                 Episodes start on real closes and trade each day&apos;s real option surface; nothing is planted, so the premium is whatever the market paid. Every arm is scored only on {evalFirst} to {evalLast}
-                {spec.policy === "ppo" ? `, and PPO first trains on ${trainFirst} to ${trainLast}, so it is never scored on a date it learned from` : ""}. <InfoTip term="a8_dates" />
+                {learned(spec.policy) ? `, and ${armName(spec.policy)} first trains on ${trainFirst} to ${trainLast}, so it is never scored on a date it learned from` : ""}. <InfoTip term="a8_dates" />
               </p>
             ) : (
               <>
@@ -508,7 +577,7 @@ function Form({ options }: { options: JobOptions }) {
               <input className={`${ui.input} ${errs.seed ? ui.inputBad : ""}`} type="number" step={1} value={String(spec.seed ?? "")} onChange={(e) => set("seed", e.target.value === "" ? null : Number(e.target.value))} />
               <span className={errs.seed ? ui.fieldError : ui.fieldHelp}>{errs.seed || "Runs that share a first seed share their paths, so they compare as pairs."}</span>
             </label>
-            {spec.policy === "ppo" ? (
+            {learned(spec.policy) ? (
               <>
                 <span className={ui.fieldLabel}>
                   <Labelled term="total_timesteps">Training steps</Labelled>
@@ -537,13 +606,14 @@ function Form({ options }: { options: JobOptions }) {
 
         <Card title="Jobs this session">
           {jobs.error ? <ErrorBox what="jobs" error={jobs.error} onRetry={jobs.reload} /> : null}
-          {jobs.data && jobs.data.length === 0 ? <Empty title="No jobs yet" /> : null}
+          {jobs.data && sessionJobs(jobs.data).length === 0 ? <Empty title="No jobs launched from this tab yet" /> : null}
           <div className={ui.stack}>
-            {(jobs.data ?? []).map((j) => (
+            {sessionJobs(jobs.data ?? []).map(({ job: j, times }) => (
               <div key={j.job_id} className={ui.card} style={{ boxShadow: "none", border: "1px solid var(--line)" }}>
                 <JobCard job={j} />
                 <p className={ui.dim} style={{ fontSize: 12, marginTop: 6 }}>
                   submitted {when(j.created_at)}
+                  {times > 1 ? ` · launched ${times} times, the same run` : ""}
                 </p>
               </div>
             ))}
@@ -552,7 +622,7 @@ function Form({ options }: { options: JobOptions }) {
       </div>
 
       <div className={s.side}>
-        <PreviewCard p={preview.data} loading={preview.loading} spec={spec} />
+        <PreviewCard p={preview.data} loading={preview.loading} spec={spec} rate={Number(options.defaults.r)} />
         <Card>
           <div className={ui.stack}>
             <button type="button" className={`${ui.btn} ${ui.btnPrimary}`} disabled={!ok || sent.busy} onClick={launch} {...guide("launch-run")}>

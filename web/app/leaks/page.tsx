@@ -217,6 +217,7 @@ function Leaks() {
   const pending = (busy: boolean) => (busy ? "running" : "not run");
   const nFields = c?.controls.length ?? d?.clean.features.length ?? 14;
   const caughtFields = c ? c.controls.filter((x) => x.flagged && x.named_correctly).length : null;
+  const untested = d ? d.clean.features.filter((f) => !f.tested).map((f) => f.name) : [];
   const lines: Line[] = [
     {
       text: "The planted leak is caught",
@@ -230,14 +231,15 @@ function Leaks() {
       detail: "A leak planted into each observation field alone is flagged, on that field.",
       term: "leaks.everyField",
       verdict: c ? (c.passed ? "PASS" : "FAIL") : pending(cover.busy || (demo.busy && !d)),
-      result: c ? `${caughtFields} of ${c.controls.length} fields${c.uncovered.length ? ` · missed ${c.uncovered.join(", ")}` : ""}${c.misattributed.length ? ` · misnamed ${c.misattributed.join(", ")}` : ""}` : cover.busy ? `planting in ${nFields} fields…` : "",
+      result: c ? `caught in ${caughtFields} of ${c.controls.length} fields${c.uncovered.length ? ` · missed ${c.uncovered.join(", ")}` : ""}${c.misattributed.length ? ` · misnamed ${c.misattributed.join(", ")}` : ""}` : cover.busy ? `planting in ${nFields} fields…` : "",
     },
     {
       text: "The clean simulator stays quiet",
       detail: "With nothing planted, no field crosses the threshold, and resampling the future leaves the past unchanged.",
       term: "leaks.quiet",
       verdict: d ? (!d.clean.flagged && d.clean.past_unchanged && !(c?.clean_flagged ?? false) ? "PASS" : "FAIL") : pending(demo.busy),
-      result: d ? `largest |t| ${num(worstClean, 1)}, threshold ${num(crit, 1)}` : "",
+      // a field constant in the clean world has nothing to test there; its planted control still counts above
+      result: d ? `largest |t| ${num(worstClean, 1)}, threshold ${num(crit, 1)} · ${d.clean.n_tested} of ${d.clean.features.length} fields tested${untested.length ? ` (${untested.join(", ")} constant)` : ""}` : "",
     },
   ];
   const verdicts = lines.map((l) => l.verdict);

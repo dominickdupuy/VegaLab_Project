@@ -17,7 +17,7 @@ from optspread.api.jobs import JobOptionsOut, PresetOut, job_options
 from optspread.api.study import A7_EVAL_RATE, A7_TRAIN_RATE
 from optspread.dashboard.jobs.spec import JobSpec
 from optspread.dashboard.runindex import RunRow
-from optspread.manifest import MANIFEST_FILENAME, RunManifest
+from optspread.manifest import MANIFEST_FILENAME, RunManifest, git_sha
 
 # -- launch: a PPO preset, and the estimate with training in it ---------------------- #
 
@@ -127,6 +127,12 @@ class PreviewOut(Out):
     run_id: str = ""
     config_hash: str = ""
     exists: bool = False  # this exact run is on disk: launching it reuses it
+    # the run on disk, when it exists: when and from which code it was made, and the
+    # commit this server runs now, so a reader sees whether the two differ
+    made_at: str = ""
+    made_git_sha: str = ""
+    made_git_dirty: bool | None = None
+    code_git_sha: str = ""
     run_key: str = ""
     world: str = ""  # the market the run sees, in one sentence
     implied_vol: float | None = None  # sigma plus the premium, decimal; None on real data
@@ -134,6 +140,16 @@ class PreviewOut(Out):
     day0_note: str = ""  # why there is no day 0, when there is none
     estimate: EstimateOut | None = None
     peers: list[PeerOut] = Field(default_factory=list)
+
+
+def research_knobs(spec: JobSpec) -> str:
+    """The market's research knobs a spec moves off zero, in words; "" when none is."""
+    parts = [
+        f"drift {spec.alpha_bps:g} bps a day" if spec.alpha_bps else "",
+        f"vol of vol {spec.vol_of_vol:g}" if spec.vol_of_vol else "",
+        f"skew slope {spec.skew_slope:g}" if spec.skew_slope else "",
+    ]
+    return ", ".join(p for p in parts if p)
 
 
 def _clean(msg: str) -> str:
@@ -149,7 +165,7 @@ def _day_zero(config: Any, source: str) -> DayZeroOut:
 
     env = build_env(config, source)  # type: ignore[arg-type]
     obs, info = env.reset(seed=config.seed)
-    learned = config.policy == "ppo"
+    learned = config.train is not None
     policy: Any = (
         DeltaSellerPolicy(roll_dte=config.env.roll_dte)
         if learned
@@ -323,18 +339,32 @@ def launch_preview(raw: dict[str, Any], runs_root: Path, rows: Sequence[RunRow])
             else f"A simulated index at {spec.sigma:.0%} vol with options priced at the same "
             "vol: the null world, where selling earns nothing before costs."
         )
+        knobs = research_knobs(spec)
+        if knobs:
+            world += f" Research knobs moved: {knobs}."
     day0, note = None, ""
     try:
         day0 = _day_zero(config, spec.source)
     except Exception as exc:  # a missing panel, a chain the deltas cannot reach
         note = str(exc).splitlines()[0] if str(exc) else type(exc).__name__
     steps = config.train.total_timesteps if config.train is not None else None
+    exists = (run_dir / MANIFEST_FILENAME).is_file()
+    made: RunManifest | None = None
+    if exists:
+        try:
+            made = RunManifest.read(run_dir)
+        except (OSError, ValueError):
+            made = None
     return PreviewOut(
         ok=True,
         errors=[],
         run_id=run_id,
         config_hash=h,
-        exists=(run_dir / MANIFEST_FILENAME).is_file(),
+        exists=exists,
+        made_at=made.created_at if made else "",
+        made_git_sha=made.git_sha if made else "",
+        made_git_dirty=made.git_dirty if made else None,
+        code_git_sha=git_sha() if made else "",
         run_key=run_dir.relative_to(runs_root).as_posix(),
         world=world,
         implied_vol=iv,

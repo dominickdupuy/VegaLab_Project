@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
 import { InfoTip } from "@/components/InfoTip";
 import ui from "@/components/ui.module.css";
-import type { Check, Study } from "@/lib/api";
+import { type Check, docUrl, type Study } from "@/lib/api";
 import { num } from "@/lib/format";
 import { guide } from "@/lib/guide";
 import { stepHref, WORKFLOWS } from "@/lib/tours";
@@ -28,12 +28,24 @@ function Mark({ ok }: { ok: boolean | undefined }) {
   );
 }
 
+/** The leak suite's two counts, from its evidence: the clean test's fields, and the planted controls. */
+function leakCounts(evidence: string): string | null {
+  const tested = /(\d+) of (\d+) fields tested, untested: ([^;]+)/.exec(evidence);
+  const controls = /all (\d+) controls fire/.exec(evidence);
+  if (!tested || !controls || tested[3]?.trim() === "none") return null;
+  return ` Two counts: a leak planted in each field alone is caught in all ${controls[1]}; the clean test reads ${tested[1]} of ${tested[2]} fields, since ${tested[3]?.trim()} is constant in the simulator (implied vol is flat there) and has nothing to test. The Leak detector page shows both.`;
+}
+
 /** One line of evidence: a mark, what is claimed, the live figure, and its evidence on hover. */
-function Line({ ok, name, claim, tip, toggle }: { ok: boolean | undefined; name: string; claim: ReactNode; tip: string; toggle?: { key: string; open: boolean; hook: string } }) {
+function Line({ ok, name, claim, tip, toggle, href }: { ok: boolean | undefined; name: string; claim: ReactNode; tip: string; toggle?: { key: string; open: boolean; hook: string }; href?: string }) {
   const label = toggle ? (
     <button type="button" className={ui.trustToggle} aria-expanded={toggle.open} aria-controls={toggle.key} onClick={() => setQuery({ [toggle.key]: toggle.open ? null : 1 })} {...guide(toggle.hook)}>
       {name}
     </button>
+  ) : href ? (
+    <Link href={href} className={ui.trustToggle}>
+      {name}
+    </Link>
   ) : (
     <span className={ui.trustName}>{name}</span>
   );
@@ -65,12 +77,13 @@ export function TrustBand({ checks, study }: { checks?: Check[]; study?: Study }
   const q = useSearchParams();
   const reviewer = WORKFLOWS.find((w) => w.reviewer);
   const pass = checks?.filter((c) => c.verdict === "PASS").length ?? 0;
+  const open = checks?.filter((c) => c.verdict !== "PASS") ?? [];
   const replay = find(checks, /replay/i);
   const leaks = find(checks, /leak detection suite/i);
   const prereg = find(checks, /pre-?registration/i);
-  const evidence = (c: Check | undefined, fallback: string) => (c ? `${c.label}: ${c.verdict}. ${c.evidence}` : fallback);
+  const evidence = (c: Check | undefined, fallback: string) => (c ? `${c.label}: ${c.verdict}. ${c.evidence.replace(/\.?\s*$/, ".")}` : fallback);
   return (
-    <section className={ui.trust} aria-labelledby="trust-title">
+    <section id="trust" className={ui.trust} aria-labelledby="trust-title">
       <div className={ui.trustHead}>
         <span className={ui.trustIcon}>
           <Shield />
@@ -83,12 +96,25 @@ export function TrustBand({ checks, study }: { checks?: Check[]; study?: Study }
         <Line
           ok={checks ? pass === checks.length && checks.length > 0 : undefined}
           name="Checks"
-          claim={checks ? `${num(pass)} of ${num(checks.length)} pass` : "reading the reports…"}
+          claim={checks ? `${num(pass)} of ${num(checks.length)} pass${open.length ? ` · not yet: ${open.map((c) => c.label).join(" · ")}` : ""}` : "reading the reports…"}
           tip="Every check in the milestone reports, its verdict derived from the report's own criterion and evidence. Open the list for each one's evidence."
           toggle={{ key: "checks", open: q.get("checks") === "1", hook: "home-checks" }}
         />
-        <Line ok={replay ? replay.verdict === "PASS" : undefined} name="Replay" claim="byte-identical on this machine; within tolerance across platforms" tip={evidence(replay, "No replay check in the reports on this server.")} />
-        <Line ok={leaks ? leaks.verdict === "PASS" : undefined} name="Leak detector" claim="catches a planted leak in every field it tests" tip={evidence(leaks, "No leak-suite check in the reports on this server.")} />
+        <Line
+          ok={replay ? replay.verdict === "PASS" : undefined}
+          name="Replay"
+          href="/attribution/#cells"
+          claim={
+            <>
+              a scripted run bit for bit on the machine that made it, within 1e-9 across platforms; a retrained PPO statistically. One PPO sweep episode re-simulates differently:{" "}
+              <a href={docUrl("DEFECTS.md")} target="_blank" rel="noreferrer">
+                why
+              </a>
+            </>
+          }
+          tip={`${evidence(replay, "No replay check in the reports on this server.")} One PPO episode of the sweep re-simulates to a different P&L than it saved: the Attribution page lists it (Cells and reproduction), and docs/DEFECTS.md ("One edge episode differs") says why. No verdict changes.`}
+        />
+        <Line ok={leaks ? leaks.verdict === "PASS" : undefined} name="Leak detector" href="/leaks/" claim="catches a leak planted in any field" tip={`${evidence(leaks, "No leak-suite check in the reports on this server.")}${leaks ? (leakCounts(leaks.evidence) ?? "") : ""}`} />
         <Line
           ok={prereg ? prereg.verdict === "PASS" : undefined}
           name="Pre-registration"
