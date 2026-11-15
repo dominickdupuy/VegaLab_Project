@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { RunRow } from "@/lib/api";
 import { ARM_LABEL, armColor, useTokens } from "@/lib/chart";
-import { num, prem, short, usd, when } from "@/lib/format";
+import { num, pct, prem, short, usd, when } from "@/lib/format";
 import { guide } from "@/lib/guide";
 import { Chip, Verdict } from "./Bits";
 import { InfoTip } from "./InfoTip";
@@ -25,6 +25,27 @@ const COLUMNS: { key: Key; label: string; num?: boolean }[] = [
   { key: "mean_trades", label: "Trades/ep", num: true },
   { key: "status", label: "Status" },
 ];
+
+/** The market's research knobs a run moved off zero, in a few words; "" for the study's world. */
+export function knobs(r: Pick<RunRow, "alpha_bps" | "vol_of_vol" | "skew_slope">): string {
+  return [r.alpha_bps ? `drift ${num(r.alpha_bps)} bps/day` : "", r.vol_of_vol ? `vol of vol ${num(r.vol_of_vol, 2)}` : "", r.skew_slope ? `skew ${num(r.skew_slope, 2)}` : ""].filter(Boolean).join(" · ");
+}
+
+const ratePct = (x: number) => pct(x, Number.isInteger(Math.round(x * 1e6) / 1e4) ? 0 : 1);
+
+/**
+ * The rate a run's options were priced at, as an amber chip, when it is not the rate a run
+ * launched now gets: runs made before the default moved to 0 (and the study's, at 4%)
+ * read a little differently from a run made today with the same knobs (amendment A11).
+ */
+export function RateChip({ rate, now }: { rate: number | null | undefined; now: number | null | undefined }) {
+  if (rate === null || rate === undefined || now === null || now === undefined || rate === now) return null;
+  return (
+    <span className={`${ui.chip} ${ui.chipWarn}`}>
+      <InfoTip text={`The rate this run's options were priced at. Runs launched now use ${ratePct(now)}, so its numbers differ slightly from a run made today with the same settings (amendment A11).`}>rate {ratePct(rate)}</InfoTip>
+    </span>
+  );
+}
 
 function cmp(a: unknown, b: unknown): number {
   if (a === b) return 0;
@@ -69,7 +90,7 @@ export function RunTable({
       <table className={ui.table}>
         <thead>
           <tr>
-            {onToggle ? <th aria-label="Compare" /> : null}
+            {onToggle ? <th>Compare</th> : null}
             <th>Run</th>
             {cols.map(head)}
             {commits ? <th>Commit</th> : null}
@@ -92,6 +113,12 @@ export function RunTable({
                   {labels?.[r.key] ? <div style={{ fontSize: 12.5 }}>{labels[r.key]}</div> : null}
                   {r.sweep ? <div className={ui.dim} style={{ fontSize: 12 }}>sweep {short(r.sweep, 10)}</div> : null}
                   {r.source !== "synthetic" && r.source ? <div className={ui.dim} style={{ fontSize: 12 }}>real SPX</div> : null}
+                  {knobs(r) ? <div className={ui.dim} style={{ fontSize: 12 }}>{knobs(r)}</div> : null}
+                  {r.rate !== null && r.rate !== r.rate_default ? (
+                    <div style={{ marginTop: 2 }}>
+                      <RateChip rate={r.rate} now={r.rate_default} />
+                    </div>
+                  ) : null}
                 </td>
                 {cols.map((c) => {
                   const v = r[c.key];
@@ -118,7 +145,12 @@ export function RunTable({
                 {!commits ? null : (
                   <td className="mono" title={r.git_sha}>
                     {r.commit || "–"}
-                    {r.git_dirty ? <span className={ui.dim}> +dirty</span> : null}
+                    {r.git_dirty ? (
+                      <span className={ui.dim}>
+                        {" "}
+                        <InfoTip term="dirty">+dirty</InfoTip>
+                      </span>
+                    ) : null}
                   </td>
                 )}
               </tr>

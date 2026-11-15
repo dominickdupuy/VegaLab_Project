@@ -36,7 +36,7 @@ from dashboard_fixtures import (
 from pydantic import BaseModel
 
 from optspread.api.catalog import CATALOG_FILENAME, catalog
-from optspread.api.compare import compare, compare_verdict
+from optspread.api.compare import code_diff, compare, compare_verdict
 from optspread.api.gates import gates
 from optspread.api.jobs import job_options
 from optspread.api.leaks import leak_demo, leak_t_critical
@@ -51,24 +51,35 @@ from optspread.api.power import (
     power_surface,
     surface_seeds,
 )
-from optspread.api.premiums import _premium_contrast, premium_view
+from optspread.api.premiums import _premium_contrast, _world_label, premium_view
 from optspread.api.runs import (
+    HEATMAP_BINS,
     RunFilters,
     histogram,
     index,
     load_detail,
+    policy_heatmap,
     resolve_run,
+    row_out,
     run_detail,
     run_list,
 )
 from optspread.api.sweeps import sweep_detail, sweeps
+from optspread.config import STUDY_R, MarketConfig
 from optspread.dashboard.jobs.queue import JobManager
-from optspread.dashboard.jobs.spec import EQUITY_FILENAME, JOBS_DIR, JobSpec
+from optspread.dashboard.jobs.spec import (
+    ACTION_LOG_FILENAME,
+    EQUITY_FILENAME,
+    JOBS_DIR,
+    JobSpec,
+    to_run_config,
+)
 from optspread.dashboard.jobs.worker import _Progress, execute_job
 from optspread.dashboard.leakdemo import run_leak_demo
 from optspread.dashboard.panel_views import Columns, normalise
-from optspread.dashboard.runindex import REPO_ROOT, load_run_detail
+from optspread.dashboard.runindex import REPO_ROOT, load_run_detail, load_run_row
 from optspread.experiment.sweep import SWEEP_FILENAME
+from optspread.harness import build_env
 
 
 def _sent(out: BaseModel) -> Any:
@@ -178,9 +189,106 @@ def test_a_launched_run_sends_its_equity_paths(tmp_path: Path) -> None:
     assert out.equity is not None and out.equity.seeds == [5, 6]
     assert out.equity.n_recorded == 2 and len(out.equity.paths[0]) == 22
     assert out.equity.paths[0][-1] == pytest.approx(out.episodes[0].pnl)
-    assert {a.path for a in out.artifacts} == {"run.json", EQUITY_FILENAME}
+    assert {a.path for a in out.artifacts} == {"run.json", EQUITY_FILENAME, ACTION_LOG_FILENAME}
     (tmp_path / key / EQUITY_FILENAME).write_text("[]")
     assert run_detail(load_detail(tmp_path, key), tmp_path, rows).equity is None
+
+
+@pytest.mark.invariant
+def test_the_synth_paths_are_the_paths_a_runs_episodes_see() -> None:
+    from optspread.api.synth import SynthParams, synth_paths
+
+    params = SynthParams(n_days=21, n_paths=3, seed=7, vol_of_vol=0.5, skew_slope=0.1)
+    out = synth_paths(params)
+    assert out.days == list(range(22)) and out.smile_day == 10
+    assert len(out.spots) == len(out.atm_ivs) == len(out.smile_ivs) == 3
+    assert out.spots[0][0] == 5000.0 and out.atm_ivs[0][0] == pytest.approx(0.20)
+    # path i is episode seed seed + i: the spot and the atm_iv the policy observes
+    config = to_run_config(
+        JobSpec(policy="flat", n_days=21, tenor_days=(7, 14), vol_of_vol=0.5, skew_slope=0.1)
+    )
+    env = build_env(config)
+    obs, _ = env.reset(seed=8)
+    seen, done = [float(obs[8])], False
+    while not done:
+        obs, _, done, _, info = env.step(0)
+        seen.append(float(obs[8]))
+    assert info["chain"].spot == pytest.approx(out.spots[1][-1], rel=1e-12)
+    np.testing.assert_allclose(seen[:-1], out.atm_ivs[1][:-1], rtol=1e-6)
+    # the smile is tilted toward the downside, on each path's own strikes
+    x, iv = np.asarray(out.smile_log_moneyness[2]), np.asarray(out.smile_ivs[2])
+    assert x.shape == iv.shape and np.all(np.diff(x) > 0) and np.all(np.diff(iv) < 0)
+    flat = synth_paths(SynthParams(n_days=21, n_paths=1))
+    assert {round(v, 12) for v in flat.atm_ivs[0]} == {0.2}
+
+
+@pytest.mark.behaviour
+def test_a_run_row_carries_the_research_knobs(tmp_path: Path) -> None:
+    (tmp_path / ".jobs").mkdir()
+    spec = JobSpec(n_days=21, tenor_days=(7, 14), n_episodes=1, alpha_bps=25.0)
+    key = execute_job("j", spec.model_dump_json(), str(tmp_path))
+    row = row_out(load_run_row(tmp_path / key), tmp_path)
+    assert (row.alpha_bps, row.vol_of_vol, row.skew_slope) == (25.0, 0.0, 0.0)
+
+
+@pytest.mark.behaviour
+def test_a_run_row_carries_the_rate_it_was_priced_at(tmp_path: Path) -> None:
+    (tmp_path / ".jobs").mkdir()
+    spec = JobSpec(n_days=21, tenor_days=(7, 14), n_episodes=1)
+    now = row_out(
+        load_run_row(tmp_path / execute_job("j", spec.model_dump_json(), str(tmp_path))), tmp_path
+    )
+    assert (now.rate, now.rate_default) == (MarketConfig().r, MarketConfig().r)
+    study = spec.model_copy(update={"r": STUDY_R}).model_dump_json()
+    old = row_out(load_run_row(tmp_path / execute_job("k", study, str(tmp_path))), tmp_path)
+    # a run made at the study's rate says so beside a run made today with the same knobs
+    assert old.rate == STUDY_R and old.rate != old.rate_default
+    # and the runs list's worlds name the rate in words, not as a config key
+    assert _world_label({"market.r": STUDY_R}, {"market.r": 0.0}) == "rate 4%"
+
+
+@pytest.mark.behaviour
+def test_the_policy_heatmap_bins_a_launched_runs_steps(tmp_path: Path) -> None:
+    (tmp_path / ".jobs").mkdir()
+    spec = JobSpec(n_days=21, tenor_days=(7, 14), n_episodes=4, seed=5, vol_of_vol=0.6)
+    run_dir = tmp_path / execute_job("j", spec.model_dump_json(), str(tmp_path))
+    out = policy_heatmap(run_dir)
+    assert out.available and out.n_episodes == 4 and out.n_steps == 4 * 21
+    assert out.action_names == ["FLAT", "IRON_CONDOR", "SHORT_STRANGLE", "PUT_CREDIT_SPREAD"]
+    assert len(out.time_frac_edges) == len(out.atm_iv_edges) == HEATMAP_BINS + 1
+    assert np.asarray(out.counts).shape == (HEATMAP_BINS, HEATMAP_BINS, 4)
+    assert int(np.asarray(out.counts).sum()) == out.n_steps
+    # the seller opens the condor on day 0 of every episode: time bin 0 holds the opens
+    assert sum(row[1] for row in out.counts[0]) >= 4
+    log = json.loads((run_dir / ACTION_LOG_FILENAME).read_text())
+    assert out.atm_iv_edges[0] == min(v for ep in log["atm_iv"] for v in ep)
+    assert out.atm_iv_edges[-1] == max(v for ep in log["atm_iv"] for v in ep)
+    # a constant-vol world (the study's) has one vol bin; nothing is lost
+    flat_dir = tmp_path / execute_job(
+        "k", spec.model_copy(update={"vol_of_vol": 0.0}).model_dump_json(), str(tmp_path)
+    )
+    flat = policy_heatmap(flat_dir)
+    assert flat.available and flat.atm_iv_edges == [0.2, 0.2]
+    assert np.asarray(flat.counts).shape == (HEATMAP_BINS, 1, 4)
+    assert int(np.asarray(flat.counts).sum()) == flat.n_steps
+
+
+@pytest.mark.behaviour
+def test_the_policy_heatmap_reads_only_a_log_its_manifest_vouches_for(
+    tmp_path: Path, run_root: Path
+) -> None:
+    cell = next(r for r in index(run_root) if r.status == "OK").path
+    none = policy_heatmap(cell)
+    assert not none.available and "only runs launched from the dashboard" in none.reason
+    (tmp_path / ".jobs").mkdir()
+    spec = JobSpec(n_days=21, tenor_days=(7, 14), n_episodes=2, seed=5)
+    run_dir = tmp_path / execute_job("j", spec.model_dump_json(), str(tmp_path))
+    log = run_dir / ACTION_LOG_FILENAME
+    raw = json.loads(log.read_text())
+    raw["actions"][0][0] = 2
+    log.write_text(json.dumps(raw))
+    edited = policy_heatmap(run_dir)
+    assert not edited.available and "does not match the run's manifest" in edited.reason
 
 
 @pytest.mark.behaviour
@@ -201,6 +309,32 @@ def test_two_runs_compare_with_a_paired_difference(run_root: Path) -> None:
     assert out.config_diff[0].a == "flat" and out.config_diff[0].b == "delta_seller"
     assert out.shared_seeds == 3 and out.diff_mean == pytest.approx(b.mean_pnl)
     assert sum(out.diff_histogram.counts) == 3
+
+
+@pytest.mark.behaviour
+def test_a_compare_says_when_the_two_runs_may_not_share_their_code(run_root: Path) -> None:
+    import dataclasses
+
+    row = next(r for r in index(run_root) if r.status == "OK")
+    clean = dataclasses.replace(row, git_sha="7ed7f3b53e442deb", git_dirty=False)
+    assert code_diff(clean, clean) is None
+    dirty = code_diff(clean, dataclasses.replace(clean, git_dirty=True))
+    assert dirty is not None and dirty.key == "code"
+    assert (dirty.a, dirty.b) == ("7ed7f3b5", "7ed7f3b5 +dirty")
+    other = code_diff(clean, dataclasses.replace(clean, git_sha="773af0b1c2d3"))
+    assert other is not None and other.b == "773af0b1"
+
+
+@pytest.mark.behaviour
+def test_a_compare_puts_the_baseline_first_whichever_order_it_is_asked(run_root: Path) -> None:
+    rows = index(run_root)
+    ok = [r for r in rows if r.status == "OK" and r.policy == "delta_seller" and r.sweep == "tiny"]
+    low, high = (next(r for r in ok if r.premium == p) for p in (0.0, 2.0))
+    asked = compare(load_run_detail(high.path), load_run_detail(low.path), run_root, rows)
+    usual = compare(load_run_detail(low.path), load_run_detail(high.path), run_root, rows)
+    assert asked.a.row.premium == 0.0 and asked.b.row.premium == 2.0
+    assert asked.diff_mean == pytest.approx(usual.diff_mean)
+    assert asked.verdict == usual.verdict and asked.verdict[0].isupper()
 
 
 # -- gates ------------------------------------------------------------------------------ #
@@ -237,7 +371,16 @@ def test_job_options_describe_every_knob_with_its_bounds() -> None:
     # the form's own words, and which knobs a real chain does not read
     assert all(k.label and "_" not in k.label for k in out.knobs)
     assert knobs["n_days"].label == "Days per episode"
-    assert {k.name for k in out.knobs if k.synthetic_only} == {"iv_premium_vol_pts", "sigma", "r"}
+    assert {k.name for k in out.knobs if k.synthetic_only} == {
+        "iv_premium_vol_pts",
+        "alpha_bps",
+        "vol_of_vol",
+        "skew_slope",
+        "sigma",
+        "r",
+    }
+    assert {knobs[k].group for k in ("alpha_bps", "vol_of_vol", "skew_slope")} == {"Market"}
+    assert knobs["alpha_bps"].default == 0.0 and knobs["alpha_bps"].maximum == 200.0
     words = " ".join([k.help for k in out.knobs] + [p.description for p in out.presets])
     for internal in ("Wave 0", "(A4)", "decision D2", "(D2)", "gate"):
         assert internal not in words, internal
@@ -300,6 +443,9 @@ def test_the_power_lab_agrees_with_the_formula() -> None:
     assert out.curve.power[0] == pytest.approx(0.05) and out.curve.power[-1] > 0.99
     assert len(out.curve.delta) == len(out.curve.power_s5) == len(out.curve.power_s50) == 81
     assert out.design.total_hours is not None and out.design.n_seeds == 4
+    # the design the seeds needed make, costed: seeds_needed seeds at this N
+    assert out.seeds_design.n_seeds == out.seeds_needed and out.seeds_design.n_episodes == 25
+    assert out.seeds_design.power is not None and out.seeds_design.power >= p.target_power
     assert "tau^2/S" in out.source
 
 
@@ -704,6 +850,8 @@ def test_the_run_payload_carries_the_recorded_source_and_panel(
     assert (by_key["old"].source, by_key["old"].source_recorded) == ("synthetic", False)
     assert by_key["real"].source == "optionmetrics" and by_key["real"].source_recorded
     assert len(by_key["real"].panel) == 16 and by_key["old"].panel == ""
+    # a real chain reads its own rate, so the row names none
+    assert by_key["real"].rate is None and by_key["old"].rate is not None
     assert out.facets.sources == ["optionmetrics", "synthetic"]
     real = run_list(index(tmp_path), tmp_path, RunFilters(source=["optionmetrics"]))
     assert [r.key for r in real.rows] == ["real"]

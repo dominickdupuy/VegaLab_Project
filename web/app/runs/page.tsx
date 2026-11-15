@@ -9,11 +9,12 @@ import { Chart } from "@/components/Chart";
 import { RunMixCard } from "@/components/ActionMix";
 import { CompareRuns, histOption } from "@/components/CompareRuns";
 import { Fold, Reading } from "@/components/PageBits";
+import { PolicyHeatmapCard } from "@/components/PolicyHeatmap";
 import { PremiumView } from "@/components/PremiumView";
 import { RunCatalog } from "@/components/RunCatalog";
 import { AttributionCard, CapitalCard, capitalPending, EquityCard, ReplayControl, ReplayResult, useCapital } from "@/components/RunExtras";
-import { RunTable } from "@/components/RunTable";
-import { InfoTip } from "@/components/InfoTip";
+import { knobs, RateChip, RunTable } from "@/components/RunTable";
+import { InfoTip, Labelled } from "@/components/InfoTip";
 import { Empty, ErrorBox, Loading } from "@/components/States";
 import ui from "@/components/ui.module.css";
 import { api, type RunDetail, type RunFilters } from "@/lib/api";
@@ -222,7 +223,7 @@ function RiskTiles({ d }: { d: RunDetail }) {
   const r = d.risk;
   return (
     <div className={ui.grid4}>
-      <Tile label="Mean P&L / episode" value={usd(r.mean)} note={`se ${usd(r.se)} · t ${num(d.row.t_stat, 2)}`} />
+      <Tile label="Mean P&L / episode" value={usd(r.mean)} note={<>se {usd(r.se)} · <InfoTip term="t">t</InfoTip> {num(d.row.t_stat, 2)}</>} />
       <Tile label="Sortino" value={num(r.sortino, 2)} note="mean over downside spread" />
       <Tile label="CVaR 5%" value={usd(r.cvar5)} note="the worst 5% of episodes" />
       <Tile label="Hit rate" value={pct(r.hit_rate)} note="episodes that made money" />
@@ -253,10 +254,17 @@ function ManifestCard({ d }: { d: RunDetail }) {
           <dd className="mono">{d.row.run_id}</dd>
           <dt>Created</dt>
           <dd>{d.row.created_at || "–"}</dd>
-          <dt>Git SHA</dt>
+          <dt>
+            <Labelled term="commit">Git SHA</Labelled>
+          </dt>
           <dd className="mono">
             {d.row.git_sha || "–"}
-            {d.row.git_dirty ? <span className={ui.dim}> (working tree dirty)</span> : null}
+            {d.row.git_dirty ? (
+              <span className={ui.dim}>
+                {" "}
+                (<InfoTip term="dirty">working tree dirty</InfoTip>)
+              </span>
+            ) : null}
           </dd>
           <dt>Config hash</dt>
           <dd className="mono">{d.row.config_hash}</dd>
@@ -373,9 +381,26 @@ function Detail({ d, label, question, t }: { d: RunDetail; label: string; questi
             ) : (
               <>
                 <InfoTip term="premium">planted premium</InfoTip> {prem(d.row.premium)} vol pts
+                {knobs(d.row) ? ` · ${knobs(d.row)}` : ""}
+                {d.row.rate !== null && d.row.rate !== d.row.rate_default ? (
+                  <>
+                    {" "}
+                    <RateChip rate={d.row.rate} now={d.row.rate_default} />
+                  </>
+                ) : null}
               </>
             )}{" "}
             · {label ? <span className="mono">{id} · </span> : null}created {when(d.row.created_at)}
+            {d.row.commit ? (
+              <>
+                {" "}
+                · commit{" "}
+                <a href="#provenance" className="mono" title={`${d.row.git_sha}: the code that made this run (Provenance)`}>
+                  {d.row.commit}
+                  {d.row.git_dirty ? " +dirty" : ""}
+                </a>
+              </>
+            ) : null}
           </>
         }
         right={
@@ -424,12 +449,13 @@ function Detail({ d, label, question, t }: { d: RunDetail; label: string; questi
       {/* computed one at a time on the server: the capital re-simulation above the fold first */}
       <AttributionCard d={d} wait={capitalPending(cap)} />
       <RunMixCard d={d} wait={capitalPending(cap)} />
+      <PolicyHeatmapCard d={d} />
       {d.episodes.length ? (
         <Fold title="P&L by episode seed" sub="every episode's P&L, in seed order">
           <Chart option={bySeedOption(t, d)} height={240} label="Per-episode P&L by seed" stamp={stamp} rows={() => d.episodes.map((e) => ({ ...e }))} />
         </Fold>
       ) : null}
-      <Fold title="Provenance" sub="the manifest, its digests and the config">
+      <Fold id="provenance" term="provenance" title="Provenance" sub="the manifest, its digests and the config">
         <ManifestCard d={d} />
       </Fold>
     </>

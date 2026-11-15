@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useState } from "react";
+import { Fragment, type ReactNode, Suspense, useState } from "react";
 import type { CustomSeriesRenderItemAPI, CustomSeriesRenderItemReturn, EChartsOption } from "echarts";
 import { STRUCT_LABEL } from "@/components/ActionMix";
 import { Card, Chip, PageHead, Segmented, SelectField, Source, Verdict } from "@/components/Bits";
@@ -16,6 +16,7 @@ import ui from "@/components/ui.module.css";
 import { api, type ArmEdge, type Edge, type EdgeDetail, type EdgeList, type GridEdge } from "@/lib/api";
 import { ARM_LABEL, armColor, axis, base, componentColor, type Tokens, useTokens } from "@/lib/chart";
 import { esc, num, pct, prem, usd } from "@/lib/format";
+import { define } from "@/lib/glossary";
 import { guide } from "@/lib/guide";
 import { useFetch } from "@/lib/useFetch";
 import { useHashScroll, useQuery, useQuerySync } from "@/lib/url";
@@ -60,9 +61,13 @@ function whisker(color: string, horizontal: boolean) {
   };
 }
 
-function edgeTip(name: string, e: Edge | undefined): string {
-  if (!e) return esc(name);
-  return `<b>${esc(name)}</b><br/>edge ${usd(e.estimate)} (se ${usd(e.se)})<br/>95% one-sided: ≥ ${usd(e.lower_bound)} · upper ${usd(e.upper_bound)}<br/>t ${num(e.t_stat, 2)}${carries(e) ? " · excludes 0" : ""}`;
+/** A bar's tooltip: the component's plain line from the glossary, then its numbers. */
+function edgeTip(c: string, e: Edge | undefined): string {
+  const name = LABEL[c] ?? c;
+  const plain = define(c === "pnl" ? "edge" : `attr.${c}`);
+  const head = `<b>${esc(name)}</b>${plain ? `<br/><span style="display:inline-block;max-width:260px;white-space:normal">${esc(plain)}</span>` : ""}`;
+  if (!e) return head;
+  return `${head}<br/>edge ${usd(e.estimate)} (se ${usd(e.se)})<br/>95% one-sided: ≥ ${usd(e.lower_bound)} · upper ${usd(e.upper_bound)}<br/>t ${num(e.t_stat, 2)}${carries(e) ? " · excludes 0" : ""}`;
 }
 
 /** A component's part in the sentence, by its sign: "more theta collected (+$454)". */
@@ -77,15 +82,41 @@ const PHRASE: Record<string, [string, string]> = {
 
 const signedUsd = (x: number) => `${x >= 0 ? "+" : ""}${usd(x)}`;
 
+/** A component's name in a phrase, behind the glossary's plain line ("more <theta> collected"). */
+function named(c: string, phrase: string): ReactNode {
+  const at = phrase.indexOf(c);
+  if (at < 0) return <InfoTip term={`attr.${c}`}>{phrase}</InfoTip>;
+  return (
+    <>
+      {phrase.slice(0, at)}
+      <InfoTip term={`attr.${c}`}>{c}</InfoTip>
+      {phrase.slice(at + c.length)}
+    </>
+  );
+}
+
+function joined(xs: ReactNode[], sep: string): ReactNode {
+  return xs.map((x, i) => (
+    <Fragment key={i}>
+      {i ? sep : null}
+      {x}
+    </Fragment>
+  ));
+}
+
 /** The edge of one arm at one premium in a sentence: what carries it, what takes it back. */
-function edgeSentence(a: ArmEdge, comps: string[]): string {
+function edgeSentence(a: ArmEdge, comps: string[]): ReactNode {
   const total = a.pnl.estimate ?? 0;
   const parts = comps.filter((c) => c !== "residual" && PHRASE[c]).map((c) => ({ c, x: a.components[c]?.estimate ?? 0 }));
   const pos = parts.filter((p) => p.x > 0).sort((x, y) => y.x - x.x);
   const neg = parts.filter((p) => p.x < 0).sort((x, y) => x.x - y.x);
   const posSum = pos.reduce((s, p) => s + p.x, 0);
   const negSum = -neg.reduce((s, p) => s + p.x, 0);
-  const say = (p: { c: string; x: number }) => `${PHRASE[p.c]?.[p.x >= 0 ? 0 : 1]} (${signedUsd(p.x)})`;
+  const say = (p: { c: string; x: number }) => (
+    <>
+      {named(p.c, PHRASE[p.c]?.[p.x >= 0 ? 0 : 1] ?? p.c)} ({signedUsd(p.x)})
+    </>
+  );
   // the parts that matter: the largest, and any other above a sixth of the gross on its side
   const main = pos.filter((p, i) => i === 0 || p.x >= posSum / 6).slice(0, 2);
   const back = neg.filter((p, i) => (i === 0 && -p.x >= Math.abs(total) / 6) || -p.x >= Math.max(posSum, Math.abs(total)) / 6).slice(0, 2);
@@ -93,7 +124,17 @@ function edgeSentence(a: ArmEdge, comps: string[]): string {
   const head = `${ArmPhrase(a.arm)}'s edge at ${premium} is ${usd(total)} per episode${a.pnl_saved.rejected ? "" : ", not detected"}`;
   if (!main.length) return `${head}, with nothing adding to it.`;
   const verb = negSum > posSum / 2 ? "most of it given back as" : "partly offset by";
-  return `${head}: mostly ${main.map(say).join(" plus ")}${back.length ? `, ${verb} ${back.map(say).join(" and ")}` : ""}.`;
+  return (
+    <>
+      {head}: mostly {joined(main.map(say), " plus ")}
+      {back.length ? (
+        <>
+          , {verb} {joined(back.map(say), " and ")}
+        </>
+      ) : null}
+      .
+    </>
+  );
 }
 
 /** One arm's edge at one premium: each component with its interval, the P&L edge on top. */
@@ -104,7 +145,7 @@ function edgeOption(t: Tokens, a: ArmEdge, comps: string[]): EChartsOption {
   return {
     ...base(t),
     legend: { show: false },
-    tooltip: { ...base(t).tooltip, trigger: "item", formatter: (p: unknown) => { const q = p as { dataIndex: number }; const c = cats[q.dataIndex] ?? ""; return edgeTip(LABEL[c] ?? c, get(c)); } },
+    tooltip: { ...base(t).tooltip, trigger: "item", formatter: (p: unknown) => { const q = p as { dataIndex: number }; const c = cats[q.dataIndex] ?? ""; return edgeTip(c, get(c)); } },
     grid: { left: 150, right: 24, top: 12, bottom: 44, containLabel: false },
     yAxis: {
       type: "category",
@@ -328,7 +369,17 @@ function Detail({ d, arm, premium, setArm, setPremium }: { d: EdgeDetail; arm: s
       </div>
       <p className={ui.dim} style={{ fontSize: 12.5, marginTop: -4 }}>
         <Labelled term="attribution.whisker">Bars: each greek&apos;s share of the edge, the arm at {prem(premium)} vol pts against itself at 0, over {g.n_seeds} seed blocks.</Labelled>{" "}
-        Dashed line: the P&L edge the bars sum to.{zero.length ? ` ${zero.map((c) => LABEL[c] ?? c).join(" and ")}: zero throughout, not shown.` : ""} Each chart has its own scale.
+        What each bar is:{" "}
+        {joined(
+          comps.map((c) => (
+            <InfoTip key={c} term={`attr.${c}`}>
+              {LABEL[c] ?? c}
+            </InfoTip>
+          )),
+          ", ",
+        )}
+        .{" "}
+        Dashed line: the P&L edge the bars sum to.{zero.length ? ` ${zero.map((c) => LABEL[c] ?? c).join(" and ")}: zero throughout, not shown${zero.includes("vega") ? " (the simulated market holds implied vol fixed, so vega earns nothing" : ""}${zero.includes("carry") ? `${zero.includes("vega") ? ", and" : " ("} the book pays no interest on cash` : ""}${zero.some((c) => c === "vega" || c === "carry") ? ")" : ""}.` : ""} Each chart has its own scale.
       </p>
 
       <Card title="How the split changes with the premium" info="attribution.acrossPremiums" sub="Click a premium to read it above.">

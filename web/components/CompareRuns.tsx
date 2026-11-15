@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 import type { EChartsOption } from "echarts";
 import { Card, Chip, PageHead, Tile, Verdict } from "@/components/Bits";
@@ -10,10 +11,10 @@ import { InfoTip } from "@/components/InfoTip";
 import { Empty, ErrorBox, Loading, Pending } from "@/components/States";
 import ui from "@/components/ui.module.css";
 import { Fold, Reading } from "@/components/PageBits";
-import { COMPONENTS, type MixSummary, type RunDetail, STRUCTURES } from "@/lib/api";
+import { api, COMPONENTS, type MixSummary, type RunDetail, STRUCTURES } from "@/lib/api";
 import { type PairedCompare, runsApi } from "@/lib/api_runs";
 import { ARM_LABEL, armColor, axis, base, histBars, type Tokens, useTokens } from "@/lib/chart";
-import { esc, num, pct, prem, short, usd } from "@/lib/format";
+import { esc, MINUS, num, pct, prem, short, usd } from "@/lib/format";
 import { useFetch } from "@/lib/useFetch";
 
 export function histOption(t: Tokens, edges: number[], counts: number[], color: string, name: string, xName = "P&L per episode ($)"): EChartsOption {
@@ -53,10 +54,23 @@ export function histOption(t: Tokens, edges: number[], counts: number[], color: 
 
 const COMPONENT_LABEL: Record<string, string> = { delta: "delta", gamma: "gamma", vega: "vega", theta: "theta", carry: "carry", cost: "cost", residual: "the residual" };
 
+/** "+$688", "−$1,112": a difference always carries its sign. */
+const signedUsd = (x: number | null | undefined) => (x === null || x === undefined || !Number.isFinite(x) ? usd(x) : `${x >= 0 ? "+" : MINUS}${usd(Math.abs(x))}`);
+
 function name(d: RunDetail, label: string): string {
   if (label) return label;
-  const where = d.row.source !== "synthetic" ? "real SPX" : `${prem(d.row.premium)} vol pts`;
+  const where = d.row.source !== "synthetic" ? "real SPX" : `${prem(d.row.premium)} vol pt${d.row.premium === 1 ? "" : "s"}`;
   return `${ARM_LABEL[d.row.policy] ?? d.row.policy} · ${where}`;
+}
+
+/**
+ * A config field as the launch form names it ("market.iv_premium_vol_pts" is "Planted
+ * premium (vol pts)"), else its last part in words; `brief` drops the unit in brackets.
+ */
+function fieldLabel(key: string, labels: Record<string, string>, brief = false): string {
+  const last = key.split(".").pop() ?? key;
+  const label = labels[last] ?? last.replaceAll("_", " ");
+  return brief ? label.replace(/\s*\([^)]*\)\s*$/, "") : label;
 }
 
 function diffOption(t: Tokens, c: PairedCompare): EChartsOption {
@@ -65,7 +79,7 @@ function diffOption(t: Tokens, c: PairedCompare): EChartsOption {
   return {
     ...base(t),
     legend: { show: false },
-    tooltip: { ...base(t).tooltip, trigger: "axis", axisPointer: { type: "shadow" }, formatter: (ps: unknown) => { const i = (ps as { dataIndex: number }[])[0]?.dataIndex ?? 0; const x = c.diffs[i]; return x ? `<b>seed ${x.seed}</b><br/>A ${usd(x.a)} · B ${usd(x.b)}<br/>B − A <b>${usd(x.diff)}</b>` : ""; } },
+    tooltip: { ...base(t).tooltip, trigger: "axis", axisPointer: { type: "shadow" }, formatter: (ps: unknown) => { const i = (ps as { dataIndex: number }[])[0]?.dataIndex ?? 0; const x = c.diffs[i]; return x ? `<b>seed ${x.seed}</b><br/>A ${usd(x.a)} · B ${usd(x.b)}<br/>B − A <b>${signedUsd(x.diff)}</b>` : ""; } },
     grid: { ...base(t).grid, left: 74, top: 20 },
     xAxis: { type: "category", data: c.diffs.map((x) => x.seed), name: "Episode seed (the same path in both)", nameLocation: "middle", ...axis(t), axisLabel: { ...axis(t).axisLabel, show: c.diffs.length <= 60 }, splitLine: { show: false } },
     yAxis: { type: "value", name: "B − A ($)", nameLocation: "middle", ...axis(t), nameGap: 58 },
@@ -79,7 +93,7 @@ function diffOption(t: Tokens, c: PairedCompare): EChartsOption {
           silent: true,
           data: [
             { yAxis: 0, lineStyle: { color: t.text2, width: 1, type: "solid" }, label: { show: false } },
-            ...(c.diff_mean !== null ? [{ yAxis: c.diff_mean, lineStyle: { color: t.text, width: 2, type: "solid" as const }, label: { formatter: `mean ${usd(c.diff_mean)}`, color: t.text, position: "insideEndTop" as const } }] : []),
+            ...(c.diff_mean !== null ? [{ yAxis: c.diff_mean, lineStyle: { color: t.text, width: 2, type: "solid" as const }, label: { formatter: `mean ${signedUsd(c.diff_mean)}`, color: t.text, position: "insideEndTop" as const } }] : []),
           ],
         },
         markArea: lo !== null && hi !== null ? { silent: true, itemStyle: { color: t.text, opacity: 0.08 }, data: [[{ yAxis: lo }, { yAxis: hi }]] } : undefined,
@@ -127,6 +141,7 @@ function Paired({ c }: { c: PairedCompare }) {
   const attB = useAttribution(c.b.row.key);
   const mixA = useRunMix(c.a.row.key);
   const mixB = useRunMix(c.b.row.key);
+  const options = useFetch((s) => api.jobOptions(s), "job-options"); // what the launch form calls each field
   const ca = capA.data?.state === "done" ? capA.data : undefined;
   const cb = capB.data?.state === "done" ? capB.data : undefined;
   const pathsA = c.a.equity?.paths ?? ca?.paths ?? [];
@@ -137,22 +152,33 @@ function Paired({ c }: { c: PairedCompare }) {
   const mb = mixB.data?.mix?.summary;
   const colorA = t.s1;
   const colorB = t.s2;
-  // the component that carries the gap
-  let gap = "";
+  // the component that carries the gap, its name behind the glossary's line
+  let gap: ReactNode = null;
   if (ra && rb) {
     const pa = perEpisode(ra);
     const pb = perEpisode(rb);
     const by = COMPONENTS.map((k) => ({ k, d: (pb[k] ?? 0) - (pa[k] ?? 0) })).sort((x, y) => Math.abs(y.d) - Math.abs(x.d));
-    const top = by[0];
-    if (top) gap = `Most of the gap is ${COMPONENT_LABEL[top.k] ?? top.k}: B ${top.d >= 0 ? "gains" : "loses"} ${usd(Math.abs(top.d))} per episode there against A${by[1] && Math.abs(by[1].d) > 0.25 * Math.abs(top.d) ? `, then ${COMPONENT_LABEL[by[1].k] ?? by[1].k} (${by[1].d >= 0 ? "+" : "−"}${usd(Math.abs(by[1].d))})` : ""}.`;
+    const [top, next] = by;
+    const term = (k: string) => <InfoTip term={`attr.${k}`}>{COMPONENT_LABEL[k] ?? k}</InfoTip>;
+    if (top)
+      gap = (
+        <>
+          Most of the gap is {term(top.k)}: B {top.d >= 0 ? "gains" : "loses"} {usd(Math.abs(top.d))} per episode there against A
+          {next && Math.abs(next.d) > 0.25 * Math.abs(top.d) ? <>, then {term(next.k)} ({signedUsd(next.d)})</> : null}.
+        </>
+      );
   }
   const waiting = (x: { data?: { state: string; can_compute: boolean } }) => !x.data || x.data.state === "computing" || (x.data.state === "absent" && x.data.can_compute);
+  // the config fields that differ, and the code when it may not be the same (other commits, a dirty tree)
+  const differs = [...(c.code_diff ? [c.code_diff] : []), ...c.config_diff];
+  const labels = Object.fromEntries((options.data?.knobs ?? []).map((k) => [k.name, k.label || k.name]));
   const sharedNote = c.shared_seeds < Math.min(c.a.episodes.length, c.b.episodes.length) ? ` of ${Math.min(c.a.episodes.length, c.b.episodes.length)}` : "";
   return (
     <>
       <PageHead
         eyebrow={c.question ? "Compare · answering" : "Compare, paired on shared seeds"}
         title={c.question || `${nb} against ${na}`}
+        lede="B is tested against A, the baseline: every difference on this page is B − A."
         right={
           <Link href="/runs/" className={`${ui.btn} ${ui.btnSmall}`}>
             ← All runs
@@ -163,8 +189,8 @@ function Paired({ c }: { c: PairedCompare }) {
       <div className={ui.grid4}>
         <Tile
           label="Paired difference, B − A"
-          info="paired_contrast"
-          value={`${c.diff_mean !== null && c.diff_mean > 0 ? "+" : ""}${usd(c.diff_mean)}`}
+          info="paired_difference"
+          value={signedUsd(c.diff_mean)}
           note={
             <>
               per episode, ± {c.diff_ci_low !== null && c.diff_ci_high !== null ? usd((c.diff_ci_high - c.diff_ci_low) / 2) : "–"} (95%){" "}
@@ -174,12 +200,12 @@ function Paired({ c }: { c: PairedCompare }) {
         />
         <Tile label="B ahead on" value={pct(c.b_better_share, 0)} note="of the shared seeds" />
         <Tile label="Shared seeds" value={`${num(c.shared_seeds)}${sharedNote}`} note="the same paths in both" info="paired_seeds" />
-        <Tile label="What differs" value={num(c.config_diff.length)} note={c.config_diff.slice(0, 3).map((x) => x.key.split(".").pop()).join(", ") || "identical configs"} />
+        <Tile label="What differs" value={num(differs.length)} note={differs.slice(0, 3).map((x) => (x === c.code_diff ? `code: ${x.a} against ${x.b}` : fieldLabel(x.key, labels, true))).join(", ") || "identical configs, one clean commit"} />
       </div>
       <Card
         title="P&L difference by seed"
       info="paired_seeds"
-        sub={`B − A on each shared path: the market's luck is the same in both, so it cancels. The line is the mean, the shaded band its 95% interval (${usd(c.diff_ci_low)} to ${usd(c.diff_ci_high)}).`}
+        sub={`B − A on each shared path: the market's luck is the same in both, so it cancels. The line is the mean, the shaded band its 95% interval (${signedUsd(c.diff_ci_low)} to ${signedUsd(c.diff_ci_high)}).`}
       >
         {c.diffs.length ? (
           <div className={ui.grid2}>
@@ -198,16 +224,16 @@ function Paired({ c }: { c: PairedCompare }) {
       <div className={ui.grid2}>
         {(
           [
-            ["A", c.a, na, colorA],
-            ["B", c.b, nb, colorB],
+            ["A", "A, baseline", c.a, na, colorA],
+            ["B", "B", c.b, nb, colorB],
           ] as const
-        ).map(([k, d, n, col]) => (
+        ).map(([k, tag, d, n, col]) => (
           <Card
             key={k}
             title={
               <>
                 <span className={ui.swatch} style={{ background: col, display: "inline-block", marginRight: 6 }} aria-hidden="true" />
-                {k} · <Link href={`/runs/?key=${encodeURIComponent(d.row.key)}`}>{n}</Link>
+                {tag} · <Link href={`/runs/?key=${encodeURIComponent(d.row.key)}`}>{n}</Link>
               </>
             }
             right={<Verdict value={d.row.status} />}
@@ -230,7 +256,7 @@ function Paired({ c }: { c: PairedCompare }) {
       <Card
         title="Where each run's P&L comes from"
       info="attribution"
-        sub={gap || undefined}
+        sub={gap ?? undefined}
       >
         {ra && rb ? (
           <div className={ui.stack}>
@@ -243,6 +269,11 @@ function Paired({ c }: { c: PairedCompare }) {
                 B: {attributionSentence(rb)}
               </p>
             </div>
+            {c.a.row.policy === c.b.row.policy ? (
+              <p className={ui.dim} style={{ margin: 0, fontSize: 12.5 }}>
+                This split is over these two runs&apos; shared paths; the <Link href="/attribution/">Attribution</Link> page splits the sweep&apos;s edge over 2,500 episodes per premium, so small components such as gamma can differ, even in sign, between them.
+              </p>
+            ) : null}
           </div>
         ) : attA.data?.state === "absent" && !attA.data.can_compute ? (
           <Pending title="Not attributed here">{attA.data.reason}.</Pending>
@@ -298,9 +329,9 @@ function Paired({ c }: { c: PairedCompare }) {
           <Loading what="both action mixes" />
         )}
       </Card>
-      <Fold title={`Every config field that differs (${c.config_diff.length})`}>
+      <Fold title={`Everything that differs (${differs.length})`} sub={c.code_diff ? "the code each run was made from, then the config" : undefined}>
         <div className={ui.tableWrap}>
-          {c.config_diff.length ? (
+          {differs.length ? (
             <table className={ui.table}>
               <thead>
                 <tr>
@@ -310,9 +341,16 @@ function Paired({ c }: { c: PairedCompare }) {
                 </tr>
               </thead>
               <tbody>
+                {c.code_diff ? (
+                  <tr>
+                    <td>code</td>
+                    <td className="mono">{String(c.code_diff.a)}</td>
+                    <td className="mono">{String(c.code_diff.b)}</td>
+                  </tr>
+                ) : null}
                 {c.config_diff.map((r) => (
                   <tr key={r.key}>
-                    <td className="mono">{r.key}</td>
+                    <td title={r.key}>{fieldLabel(r.key, labels)}</td>
                     <td>{JSON.stringify(r.a)}</td>
                     <td>{JSON.stringify(r.b)}</td>
                   </tr>
@@ -320,7 +358,7 @@ function Paired({ c }: { c: PairedCompare }) {
               </tbody>
             </table>
           ) : (
-            <Empty title="Identical configs" />
+            <Empty title="Identical configs, one clean commit" />
           )}
         </div>
       </Fold>

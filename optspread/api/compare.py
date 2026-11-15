@@ -14,7 +14,7 @@ import numpy as np
 from pydantic import Field
 
 from optspread.api._base import Out
-from optspread.api.catalog import CatalogOut
+from optspread.api.catalog import CatalogOut, CatalogPairOut
 from optspread.api.premiums import _interval
 from optspread.api.runs import (
     HistogramOut,
@@ -24,6 +24,7 @@ from optspread.api.runs import (
     run_detail,
     run_source,
 )
+from optspread.config import LEARNED_ARMS
 from optspread.dashboard.runindex import RunDetail, RunRow, compare_runs
 
 
@@ -44,6 +45,9 @@ class CompareOut(Out):
     a: RunDetailOut
     b: RunDetailOut
     config_diff: list[DiffOut]
+    # the code each run was made from, key "code", when the commits differ or either tree
+    # was dirty: a second thing that differs, beside the config
+    code_diff: DiffOut | None = None
     shared_seeds: int
     diff_mean: float | None
     diff_se: float | None
@@ -68,6 +72,8 @@ def _label(row: RunRow) -> str:
     names = {
         "delta_seller": "the fixed-delta seller",
         "ppo": "PPO",
+        "a2c": "A2C",
+        "dqn": "DQN",
         "always_on": "the always-on condor",
         "random": "the random policy",
         "flat": "flat",
@@ -105,23 +111,62 @@ def compare_verdict(
     """One sentence a reader can act on: which run made more on the same paths, and whether
     the interval says the gap is real. ``names`` are the catalog's labels, when it has them."""
     na, nb = names[0] or _label(a), names[1] or _label(b)
+    lead = nb[:1].upper() + nb[1:]  # the sentence opens on B's name
     if n == 0 or mean is None:
         return "The two runs share no seeds, so they cannot be compared episode by episode."
     paths = f"the same {n} path{'s' if n != 1 else ''}"
     if lo is None or hi is None:
         return f"On {paths} {nb} less {na} is {_usd(mean)} per episode; too few to say more."
     if lo == hi == mean:
-        return f"{nb} and {na} made exactly the same on all {n} shared paths."
-    learned = "ppo" in (a.policy, b.policy)
+        return f"{lead} and {na} made exactly the same on all {n} shared paths."
+    learned = bool({a.policy, b.policy} & set(LEARNED_ARMS))
     caveat = " (one trained policy each: a retrain could move this)" if learned else ""
     half = (hi - lo) / 2.0
     gap = (
-        f"{nb} made {_usd(abs(mean))} {'more' if mean >= 0 else 'less'} per episode than "
+        f"{lead} made {_usd(abs(mean))} {'more' if mean >= 0 else 'less'} per episode than "
         f"{na} on {paths} (± {_usd(half)}, 95%)"
     )
     if lo > 0 or hi < 0:
         return f"{gap}: a clear difference{caveat}."
     return f"{gap}: not distinguishable from noise at this sample size; run more episodes{caveat}."
+
+
+def _code(row: RunRow) -> str:
+    """The commit as the Runs table prints it: "7ed7f3b5", "7ed7f3b5 +dirty"."""
+    return f"{row.commit or '?'}{' +dirty' if row.git_dirty else ''}"
+
+
+def code_diff(a: RunRow, b: RunRow) -> DiffOut | None:
+    """The two runs' code when it may not be the same: other commits, or a dirty tree,
+    whose commit alone does not pin the code; None when both are one clean commit."""
+    if a.git_sha == b.git_sha and not a.git_dirty and not b.git_dirty:
+        return None
+    return DiffOut(key="code", a=_code(a), b=_code(b))
+
+
+def _number(x: Any) -> bool:
+    return isinstance(x, int | float) and not isinstance(x, bool)
+
+
+def _baseline_last(
+    a: RunDetail,
+    b: RunDetail,
+    keys: tuple[str, str],
+    pairs: Sequence[CatalogPairOut],
+    diff: Sequence[tuple[str, Any, Any]],
+) -> bool:
+    """Whether ``b`` is the baseline, so the two swap and A is always the baseline: the
+    catalog's pair when it lists one, else the lower planted premium, else the lower value
+    of the one setting that differs; otherwise the order asked for."""
+    for p in pairs:
+        if (p.a, p.b) in (keys, keys[::-1]):
+            return p.a == keys[1]
+    pa, pb = a.row.premium, b.row.premium
+    if pa is not None and pb is not None and pa != pb:
+        return pa > pb
+    if len(diff) == 1 and _number(diff[0][1]) and _number(diff[0][2]):
+        return bool(diff[0][1] > diff[0][2])
+    return False
 
 
 def compare(
@@ -132,11 +177,17 @@ def compare(
     listed: CatalogOut | None = None,
     group: str = "",
 ) -> CompareOut:
-    """``a`` and ``b`` paired on their shared seeds. With the runs root's catalog, the
-    labels and the question come from ``group`` when both runs are in it, else from the
-    first group that lists both (a baseline run can sit in several)."""
+    """``a`` and ``b`` paired on their shared seeds, A the baseline whichever order they
+    come in (see ``_baseline_last``), so every difference on the page is B - A. With the
+    runs root's catalog, the labels and the question come from ``group`` when both runs
+    are in it, else from the first group that lists both (a baseline run can sit in
+    several)."""
     cmp = compare_runs(a, b)
     ka, kb = row_out(a.row, root).key, row_out(b.row, root).key
+    pairs = [p for g in (listed.groups if listed is not None else []) for p in g.pairs]
+    if _baseline_last(a, b, (ka, kb), pairs, cmp.config_diff):
+        a, b, ka, kb = b, a, kb, ka
+        cmp = compare_runs(a, b)
     both = [
         g
         for g in (listed.groups if listed is not None else [])
@@ -166,6 +217,7 @@ def compare(
         a=run_detail(a, root, index),
         b=run_detail(b, root, index),
         config_diff=[DiffOut(key=k, a=va, b=vb) for k, va, vb in cmp.config_diff],
+        code_diff=code_diff(a.row, b.row),
         shared_seeds=len(cmp.shared_seeds),
         diff_mean=cmp.diff_mean,
         diff_se=cmp.diff_se,

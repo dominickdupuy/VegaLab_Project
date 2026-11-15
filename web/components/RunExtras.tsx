@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import type { EChartsOption } from "echarts";
 import { Card, SelectField, Source, Tile, Verdict } from "@/components/Bits";
 import { Chart } from "@/components/Chart";
@@ -443,6 +444,10 @@ export function AttributionCard({ d, wait = false }: { d: RunDetail; wait?: bool
         {a?.state === "failed" ? <ErrorBox what="the attribution" error={new ApiError(500, a.reason)} /> : null}
         {r ? (
           <div className={ui.stack}>
+            <p className={ui.dim} style={{ margin: 0, fontSize: 13 }}>
+              This run&apos;s own P&amp;L, split along <InfoTip term="greeks">the greeks</InfoTip>; not its edge over the same arm at zero premium, which the{" "}
+              <Link href={`/attribution/?arm=${encodeURIComponent(d.row.policy)}`}>Attribution page</Link> splits.
+            </p>
             <Chart option={componentsOption(t, [{ name: "this run", color: armColor(t, d.row.policy), v: perEpisode(r) }])} height={260} label="Mean P&L per episode by component" stamp={stamp} rows={() => Object.entries(perEpisode(r)).map(([k, v]) => ({ component: k, per_episode: v }))} json={() => r} />
             <div className={ui.grid4}>
               {(["theta", "gamma", "vega", "delta"] as const).map((c) => (
