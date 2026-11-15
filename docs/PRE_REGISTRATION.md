@@ -363,3 +363,79 @@ e608f959c816fc46-s102000 retrained on macOS has mean 4,661 against 4,958 on Wind
 `docs/M4_ANALYSIS.md` from grid 7d9d53d340006f02 (#34). The figures quoted above come
 from read-only runs of the analysis on the sweep on 2026-10-28 (#12, #36); the committed
 report is to be generated after this amendment and under these definitions, unchanged.
+
+### A10. 2026-11-14: the VRP mapping's reading and attribution's carry, recorded after the sweep (#36)
+
+**Disclosed first.** Both choices were made in week 8 (#15, #16), after the confirmatory
+sweep ran, and were listed for confirmation in #36. They are recorded here as analysis
+choices, not pre-registered ones. Neither touches A1's event, A2's test, A7's design or
+any run; the hashed configuration is unchanged.
+
+**The VRP mapping (#15, section 5.5).** `docs/VRP_MAPPING.md` defines and computes it;
+this records the four choices behind its headline figure of +0.64 vol points:
+
+- **The mean is the headline.** The simulator plants one constant premium, so the
+  quantity to map is the average; the median (+1.71) is reported beside it.
+- **Jensen's correction is on.** Realised vol over 21 Gaussian returns reads 0.9882 of
+  the true vol on average; dividing by that factor removes about +0.18 vol points the raw
+  IV less RV would add.
+- **IV30 against 21 trading days.** The panel's 30-calendar-day ATM IV against realised
+  vol over the simulator's front tenor, 21 trading days.
+- **ATM only.** The premium is read at the money, as the simulator plants it on the whole
+  surface at once.
+
+Section 5.5 also asks for position size, contract multiplier, holding period and the
+harvesting structure to be sampled over plausible ranges. They are not: each scales what
+a strategy earns from the premium, not the premium in vol points, and what a structure
+captures of it is measured directly by the sweep (each arm against itself at zero). The
+interval reported is the stationary bootstrap's over days.
+
+**Attribution's carry (#16).** `carry` is 0.0 because the book credits no interest on
+cash (`optspread/attribution.py`). On real chains a day-to-day change in the rate is not
+modelled separately, so it falls into the residual. The M4 residual item (under 5% of
+gross) bounds both; on the synthetic sweep the rate is constant.
+
+### A11. 2026-11-14: the null world's rate, found and handled after the sweep (#36)
+
+**Disclosed first: when this was found and handled.** An outside review of the code,
+after the confirmatory sweep had run (2026-10-26) and after its M4 analysis and A9 and
+A10 were written, found that the study's null world was not fair. The path is a
+zero-drift GBM (`optspread/market.py`: spot is a martingale) and the book earns nothing
+on cash, but the chain was priced by Black-Scholes at `MarketConfig.r = 0.04`. A contract
+was therefore not priced at its expected payoff under the path, as the README's "The
+null world" said it was: a put was priced below its payoff's mean, a call above it, and
+a seller of puts lost the carry before costs. Opened on the day-0 chain and held to
+expiry, a put credit spread gives up $406, an iron condor $95 and a short strangle $134
+(`tests/core/test_drift.py`). Everything below was decided and run on 2026-11-14.
+
+**Changes** nothing in A1's event, A2's test, A7's design or any run, and reruns or
+retrains nothing. The confirmatory study, in the world it ran in (r = 0.04, zero drift),
+stays the headline: `docs/M4_ANALYSIS.md` is unchanged and rebuilds from the sweep's
+cells as before.
+
+**The sensitivity analysis is post hoc and labelled so.** `docs/DRIFT_SENSITIVITY.md`
+(`make drift`, `optspread/drift.py`) re-simulates every cell of grid 7d9d53d340006f02 on
+its own seeds in the fair world, its recorded config with `r = 0` and nothing else
+changed: a scripted cell with its policy, a PPO cell with the `policy.zip` it saved,
+scored and not retrained. It re-simulates each cell in its own world first and checks it
+against its `run.json`, then runs the M4 analysis's own functions on both worlds. It is
+a sensitivity of the result to the rate, not a second test. Its result: no verdict, floor
+status or rule in force changes; the seller's floor moves from 0.0594 to 0.0514 vol
+points, PPO's from 0.880 to 0.873, and the gap from 0.821 to 0.822. PPO's figures there
+are its saved policies scored on chains they were not trained on, so they mix the bias
+with the policy's change of world; separating the two would need retraining at r = 0,
+which this amendment does not do.
+
+**The default changes for future runs only.** `MarketConfig.r` defaults to 0.0, the fair
+world, from this amendment on. A manifest records its full config, r = 0.04 included, so
+every run on disk validates, replays and reproduces as before. Where code rebuilds the
+study's configs, the study's rate is pinned (`config.STUDY_R`, `config.STUDY_MARKET`):
+`m4analysis.CONFIRMATORY_GRID` (still 7d9d53d340006f02), the `--rate` default of
+`scripts.sweep` and `scripts.pilot` (so A7's command still builds A7's grid; `--rate 0`
+builds one in the fair world), the leak suite's environment (whose M1 floor M3 measures
+again), the Wave 0 gate and the cost-drag check (the numbers `docs/COSTS.md` and the M1
+report record) and the learning-curve runs behind A4. The study's config hashes as it
+did, `config_hash(RunConfig(market=STUDY_MARKET)) == 17c15aa74ce473a9`; A9's
+`config_hash(RunConfig()) == 17c15aa74ce473a9` held when A9 was written, and the
+default now hashes to f0a9ae8c7df9116d. The real-data sources price on the panel's own
+carry and never read `r`.

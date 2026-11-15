@@ -54,6 +54,18 @@ again all 51 matched. Against Dominick's own runs, at the branch head:
 
 So no sweep cell needs re-running.
 
+**2026-11-14: the default rate (A11, section 8).** `config.py` changed after the tag, for
+the first time: `MarketConfig.r` defaults to 0.0 instead of 0.04, and `STUDY_R` and
+`STUDY_MARKET` name the study's world (994142b, [#36]). `market.py` changed in its
+docstring only. No study number moved. Every manifest records r = 0.04, and the code that
+rebuilds the study's configs pins it: `m4analysis.CONFIRMATORY_GRID` (still
+7d9d53d340006f02), the `--rate` default of `scripts.sweep` and `scripts.pilot`,
+`leaks.default_env`, the Wave 0 gate, the cost-drag check and the learning-curve runs.
+Checked at 994142b: `docs/SWEEP_EXPECTED.json` rebuilds byte for byte, `docs/M4_ANALYSIS.md`
+rebuilds to the digit, the M3, M4 and M5 gate reports come out item for item as before
+the change, and `config_hash(RunConfig(market=STUDY_MARKET))` is `17c15aa74ce473a9`. The
+default `RunConfig()` now hashes to `f0a9ae8c7df9116d`.
+
 Gap: nothing in code enforces the freeze. The gates accept any commit at or after the
 tag, and only the tests and this probe guard the numbers. The docstrings of
 `config.TrainConfig` and `train.py` still say `total_timesteps` is "not pre-registered".
@@ -113,7 +125,11 @@ checks below were run on macOS arm64 (Python 3.12.8, numpy 2.5.4, torch 2.15.0, 
   either way, so no verdict changes. The dashboard's Attribution page quotes the
   `run.json` edge, as Sweep and the M4 analysis do, with the re-simulated one beside
   it. To settle it, re-simulate seed 100148 on the sweep machine: 2,510.69 there makes
-  it cross-platform, anything else makes the original evaluation nondeterministic.
+  it cross-platform, anything else makes the original evaluation nondeterministic. Because that cell does not agree off the sweep machine, the M4 report regenerated on
+  macOS (2026-11-14) attributes PPO at 1 vol point from its next seed block,
+  `9d67a4f51adfae81-s100500` (agrees, residual 1.25% of gross), instead of block 0; the
+  other six cells are block 0 as in the report made on the sweep machine. On that machine
+  block 0 agrees.
 
 ## 3. The M4 rules were written after the sweep
 
@@ -162,7 +178,7 @@ sweep achieved. The M4 report prints the plan and the measurement side by side
 | No bid/ask filter on real quotes | Wide 2010 quotes put calendar arbitrage into the grid's wings. The provider removes that arbitrage from what it serves (05dd4ed, [#29]), and the grid keeps the quotes as they were | `docs/DATA.md`, Method |
 
 
-### An open defect in the frozen margin check
+### A defect in the frozen margin check, fixed after the study
 
 `margin.is_defined_risk` (`optspread/margin.py:63-68`) decides whether a structure has bounded risk by comparing the two far-end payoffs at 10x the top strike against an absolute tolerance of 1e-9 dollars. Those payoffs are millions of dollars, so their rounding exceeds 1e-9 and some defined-risk structures are margined as naked. The dashboard's 2026-10-02 example: an iron condor (6900/7250P, 8150/8400C, spot 7,721.12) shows margin $85,254 where its max loss is $30,363.58.
 
@@ -172,7 +188,7 @@ Measured on the confirmatory sweep's evaluation paths (found by the dashboard au
 - The fixed-delta seller is unaffected: margin never binds on its cash, and all 30 seller cells regenerate byte for byte with a corrected check.
 - PPO observes `margin_frac`, so it is affected. Scored with the sweep's saved policies, 53 of 15,000 episodes hold a reclassified condor (363 steps) and one changes P&L: run 4a48a04bb0099da1-s101500, seed 101623, -18,213.69 against -18,245.81 (12 trades against 8). A 50,000-step training run trains a different policy under each check (mean 2,760 against -1,219).
 
-The module is frozen and the confirmatory sweep ran with this check, so it is **not fixed on this branch**: correcting it would change what the confirmatory PPO cells reproduce. The confirmatory results are as the code ran them; the one affected episode moves its cell's mean by $0.06 (one of 500 episodes, by $32), which no decision rests on. A relative-tolerance fix with its test is prepared for after the study, for Dom to sign off.
+The confirmatory sweep ran with this check, and its results stand as the code ran them: the one affected episode moves its cell's mean by $0.06 (one of 500 episodes, by $32), which no decision rests on. After the study the check compares the far-end payoffs at a relative tolerance (`margin.RISK_RTOL`, 4642b1a, GH-39), so the example condor now posts $30,363.58 of margin. Under the fixed check that one episode re-simulates to the new path, so replaying or attributing cell 4a48a04bb0099da1-s101500 against its saved run.json reads DIFFERS there; that is the fix, not a fault.
 
 ## 6. Defects the harness caught before this week
 
@@ -277,6 +293,79 @@ One line each. All the fixes are dated 2026-10-28.
   reverted.
 - The README's drag table had no `settles` column.
 
+
+## 8. The study's null world was not fair (found after the sweep)
+
+**What was wrong.** `optspread/market.py` drives the underlying with a zero-drift GBM,
+so the spot is a martingale, and the book credits no interest on cash. The chain was
+priced by Black-Scholes at `MarketConfig.r = 0.04`. A contract was therefore not priced
+at its expected payoff under the path, although the README's "The null world" said it
+was: a put was priced off a forward above the spot the path keeps, below what it pays on
+average, and a call above. A seller of puts lost that carry before costs. The pilot and
+the confirmatory sweep both ran in this world.
+
+**How it was found.** An outside review of the code, on 2026-11-14, after the sweep
+(2026-10-26), its M4 analysis and amendments A9 and A10. No gate caught it. The Wave 0
+gate's no-cost always-on reads -509 (t = -0.44) at 100 episodes in the study's world and
+-503 (t = -0.45) in the fair one: the bias is inside its |t| <= 3, and the cost-drag check
+compares costed with free P&L, so the carry cancels in it.
+
+**Its size, per structure.**
+
+| structure | opened on the day-0 chain, held to expiry (exact) | per 63-day episode, rolled, costs off (the review's paired run, 300 episodes) |
+|---|---|---|
+| put credit spread | -$406 | -$530 to -$590 (± 110 to 125) |
+| iron condor | -$95 | -$50 to -$150 (± 160 to 180) |
+| short strangle | -$134 | about -$30 (± 220) |
+
+The first column is the credit at r = 0.04 against the structure's value at r = 0 on the
+same strikes, which is its expected payoff (`tests/core/test_drift.py` checks that by
+Monte Carlo on the provider's paths). The second pairs the zero-drift path with the same
+draws plus the drift the pricing assumes. A condor's call side gains back most of what its
+put side gives up.
+
+**Why A1 mostly cancels it.** The detection event compares each arm with itself at zero
+premium on the same paths (A1). A bias the arm carries equally at every premium drops out
+of that contrast. It does not drop out where the arm's trades or their prices change with
+the premium: the fixed-delta seller holds a condor about 98% of the time at every premium,
+but its options are dearer at a higher premium and so is the carry on them; PPO's
+put-spread share grows with the premium (about 2% at 0, 7% at 1 and 14% at 4 vol points).
+
+**The sensitivity result** (`docs/DRIFT_SENSITIVITY.md`, post hoc, A11). Every one of the
+60 cells was re-simulated on its own seeds in its own world and in the fair one (r = 0),
+PPO with its saved policy, scored and not retrained. In its own world each cell agrees
+with its `run.json` but two PPO episodes, both known: seed 100148 of
+`ea5be29e60901c1a-s100000` (section 2) and seed 101623 of `4a48a04bb0099da1-s101500`, the
+one episode the margin check of section 5 moves, re-simulated here with its fix
+(4642b1a, GH-39). No verdict changes, and no
+floor status or rule in force.
+
+| | study's world (r = 0.04) | fair world (r = 0) |
+|---|---|---|
+| delta_seller mean at zero premium | -673 | -591 |
+| delta_seller edge at 0.25 / 1 / 4 vol points | 211 / 821 / 2,703 | 210 / 847 / 2,881 |
+| delta_seller floor | 0.0594 (below the grid) | 0.0514 (below the grid) |
+| ppo mean at zero premium | -335 | -290 |
+| ppo edge at 0.25 / 1 / 4 vol points | 483 / 1,397 / 4,804 | 361 / 981 / 4,478 |
+| ppo detected at | 1, 2, 4 | 1, 2, 4 |
+| ppo floor | 0.880 | 0.873 |
+| gap | 0.821 | 0.822 |
+
+The seller's edge moves by -1 to +178 dollars (up to +9%) in the fair world: the
+carry it lost grew with the premium, so A1 left that part in, and the seller's floor
+reads 0.008 vol points lower. PPO's edge falls by 103 to 518 dollars (7% to 30%), the
+opposite of what its growing put-spread share suggests. That number is not a clean bias:
+the saved policies were trained at r = 0.04 and are scored, not retrained, on fair-world
+chains, where 19% of PPO's episodes trade a different number of times (none of the
+seller's). Only retraining at r = 0, which A11 leaves out, would separate the bias from
+the policy's change of world. Neither moves a verdict, a floor by more than 0.01 vol
+points or the gap by more than 0.002.
+
+**The fix.** `MarketConfig.r` defaults to 0.0 from A11 on, so a run made from here on is
+in the fair world. The study does not move: every manifest records its r, and every place
+code rebuilds the study's configs pins `config.STUDY_R` (section 1). The README says
+which world is which.
+
 [#3]: https://github.com/dominickdupuy/VegaLab_Project/issues/3
 [#4]: https://github.com/dominickdupuy/VegaLab_Project/issues/4
 [#9]: https://github.com/dominickdupuy/VegaLab_Project/issues/9
@@ -296,5 +385,6 @@ One line each. All the fixes are dated 2026-10-28.
 [#31]: https://github.com/dominickdupuy/VegaLab_Project/issues/31
 [#32]: https://github.com/dominickdupuy/VegaLab_Project/issues/32
 [#35]: https://github.com/dominickdupuy/VegaLab_Project/issues/35
+[#36]: https://github.com/dominickdupuy/VegaLab_Project/issues/36
 [#37]: https://github.com/dominickdupuy/VegaLab_Project/issues/37
 [#38]: https://github.com/dominickdupuy/VegaLab_Project/issues/38
