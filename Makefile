@@ -1,4 +1,4 @@
-.PHONY: check lint typecheck test format bench gate drag leaks m1 m2 m3gate reproduce vrp m4 m4gate edge showcase run pilot sweep replay train-smoke web serve web-dev
+.PHONY: check lint typecheck test format bench gate drag leaks m1 m2 m3gate reproduce vrp m4 m4gate m5gate drift edge showcase run pilot sweep replay train-smoke web serve web-dev
 
 # The venv's interpreter: Scripts/ on Windows, bin/ everywhere else.
 PY ?= $(if $(wildcard .venv/Scripts/python .venv/Scripts/python.exe),.venv/Scripts/python,.venv/bin/python)
@@ -96,6 +96,14 @@ m4:
 # grid record and attribution, and the built site, e.g. make m4gate ARGS="--runs-root $$VEGALAB_DATA/runs"
 m4gate:
 	$(PY) -m scripts.m4_gate_report $(ARGS)
+# docs/M5_GATE_REPORT.md and .json: the dashboard's views on the sweep, usability, the docs and
+# the adapter, e.g. make m5gate ARGS="--runs-root $$VEGALAB_DATA/runs --web web/out"
+m5gate:
+	$(PY) -m scripts.m5_gate_report $(ARGS)
+# docs/DRIFT_SENSITIVITY.md and .json: the confirmatory sweep re-simulated in the fair world
+# (r = 0), post hoc (A11), e.g. make drift ARGS="--root $$VEGALAB_DATA/runs --workers 10"
+drift:
+	$(PY) -m scripts.drift_sensitivity $(ARGS)
 # Which structures a policy trades, re-simulated from runs or a sweep's grid, written under
 # actionmix/, e.g. make actionmix ARGS="--grid $$VEGALAB_DATA/runs --arms delta_seller --workers 8"
 # Phony on its own line: the target shares its name with the folder it writes.
