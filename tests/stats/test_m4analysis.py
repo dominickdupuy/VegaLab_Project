@@ -51,7 +51,7 @@ from scripts import m4_analysis
 SHORT = RunConfig(
     seed=7000,
     n_episodes=3,
-    market=MarketConfig(n_days=21, tenor_days=(10, 21)),
+    market=MarketConfig(n_days=21, tenor_days=(10, 21), r=STUDY_R),  # the study's world (A11)
     env=EnvConfig(episode_days=21),
     cost=CostConfig(enabled=True),
 )
