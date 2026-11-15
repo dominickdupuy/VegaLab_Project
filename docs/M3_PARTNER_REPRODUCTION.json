@@ -1,0 +1,265 @@
+{
+  "schema_version": 1,
+  "kind": "m3-partner-reproduction",
+  "team": "Vega Lab",
+  "generated": "2026-11-15T04:55:14+00:00",
+  "commit": "1ee83b218fd4a701202aba8af8de91ec5dac0aab",
+  "dirty": false,
+  "tag": "cutoff-2026-11-01",
+  "tag_commit": "34872b2f51d8ecab45ceca783758bc29ab63d15d",
+  "after_tag": true,
+  "platform": {
+    "system": "Darwin",
+    "release": "25.3.0",
+    "machine": "arm64",
+    "platform": "macOS-26.3-arm64-arm-64bit",
+    "python": "3.12.8",
+    "implementation": "CPython"
+  },
+  "versions": {
+    "python": "3.12.8",
+    "optspread": "0.1.0",
+    "numpy": "2.5.4",
+    "scipy": "1.18.1",
+    "pydantic": "2.14.3",
+    "gymnasium": "1.4.0",
+    "pandas": "3.1.1",
+    "pyarrow": "26.0.1",
+    "torch": "2.15.0",
+    "stable_baselines3": "2.9.2"
+  },
+  "expected_file": "docs/SWEEP_EXPECTED.json",
+  "expected_sha256": "33be2700366047b8d8d7e645a9e1225e6b2c03c47a61c0c72bfb2a9a2be17691",
+  "tolerance": {
+    "seller_rel": 1e-9,
+    "abs": 1e-6,
+    "ppo_k_se": 3.0
+  },
+  "steps": [
+    {
+      "name": "ruff",
+      "commands": [
+        [
+          "python",
+          "-m",
+          "ruff",
+          "check",
+          "optspread",
+          "tests",
+          "scripts"
+        ],
+        [
+          "python",
+          "-m",
+          "ruff",
+          "format",
+          "--check",
+          "optspread",
+          "tests",
+          "scripts"
+        ]
+      ],
+      "passed": true,
+      "returncode": 0,
+      "seconds": 0.977036791970022,
+      "detail": "",
+      "output_tail": "All checks passed!\n181 files already formatted"
+    },
+    {
+      "name": "mypy --strict",
+      "commands": [
+        [
+          "python",
+          "-m",
+          "mypy",
+          "--strict",
+          "optspread",
+          "scripts"
+        ]
+      ],
+      "passed": true,
+      "returncode": 0,
+      "seconds": 44.39800400007516,
+      "detail": "",
+      "output_tail": "Success: no issues found in 122 source files"
+    },
+    {
+      "name": "pytest",
+      "commands": [
+        [
+          "python",
+          "-m",
+          "pytest",
+          "tests/",
+          "--cov=optspread",
+          "--cov-report=term-missing",
+          "--cov-fail-under=85"
+        ]
+      ],
+      "passed": true,
+      "returncode": 0,
+      "seconds": 502.96268204203807,
+      "detail": "",
+      "output_tail": "optspread/dashboard/jobs/queue.py        146      1    99%   188\noptspread/dashboard/jobs/spec.py          93      4    96%   48, 50, 52, 124\noptspread/dashboard/jobs/worker.py       165      3    98%   205-206, 274\noptspread/dashboard/landing.py            27      0   100%\noptspread/dashboard/leakdemo.py           36      0   100%\noptspread/dashboard/panel_views.py       453      2    99%   176-177\noptspread/dashboard/readings.py          251      1    99%   242\noptspread/dashboard/runindex.py          318      9    97%   204-205, 218-219, 230-231, 238-239, 266\noptspread/dashboard/tasks.py              47      0   100%\noptspread/dashboard_data.py               42      0   100%\noptspread/data.py                        130      5    96%   62, 225, 235, 243-244\noptspread/drift.py                       311     12    96%   189, 206, 224, 233, 341, 345, 359, 432, 642, 673, 717-718\noptspread/edge.py                        279      7    97%   261, 370, 542, 544, 554, 570, 580\noptspread/effects.py                      50      1    98%   44\noptspread/env.py                          75      1    99%   119\noptspread/experiment/__init__.py           0      0   100%\noptspread/experiment/cli.py               68      0   100%\noptspread/experiment/grid.py             142      0   100%\noptspread/experiment/pilot.py             35      0   100%\noptspread/experiment/schedule.py         260      5    98%   217, 545-547, 550\noptspread/experiment/sweep.py            124      4    97%   175, 257, 290, 304\noptspread/extend.py                       40      1    98%   58\noptspread/fileio.py                       49      0   100%\noptspread/gatereport.py                  132      0   100%\noptspread/gates.py                        32      7    78%   47-61\noptspread/harness.py                      59      0   100%\noptspread/leaks.py                       264     26    90%   119, 132, 136, 151, 258, 367-378, 408, 502-518\noptspread/m2gate.py                      331      3    99%   421-422, 491\noptspread/m3gate.py                      370     51    86%   161, 205, 461, 465-466, 479-536, 673-674\noptspread/m4analysis.py                  554      3    99%   352, 1376, 1499\noptspread/m4gate.py                      423      2    99%   588-589\noptspread/m5gate.py                      271     81    70%   98-102, 106-107, 112-121, 125-135, 139-148, 172-231\noptspread/manifest.py                    168      6    96%   143-144, 183, 214-215, 362\noptspread/margin.py                       43      0   100%\noptspread/market.py                       71      2    97%   96, 107\noptspread/policies.py                     51      0   100%\noptspread/portfolio.py                    50      0   100%\noptspread/power.py                       208      2    99%   463, 465\noptspread/pricing.py                      47      1    98%   28\noptspread/realdata/__init__.py            72      0   100%\noptspread/realdata/opra.py                73      9    88%   108-116\noptspread/realdata/optionmetrics.py       45      2    96%   47, 51\noptspread/realdata/panel.py              170      4    98%   340, 390, 396, 519\noptspread/realdata/provider.py           209      1    99%   266\noptspread/realdata/surface.py            104      0   100%\noptspread/replay.py                      174      8    95%   149, 160, 168, 242-243, 245, 309-310\noptspread/reproduction.py                425     12    97%   377, 447, 449, 471-472, 481, 484, 498-499, 562, 711, 743\noptspread/rng.py                          26      2    92%   32, 43\noptspread/runs/__init__.py                 0      0   100%\noptspread/runs/rundir.py                 158      4    97%   181, 201, 237-238\noptspread/scripted.py                    123      7    94%   223-240\noptspread/server.py                       14     13     7%   15-27\noptspread/train.py                       188     16    91%   260, 317-335\noptspread/types.py                        82      3    96%   46, 48, 73\noptspread/validation.py                  247      0   100%\noptspread/vrp.py                         229      1    99%   261\n--------------------------------------------------------------------\nTOTAL                                  13126   1014    92%\nRequired test coverage of 85% reached. Total coverage: 92.27%\n1059 passed, 41 skipped, 26 warnings in 501.59s (0:08:21)"
+    },
+    {
+      "name": "wave0 gate",
+      "commands": [
+        [
+          "python",
+          "-m",
+          "scripts.wave0_gate"
+        ]
+      ],
+      "passed": true,
+      "returncode": 0,
+      "seconds": 9.497332166996785,
+      "detail": "",
+      "output_tail": "arm           costs       mean P&L        se  trades\nflat          False              0         0     0.0\nflat          True               0         0     0.0\nalways_on     False           -509     1,157     3.0\nalways_on     True            -786     1,162     3.0\nrandom        False           -333       370    70.7\nrandom        True          -4,583       371    70.7\n  [PASS] flat exactly zero\n  [PASS] no-cost always-on ~ 0 (|t| <= 3)\n  [PASS] with-cost always-on < 0 and < no-cost\n  [PASS] random bleeds faster\nWave 0 expectation HOLDS."
+    },
+    {
+      "name": "cost drag",
+      "commands": [
+        [
+          "python",
+          "-m",
+          "scripts.cost_drag"
+        ]
+      ],
+      "passed": true,
+      "returncode": 0,
+      "seconds": 6.385096915997565,
+      "detail": "",
+      "output_tail": "seller           structure               free   costed     drag  predicted      gap  settles\nhold_condor      IRON_CONDOR             -515     -772      257        257        0      1.0\nhold_put_spread  PUT_CREDIT_SPREAD     -2,058   -2,186      128        128        0      1.0\nroll_condor      IRON_CONDOR            1,716    1,366      350        350        0      0.0\nroll_put_spread  PUT_CREDIT_SPREAD       -817   -1,014      197        197        0      0.0\n  [PASS] cost identity: costed == free - charged\n  [PASS] cash settlement charges nothing\n  [PASS] no unpaid exit at the horizon\nCost drag check HOLDS."
+    },
+    {
+      "name": "leak suite",
+      "commands": [
+        [
+          "python",
+          "-m",
+          "scripts.leak_report"
+        ]
+      ],
+      "passed": true,
+      "returncode": 0,
+      "seconds": 4.721543374937028,
+      "detail": "",
+      "output_tail": "structural invariants: spot, strikes, expiries, vols, price bounds, parity,\ntotal variance non-decreasing in tenor; timestamps consecutive\n  [PASS] clean world: no structural violation over 640 chains\n  [PASS] calendar control (60% at 21d over 15% at 42d) fires\n    - calendar arbitrage between expiry rows 0 and 1 (21d to 42d): total variance falls at 33 of 33 strikes, worst at strike 4200 by 0.0262 (0.03 to 0.00375)\n\nA run of the leak suite passes when all three hold:\n\n1. No observation feature at t correlates with the path's true log return into\n   t+1, at a Bonferroni-adjusted alpha across the features actually tested.\n2. Every name in OBS_NAMES is either tested under the probe policy or recorded as\n   constant by construction, with the reason given. A field that is silently\n   skipped is not covered.\n3. Every name in OBS_NAMES has a positive control: a leak planted in that field\n   alone is detected. A detector that has never fired on a field cannot claim it.\n\nFailing 1 means the world leaks. Failing 2 or 3 means the detector does not cover\nwhat it reports on, which is the worse outcome, because it reads as a pass.\n\nfield                 tested         t           p   reason\ntime_frac               True     -0.45    6.56e-01   \nhas_position            True     -0.21    8.32e-01   \naction_frac             True      0.70    4.87e-01   \ndays_held_frac          True      0.03    9.72e-01   \ndte_frac                True     -0.22    8.26e-01   \nequity_frac             True     -1.49    1.37e-01   \nunrealized_frac         True      1.60    1.11e-01   \nmargin_frac             True     -0.40    6.90e-01   \natm_iv                 False        --          --   constant under the probe: carries no signal\nrealized_vol_20d        True      0.58    5.64e-01   \nret_1d                  True      0.76    4.50e-01   \ndelta_frac              True     -0.37    7.13e-01   \nvega_frac               True      0.82    4.14e-01   \ntheta_frac              True     -0.75    4.51e-01   \n630 pairs, 13 of 14 fields tested, threshold 7.69e-04\nworst: unrealized_frac p=1.11e-01\nno leak detected\n\nfield                 planted leak caught   named           p\ntime_frac                            True    True    2.53e-08\nhas_position                         True    True    6.82e-09\naction_frac                          True    True    2.68e-11\ndays_held_frac                       True    True    1.62e-09\ndte_frac                             True    True    7.15e-09\nequity_frac                          True    True    4.90e-06\nunrealized_frac                      True    True    5.42e-14\nmargin_frac                          True    True    1.96e-08\natm_iv                               True    True    0.00e+00\nrealized_vol_20d                     True    True    5.76e-11\nret_1d                               True    True    1.80e-11\ndelta_frac                           True    True    1.65e-08\nvega_frac                            True    True    1.20e-11\ntheta_frac                           True    True    1.33e-07\n  [PASS] clean world is quiet\n  [PASS] every field tested or explained\n  [PASS] every field has a working control\nLeak suite PASSES its stated criterion.\n\nspot-leak detection floor: eps = 0.1 on grid (1.0, 0.5, 0.25, 0.1, 0.05)\ncaught: (True, True, True, True, False)"
+    },
+    {
+      "name": "poisoned demo",
+      "commands": [
+        [
+          "optspread.dashboard_data.run_leak_demo()"
+        ]
+      ],
+      "passed": true,
+      "returncode": null,
+      "seconds": 0.3927651670528576,
+      "detail": "eps = 0.5 over 10 seeds: poisoned flagged True (worst ret_1d, p = 3.7e-99), its past moved True; clean flagged False, its past moved False",
+      "output_tail": ""
+    },
+    {
+      "name": "sweep cells",
+      "commands": [
+        [
+          "optspread.reproduction.check_cells()"
+        ]
+      ],
+      "passed": true,
+      "returncode": null,
+      "seconds": 36.172449707984924,
+      "detail": "3 cell(s) regenerated: 3 within tolerance, 0 byte-identical",
+      "output_tail": ""
+    },
+    {
+      "name": "ppo cell",
+      "commands": [
+        [
+          "optspread.reproduction.check_cells()"
+        ]
+      ],
+      "passed": true,
+      "returncode": null,
+      "seconds": 505.9945165839745,
+      "detail": "1 cell(s) regenerated: 1 within tolerance, 0 byte-identical; PPO checked statistically, since its training is not bit-reproducible across platforms (mean within 3 se, trades, no refused open, residual share)",
+      "output_tail": ""
+    }
+  ],
+  "cells": [
+    {
+      "run_id": "65046cadd80098cf-s100000",
+      "arm": "delta_seller",
+      "premium": 0.0,
+      "block": 0,
+      "rel_tol": 1e-9,
+      "byte_identical": false,
+      "within_tolerance": true,
+      "max_rel_diff": 9.591658411615918e-13,
+      "values_compared": 1005,
+      "episodes_compared": 500,
+      "first_difference": "",
+      "seconds": 11.983836040948518,
+      "check": "numeric",
+      "z": null,
+      "k_se": null,
+      "structure": ""
+    },
+    {
+      "run_id": "7ed5d3842e4d92d8-s100000",
+      "arm": "delta_seller",
+      "premium": 4.0,
+      "block": 0,
+      "rel_tol": 1e-9,
+      "byte_identical": false,
+      "within_tolerance": true,
+      "max_rel_diff": 2.132766805645018e-12,
+      "values_compared": 1005,
+      "episodes_compared": 500,
+      "first_difference": "",
+      "seconds": 12.017114500049502,
+      "check": "numeric",
+      "z": null,
+      "k_se": null,
+      "structure": ""
+    },
+    {
+      "run_id": "7198f9de012d36ed-s101500",
+      "arm": "delta_seller",
+      "premium": 1.0,
+      "block": 3,
+      "rel_tol": 1e-9,
+      "byte_identical": false,
+      "within_tolerance": true,
+      "max_rel_diff": 1.2888400345830074e-12,
+      "values_compared": 1005,
+      "episodes_compared": 500,
+      "first_difference": "",
+      "seconds": 12.169532125000842,
+      "check": "numeric",
+      "z": null,
+      "k_se": null,
+      "structure": ""
+    },
+    {
+      "run_id": "e608f959c816fc46-s102000",
+      "arm": "ppo",
+      "premium": 4.0,
+      "block": 4,
+      "rel_tol": 0.0,
+      "byte_identical": false,
+      "within_tolerance": true,
+      "max_rel_diff": 0.07298721374100431,
+      "values_compared": 1,
+      "episodes_compared": 500,
+      "first_difference": "",
+      "seconds": 505.9919724169886,
+      "check": "statistical",
+      "z": -0.43756776929843205,
+      "k_se": 3.0,
+      "structure": "20 episodes: 100 opens, 0 refused, residual share 1.3%"
+    }
+  ],
+  "seconds": 1111.7559993329924
+}

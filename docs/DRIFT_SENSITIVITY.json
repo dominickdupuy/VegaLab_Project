@@ -1,0 +1,1871 @@
+{
+  "schema_version": 1,
+  "kind": "drift_sensitivity",
+  "post_hoc": true,
+  "pre_registered": false,
+  "statement": "Post hoc and not pre-registered. The bias was found by an outside review of the code after the confirmatory sweep ran and after its M4 analysis was written; this analysis was written and run on 2026-11-14 and is recorded as amendment A11. It changes nothing in A1, A2 or A7 and reruns or retrains nothing: the confirmatory study, in the world it ran in, stays the headline. Read what follows as a sensitivity of that result to the world's rate, not as a second test.",
+  "report_date": "2026-11-14",
+  "provenance": {
+    "root": "~/VegaLab_Project/runs/dom/runs",
+    "grid_file": "grid-7d9d53d340006f02.json",
+    "grid_hash": "7d9d53d340006f02",
+    "analysis_git_sha": "1ee83b218fd4a701202aba8af8de91ec5dac0aab",
+    "analysis_git_dirty": false,
+    "sweep_git_shas": [
+      "8b47f99d89066eec82011a16b9badc1e888a27dc"
+    ],
+    "versions": {
+      "python": "3.12.8",
+      "optspread": "0.1.0",
+      "numpy": "2.5.4",
+      "scipy": "1.18.1",
+      "pydantic": "2.14.1",
+      "gymnasium": "1.4.0",
+      "pandas": "3.0.6",
+      "pyarrow": "26.0.0",
+      "torch": "2.15.0",
+      "stable_baselines3": "2.9.2"
+    },
+    "workers": 6,
+    "seconds": 563.3
+  },
+  "worlds": {
+    "saved": {
+      "r": null,
+      "what": "the run.json rows, as the sweep wrote them (the headline, docs/M4_ANALYSIS.md)"
+    },
+    "original": {
+      "r": 0.04,
+      "what": "the recorded config re-simulated here (the study's world, r = 0.04)"
+    },
+    "fair": {
+      "r": 0.0,
+      "what": "the recorded config with market.r = 0, re-simulated here (the fair world)"
+    }
+  },
+  "reproduction": {
+    "rtol": 1e-09,
+    "cells": 60,
+    "reproduce": 2,
+    "agree": 56,
+    "differ": 2,
+    "differing": [
+      {
+        "run_id": "ea5be29e60901c1a-s100000",
+        "arm": "ppo",
+        "premium": 1.0,
+        "block": 0,
+        "seed": 100148,
+        "saved_pnl": 2510.6888688813196,
+        "pnl": 4096.748250489007,
+        "saved_cost": 765.168989331356,
+        "cost": 751.0347337976298
+      },
+      {
+        "run_id": "4a48a04bb0099da1-s101500",
+        "arm": "ppo",
+        "premium": 2.0,
+        "block": 3,
+        "seed": 101623,
+        "saved_pnl": -18213.68545267568,
+        "pnl": -18245.81001488655,
+        "saved_cost": 1292.6648906762575,
+        "cost": 1006.6414932927297
+      }
+    ],
+    "known": {
+      "ea5be29e60901c1a-s100000 seed 100148": "a cross-platform path split (docs/DEFECTS.md, \"One edge episode differs\")",
+      "4a48a04bb0099da1-s101500 seed 101623": "the defined-risk margin check, fixed after the sweep (4642b1a, GH-39; docs/DEFECTS.md, \"An open defect in the frozen margin check\")"
+    }
+  },
+  "arms": {
+    "delta_seller": {
+      "means": [
+        {
+          "premium": 0.0,
+          "saved": -673.4528257777147,
+          "original": -673.4528257777147,
+          "fair": -590.6455865521975,
+          "trades_original": 4.0,
+          "trades_fair": 4.0,
+          "trades_changed": 0.0
+        },
+        {
+          "premium": 0.25,
+          "saved": -462.32889434736,
+          "original": -462.3288943473611,
+          "fair": -380.65692786218915,
+          "trades_original": 4.0,
+          "trades_fair": 4.0,
+          "trades_changed": 0.0
+        },
+        {
+          "premium": 0.5,
+          "saved": -256.59384502041877,
+          "original": -256.59384502041604,
+          "fair": -150.44216352322394,
+          "trades_original": 4.0,
+          "trades_fair": 4.0,
+          "trades_changed": 0.0
+        },
+        {
+          "premium": 1.0,
+          "saved": 147.9191386549893,
+          "original": 147.9191386549925,
+          "fair": 256.50690979824833,
+          "trades_original": 4.0,
+          "trades_fair": 4.0,
+          "trades_changed": 0.0
+        },
+        {
+          "premium": 2.0,
+          "saved": 821.9705106068119,
+          "original": 821.970510606812,
+          "fair": 1045.5528224732836,
+          "trades_original": 4.0,
+          "trades_fair": 4.0,
+          "trades_changed": 0.0
+        },
+        {
+          "premium": 4.0,
+          "saved": 2029.920031487897,
+          "original": 2029.920031487779,
+          "fair": 2290.644543815189,
+          "trades_original": 4.0,
+          "trades_fair": 4.0,
+          "trades_changed": 0.0
+        }
+      ],
+      "worlds": {
+        "saved": {
+          "levels": [
+            {
+              "premium": 0.25,
+              "estimate": 211.12393143035462,
+              "se": 15.137877279758646,
+              "t": 13.946732922234439,
+              "lower_bound": 178.85229639969396,
+              "detected": true
+            },
+            {
+              "premium": 0.5,
+              "estimate": 416.8589807572959,
+              "se": 18.033937391174995,
+              "t": 23.115250525450318,
+              "lower_bound": 378.4133892851035,
+              "detected": true
+            },
+            {
+              "premium": 1.0,
+              "estimate": 821.3719644327039,
+              "se": 13.48752746782287,
+              "t": 60.898631449852246,
+              "lower_bound": 792.6186223449332,
+              "detected": true
+            },
+            {
+              "premium": 2.0,
+              "estimate": 1495.4233363845265,
+              "se": 21.419757691977303,
+              "t": 69.81513786893267,
+              "lower_bound": 1449.759694784989,
+              "detected": true
+            },
+            {
+              "premium": 4.0,
+              "estimate": 2703.372857265612,
+              "se": 52.36835312606198,
+              "t": 51.6222622231027,
+              "lower_bound": 2591.7315519485974,
+              "detected": true
+            }
+          ],
+          "curve": [
+            {
+              "premium": 0.0,
+              "measured": false,
+              "noncentrality": 0.0,
+              "noncentrality_lo": 0.0,
+              "noncentrality_hi": 0.0,
+              "power": 0.05,
+              "power_lo": 0.05,
+              "power_hi": 0.05
+            },
+            {
+              "premium": 0.25,
+              "measured": true,
+              "noncentrality": 12.78957915409253,
+              "noncentrality_lo": 4.597586994242217,
+              "noncentrality_hi": 23.451912241056668,
+              "power": 0.9999999999999997,
+              "power_lo": 0.9799817239241396,
+              "power_hi": 1.0
+            },
+            {
+              "premium": 0.5,
+              "measured": true,
+              "noncentrality": 21.183366674743713,
+              "noncentrality_lo": 7.888452059614866,
+              "noncentrality_hi": 38.68643026896063,
+              "power": 1.0,
+              "power_lo": 0.9999969048068733,
+              "power_hi": 1.0
+            },
+            {
+              "premium": 1.0,
+              "measured": true,
+              "noncentrality": 55.7902429755899,
+              "noncentrality_lo": 21.133466201772592,
+              "noncentrality_hi": 101.68461516187415,
+              "power": 1.0,
+              "power_lo": 1.0,
+              "power_hi": 1.0
+            },
+            {
+              "premium": 2.0,
+              "measured": true,
+              "noncentrality": 63.957928393269974,
+              "noncentrality_lo": 24.243986264855906,
+              "noncentrality_hi": 116.5618495763928,
+              "power": 1.0,
+              "power_lo": 1.0,
+              "power_hi": 1.0
+            },
+            {
+              "premium": 4.0,
+              "measured": true,
+              "noncentrality": 47.29306451547839,
+              "noncentrality_lo": 17.894639700941713,
+              "noncentrality_hi": 86.20881946023728,
+              "power": 1.0,
+              "power_lo": 1.0,
+              "power_hi": 1.0
+            }
+          ],
+          "floor": {
+            "premium": 0.059418510359306606,
+            "lo": 0.032404084308665246,
+            "hi": 0.16529056272569198,
+            "status": "below_grid",
+            "bracket": [
+              0.0,
+              0.25
+            ],
+            "max_power": 1.0
+          },
+          "rule_in_force": "t",
+          "diverged_at": []
+        },
+        "original": {
+          "levels": [
+            {
+              "premium": 0.25,
+              "estimate": 211.1239314303537,
+              "se": 15.13787727975827,
+              "t": 13.946732922234725,
+              "lower_bound": 178.85229639969384,
+              "detected": true
+            },
+            {
+              "premium": 0.5,
+              "estimate": 416.85898075729864,
+              "se": 18.033937391174284,
+              "t": 23.11525052545138,
+              "lower_bound": 378.41338928510777,
+              "detected": true
+            },
+            {
+              "premium": 1.0,
+              "estimate": 821.3719644327073,
+              "se": 13.487527467821923,
+              "t": 60.89863144985677,
+              "lower_bound": 792.6186223449387,
+              "detected": true
+            },
+            {
+              "premium": 2.0,
+              "estimate": 1495.4233363845267,
+              "se": 21.41975769197564,
+              "t": 69.8151378689381,
+              "lower_bound": 1449.759694784993,
+              "detected": true
+            },
+            {
+              "premium": 4.0,
+              "estimate": 2703.3728572654936,
+              "se": 52.368353126062686,
+              "t": 51.62226222309975,
+              "lower_bound": 2591.7315519484778,
+              "detected": true
+            }
+          ],
+          "curve": [
+            {
+              "premium": 0.0,
+              "measured": false,
+              "noncentrality": 0.0,
+              "noncentrality_lo": 0.0,
+              "noncentrality_hi": 0.0,
+              "power": 0.05,
+              "power_lo": 0.05,
+              "power_hi": 0.05
+            },
+            {
+              "premium": 0.25,
+              "measured": true,
+              "noncentrality": 12.78957915409279,
+              "noncentrality_lo": 4.5975869942423175,
+              "noncentrality_hi": 23.451912241057137,
+              "power": 0.9999999999999997,
+              "power_lo": 0.9799817239241433,
+              "power_hi": 1.0
+            },
+            {
+              "premium": 0.5,
+              "measured": true,
+              "noncentrality": 21.183366674744708,
+              "noncentrality_lo": 7.888452059615252,
+              "noncentrality_hi": 38.68643026896237,
+              "power": 1.0,
+              "power_lo": 0.9999969048068733,
+              "power_hi": 1.0
+            },
+            {
+              "premium": 1.0,
+              "measured": true,
+              "noncentrality": 55.79024297559404,
+              "noncentrality_lo": 21.133466201774162,
+              "noncentrality_hi": 101.68461516188036,
+              "power": 1.0,
+              "power_lo": 1.0,
+              "power_hi": 1.0
+            },
+            {
+              "premium": 2.0,
+              "measured": true,
+              "noncentrality": 63.957928393274976,
+              "noncentrality_lo": 24.2439862648578,
+              "noncentrality_hi": 116.56184957640117,
+              "power": 1.0,
+              "power_lo": 1.0,
+              "power_hi": 1.0
+            },
+            {
+              "premium": 4.0,
+              "measured": true,
+              "noncentrality": 47.293064515475706,
+              "noncentrality_lo": 17.89463970094069,
+              "noncentrality_hi": 86.20881946023336,
+              "power": 1.0,
+              "power_lo": 1.0,
+              "power_hi": 1.0
+            }
+          ],
+          "floor": {
+            "premium": 0.0594185103593054,
+            "lo": 0.0324040843086646,
+            "hi": 0.16529056272568837,
+            "status": "below_grid",
+            "bracket": [
+              0.0,
+              0.25
+            ],
+            "max_power": 1.0
+          },
+          "rule_in_force": "t",
+          "diverged_at": []
+        },
+        "fair": {
+          "levels": [
+            {
+              "premium": 0.25,
+              "estimate": 209.98865869000844,
+              "se": 13.022606717329115,
+              "t": 16.124932837799488,
+              "lower_bound": 182.22645641007452,
+              "detected": true
+            },
+            {
+              "premium": 0.5,
+              "estimate": 440.2034230289736,
+              "se": 17.419247287982703,
+              "t": 25.27109327695599,
+              "lower_bound": 403.06825667785847,
+              "detected": true
+            },
+            {
+              "premium": 1.0,
+              "estimate": 847.152496350446,
+              "se": 26.05878887134922,
+              "t": 32.509281246062145,
+              "lower_bound": 791.5991510394955,
+              "detected": true
+            },
+            {
+              "premium": 2.0,
+              "estimate": 1636.1984090254814,
+              "se": 18.047232734763696,
+              "t": 90.66201079535783,
+              "lower_bound": 1597.7244739177863,
+              "detected": true
+            },
+            {
+              "premium": 4.0,
+              "estimate": 2881.290130367387,
+              "se": 36.888529783388236,
+              "t": 78.10802293521871,
+              "lower_bound": 2802.649436696356,
+              "detected": true
+            }
+          ],
+          "curve": [
+            {
+              "premium": 0.0,
+              "measured": false,
+              "noncentrality": 0.0,
+              "noncentrality_lo": 0.0,
+              "noncentrality_hi": 0.0,
+              "power": 0.05,
+              "power_lo": 0.05,
+              "power_hi": 0.05
+            },
+            {
+              "premium": 0.25,
+              "measured": true,
+              "noncentrality": 14.783232282975519,
+              "noncentrality_lo": 5.389422566391718,
+              "noncentrality_hi": 27.064286918017466,
+              "power": 1.0,
+              "power_lo": 0.9960545784575525,
+              "power_hi": 1.0
+            },
+            {
+              "premium": 0.5,
+              "measured": true,
+              "noncentrality": 23.1575635378338,
+              "noncentrality_lo": 8.65186300087091,
+              "noncentrality_hi": 42.275758675980015,
+              "power": 1.0,
+              "power_lo": 0.9999998106877677,
+              "power_hi": 1.0
+            },
+            {
+              "premium": 1.0,
+              "measured": true,
+              "noncentrality": 29.786536297182682,
+              "noncentrality_lo": 11.202323887419354,
+              "noncentrality_hi": 54.33547345914408,
+              "power": 1.0,
+              "power_lo": 0.9999999999978462,
+              "power_hi": 1.0
+            },
+            {
+              "premium": 2.0,
+              "measured": true,
+              "noncentrality": 83.0543618828239,
+              "noncentrality_lo": 31.510608060163264,
+              "noncentrality_hi": 151.34887927328066,
+              "power": 1.0,
+              "power_lo": 1.0,
+              "power_hi": 1.0
+            },
+            {
+              "premium": 4.0,
+              "measured": true,
+              "noncentrality": 71.55444801167238,
+              "noncentrality_lo": 27.135407484291296,
+              "noncentrality_hi": 130.39961531478747,
+              "power": 1.0,
+              "power_lo": 1.0,
+              "power_hi": 1.0
+            }
+          ],
+          "floor": {
+            "premium": 0.05140538462172233,
+            "lo": 0.02807898629513518,
+            "hi": 0.1410054105234888,
+            "status": "below_grid",
+            "bracket": [
+              0.0,
+              0.25
+            ],
+            "max_power": 1.0
+          },
+          "rule_in_force": "t",
+          "diverged_at": []
+        }
+      }
+    },
+    "ppo": {
+      "means": [
+        {
+          "premium": 0.0,
+          "saved": -334.9482638945505,
+          "original": -334.9482638945498,
+          "fair": -290.34056374318504,
+          "trades_original": 1.8656,
+          "trades_fair": 1.7864,
+          "trades_changed": 0.0352
+        },
+        {
+          "premium": 0.25,
+          "saved": 147.65715954549154,
+          "original": 147.65715954549307,
+          "fair": 70.97743649666826,
+          "trades_original": 3.4864,
+          "trades_fair": 3.4072,
+          "trades_changed": 0.112
+        },
+        {
+          "premium": 0.5,
+          "saved": 178.75538784639988,
+          "original": 178.75538784640227,
+          "fair": 120.36901703637662,
+          "trades_original": 3.5752,
+          "trades_fair": 3.39,
+          "trades_changed": 0.1404
+        },
+        {
+          "premium": 1.0,
+          "saved": 1061.379659972352,
+          "original": 1062.0140837249958,
+          "fair": 690.7609654666688,
+          "trades_original": 9.3344,
+          "trades_fair": 8.932,
+          "trades_changed": 0.3004
+        },
+        {
+          "premium": 2.0,
+          "saved": 2341.4030167985693,
+          "original": 2341.390166973776,
+          "fair": 1868.2142286097255,
+          "trades_original": 11.5776,
+          "trades_fair": 11.5416,
+          "trades_changed": 0.3208
+        },
+        {
+          "premium": 4.0,
+          "saved": 4468.970679397142,
+          "original": 4468.970679397141,
+          "fair": 4187.408584465758,
+          "trades_original": 7.9668,
+          "trades_fair": 7.5892,
+          "trades_changed": 0.2596
+        }
+      ],
+      "worlds": {
+        "saved": {
+          "levels": [
+            {
+              "premium": 0.25,
+              "estimate": 482.60542344004205,
+              "se": 235.60487322078765,
+              "t": 2.0483677474183133,
+              "lower_bound": -19.668068378591784,
+              "detected": false
+            },
+            {
+              "premium": 0.5,
+              "estimate": 513.7036517409504,
+              "se": 320.43891436570647,
+              "t": 1.6031250535154329,
+              "lower_bound": -169.42301806358137,
+              "detected": false
+            },
+            {
+              "premium": 1.0,
+              "estimate": 1396.327923866903,
+              "se": 366.3396754470502,
+              "t": 3.8115661978543316,
+              "lower_bound": 615.3478640611612,
+              "detected": true
+            },
+            {
+              "premium": 2.0,
+              "estimate": 2676.3512806931194,
+              "se": 355.72952035908474,
+              "t": 7.523556881058184,
+              "lower_bound": 1917.9904459140841,
+              "detected": true
+            },
+            {
+              "premium": 4.0,
+              "estimate": 4803.918943291693,
+              "se": 880.6747680252786,
+              "t": 5.454816145196751,
+              "lower_bound": 2926.4552692780353,
+              "detected": true
+            }
+          ],
+          "curve": [
+            {
+              "premium": 0.0,
+              "measured": false,
+              "noncentrality": 0.0,
+              "noncentrality_lo": 0.0,
+              "noncentrality_hi": 0.0,
+              "power": 0.05,
+              "power_lo": 0.05,
+              "power_hi": 0.05
+            },
+            {
+              "premium": 0.25,
+              "measured": true,
+              "noncentrality": 1.909605542124312,
+              "noncentrality_lo": -0.4207236547443325,
+              "noncentrality_hi": 4.360775074940776,
+              "power": 0.47518299119555485,
+              "power_lo": 0.022577164950321308,
+              "power_hi": 0.9693563252875754
+            },
+            {
+              "premium": 0.5,
+              "measured": true,
+              "noncentrality": 1.4982757278622443,
+              "noncentrality_lo": -0.7026430842746078,
+              "noncentrality_hi": 3.7652758440965792,
+              "power": 0.34565265277894996,
+              "power_lo": 0.012375796748977414,
+              "power_hi": 0.920796788374337
+            },
+            {
+              "premium": 1.0,
+              "measured": true,
+              "noncentrality": 3.525444834453887,
+              "noncentrality_lo": 0.536540659629997,
+              "noncentrality_hi": 6.950967085556626,
+              "power": 0.8893983304068034,
+              "power_lo": 0.11645464627274577,
+              "power_hi": 0.9999351671749322
+            },
+            {
+              "premium": 2.0,
+              "measured": true,
+              "noncentrality": 6.915062603199861,
+              "noncentrality_lo": 2.160533199922782,
+              "noncentrality_hi": 12.87429784716982,
+              "power": 0.9999277773760193,
+              "power_lo": 0.5558431754735642,
+              "power_hi": 0.9999999999999998
+            },
+            {
+              "premium": 4.0,
+              "measured": true,
+              "noncentrality": 5.025694460975735,
+              "noncentrality_lo": 1.2955166971604783,
+              "noncentrality_hi": 9.533097839170374,
+              "power": 0.9913552967752615,
+              "power_lo": 0.2866005897896775,
+              "power_hi": 0.9999999947107959
+            }
+          ],
+          "floor": {
+            "premium": 0.8802039092249123,
+            "lo": 0.17426666782829647,
+            "hi": null,
+            "status": "reached",
+            "bracket": [
+              0.5,
+              1.0
+            ],
+            "max_power": 0.9999277773760193
+          },
+          "rule_in_force": "t",
+          "diverged_at": []
+        },
+        "original": {
+          "levels": [
+            {
+              "premium": 0.25,
+              "estimate": 482.60542344004296,
+              "se": 235.60487322078714,
+              "t": 2.0483677474183213,
+              "lower_bound": -19.668068378589794,
+              "detected": false
+            },
+            {
+              "premium": 0.5,
+              "estimate": 513.7036517409521,
+              "se": 320.4389143657082,
+              "t": 1.6031250535154296,
+              "lower_bound": -169.4230180635833,
+              "detected": false
+            },
+            {
+              "premium": 1.0,
+              "estimate": 1396.9623476195454,
+              "se": 366.44164950626896,
+              "t": 3.812236817244342,
+              "lower_bound": 615.7648947433695,
+              "detected": true
+            },
+            {
+              "premium": 2.0,
+              "estimate": 2676.338430868326,
+              "se": 355.7413757046077,
+              "t": 7.523270031683473,
+              "lower_bound": 1917.952322309037,
+              "detected": true
+            },
+            {
+              "premium": 4.0,
+              "estimate": 4803.918943291689,
+              "se": 880.6747680252785,
+              "t": 5.454816145196747,
+              "lower_bound": 2926.4552692780317,
+              "detected": true
+            }
+          ],
+          "curve": [
+            {
+              "premium": 0.0,
+              "measured": false,
+              "noncentrality": 0.0,
+              "noncentrality_lo": 0.0,
+              "noncentrality_hi": 0.0,
+              "power": 0.05,
+              "power_lo": 0.05,
+              "power_hi": 0.05
+            },
+            {
+              "premium": 0.25,
+              "measured": true,
+              "noncentrality": 1.9096055421243185,
+              "noncentrality_lo": -0.42072365474432816,
+              "noncentrality_hi": 4.360775074940785,
+              "power": 0.47518299119555696,
+              "power_lo": 0.022577164950321502,
+              "power_hi": 0.969356325287576
+            },
+            {
+              "premium": 0.5,
+              "measured": true,
+              "noncentrality": 1.4982757278622405,
+              "noncentrality_lo": -0.7026430842746084,
+              "noncentrality_hi": 3.765275844096574,
+              "power": 0.3456526527789488,
+              "power_lo": 0.012375796748977394,
+              "power_hi": 0.9207967883743362
+            },
+            {
+              "premium": 1.0,
+              "measured": true,
+              "noncentrality": 3.526057425633216,
+              "noncentrality_lo": 0.5368703124533042,
+              "noncentrality_hi": 6.951998267981667,
+              "power": 0.8894887391451171,
+              "power_lo": 0.11650869337880089,
+              "power_hi": 0.9999353684555109
+            },
+            {
+              "premium": 2.0,
+              "measured": true,
+              "noncentrality": 6.914800508590805,
+              "noncentrality_lo": 2.1604177498637256,
+              "noncentrality_hi": 12.873830617263689,
+              "power": 0.9999277206141257,
+              "power_lo": 0.5558064439977157,
+              "power_hi": 0.9999999999999998
+            },
+            {
+              "premium": 4.0,
+              "measured": true,
+              "noncentrality": 5.025694460975733,
+              "noncentrality_lo": 1.2955166971604766,
+              "noncentrality_hi": 9.533097839170372,
+              "power": 0.9913552967752614,
+              "power_lo": 0.28660058978967706,
+              "power_hi": 0.9999999947107959
+            }
+          ],
+          "floor": {
+            "premium": 0.8800890499373504,
+            "lo": 0.17426666782829608,
+            "hi": null,
+            "status": "reached",
+            "bracket": [
+              0.5,
+              1.0
+            ],
+            "max_power": 0.9999277206141257
+          },
+          "rule_in_force": "t",
+          "diverged_at": []
+        },
+        "fair": {
+          "levels": [
+            {
+              "premium": 0.25,
+              "estimate": 361.31800023985335,
+              "se": 233.11115152814372,
+              "t": 1.5499816198035086,
+              "lower_bound": -135.63925900232448,
+              "detected": false
+            },
+            {
+              "premium": 0.5,
+              "estimate": 410.70958077956163,
+              "se": 269.22558931879666,
+              "t": 1.5255220791558202,
+              "lower_bound": -163.23812660661338,
+              "detected": false
+            },
+            {
+              "premium": 1.0,
+              "estimate": 981.1015292098539,
+              "se": 252.86322178354874,
+              "t": 3.87996926674326,
+              "lower_bound": 442.0358824703927,
+              "detected": true
+            },
+            {
+              "premium": 2.0,
+              "estimate": 2158.5547923529107,
+              "se": 137.15844767177012,
+              "t": 15.73767295411862,
+              "lower_bound": 1866.1539964662957,
+              "detected": true
+            },
+            {
+              "premium": 4.0,
+              "estimate": 4477.749148208944,
+              "se": 710.0128238824536,
+              "t": 6.306575033002867,
+              "lower_bound": 2964.110591364425,
+              "detected": true
+            }
+          ],
+          "curve": [
+            {
+              "premium": 0.0,
+              "measured": false,
+              "noncentrality": 0.0,
+              "noncentrality_lo": 0.0,
+              "noncentrality_hi": 0.0,
+              "power": 0.05,
+              "power_lo": 0.05,
+              "power_hi": 0.05
+            },
+            {
+              "premium": 0.25,
+              "measured": true,
+              "noncentrality": 1.4490396598033906,
+              "noncentrality_lo": -0.7378043056818553,
+              "noncentrality_hi": 3.6964879966101853,
+              "power": 0.3309167392767882,
+              "power_lo": 0.011436430228330062,
+              "power_hi": 0.9125891249109842
+            },
+            {
+              "premium": 0.5,
+              "measured": true,
+              "noncentrality": 1.4263677644187633,
+              "noncentrality_lo": -0.7541051293570475,
+              "noncentrality_hi": 3.6650054483410277,
+              "power": 0.32421093883839314,
+              "power_lo": 0.0110221459700152,
+              "power_hi": 0.9086235833050846
+            },
+            {
+              "premium": 1.0,
+              "measured": true,
+              "noncentrality": 3.5879258507463954,
+              "noncentrality_lo": 0.5700632351884126,
+              "noncentrality_hi": 7.056270853368065,
+              "power": 0.8983431442141268,
+              "power_lo": 0.12203984084689462,
+              "power_hi": 0.9999529324397917
+            },
+            {
+              "premium": 2.0,
+              "measured": true,
+              "noncentrality": 14.42875107978576,
+              "noncentrality_lo": 5.249303054630828,
+              "noncentrality_hi": 26.42158472859632,
+              "power": 1.0,
+              "power_lo": 0.9946212575215988,
+              "power_hi": 1.0
+            },
+            {
+              "premium": 4.0,
+              "measured": true,
+              "noncentrality": 5.803399957348635,
+              "noncentrality_lo": 1.660586473994764,
+              "noncentrality_hi": 10.900703787052436,
+              "power": 0.9985075886870091,
+              "power_lo": 0.39567076642466475,
+              "power_hi": 0.9999999999902506
+            }
+          ],
+          "floor": {
+            "premium": 0.8731991315941828,
+            "lo": 0.2055837168024107,
+            "hi": 1.5277967845085474,
+            "status": "reached",
+            "bracket": [
+              0.5,
+              1.0
+            ],
+            "max_power": 1.0
+          },
+          "rule_in_force": "t",
+          "diverged_at": []
+        }
+      }
+    }
+  },
+  "gap": {
+    "saved": {
+      "value": 0.8207853988656058,
+      "kind": "point",
+      "band_range": [
+        0.008976105102604492,
+        null
+      ],
+      "bracket": [
+        0.25,
+        1.0
+      ]
+    },
+    "original": {
+      "value": 0.8206705395780449,
+      "kind": "point",
+      "band_range": [
+        0.008976105102607712,
+        null
+      ],
+      "bracket": [
+        0.25,
+        1.0
+      ]
+    },
+    "fair": {
+      "value": 0.8217937469724605,
+      "kind": "point",
+      "band_range": [
+        0.06457830627892189,
+        1.4997177982134122
+      ],
+      "bracket": [
+        0.25,
+        1.0
+      ]
+    }
+  },
+  "changes": {
+    "original_to_fair": {
+      "verdicts": [],
+      "floors": [],
+      "gap": "",
+      "rule": []
+    },
+    "saved_to_original": {
+      "verdicts": [],
+      "floors": [],
+      "gap": "",
+      "rule": []
+    }
+  },
+  "cells": [
+    {
+      "premium": 0.0,
+      "arm": "delta_seller",
+      "block": 0,
+      "run_id": "65046cadd80098cf-s100000",
+      "fair_run_id": "4d509b2c754d7802-s100000",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 3.4924596548080444e-10,
+      "mean_saved": -391.86057045355903,
+      "mean_original": -391.86057045355693,
+      "mean_fair": -297.4399600047867,
+      "trades_changed": 0,
+      "seconds": 46.64
+    },
+    {
+      "premium": 0.0,
+      "arm": "ppo",
+      "block": 0,
+      "run_id": "8189379004c15610-s100000",
+      "fair_run_id": "f6ca84ded97a305e-s100000",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 2.3283064365386963e-10,
+      "mean_saved": -106.60847091811615,
+      "mean_original": -106.60847091811593,
+      "mean_fair": -102.62196346661588,
+      "trades_changed": 0,
+      "seconds": 23.43
+    },
+    {
+      "premium": 0.0,
+      "arm": "delta_seller",
+      "block": 1,
+      "run_id": "07a4ade25d62e7e0-s100500",
+      "fair_run_id": "344bfe06e5cb349c-s100500",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 2.3283064365386963e-10,
+      "mean_saved": -424.60238229459617,
+      "mean_original": -424.6023822945992,
+      "mean_fair": -242.6824200320486,
+      "trades_changed": 0,
+      "seconds": 49.78
+    },
+    {
+      "premium": 0.0,
+      "arm": "ppo",
+      "block": 1,
+      "run_id": "ed112b2997757f4e-s100500",
+      "fair_run_id": "37c0c14eee84e100-s100500",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 2.3283064365386963e-10,
+      "mean_saved": -174.26785730377165,
+      "mean_original": -174.26785730377236,
+      "mean_fair": -93.99251124541648,
+      "trades_changed": 88,
+      "seconds": 70.86
+    },
+    {
+      "premium": 0.0,
+      "arm": "delta_seller",
+      "block": 2,
+      "run_id": "e04e005be5410283-s101000",
+      "fair_run_id": "f704a270b38d1880-s101000",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 2.3283064365386963e-10,
+      "mean_saved": -927.2243455569495,
+      "mean_original": -927.2243455569504,
+      "mean_fair": -877.8087238778118,
+      "trades_changed": 0,
+      "seconds": 50.77
+    },
+    {
+      "premium": 0.0,
+      "arm": "ppo",
+      "block": 2,
+      "run_id": "f8349965c348b941-s101000",
+      "fair_run_id": "5ac6f18c6e3ecf1d-s101000",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 2.3283064365386963e-10,
+      "mean_saved": -272.1878010856677,
+      "mean_original": -272.1878010856609,
+      "mean_fair": -208.98880571251735,
+      "trades_changed": 0,
+      "seconds": 36.72
+    },
+    {
+      "premium": 0.0,
+      "arm": "delta_seller",
+      "block": 3,
+      "run_id": "dba6a12d80b3ae3f-s101500",
+      "fair_run_id": "22d8525a43b4a000-s101500",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 3.4924596548080444e-10,
+      "mean_saved": -625.0617504452739,
+      "mean_original": -625.061750445277,
+      "mean_fair": -603.4839239150798,
+      "trades_changed": 0,
+      "seconds": 50.99
+    },
+    {
+      "premium": 0.0,
+      "arm": "ppo",
+      "block": 3,
+      "run_id": "e61f62fce3053bda-s101500",
+      "fair_run_id": "84eee804c799af7a-s101500",
+      "reproduces": true,
+      "agrees": true,
+      "max_abs_pnl_diff": 0.0,
+      "mean_saved": 0.0,
+      "mean_original": 0.0,
+      "mean_fair": 0.0,
+      "trades_changed": 0,
+      "seconds": 22.28
+    },
+    {
+      "premium": 0.0,
+      "arm": "delta_seller",
+      "block": 4,
+      "run_id": "085c6b5f8479e932-s102000",
+      "fair_run_id": "51324456a9ceb561-s102000",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 3.4924596548080444e-10,
+      "mean_saved": -998.5150801381947,
+      "mean_original": -998.5150801381902,
+      "mean_fair": -931.812904931261,
+      "trades_changed": 0,
+      "seconds": 51.36
+    },
+    {
+      "premium": 0.0,
+      "arm": "ppo",
+      "block": 4,
+      "run_id": "527188ea48cfd3d1-s102000",
+      "fair_run_id": "0cd4ef0d1fcb62e4-s102000",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 3.4924596548080444e-10,
+      "mean_saved": -1121.677190165197,
+      "mean_original": -1121.6771901651998,
+      "mean_fair": -1046.0995382913757,
+      "trades_changed": 0,
+      "seconds": 58.73
+    },
+    {
+      "premium": 0.25,
+      "arm": "delta_seller",
+      "block": 0,
+      "run_id": "158ebc388a1010b6-s100000",
+      "fair_run_id": "9a425a69bb124e2f-s100000",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 3.4924596548080444e-10,
+      "mean_saved": -131.6692947746741,
+      "mean_original": -131.66929477467505,
+      "mean_fair": -75.4540486867521,
+      "trades_changed": 0,
+      "seconds": 53.31
+    },
+    {
+      "premium": 0.25,
+      "arm": "ppo",
+      "block": 0,
+      "run_id": "a82c446b33a2702c-s100000",
+      "fair_run_id": "bf1770f977513784-s100000",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 3.4924596548080444e-10,
+      "mean_saved": 85.47610909344047,
+      "mean_original": 85.47610909344326,
+      "mean_fair": -158.1900851889248,
+      "trades_changed": 97,
+      "seconds": 91.46
+    },
+    {
+      "premium": 0.25,
+      "arm": "delta_seller",
+      "block": 1,
+      "run_id": "eef378aa7767f82a-s100500",
+      "fair_run_id": "829581fb361ac6bb-s100500",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 3.4924596548080444e-10,
+      "mean_saved": -198.35376888399293,
+      "mean_original": -198.35376888399105,
+      "mean_fair": 10.658480885682627,
+      "trades_changed": 0,
+      "seconds": 55.78
+    },
+    {
+      "premium": 0.25,
+      "arm": "ppo",
+      "block": 1,
+      "run_id": "696988269f1f9ff7-s100500",
+      "fair_run_id": "dfbab5d12999fc40-s100500",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 4.656612873077393e-10,
+      "mean_saved": -77.42239319706172,
+      "mean_original": -77.42239319705939,
+      "mean_fair": -104.63227333529899,
+      "trades_changed": 80,
+      "seconds": 38.7
+    },
+    {
+      "premium": 0.25,
+      "arm": "delta_seller",
+      "block": 2,
+      "run_id": "1c5609a70aeeafe8-s101000",
+      "fair_run_id": "a03f9ecc2ecc9e6f-s101000",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 3.4924596548080444e-10,
+      "mean_saved": -731.6665578184002,
+      "mean_original": -731.6665578184106,
+      "mean_fair": -673.9582466062864,
+      "trades_changed": 0,
+      "seconds": 59.58
+    },
+    {
+      "premium": 0.25,
+      "arm": "ppo",
+      "block": 2,
+      "run_id": "6e2ba638bdb57fd6-s101000",
+      "fair_run_id": "0335353280784ecf-s101000",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 3.4924596548080444e-10,
+      "mean_saved": 769.2383086057855,
+      "mean_original": 769.2383086057878,
+      "mean_fair": 649.3183659447483,
+      "trades_changed": 66,
+      "seconds": 47.24
+    },
+    {
+      "premium": 0.25,
+      "arm": "delta_seller",
+      "block": 3,
+      "run_id": "c4d37db05cf6bc4f-s101500",
+      "fair_run_id": "cd49ffd77202ebd2-s101500",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 3.4924596548080444e-10,
+      "mean_saved": -454.4093994347937,
+      "mean_original": -454.4093994347916,
+      "mean_fair": -425.8423940665,
+      "trades_changed": 0,
+      "seconds": 60.2
+    },
+    {
+      "premium": 0.25,
+      "arm": "ppo",
+      "block": 3,
+      "run_id": "85000419cd6b2bd2-s101500",
+      "fair_run_id": "4909013a97f53405-s101500",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 1.1641532182693481e-10,
+      "mean_saved": 13.225161710585933,
+      "mean_original": 13.2251617105857,
+      "mean_fair": 14.760970897273626,
+      "trades_changed": 0,
+      "seconds": 18.21
+    },
+    {
+      "premium": 0.25,
+      "arm": "delta_seller",
+      "block": 4,
+      "run_id": "aca85b080df52ede-s102000",
+      "fair_run_id": "0c6dc1a0ac035814-s102000",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 3.4924596548080444e-10,
+      "mean_saved": -795.5454508249392,
+      "mean_original": -795.5454508249369,
+      "mean_fair": -738.6884308370899,
+      "trades_changed": 0,
+      "seconds": 59.92
+    },
+    {
+      "premium": 0.25,
+      "arm": "ppo",
+      "block": 4,
+      "run_id": "d79f2fdf3fe1c591-s102000",
+      "fair_run_id": "793828627c6f1cb0-s102000",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 2.3283064365386963e-10,
+      "mean_saved": -52.23138848529244,
+      "mean_original": -52.23138848529197,
+      "mean_fair": -46.3697958344568,
+      "trades_changed": 37,
+      "seconds": 29.85
+    },
+    {
+      "premium": 0.5,
+      "arm": "delta_seller",
+      "block": 0,
+      "run_id": "2d38166be364aa10-s100000",
+      "fair_run_id": "4d1c916fe52f000e-s100000",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 3.4924596548080444e-10,
+      "mean_saved": 71.54790039354563,
+      "mean_original": 71.54790039354819,
+      "mean_fair": 171.1336747777434,
+      "trades_changed": 0,
+      "seconds": 59.8
+    },
+    {
+      "premium": 0.5,
+      "arm": "ppo",
+      "block": 0,
+      "run_id": "01cb55e39f668100-s100000",
+      "fair_run_id": "b91051a8288c05ed-s100000",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 1.1641532182693481e-10,
+      "mean_saved": 20.550637953487456,
+      "mean_original": 20.550637953487225,
+      "mean_fair": -18.680602299555204,
+      "trades_changed": 1,
+      "seconds": 24.53
+    },
+    {
+      "premium": 0.5,
+      "arm": "delta_seller",
+      "block": 1,
+      "run_id": "e8e7280dab5a5545-s100500",
+      "fair_run_id": "5286ca0b4a327c99-s100500",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 2.3283064365386963e-10,
+      "mean_saved": 25.724859300328184,
+      "mean_original": 25.72485930032935,
+      "mean_fair": 206.82513795577339,
+      "trades_changed": 0,
+      "seconds": 61.55
+    },
+    {
+      "premium": 0.5,
+      "arm": "ppo",
+      "block": 1,
+      "run_id": "a4fa7df1554e32e0-s100500",
+      "fair_run_id": "33e54dedf59d918d-s100500",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 3.4924596548080444e-10,
+      "mean_saved": 1397.65290487959,
+      "mean_original": 1397.6529048795946,
+      "mean_fair": 1015.7274290085123,
+      "trades_changed": 252,
+      "seconds": 71.89
+    },
+    {
+      "premium": 0.5,
+      "arm": "delta_seller",
+      "block": 2,
+      "run_id": "0200d91969be65ba-s101000",
+      "fair_run_id": "7e1701becb10ed92-s101000",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 4.656612873077393e-10,
+      "mean_saved": -520.1327913036532,
+      "mean_original": -520.1327913036525,
+      "mean_fair": -472.8505196114138,
+      "trades_changed": 0,
+      "seconds": 63.88
+    },
+    {
+      "premium": 0.5,
+      "arm": "ppo",
+      "block": 2,
+      "run_id": "9d4dfd384df9c97a-s101000",
+      "fair_run_id": "516430aef68f013c-s101000",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 2.3283064365386963e-10,
+      "mean_saved": -88.34513467234257,
+      "mean_original": -88.34513467233838,
+      "mean_fair": -87.67476763130817,
+      "trades_changed": 0,
+      "seconds": 25.5
+    },
+    {
+      "premium": 0.5,
+      "arm": "delta_seller",
+      "block": 3,
+      "run_id": "af30e80c47d7ce5b-s101500",
+      "fair_run_id": "757c76d8e7ce35c4-s101500",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 3.4924596548080444e-10,
+      "mean_saved": -261.41828546381345,
+      "mean_original": -261.418285463809,
+      "mean_fair": -120.15551196293882,
+      "trades_changed": 0,
+      "seconds": 60.83
+    },
+    {
+      "premium": 0.5,
+      "arm": "ppo",
+      "block": 3,
+      "run_id": "589728a64fd654ec-s101500",
+      "fair_run_id": "7f2a222e3f86a2d6-s101500",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 3.4924596548080444e-10,
+      "mean_saved": -212.70010149432974,
+      "mean_original": -212.70010149433114,
+      "mean_fair": -250.01729740407293,
+      "trades_changed": 31,
+      "seconds": 47.81
+    },
+    {
+      "premium": 0.5,
+      "arm": "delta_seller",
+      "block": 4,
+      "run_id": "5e0ceca7262c2964-s102000",
+      "fair_run_id": "ac412cb4d6392ad7-s102000",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 3.4924596548080444e-10,
+      "mean_saved": -598.6909080285009,
+      "mean_original": -598.6909080284962,
+      "mean_fair": -537.1635987752838,
+      "trades_changed": 0,
+      "seconds": 60.77
+    },
+    {
+      "premium": 0.5,
+      "arm": "ppo",
+      "block": 4,
+      "run_id": "2e53e6f6a11ba2f1-s102000",
+      "fair_run_id": "978221bbaa814b47-s102000",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 3.4924596548080444e-10,
+      "mean_saved": -223.38136743440572,
+      "mean_original": -223.38136743440106,
+      "mean_fair": -57.50967649169289,
+      "trades_changed": 67,
+      "seconds": 65.53
+    },
+    {
+      "premium": 1.0,
+      "arm": "delta_seller",
+      "block": 0,
+      "run_id": "a9cd378ebf25db26-s100000",
+      "fair_run_id": "683c7a1054d0c4de-s100000",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 2.3283064365386963e-10,
+      "mean_saved": 469.12972414455635,
+      "mean_original": 469.1297241445575,
+      "mean_fair": 620.4168492546561,
+      "trades_changed": 0,
+      "seconds": 60.27
+    },
+    {
+      "premium": 1.0,
+      "arm": "ppo",
+      "block": 0,
+      "run_id": "ea5be29e60901c1a-s100000",
+      "fair_run_id": "8d7daf1309dc0604-s100000",
+      "reproduces": false,
+      "agrees": false,
+      "max_abs_pnl_diff": 1586.059381607687,
+      "mean_saved": 1524.0177194235703,
+      "mean_original": 1527.189838186785,
+      "mean_fair": 1128.9214694525203,
+      "trades_changed": 71,
+      "seconds": 71.46
+    },
+    {
+      "premium": 1.0,
+      "arm": "delta_seller",
+      "block": 1,
+      "run_id": "df07a3e1d58c204d-s100500",
+      "fair_run_id": "22b230f443ee018b-s100500",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 3.4924596548080444e-10,
+      "mean_saved": 419.7529245688934,
+      "mean_original": 419.75292456889434,
+      "mean_fair": 642.3483703940248,
+      "trades_changed": 0,
+      "seconds": 59.33
+    },
+    {
+      "premium": 1.0,
+      "arm": "ppo",
+      "block": 1,
+      "run_id": "9d67a4f51adfae81-s100500",
+      "fair_run_id": "51ec19129f9a7fbb-s100500",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 9.313225746154785e-10,
+      "mean_saved": 1528.9157979053089,
+      "mean_original": 1528.915797905318,
+      "mean_fair": 1239.8247771797776,
+      "trades_changed": 279,
+      "seconds": 71.47
+    },
+    {
+      "premium": 1.0,
+      "arm": "delta_seller",
+      "block": 2,
+      "run_id": "2396d25cb53851f0-s101000",
+      "fair_run_id": "1878fc0aca74fe8d-s101000",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 2.3283064365386963e-10,
+      "mean_saved": -138.93790385035447,
+      "mean_original": -138.93790385034984,
+      "mean_fair": -95.89773518112231,
+      "trades_changed": 0,
+      "seconds": 58.07
+    },
+    {
+      "premium": 1.0,
+      "arm": "ppo",
+      "block": 2,
+      "run_id": "77ed0ea7f97894b6-s101000",
+      "fair_run_id": "42d047ab2550da6f-s101000",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 8.149072527885437e-10,
+      "mean_saved": 1220.3314417988659,
+      "mean_original": 1220.3314417988656,
+      "mean_fair": 791.252929578264,
+      "trades_changed": 289,
+      "seconds": 68.9
+    },
+    {
+      "premium": 1.0,
+      "arm": "delta_seller",
+      "block": 3,
+      "run_id": "7198f9de012d36ed-s101500",
+      "fair_run_id": "a0f52f6e7f34e942-s101500",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 2.3283064365386963e-10,
+      "mean_saved": 179.29731490374309,
+      "mean_original": 179.29731490374567,
+      "mean_fair": 253.2363386358586,
+      "trades_changed": 0,
+      "seconds": 56.5
+    },
+    {
+      "premium": 1.0,
+      "arm": "ppo",
+      "block": 3,
+      "run_id": "329692c2c0f539c0-s101500",
+      "fair_run_id": "d37dee539bceb50e-s101500",
+      "reproduces": true,
+      "agrees": true,
+      "max_abs_pnl_diff": 0.0,
+      "mean_saved": 0.0,
+      "mean_original": 0.0,
+      "mean_fair": 0.0,
+      "trades_changed": 0,
+      "seconds": 15.98
+    },
+    {
+      "premium": 1.0,
+      "arm": "delta_seller",
+      "block": 4,
+      "run_id": "4b1e683de21a7748-s102000",
+      "fair_run_id": "e41bd69ea379d261-s102000",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 2.3283064365386963e-10,
+      "mean_saved": -189.6463664918919,
+      "mean_original": -189.64636649188515,
+      "mean_fair": -137.56927411217546,
+      "trades_changed": 0,
+      "seconds": 54.71
+    },
+    {
+      "premium": 1.0,
+      "arm": "ppo",
+      "block": 4,
+      "run_id": "9c073b1c732cfa24-s102000",
+      "fair_run_id": "23b36900447a4233-s102000",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 3.4924596548080444e-10,
+      "mean_saved": 1033.6333407340164,
+      "mean_original": 1033.63334073401,
+      "mean_fair": 293.8056511227819,
+      "trades_changed": 112,
+      "seconds": 71.88
+    },
+    {
+      "premium": 2.0,
+      "arm": "delta_seller",
+      "block": 0,
+      "run_id": "577680c7c41ce051-s100000",
+      "fair_run_id": "593595893a37cc72-s100000",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 2.3283064365386963e-10,
+      "mean_saved": 1148.8449237771756,
+      "mean_original": 1148.8449237771752,
+      "mean_fair": 1398.900094870877,
+      "trades_changed": 0,
+      "seconds": 55.07
+    },
+    {
+      "premium": 2.0,
+      "arm": "ppo",
+      "block": 0,
+      "run_id": "20df6237b4e4aecd-s100000",
+      "fair_run_id": "5cf57c8d67a121d9-s100000",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 5.820766091346741e-10,
+      "mean_saved": 2390.646484462089,
+      "mean_original": 2390.6464844622033,
+      "mean_fair": 1857.153465460365,
+      "trades_changed": 93,
+      "seconds": 72.2
+    },
+    {
+      "premium": 2.0,
+      "arm": "delta_seller",
+      "block": 1,
+      "run_id": "21910b44c70e7d0c-s100500",
+      "fair_run_id": "c639ade0f89094df-s100500",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 2.3283064365386963e-10,
+      "mean_saved": 1004.2351192481539,
+      "mean_original": 1004.2351192481572,
+      "mean_fair": 1345.05021514595,
+      "trades_changed": 0,
+      "seconds": 54.73
+    },
+    {
+      "premium": 2.0,
+      "arm": "ppo",
+      "block": 1,
+      "run_id": "3b59209dd87f37ff-s100500",
+      "fair_run_id": "58402319d1a26504-s100500",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 4.656612873077393e-10,
+      "mean_saved": 2928.984277054079,
+      "mean_original": 2928.9842770541914,
+      "mean_fair": 2287.180836176625,
+      "trades_changed": 196,
+      "seconds": 65.04
+    },
+    {
+      "premium": 2.0,
+      "arm": "delta_seller",
+      "block": 2,
+      "run_id": "b95cba70e4e0df98-s101000",
+      "fair_run_id": "d9b81f5efc378587-s101000",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 2.3283064365386963e-10,
+      "mean_saved": 600.0141745591469,
+      "mean_original": 600.0141745591461,
+      "mean_fair": 772.3929948694062,
+      "trades_changed": 0,
+      "seconds": 54.23
+    },
+    {
+      "premium": 2.0,
+      "arm": "ppo",
+      "block": 2,
+      "run_id": "7e89e9036db34d15-s101000",
+      "fair_run_id": "a1164b09b31dde23-s101000",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 9.313225746154785e-10,
+      "mean_saved": 2822.570945120531,
+      "mean_original": 2822.570945120643,
+      "mean_fair": 1965.5227911994907,
+      "trades_changed": 171,
+      "seconds": 64.01
+    },
+    {
+      "premium": 2.0,
+      "arm": "delta_seller",
+      "block": 3,
+      "run_id": "ecb31bedd5fe6f3e-s101500",
+      "fair_run_id": "e4dd8311724cc425-s101500",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 3.4924596548080444e-10,
+      "mean_saved": 836.6056451326481,
+      "mean_original": 836.6056451326469,
+      "mean_fair": 1023.2140945468499,
+      "trades_changed": 0,
+      "seconds": 54.51
+    },
+    {
+      "premium": 2.0,
+      "arm": "ppo",
+      "block": 3,
+      "run_id": "4a48a04bb0099da1-s101500",
+      "fair_run_id": "f3a658b7d7dd7cae-s101500",
+      "reproduces": false,
+      "agrees": false,
+      "max_abs_pnl_diff": 32.124562210869044,
+      "mean_saved": 1363.5601346142673,
+      "mean_original": 1363.4958854898407,
+      "mean_fair": 1760.4174132369706,
+      "trades_changed": 152,
+      "seconds": 63.77
+    },
+    {
+      "premium": 2.0,
+      "arm": "delta_seller",
+      "block": 4,
+      "run_id": "5ba12f2d2a2925a2-s102000",
+      "fair_run_id": "6fcd0d73070e992d-s102000",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 3.4924596548080444e-10,
+      "mean_saved": 520.1526903169353,
+      "mean_original": 520.1526903169348,
+      "mean_fair": 688.2067129333357,
+      "trades_changed": 0,
+      "seconds": 54.54
+    },
+    {
+      "premium": 2.0,
+      "arm": "ppo",
+      "block": 4,
+      "run_id": "94fac59bff3497bc-s102000",
+      "fair_run_id": "256c7feaeba26670-s102000",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 6.984919309616089e-10,
+      "mean_saved": 2201.25324274188,
+      "mean_original": 2201.2532427420024,
+      "mean_fair": 1470.7966369751769,
+      "trades_changed": 190,
+      "seconds": 57.62
+    },
+    {
+      "premium": 4.0,
+      "arm": "delta_seller",
+      "block": 0,
+      "run_id": "7ed5d3842e4d92d8-s100000",
+      "fair_run_id": "e5793c5909607058-s100000",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 4.656612873077393e-10,
+      "mean_saved": 2401.633730198589,
+      "mean_original": 2401.6337301984718,
+      "mean_fair": 2670.1172926076633,
+      "trades_changed": 0,
+      "seconds": 52.34
+    },
+    {
+      "premium": 4.0,
+      "arm": "ppo",
+      "block": 0,
+      "run_id": "dfc058e6cb2dc055-s100000",
+      "fair_run_id": "937cd7111a9adae4-s100000",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 5.820766091346741e-10,
+      "mean_saved": 4912.7827494884805,
+      "mean_original": 4912.782749488479,
+      "mean_fair": 4369.372591180642,
+      "trades_changed": 242,
+      "seconds": 40.8
+    },
+    {
+      "premium": 4.0,
+      "arm": "delta_seller",
+      "block": 1,
+      "run_id": "26aa45f9ed35e706-s100500",
+      "fair_run_id": "dbfcfae4439ef375-s100500",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 4.656612873077393e-10,
+      "mean_saved": 2076.2377013808173,
+      "mean_original": 2076.2377013806918,
+      "mean_fair": 2505.8477152090704,
+      "trades_changed": 0,
+      "seconds": 52.02
+    },
+    {
+      "premium": 4.0,
+      "arm": "ppo",
+      "block": 1,
+      "run_id": "7991b38d8f29bb85-s100500",
+      "fair_run_id": "732c3723e1b9bbe9-s100500",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 4.656612873077393e-10,
+      "mean_saved": 5681.906896172606,
+      "mean_original": 5681.906896172605,
+      "mean_fair": 5326.907648927326,
+      "trades_changed": 173,
+      "seconds": 42.16
+    },
+    {
+      "premium": 4.0,
+      "arm": "delta_seller",
+      "block": 2,
+      "run_id": "48c09ababad11496-s101000",
+      "fair_run_id": "465143ccdd77ed3f-s101000",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 4.656612873077393e-10,
+      "mean_saved": 1783.6010873164512,
+      "mean_original": 1783.6010873163375,
+      "mean_fair": 2046.9452665644214,
+      "trades_changed": 0,
+      "seconds": 51.32
+    },
+    {
+      "premium": 4.0,
+      "arm": "ppo",
+      "block": 2,
+      "run_id": "4d7d2a93bb57c46c-s101000",
+      "fair_run_id": "9ed9e4972fc31419-s101000",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 4.656612873077393e-10,
+      "mean_saved": 5438.887004182171,
+      "mean_original": 5438.887004182164,
+      "mean_fair": 5113.19926946133,
+      "trades_changed": 119,
+      "seconds": 42.72
+    },
+    {
+      "premium": 4.0,
+      "arm": "delta_seller",
+      "block": 3,
+      "run_id": "bc9e30278fe828e8-s101500",
+      "fair_run_id": "10362927caf83987-s101500",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 3.4924596548080444e-10,
+      "mean_saved": 2122.311737743981,
+      "mean_original": 2122.3117377438643,
+      "mean_fair": 2268.043627386918,
+      "trades_changed": 0,
+      "seconds": 49.84
+    },
+    {
+      "premium": 4.0,
+      "arm": "ppo",
+      "block": 3,
+      "run_id": "3c5ee16ed65e3386-s101500",
+      "fair_run_id": "a40a6947535226a8-s101500",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 3.4924596548080444e-10,
+      "mean_saved": 1353.2060897522167,
+      "mean_original": 1353.206089752215,
+      "mean_fair": 1730.457112087111,
+      "trades_changed": 0,
+      "seconds": 31.6
+    },
+    {
+      "premium": 4.0,
+      "arm": "delta_seller",
+      "block": 4,
+      "run_id": "4a30cb6533580fba-s102000",
+      "fair_run_id": "0b0160cfd2e8c88c-s102000",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 3.4924596548080444e-10,
+      "mean_saved": 1765.815900799647,
+      "mean_original": 1765.815900799529,
+      "mean_fair": 1962.2688173078727,
+      "trades_changed": 0,
+      "seconds": 45.16
+    },
+    {
+      "premium": 4.0,
+      "arm": "ppo",
+      "block": 4,
+      "run_id": "e608f959c816fc46-s102000",
+      "fair_run_id": "2cb4c907a08b97da-s102000",
+      "reproduces": false,
+      "agrees": true,
+      "max_abs_pnl_diff": 3.4924596548080444e-10,
+      "mean_saved": 4958.070657390235,
+      "mean_original": 4958.070657390239,
+      "mean_fair": 4397.106300672384,
+      "trades_changed": 115,
+      "seconds": 41.29
+    }
+  ]
+}
