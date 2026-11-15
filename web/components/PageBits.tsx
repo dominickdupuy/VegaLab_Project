@@ -1,7 +1,7 @@
 "use client";
 
 import { type ReactNode, useEffect, useState } from "react";
-import { InfoTip } from "./InfoTip";
+import { aboutName, InfoTip } from "./InfoTip";
 import { Tile } from "./Bits";
 import lab from "./lab.module.css";
 import ui from "./ui.module.css";
@@ -15,6 +15,8 @@ import ui from "./ui.module.css";
 const ARM_PHRASE: Record<string, string> = {
   delta_seller: "the fixed-delta seller",
   ppo: "PPO",
+  a2c: "A2C",
+  dqn: "DQN",
   always_on: "the always-on condor",
   random: "the random arm",
   flat: "the flat arm",
@@ -34,7 +36,9 @@ export function ArmPhrase(arm: string): string {
 /**
  * Details on demand: closed by default, opened by a click or by a link to its #id.
  * Its content is drawn only once it has been opened, so a closed fold costs no request
- * and no chart. `term` is the glossary key behind the info icon beside the title.
+ * and no chart. `term` is the glossary key behind the info icon beside the title: the
+ * title toggles the fold, the icon only opens its tip (its click never toggles), and the
+ * icon's name does not repeat the title, so a search for the title finds the title.
  */
 export function Fold({
   id,
@@ -56,10 +60,17 @@ export function Fold({
   const [open, setOpen] = useState(initial);
   const [seen, setSeen] = useState(initial);
   useEffect(() => {
-    if (id && window.location.hash.slice(1) === id) {
-      setOpen(true);
-      setSeen(true);
-    }
+    if (!id) return;
+    // opened by a link to it: on arrival, and on a #id link followed on the page
+    const go = () => {
+      if (window.location.hash.slice(1) === id) {
+        setOpen(true);
+        setSeen(true);
+      }
+    };
+    go();
+    window.addEventListener("hashchange", go);
+    return () => window.removeEventListener("hashchange", go);
   }, [id]);
   return (
     <details
@@ -75,7 +86,7 @@ export function Fold({
     >
       <summary className={lab.foldHead}>
         <span className={lab.foldTitle}>{title}</span>
-        {term ? <InfoTip term={term} label={typeof title === "string" ? `About ${title}` : undefined} /> : null}
+        {term ? <InfoTip term={term} label={aboutName(title, term)} /> : null}
         {sub ? <span className={lab.foldSub}>{sub}</span> : null}
       </summary>
       {seen ? <div className={lab.foldBody}>{children}</div> : null}

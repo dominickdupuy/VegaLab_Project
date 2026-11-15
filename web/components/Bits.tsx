@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { hasChoice } from "@/lib/choices";
 import { define, type Glossary } from "@/lib/glossary";
-import { InfoTip } from "./InfoTip";
+import { aboutName, InfoTip } from "./InfoTip";
 import ui from "./ui.module.css";
 
 export function PageHead({ eyebrow, title, lede, right }: { eyebrow: string; title: string; lede?: ReactNode; right?: ReactNode }) {
@@ -41,7 +41,7 @@ export function Card({
 }) {
   const term = info === undefined ? (typeof title === "string" ? title : undefined) : typeof info === "string" ? info : undefined;
   // a string the glossary does not know is the explanation itself
-  const tip = info === false ? null : term && define(term) ? <InfoTip term={term} /> : info ? <InfoTip text={info} label="About this card" /> : null;
+  const tip = info === false ? null : term && define(term) ? <InfoTip term={term} label={aboutName(title, term)} /> : info ? <InfoTip text={info} label="About this card" /> : null;
   return (
     <section className={`${ui.card} ${className ?? ""}`}>
       {title || right || source ? (
@@ -201,7 +201,7 @@ export function Segmented<T extends string>({
       <span className={ui.fieldLabel}>
         <span className={ui.labelled}>
           {title}
-          {key && define(key) ? <InfoTip term={key} label={`About ${typeof title === "string" ? title : key}`} /> : null}
+          {key && define(key) ? <InfoTip term={key} label={aboutName(title, key)} /> : null}
         </span>
       </span>
       {group}

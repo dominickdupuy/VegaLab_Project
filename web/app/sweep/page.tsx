@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useState } from "react";
+import { type ReactNode, Suspense, useState } from "react";
 import type { EChartsOption } from "echarts";
 import { Card, Chip, PageHead, Segmented, SelectField, Source } from "@/components/Bits";
 import { Chart } from "@/components/Chart";
@@ -14,7 +14,7 @@ import ui from "@/components/ui.module.css";
 import { M4View } from "@/components/views/M4View";
 import { api, type GridDetail, type Sweep } from "@/lib/api";
 import { ARM_LABEL, armColor, axis, base, type PremiumPoint, premiumChart, type Tokens, useTokens } from "@/lib/chart";
-import { esc, num, prem, short, usd } from "@/lib/format";
+import { esc, num, pct, prem, short, usd } from "@/lib/format";
 import { useFetch } from "@/lib/useFetch";
 import { useQuery, useQuerySync } from "@/lib/url";
 
@@ -169,7 +169,9 @@ function Contrasts({ s, arm }: { s: Sweep; arm: string }) {
     return (
       <Card title="Contrasts">
         <Empty title="Contrasts need seed blocks">
-          <p>A scripted sweep is one block on shared seeds; an orchestrated grid has S of them.</p>
+          <p>
+            A scripted sweep is one <InfoTip term="seed_block">seed block</InfoTip> on shared seeds; an orchestrated grid has S of them.
+          </p>
         </Empty>
       </Card>
     );
@@ -180,7 +182,13 @@ function Contrasts({ s, arm }: { s: Sweep; arm: string }) {
     <>
       <Card title="Each arm against itself at zero premium" info="sweep.contrasts">
         <div className={ui.stack}>
-          <Reading note={`Each dot is one of ${g.n_seeds} seed blocks of ${num(g.n_episodes)} episodes; how far they scatter is the seed-to-seed noise that sets the floor.`}>
+          <Reading
+            note={
+              <>
+                Each dot is one of {g.n_seeds} <InfoTip term="seed_block">seed blocks</InfoTip> of {num(g.n_episodes)} episodes; how far they scatter is the seed-to-seed noise that sets the floor.
+              </>
+            }
+          >
             The pre-registered test detects {phrases.join(", and ")}.
           </Reading>
           {rows.length ? (
@@ -281,12 +289,16 @@ export default function SweepPage() {
 }
 
 /** What the grid is, in one line: its cells and design. */
-function designLine(s: Sweep): string {
+function designLine(s: Sweep): ReactNode {
   const g = s.grid;
   const n = s.summary;
-  return g
-    ? `${num(n.n_cells)} runs: ${n.arms.length} arms × ${n.premiums.length} premiums × ${g.n_seeds} seed blocks of ${num(g.n_episodes)} episodes · costs ${g.costs ? "on" : "off"}`
-    : `${num(n.n_cells)} runs: ${n.arms.length} arms × ${n.premiums.length} premiums on shared seeds`;
+  return g ? (
+    <>
+      {num(n.n_cells)} runs: {n.arms.length} arms × {n.premiums.length} premiums × {g.n_seeds} <InfoTip term="seed_block">seed blocks</InfoTip> of {num(g.n_episodes)} episodes · costs {g.costs ? "on" : "off"} · <InfoTip term="sweep.rate">rate {pct(g.rate, 0)}</InfoTip>
+    </>
+  ) : (
+    `${num(n.n_cells)} runs: ${n.arms.length} arms × ${n.premiums.length} premiums on shared seeds`
+  );
 }
 
 function Sweeps() {

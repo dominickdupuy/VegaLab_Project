@@ -11,7 +11,7 @@ import { Facts, Fold, Reading } from "@/components/PageBits";
 import { ErrorBox, Loading } from "@/components/States";
 import ui from "@/components/ui.module.css";
 import { PowerSurfaceCard } from "@/components/views/PowerSurface";
-import { api, type Power, type PowerParams } from "@/lib/api";
+import { api, type M4, type Power, type PowerParams } from "@/lib/api";
 import { axis, base, type Tokens, useTokens } from "@/lib/chart";
 import { hours, num, pct, usd } from "@/lib/format";
 import { define } from "@/lib/glossary";
@@ -42,8 +42,8 @@ const A7: PowerParams = {
   cores: 1,
 };
 const PRESETS = [
-  { value: "a7", label: "PPO contrast (A7)", params: A7 },
-  { value: "seller", label: "Seller contrast (A7)", params: { ...A7, tau2: 1_026, sigma2: 828_609, train_steps: 0 } },
+  { value: "a7", label: "PPO contrast", whose: "the PPO learner", params: A7 },
+  { value: "seller", label: "Seller contrast", whose: "the fixed-delta seller", params: { ...A7, tau2: 1_026, sigma2: 828_609, train_steps: 0 } },
 ] as const;
 type PresetName = (typeof PRESETS)[number]["value"];
 const UNITS = [
@@ -53,8 +53,20 @@ const UNITS = [
 type Unit = (typeof UNITS)[number]["value"];
 const KEYS = Object.keys(A7) as (keyof PowerParams)[];
 
+/** The preset whose noise this is: it stays chosen whatever the effect, seeds and N. */
 function presetOf(p: PowerParams): PresetName | "" {
-  return PRESETS.find((x) => KEYS.every((k) => x.params[k] === p[k]))?.value ?? "";
+  return PRESETS.find((x) => x.params.tau2 === p.tau2 && x.params.sigma2 === p.sigma2)?.value ?? "";
+}
+
+/**
+ * A starting design's noise on the design as set: τ² and σ² become that strategy's, and
+ * the effect, seeds, N, α and target power stay. The training steps follow the strategy
+ * (the seller trains nothing) unless they were moved off the last one's.
+ */
+function withNoise(p: PowerParams, name: PresetName | ""): PowerParams {
+  const to = PRESETS.find((x) => x.value === name)?.params ?? A7;
+  const from = PRESETS.find((x) => x.value === presetOf(p))?.params ?? A7;
+  return { ...p, tau2: to.tau2, sigma2: to.sigma2, train_steps: p.train_steps === from.train_steps ? to.train_steps : p.train_steps };
 }
 
 /** A slider over log10(value), for the variance components that span decades. */
@@ -151,7 +163,7 @@ function floorOption(t: Tokens, p: Power, unit: Unit): EChartsOption {
     ...base(t),
     legend: { show: false },
     tooltip: { ...base(t).tooltip, formatter: (x: unknown) => { const q = (x as { value: [number, number] }[])[0]; return q ? `S = ${q.value[0]}<br/>floor <b>${show(q.value[1])}</b>` : ""; } },
-    xAxis: { type: "log", logBase: 10, name: "Seeds S (log scale)", nameLocation: "middle", min: 1, max: 100, ...axis(t) },
+    xAxis: { type: "log", logBase: 10, name: "Seeds (S), log scale", nameLocation: "middle", min: 1, max: 100, ...axis(t) },
     yAxis: { type: "value", name: unit === "vol" ? "Detection floor (vol pts)" : "Detection floor ($)", nameLocation: "middle", ...axis(t), nameGap: 50 },
     grid: { ...base(t).grid, left: 70 },
     series: [
@@ -206,25 +218,78 @@ function initial(q: ReturnType<typeof useQuery>): PowerParams {
   return out;
 }
 
-/** The current design in one plain sentence, and what it would take to reach the target. */
-function reading(d: Power, unit: Unit) {
+/**
+ * The sweep's floor for the preset whose noise this is, at the sweep's own design, as a
+ * clause for the headline (`line`) and the floor tile (`tile`); null when they differ. A
+ * floor below the sweep's smallest premium was not measured but interpolated from the
+ * anchor at zero (M4's `below_grid`), and says so.
+ */
+function measuredFloor(m: M4 | undefined, p: PowerParams, unit: Unit): { line: string; tile: string } | null {
+  const a = m?.available ? m.analysis : null;
+  const noise = PRESETS.find((x) => x.params.tau2 === p.tau2 && x.params.sigma2 === p.sigma2)?.value;
+  const f = a && noise ? a.arms[noise === "seller" ? "delta_seller" : "ppo"]?.floor : undefined;
+  if (!a || !f || !a.confirmatory) return null;
+  if (p.n_seeds !== a.design.n_seeds || p.n_episodes !== a.design.n_episodes || p.alpha !== a.settings.alpha || p.target_power !== a.settings.target_power) return null;
+  const v = f.status === "not_reached" ? f.bracket[0] : f.premium;
+  if (v === null) return null;
+  const shown = unit === "vol" ? `${num(v, 2)} vol pts` : usd(v * PER_VOL);
+  if (f.status === "below_grid") {
+    const smallest = unit === "vol" ? num(f.bracket[1], 2) : usd((f.bracket[1] ?? 0) * PER_VOL);
+    return { line: `; estimated from the sweep, below its smallest premium (${smallest}), it is ${shown}`, tile: `; estimated from the sweep, below its smallest premium: ${shown}` };
+  }
+  const said = f.status === "not_reached" ? `above ${shown}` : shown;
+  return { line: `; the sweep measured ${said}`, tile: `; the sweep measured ${said}` };
+}
+
+/**
+ * The current design in one plain sentence, and what it would take to reach the target.
+ * The floor is the effect detected at the target power, the note the power at the effect
+ * set; where rounding would show the two as one number, a digit more tells them apart.
+ */
+/** The floor as the headline shows it, so the Detection floor tile reads the same number. */
+function floorShown(d: Power, unit: Unit): string {
+  const enough = d.power >= d.params.target_power;
+  const close = !enough && fmt(d.floor, unit) === fmt(d.params.delta, unit);
+  return close && unit === "vol" ? `${num(d.floor / PER_VOL, 3)} vol pts` : fmt(d.floor, unit);
+}
+
+function reading(d: Power, unit: Unit, measured: string | null) {
   const p = d.params;
-  const floor = unit === "vol" ? `${num(d.floor / PER_VOL, 2)} vol points` : `${usd(d.floor)} per episode`;
-  const effect = unit === "vol" ? `${num(p.delta / PER_VOL, 2)} vol pt${p.delta === PER_VOL ? "" : "s"}` : usd(p.delta);
-  const main = (
+  const enough = d.power >= p.target_power;
+  const money = (x: number, digits: number) => (unit === "vol" ? num(x / PER_VOL, digits) : digits ? `$${num(x, digits)}` : usd(x));
+  const close = !enough && money(d.floor, unit === "vol" ? 2 : 0) === money(p.delta, unit === "vol" ? 2 : 0);
+  const floor = unit === "vol" ? `${money(d.floor, close ? 3 : 2)} vol points` : `${money(d.floor, close ? 2 : 0)} per episode`;
+  const effect = unit === "vol" ? `${num(p.delta / PER_VOL, 2)} vol pt${p.delta === PER_VOL ? "" : "s"}` : `${usd(p.delta)} per episode`;
+  const power = !enough && pct(d.power) === pct(p.target_power) ? pct(d.power, 1) : pct(d.power, 0);
+  const pilot = PRESETS.some((x) => x.params.tau2 === p.tau2 && x.params.sigma2 === p.sigma2);
+  const floorLine = (
     <>
-      With <b>{p.n_seeds} seeds</b> of <b>{num(p.n_episodes)} episodes</b> you detect a premium of <b>{floor}</b> {pct(p.target_power)} of the time.
+      With {p.n_seeds} seeds of {num(p.n_episodes)} episodes, {pilot ? "the pilot's noise predicts" : "the noise you set predicts"} you detect a premium of {floor} or more {pct(p.target_power)} of the time{measured ?? ""}.
     </>
   );
-  const enough = d.power >= p.target_power;
-  const need =
-    d.episodes_needed === null
-      ? `no number of episodes reaches it with ${p.n_seeds} seeds: add seeds (${num(d.seeds_needed)} at this N)`
-      : `you need ${num(d.episodes_needed)} episodes per seed at S = ${p.n_seeds}, or ${num(d.seeds_needed)} seeds at N = ${num(p.n_episodes)}`;
-  const note = enough
-    ? `At the ${effect} you set, power is ${pct(d.power, 0)}. The design costs ${hours(d.design.total_hours)} of compute.`
-    : `At the ${effect} you set, power is only ${pct(d.power, 0)}; to reach ${pct(p.target_power)} ${need}.`;
-  return { main, note };
+  if (enough)
+    return {
+      main: (
+        <>
+          With <b>{p.n_seeds} seeds</b> of <b>{num(p.n_episodes)} episodes</b>, {pilot ? "the pilot's noise predicts" : "the noise you set predicts"} you detect a premium of <b>{floor}</b> or more {pct(p.target_power)} of the time{measured ?? ""}.
+        </>
+      ),
+      note: `At the ${effect} you set, power is ${power}. The design costs ${hours(d.design.total_hours)} of compute.`,
+    };
+  // the design falls short of the effect set: the headline answers what it would take
+  const more = d.episodes_needed === null ? `No number of episodes reaches it with ${p.n_seeds} seeds.` : `Or keep ${p.n_seeds} seeds and run ${num(d.episodes_needed)} episodes per seed.`;
+  return {
+    main: (
+      <>
+        To detect <b>{effect}</b> {pct(p.target_power)} of the time you need <b>{num(d.seeds_needed)} seeds</b> of <b>{num(p.n_episodes)} episodes</b> (about {hours(d.seeds_design.total_hours)} of compute); with {p.n_seeds} seeds power is {power}.
+      </>
+    ),
+    note: (
+      <>
+        {more} {floorLine}
+      </>
+    ),
+  };
 }
 
 function PowerLab() {
@@ -241,7 +306,7 @@ function PowerLab() {
   const base7 = preset ? PRESETS.find((x) => x.value === preset)?.params ?? A7 : A7;
   useQuerySync(
     { preset: preset && preset !== "a7" ? preset : null, unit, ...Object.fromEntries(KEYS.map((k) => [k, p[k] === base7[k] ? null : p[k]])) },
-    { unit: "vol" },
+    {}, // the unit stays in the link even at its default, so a shared one opens as it was read
   );
   const power = useFetch((s) => api.power(q, s), JSON.stringify(q));
   const [last, setLast] = useState<Power | undefined>();
@@ -249,9 +314,13 @@ function PowerLab() {
     if (power.data) setLast(power.data);
   }, [power.data]);
   const d = power.data ?? last;
+  const m4 = useFetch((s) => api.m4(s), "m4");
   const set = (k: keyof PowerParams) => (v: number) => setP((x) => ({ ...x, [k]: v }));
   const design = `τ² ${num(q.tau2)} · σ² ${num(q.sigma2)} · S ${q.n_seeds} · N ${num(q.n_episodes)} · α ${q.alpha} · 1 vol pt = ${usd(PER_VOL)}`;
-  const read = d ? reading(d, unit) : null;
+  const floorMeasured = d ? measuredFloor(m4.data, d.params, unit) : null;
+  const read = d ? reading(d, unit, floorMeasured?.line ?? null) : null;
+  // the floor the page computed, once it answers for the design the surface draws
+  const current = d && (["tau2", "sigma2", "n_seeds", "n_episodes", "alpha", "target_power"] as const).every((k) => d.params[k] === q[k]);
 
   return (
     <>
@@ -274,21 +343,32 @@ function PowerLab() {
         <div className={`${ui.stack} ${ui.sticky}`}>
           <Card title="Your design">
             <div className={ui.stack}>
-              <Segmented label="Preset" title="Start from" term="power.preset" guide="power-preset" value={preset} options={PRESETS.map((x) => ({ value: x.value, label: x.label }))} onChange={(v) => setP({ ...(PRESETS.find((x) => x.value === v)?.params ?? A7) })} />
+              <div>
+                <Segmented label="Preset" title="Start from" term="power.preset" guide="power-preset" value={preset} options={PRESETS.map((x) => ({ value: x.value, label: x.label }))} onChange={(v) => setP((x) => withNoise(x, v))} />
+                <p className={ui.fieldHelp} style={{ margin: "4px 0 0" }}>
+                  {preset ? `The noise of ${PRESETS.find((x) => x.value === preset)?.whose}, as the pilot measured it.` : "Noise you set: neither strategy's."}
+                </p>
+              </div>
               {unit === "vol" ? (
                 <Slider id="power-effect" label="Effect to detect" term="power.effect" value={Number((p.delta / PER_VOL).toFixed(2))} min={0.05} max={8} step={0.05} onChange={(v) => setP((x) => ({ ...x, delta: Number((v * PER_VOL).toFixed(2)) }))} show={`${(p.delta / PER_VOL).toFixed(2)} vol pts`} />
               ) : (
                 <Slider id="power-effect" label="Effect to detect" term="power.effect" value={p.delta} min={50} max={10000} step={50} onChange={set("delta")} show={usd(p.delta)} />
               )}
-              <Slider id="power-seeds" label="Seeds, S" term="seeds" value={p.n_seeds} min={2} max={100} step={1} onChange={set("n_seeds")} />
-              <Slider id="power-episodes" label="Episodes per seed, N" term="episodes" value={p.n_episodes} min={1} max={2000} step={1} onChange={set("n_episodes")} />
-              <Slider id="power-alpha" label="False-alarm rate, α" term="alpha" value={p.alpha} min={0.005} max={0.2} step={0.005} onChange={set("alpha")} show={`${p.alpha.toFixed(3)}, one-sided`} />
+              <Slider id="power-seeds" label="Seeds (S)" term="seeds" value={p.n_seeds} min={2} max={100} step={1} onChange={set("n_seeds")} />
+              <Slider id="power-episodes" label="Episodes per seed (N)" term="episodes" value={p.n_episodes} min={1} max={2000} step={1} onChange={set("n_episodes")} />
+              <Slider id="power-alpha" label="False-alarm rate (α)" term="alpha" value={p.alpha} min={0.005} max={0.2} step={0.005} onChange={set("alpha")} show={`${p.alpha.toFixed(3)}, one-sided`} />
               <Slider id="power-target" label="Target power" term="power.target" value={p.target_power} min={0.55} max={0.99} step={0.01} onChange={set("target_power")} show={pct(p.target_power)} />
               <details className={lab.subFold}>
-                <summary>Noise: τ² and σ²</summary>
+                <summary>
+                  {/* the title in a span of its own, so a click aimed at the title never lands on the icon */}
+                  <span>
+                    Noise: seed-to-seed (<span style={{ textTransform: "none" }}>τ²</span>) and episode (<span style={{ textTransform: "none" }}>σ²</span>)
+                  </span>{" "}
+                  <InfoTip term="power.noise" label="About the noise" />
+                </summary>
                 <div className={ui.stack}>
-                  <LogSlider id="power-tau2" label="Between-seed, τ²" term="tau2" value={p.tau2} min={1e2} max={1e9} unit="$²" onChange={set("tau2")} />
-                  <LogSlider id="power-sigma2" label="Within-seed, σ²" term="sigma2" value={p.sigma2} min={1e4} max={1e10} unit="$²" onChange={set("sigma2")} />
+                  <LogSlider id="power-tau2" label="Seed-to-seed noise (τ²)" term="tau2" value={p.tau2} min={1e2} max={1e9} unit="$²" onChange={set("tau2")} />
+                  <LogSlider id="power-sigma2" label="Episode noise (σ²)" term="sigma2" value={p.sigma2} min={1e4} max={1e10} unit="$²" onChange={set("sigma2")} />
                 </div>
               </details>
               <details className={lab.subFold}>
@@ -314,15 +394,17 @@ function PowerLab() {
             </Card>
           ) : null}
           <div {...guide("power-surface")}>
-            <PowerSurfaceCard params={{ ...q, delta: PER_VOL }} seeds={q.n_seeds} mark={{ premium: q.delta / PER_VOL, power: d && d.params.delta === q.delta && d.params.n_seeds === q.n_seeds ? d.power : null }} />
+            <PowerSurfaceCard params={{ ...q, delta: PER_VOL }} seeds={q.n_seeds} mark={{ premium: q.delta / PER_VOL, power: d && d.params.delta === q.delta && d.params.n_seeds === q.n_seeds ? d.power : null, floor: current && d ? d.floor / PER_VOL : null }} />
           </div>
           {d ? (
             <>
               <Facts
                 items={[
                   { label: "Power at your effect", value: pct(d.power, 1), note: `${fmt(d.params.delta, unit)} · S = ${d.params.n_seeds}, N = ${num(d.params.n_episodes)}`, term: "power" },
-                  { label: "Detection floor", value: fmt(d.floor, unit), note: `${unit === "vol" ? usd(d.floor) : `${num(d.floor / PER_VOL, 2)} vol pts`} at ${pct(d.params.target_power)} power`, term: "floor" },
-                  { label: "Episodes needed", value: d.episodes_needed === null ? "infeasible" : num(d.episodes_needed), note: d.episodes_needed === null ? "τ²/S alone exceeds the budget" : `per seed at S = ${d.params.n_seeds}; or ${num(d.seeds_needed)} seeds at this N`, term: "power.episodesNeeded" },
+                  { label: "Detection floor (predicted)", value: floorShown(d, unit), note: `${unit === "vol" ? usd(d.floor) : `${num(d.floor / PER_VOL, 2)} vol pts`}, caught ${pct(d.params.target_power)} of the time${floorMeasured?.tile ?? ""}`, term: "floor" },
+                  d.episodes_needed === null
+                    ? { label: "Seeds needed", value: num(d.seeds_needed), note: `at N = ${num(d.params.n_episodes)}, ${hours(d.seeds_design.total_hours)}; no N is enough at S = ${d.params.n_seeds}`, term: "power.seedsNeeded" }
+                    : { label: "Episodes needed", value: num(d.episodes_needed), note: `per seed at S = ${d.params.n_seeds}; or ${num(d.seeds_needed)} seeds at this N`, term: "power.episodesNeeded" },
                   { label: "Compute", value: hours(d.design.total_hours), note: `train ${hours(d.design.train_hours)} · evaluate ${hours(d.design.eval_hours)}`, term: "power.compute" },
                 ]}
               />

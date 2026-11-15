@@ -38,6 +38,14 @@ const BASE: Record<string, Entry> = {
     text: "A reinforcement-learning agent (PPO) that learns when to open which structure from the same observations. The learner under test.",
     aliases: ["PPO"],
   },
+  a2c: {
+    text: "A2C, a research arm: Stable-Baselines3's advantage actor-critic at the library defaults, learning from the same observations and actions as PPO. Not part of the pre-registered study.",
+    aliases: ["A2C"],
+  },
+  dqn: {
+    text: "DQN, a research arm: Stable-Baselines3's deep Q-network at the library defaults, a value-based learner on the same observations and actions as PPO. Not part of the pre-registered study.",
+    aliases: ["DQN"],
+  },
   oracle: { text: "The arm that is built to exploit the planted premium (the fixed-delta seller): the best case a learner is compared with." },
 
   // ---------------------------------------------------------------- worlds
@@ -56,26 +64,38 @@ const BASE: Record<string, Entry> = {
     text: "The variance risk premium in the real market: 30-day implied vol minus the vol realised over the next 21 trading days. Positive means options were dear.",
     aliases: ["VRP30", "Real SPX premium", "Mean premium", "real premium", "Mean VRP30"],
   },
-  vol_points: { text: "Vol points: percentage points of annualised volatility. 20% to 21% implied vol is 1 vol point.", aliases: ["vol pts", "vol pt", "vol points"] },
+  vol_points: { text: "Vol points: percentage points of annualised volatility, the unit option prices are quoted in. 20% to 21% implied vol is 1 vol point.", aliases: ["vol pts", "vol pt", "vol points", "vol point"] },
   null_world: { text: "A world with nothing planted (premium 0): any profit there is luck, and a seller just pays its costs.", aliases: ["Null world", "fair world", "fair-priced world"] },
 
   // ---------------------------------------------------------------- design
   seeds: {
-    text: "S, seeds: independent repetitions of the whole experiment (a new market path set, and for PPO a new training run). The between-seed spread is what most limits detection.",
-    aliases: ["S", "Seeds S", "S, seeds", "Distinct seeds", "Seed blocks", "blocks", "Block"],
+    text: "Seeds (S): independent repetitions of the whole experiment (a new market path set, and for PPO a new training run). The between-seed spread is what most limits detection.",
+    aliases: ["S", "Seeds S", "S, seeds", "Seeds (S)", "Distinct seeds", "Seed blocks", "blocks", "Block"],
   },
-  episodes: { text: "N, episodes: 63-trading-day trading windows simulated per seed. More episodes average away day-to-day noise, but not seed-to-seed noise.", aliases: ["N", "Episodes", "N, episodes per seed"] },
-  tau2: { text: "τ², between-seed variance: how much the average result moves from one seed to the next. It does not shrink with more episodes.", aliases: ["τ²", "tau²", "τ², between-seed variance"] },
-  sigma2: { text: "σ², within-seed variance: how much single episodes scatter around their seed's average. It shrinks as N grows.", aliases: ["σ²", "σ², within-seed variance"] },
-  alpha: { text: "α: the false-alarm rate allowed, one-sided. At 0.05 a world with no premium is called 'detected' 1 time in 20.", aliases: ["α", "α, one-sided"] },
+  seed_block: {
+    text: "Seed block: one seed's share of the grid, every arm at every premium on the same market paths. An arm is compared with itself within a block, so path luck cancels; the S blocks are the S repetitions the test counts.",
+    aliases: ["Seed block"],
+  },
+  episodes: { text: "Episodes per seed (N): 63-trading-day trading windows simulated per seed. More episodes average away day-to-day noise, but not seed-to-seed noise.", aliases: ["N", "Episodes", "N, episodes per seed", "Episodes per seed (N)"] },
+  tau2: { text: "Seed-to-seed noise (τ², the between-seed variance): how much the average result moves from one seed to the next. It does not shrink with more episodes.", aliases: ["τ²", "tau²", "τ², between-seed variance", "Seed-to-seed noise (τ²)"] },
+  sigma2: { text: "Episode noise (σ², the within-seed variance): how much single episodes scatter around their seed's average. It shrinks as N grows.", aliases: ["σ²", "σ², within-seed variance", "Episode noise (σ²)"] },
+  alpha: { text: "False-alarm rate (α): how often a test may call an effect 'detected' when there is none, one-sided. At 0.05 a world with no premium is called 'detected' 1 time in 20.", aliases: ["α", "α, one-sided", "False-alarm rate (α)"] },
   config_hash: { text: "A fingerprint of every knob a run used. Two runs with the same hash and seed must give the same numbers.", aliases: ["Config hash", "Distinct configs"] },
   commit: { text: "The git commit of the code that produced the run.", aliases: ["Commit", "Git SHA"] },
+  dirty: {
+    text: "Dirty: the code had changes not yet committed when the run was made, so the commit alone does not pin the code that made it.",
+    aliases: ["+dirty", "working tree dirty", "dirty tree"],
+  },
+  provenance: {
+    text: "Provenance: where the run came from: its manifest (the run id, when it was made, the commit and the config hash), every saved file's digest recomputed now, the full config and the library versions.",
+    aliases: ["Provenance"],
+  },
   sweep: { text: "The pre-registered grid: every arm at every planted premium, repeated over S seed blocks.", aliases: ["Sweep", "grid", "Cells"] },
 
   // ---------------------------------------------------------------- metrics
   mean_pnl: { text: "Mean P&L: the average profit per 63-day episode, in dollars, after costs.", aliases: ["Mean P&L", "Mean P&L / episode", "mean P&L per episode", "P&L"] },
   se: { text: "se, standard error: how far the mean could be off from the true value by chance alone. Roughly, a mean within 2 se of zero is not distinguishable from zero.", aliases: ["SE", "standard error", "SE of the grand mean"] },
-  t: { text: "t: the estimate divided by its standard error. Above about 2 (one-sided, many episodes) the result is unlikely to be luck.", aliases: ["t", "t stat", "Paired t", "t-stat"] },
+  t: { text: "t: the estimate divided by its standard error, so how many standard errors it sits from zero. Near 0 is noise; above about 2 (one-sided, many episodes) the result is unlikely to be luck.", aliases: ["t", "t stat", "Paired t", "t-stat"] },
   cvar: { text: "CVaR 5%: the average of the worst 5% of episodes. What a bad quarter costs, not just how often one happens.", aliases: ["CVaR 5%", "CVaR"] },
   sortino: { text: "Sortino ratio: mean P&L divided by the spread of losing episodes only. Higher is better; it ignores upside volatility.", aliases: ["Sortino"] },
   drawdown: { text: "Max drawdown: the largest fall from a running peak of cumulative P&L to a later trough.", aliases: ["Drawdown", "Max drawdown", "Drawdown, seed order", "Worst drawdown"] },
@@ -92,7 +112,7 @@ const BASE: Record<string, Entry> = {
     aliases: ["Power", "Power at the effect", "Detection probability", "Target power"],
   },
   floor: {
-    text: "Detection floor: the smallest planted premium the design detects with 80% power. Anything smaller usually looks like noise.",
+    text: "Detection floor: the smallest planted premium the design detects with 80% power, that is 4 times in 5. Anything smaller usually looks like noise.",
     aliases: ["Detection floor", "Floor", "minimum detectable effect", "Detector floor"],
   },
   edge: {
@@ -106,9 +126,9 @@ const BASE: Record<string, Entry> = {
     aliases: ["Residual", "residual share"],
   },
   delta_pnl: { text: "Delta P&L: profit from the underlying's move, through the book's delta.", aliases: ["Delta"] },
-  gamma_pnl: { text: "Gamma P&L: the convexity term; a short-option book loses on big moves.", aliases: ["Gamma"] },
+  gamma_pnl: { text: "Gamma: how fast an option's delta changes as the price moves. A seller of options is short gamma, so a big move either way costs it; gamma P&L is that cost.", aliases: ["Gamma"] },
   vega_pnl: { text: "Vega P&L: profit from implied vol changing, through the book's vega.", aliases: ["Vega"] },
-  theta_pnl: { text: "Theta P&L: time decay; a short-option book collects it day by day.", aliases: ["Theta"] },
+  theta_pnl: { text: "Theta: the value an option loses each day as its expiry nears. A seller of options collects it day by day; theta P&L is that income.", aliases: ["Theta"] },
   carry: { text: "Carry: interest on cash. Always 0 here, because the book never books it.", aliases: ["Carry"] },
   held_share: { text: "Held: the share of trading days the arm had a structure open.", aliases: ["Held", "held share"] },
   opens: { text: "Opens per episode: how often the arm opened a new structure; refused opens were blocked by margin or rules.", aliases: ["Opens per episode", "refused opens"] },
@@ -126,6 +146,9 @@ const BASE: Record<string, Entry> = {
   // ---------------------------------------------------------------- knobs
   sigma: { text: "Market vol σ: the volatility the simulated SPX actually realises (0.2 = 20%).", aliases: ["sigma", "market vol"] },
   r: { text: "Rate r: the risk-free interest rate used to price the options.", aliases: ["rate"] },
+  alpha_bps: { text: "Drift, a research knob: basis points the simulated index gains each trading day on average (25 is 0.25% a day). Zero is the study's driftless world; above it a long position has an edge to find.", aliases: ["drift", "drift (bps per day)"] },
+  vol_of_vol: { text: "Vol of vol, a research knob: how much the path's own volatility wanders day to day, annualised. Zero keeps it at σ; options are priced at each day's vol.", aliases: ["vol of vol"] },
+  skew_slope: { text: "Skew slope, a research knob: implied vol added per unit of ln(spot / strike), so lower strikes cost more when it is positive, as SPX's do. Zero is a flat smile.", aliases: ["skew slope"] },
   n_days: { text: "Days per path: trading days simulated in each market path (63 is one quarter).", aliases: ["days per path"] },
   tenor_days: { text: "Tenors: the expiries listed, in trading days.", aliases: ["tenors"] },
   short_delta: { text: "Short delta: the delta of the options sold (0.16 is about one standard deviation out). Smaller is further out: less credit, rarer losses.", aliases: ["short delta"] },
@@ -137,8 +160,8 @@ const BASE: Record<string, Entry> = {
   half_spread_frac: { text: "Half-spread fraction: the spread paid as a share of the option's price, when above the minimum.", aliases: ["half spread frac"] },
   commission_per_contract: { text: "Commission: dollars per contract traded.", aliases: ["commission per contract", "commission"] },
   initial_cash: { text: "Initial cash: the account's starting balance.", aliases: ["initial cash"] },
-  seed: { text: "Seed: the first market path's random seed; the same seed gives the same paths.", aliases: ["Seed", "Episode seed"] },
-  total_timesteps: { text: "Training budget: how many market steps PPO learns from before it is evaluated. The sweep trains 1,000,000.", aliases: ["total timesteps", "PPO steps per seed", "training budget", "training steps"] },
+  seed: { text: "Seed: the number that fixes the random draws of a market path. The same seed gives the same path, so two runs on one seed saw the same market.", aliases: ["Seed", "Episode seed"] },
+  total_timesteps: { text: "Training budget: how many market steps a learned arm (PPO, A2C, DQN) learns from before it is evaluated. The sweep trains PPO 1,000,000.", aliases: ["total timesteps", "PPO steps per seed", "training budget", "training steps"] },
   n_strikes_each_side: { text: "Strikes each side: how many strikes are listed above and below spot.", aliases: ["strikes each side"] },
   strike_step: { text: "Strike step: the distance between listed strikes, in index points.", aliases: ["strike step"] },
 };
@@ -181,8 +204,45 @@ export function define(term: string | undefined | null, dict?: Glossary): string
   return index.get(norm(term));
 }
 
+/**
+ * A term in words, for an info button's accessible name: the label the site shows for it
+ * (the words its line opens with, "Detection floor: …"), else its first alias, else
+ * its key's last part spelled out ("power.trainRate" is "train rate"); never the key.
+ */
+export function labelOf(term: string): string {
+  const head = define(term)?.match(/^([^:.]{4,40}):/)?.[1];
+  if (head && head.split(" ").length <= 6) return head;
+  const alias = BASE[term]?.aliases?.find((a) => a.length >= 4);
+  if (alias) return alias;
+  const last = term.split(".").pop() ?? term;
+  return last
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replaceAll("_", " ")
+    .toLowerCase();
+}
+
+// the words a computed sentence uses that a newcomer will not know, and the term each means
+const JARGON: [RegExp, string][] = [
+  [/\bt = /, "t"],
+  [/\bvol (pts?|points?)\b/i, "vol_points"],
+  [/\bseed \d/i, "seed"],
+  [/\bseeds\b|\bS = \d/, "seeds"],
+  [/\bdetection floor\b|\bfloor\b/i, "floor"],
+  [/\btheta\b/i, "theta_pnl"],
+  [/\bgamma\b/i, "gamma_pnl"],
+];
+
+/** The glossary's lines for the jargon `text` uses, in a fixed order, each once. */
+export function termsIn(text: string | null | undefined): string[] {
+  if (!text) return [];
+  return JARGON.filter(([re]) => re.test(text)).flatMap(([, k]) => define(k) ?? []);
+}
+
 /** Every arm's line, in the order the site lists them. */
-export const ARM_ORDER = ["flat", "always_on", "random", "delta_seller", "ppo"] as const;
+export const ARM_ORDER = ["flat", "always_on", "random", "delta_seller", "ppo", "a2c", "dqn"] as const;
+
+/** The arms that train before they are scored; the rest are fixed rules. */
+export const LEARNED_ARMS: ReadonlySet<string> = new Set(["ppo", "a2c", "dqn"]);
 
 // ---------------------------------------------------------------- the pages' own terms
 // Each page's terms live beside it and merge here once, so every tooltip on the site reads

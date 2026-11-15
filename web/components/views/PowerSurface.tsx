@@ -51,7 +51,7 @@ function surfaceOption(t: Tokens, d: Surface, mark: { premium: number; seeds: nu
       t,
       { name: "Premium (vol pts)", min: 0, max: top },
       {
-        name: "Seeds S",
+        name: "Seeds (S)",
         min: ls(d.seeds[0] ?? 2),
         max: ls(d.seeds[d.seeds.length - 1] ?? 100),
         formatter: (v: number) => {
@@ -76,9 +76,9 @@ function surfaceOption(t: Tokens, d: Surface, mark: { premium: number; seeds: nu
 
 /**
  * The Power lab's main view. `mark` is the page's own design: the effect it set (in
- * vol points) at its S, with the exact power the page computed for it.
+ * vol points) at its S, with the exact power and floor the page computed for it.
  */
-export function PowerSurfaceCard({ params, seeds, mark }: { params: PowerParams; seeds: number; mark: { premium: number; power: number | null } }) {
+export function PowerSurfaceCard({ params, seeds, mark }: { params: PowerParams; seeds: number; mark: { premium: number; power: number | null; floor?: number | null } }) {
   const t = useTokens();
   const [maxPremium, setMaxPremium] = useState<MaxPremium>("4");
   const [maxSeeds, setMaxSeeds] = useState<MaxSeeds>("50");
@@ -129,14 +129,15 @@ export function PowerSurfaceCard({ params, seeds, mark }: { params: PowerParams;
     if (h.seriesId === "design" && built.mark.power !== null) return `your design: ${seeds} seeds of ${d.params.n_episodes} episodes, ${built.mark.premium.toFixed(2)} vol pts · power ${pct(built.mark.power, 1)}`;
     return null;
   };
-  const s5 = d ? d.seeds.indexOf(5) : -1;
-  const floor5 = d && s5 >= 0 ? d.contour_premium[s5] : null;
+  // the caption reads the floor at the design's S: the page's own, else the contour's row for it
+  const row = d ? d.seeds.indexOf(seeds) : -1;
+  const floorS = mark.floor ?? (d && row >= 0 ? d.contour_premium[row] : null);
   const outside = d && built && mark.power !== null && built.mark.power === null;
 
   return (
     <Card
       title="Power surface" info="power.surface"
-      sub={`Premium × seeds at N = ${params.n_episodes}. Orange line: ${pct(params.target_power)} power${floor5 !== null && floor5 !== undefined ? ` (${floor5.toFixed(2)} vol pts at S = 5)` : ""}. Dot: your design${outside ? ", outside these axes" : ""}.`}
+      sub={`Premium × seeds at N = ${params.n_episodes}. Orange line: ${pct(params.target_power)} power${floorS !== null && floorS !== undefined ? ` (${floorS.toFixed(2)} vol pts at S = ${seeds})` : ""}. Dot: your design${outside ? ", outside these axes" : ""}.`}
       right={
         <>
           <Segmented label="Premium axis, vol pts" value={maxPremium} options={MAX_PREMIUM} onChange={setMaxPremium} />

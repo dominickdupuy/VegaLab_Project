@@ -7,7 +7,8 @@
  */
 
 export const POWER_TIPS = {
-  preset: "Start from a measured design: the PPO contrast or the fixed-delta seller's, both with the variance the pilot measured.",
+  preset: "Start from a measured design: the PPO learner's contrast or the fixed-delta seller's, with the noise (τ² and σ²) the pilot (8 seeds of 200 episodes) measured for that strategy, as amendment A7 of the pre-registration records it. It stays chosen while the noise is that strategy's, whatever the effect and seeds. Choosing one changes only the noise (and the training steps: the seller trains none); the effect, seeds, episodes, false-alarm rate and target power stay as you set them.",
+  noise: "The two kinds of noise every number here comes from: seed-to-seed noise (τ²), how much a seed's average moves from one seed to the next, and episode noise (σ²), how much single episodes scatter. More episodes shrink only σ²'s part; only more seeds shrink τ²'s.",
   unit: "Show effects in vol points of planted premium, or in dollars of mean P&L per episode (1 vol pt = $824.3, the seller's contrast at one vol point).",
   reset: "Back to the confirmatory design: the PPO contrast, 5 seeds of 500 episodes, alpha 0.05, 80% power.",
   effect: "The premium you want to be able to see: the size of the edge, in vol points of planted premium (or dollars per episode).",
@@ -23,19 +24,22 @@ export const POWER_TIPS = {
   floorCurve: "The smallest effect detected at the target power, against the number of seeds, at your N. Lower is better.",
   frontier: "For each seed count, the fewest episodes per seed that reach the target power at your effect, and what that costs in compute.",
   episodesNeeded: "Episodes per seed needed to reach the target power at your effect with this many seeds. Infeasible when seed-to-seed noise alone is too large.",
+  seedsNeeded: "Seeds needed to reach the target power at your effect with this many episodes per seed, when no number of episodes is enough at your seeds; with what that design costs in compute.",
   compute: "Core-hours to train and evaluate every seed of this design at the measured rates.",
 } as const;
 
 export const SWEEP_TIPS = {
-  view: "Means: each arm's P&L at each premium. Contrasts: each arm against itself at zero premium, seed block by block. Power: how often each arm's edge is detected, from the analysis.",
+  view: "Means: each arm's P&L at each premium. Contrasts: each arm against itself at zero premium, seed block by block. Power: how often each arm's edge is detected, measured from the sweep (the Power lab predicts it for a design you set).",
   arm: "Show one arm or all of them.",
   sweep: "Which grid to read. The confirmatory grid is the pre-registered one; the pilot measured the variance it was sized on.",
   sweepPower: "The power analysis reads the confirmatory grid only.",
+  rate: "The interest rate the grid's options were priced at. The confirmatory study ran at 4% on a market path with no drift, which puts a small loss into some structures by construction (about $406 a put credit spread, $95 an iron condor); each arm against itself at zero premium mostly cancels it, and re-scored in the fair market (rate 0) no verdict changes (amendment A11). Runs launched now default to rate 0, so their numbers differ slightly from the study's.",
   means: "Mean P&L per episode at each planted premium, the grand mean over seed blocks, with ± one standard error.",
   contrasts: "Each dot is one seed block's P&L at premium p minus the same block at premium 0; the line joins their means. Spread between dots is the between-seed noise.",
   event: "The pre-registered test: one-sided t on the block contrasts. Detected when the lower bound is above zero.",
   cells: "One row per run of the grid: arm, premium and seed block, with its mean P&L, cost and trades.",
   powerCurve: "Detection probability against planted premium, measured from the grid; the band is its exact interval. The shaded region is where the real SPX premium lies.",
+  medianUnbiased: "Median-unbiased: the line is as likely to sit above the true power as below it. From 5 seeds it can still be far off either way; the band shows how far.",
   realPremium: "Each arm's power read off its curve at the real SPX premium and at both ends of its interval.",
   decisions: "The test at each premium, per arm: estimate, standard error, t, the lower bound and the verdict.",
   homogeneity: "Whether between-seed noise is the same at every premium (Brown-Forsythe). The power curve assumes it is.",

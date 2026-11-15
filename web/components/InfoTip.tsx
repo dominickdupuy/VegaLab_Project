@@ -1,9 +1,24 @@
 "use client";
 
-import { type ReactNode, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { isValidElement, type ReactNode, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { define, type Glossary } from "@/lib/glossary";
+import { define, type Glossary, labelOf } from "@/lib/glossary";
 import ui from "./ui.module.css";
+
+/** The text a node shows, for an accessible name: "Seeds (S)" from <label>Seeds (S)</label>. */
+export function textOf(node: ReactNode): string {
+  if (node === null || node === undefined || typeof node === "boolean") return "";
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(textOf).join("").replace(/\s+/g, " ").trim();
+  if (isValidElement<{ children?: ReactNode }>(node)) return textOf(node.props.children);
+  return "";
+}
+
+/** "About <what>": what a button sits beside, else the term in words, never its key. */
+export function aboutName(beside: ReactNode, term: string | undefined): string {
+  const what = textOf(beside).trim() || (term ? labelOf(term) : "");
+  return what ? `About ${what}` : "More about this";
+}
 
 /**
  * A small tooltip: what a term means, or where a number came from.
@@ -92,7 +107,7 @@ export function InfoTip({
   }, [open, place]);
 
   if (!body) return children ? <>{children}</> : null;
-  const name = label ?? (term ? `About ${typeof children === "string" ? children : term.replaceAll("_", " ")}` : "More about this");
+  const name = label ?? aboutName(children, term);
 
   return (
     <>
@@ -157,7 +172,7 @@ export function Labelled({ children, term, dict }: { children: ReactNode; term?:
   return (
     <span className={ui.labelled}>
       {children}
-      {key && define(key, dict) ? <InfoTip term={key} dict={dict} label={`About ${typeof children === "string" ? children : key}`} /> : null}
+      {key && define(key, dict) ? <InfoTip term={key} dict={dict} label={aboutName(children, key)} /> : null}
     </span>
   );
 }

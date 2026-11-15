@@ -78,6 +78,7 @@ class PowerOut(Out):
     floor: float  # smallest effect detected at the target power with this design
     episodes_needed: int | None
     seeds_needed: int
+    seeds_design: DesignOut  # seeds_needed seeds at this N, and what that design costs
     curve: CurveOut
     floor_vs_seeds: FloorOut
     frontier: list[DesignOut]
@@ -145,6 +146,16 @@ def power_lab(p: PowerParams) -> PowerOut:
         cores=p.cores,
     )
     power_now = pw.power_t(p.delta, p.tau2, p.sigma2, p.n_seeds, p.n_episodes, p.alpha)
+    n_seeds = pw.seeds_for(p.delta, p.tau2, p.sigma2, p.n_episodes, p.alpha, p.target_power)
+    enough = pw.budget(
+        n_seeds,
+        p.n_episodes,
+        train_steps_per_seed=p.train_steps,
+        episode_days=p.episode_days,
+        train_rate=p.train_rate,
+        eval_rate=p.eval_rate,
+        cores=p.cores,
+    )
     return PowerOut(
         params=p,
         se=math.sqrt(var),
@@ -155,7 +166,15 @@ def power_lab(p: PowerParams) -> PowerOut:
         episodes_needed=pw.episodes_for(
             p.delta, p.tau2, p.sigma2, p.n_seeds, p.alpha, p.target_power
         ),
-        seeds_needed=pw.seeds_for(p.delta, p.tau2, p.sigma2, p.n_episodes, p.alpha, p.target_power),
+        seeds_needed=n_seeds,
+        seeds_design=DesignOut(
+            n_seeds=n_seeds,
+            n_episodes=p.n_episodes,
+            power=pw.power_t(p.delta, p.tau2, p.sigma2, n_seeds, p.n_episodes, p.alpha),
+            train_hours=enough.train_hours,
+            eval_hours=enough.eval_hours,
+            total_hours=enough.total_hours,
+        ),
         curve=CurveOut(
             delta=[float(d) for d in grid],
             power=curve(p.n_seeds),

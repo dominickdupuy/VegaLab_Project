@@ -5,7 +5,7 @@ import { Card, Chip, Verdict } from "@/components/Bits";
 import { Chart } from "@/components/Chart";
 import { FigureFoot } from "@/components/Export";
 import lab from "@/components/lab.module.css";
-import { Labelled } from "@/components/InfoTip";
+import { InfoTip, Labelled } from "@/components/InfoTip";
 import { ArmPhrase, armPhrase, Facts, Fold, Reading } from "@/components/PageBits";
 import { ErrorBox, Loading, Pending } from "@/components/States";
 import ui from "@/components/ui.module.css";
@@ -19,8 +19,11 @@ const vp = (x: number | null | undefined, d = 2) => (x === null || x === undefin
 function floorText(a: M4Arm): string {
   const f = a.floor;
   if (f.status === "not_reached") return `above ${vp(f.bracket[0])} (max power ${pct(f.max_power, 0)})`;
-  return `${vp(f.premium)} vol pts${f.status === "below_grid" ? " (below the grid)" : ""}`;
+  return `${vp(f.premium)} vol pts`;
 }
+
+/** A floor under the grid's smallest premium was not measured: it is interpolated from the anchor at zero. */
+const belowGrid = (f: M4Arm["floor"]) => (f.status === "below_grid" ? `estimated from the sweep, below its smallest premium of ${vp(f.bracket[1])}` : "");
 
 type BandPoint = { premium: number; power_lo: number | null; power_hi: number | null };
 
@@ -110,13 +113,20 @@ function floorShort(a: M4Arm): string {
 function m4Reading(m: M4) {
   const a = m.analysis as M4Analysis;
   const name = armPhrase;
+  // each floor with its band, read off the curve's band: five seeds leave it wide
+  const band = (f: M4Arm["floor"]) => {
+    const parts = [belowGrid(f), f.premium !== null && f.lo !== null ? `${pct(a.settings.curve_level)} band ${vp(f.lo)} to ${f.hi === null ? "above the grid" : vp(f.hi)}` : ""].filter(Boolean);
+    return parts.length ? ` (${parts.join("; ")})` : "";
+  };
   const floors = a.arm_order.flatMap((arm) => {
     const x = a.arms[arm];
-    return x ? [`${name(arm)} from ${floorShort(x)}`] : [];
+    return x ? [`${floorShort(x)} for ${name(arm)}${band(x.floor)}`] : [];
   });
+  const listed = floors.length > 1 ? `${floors.slice(0, -1).join(", ")} and ${floors[floors.length - 1]}` : (floors[0] ?? "–");
+  const below = a.arm_order.some((arm) => a.arms[arm]?.floor.status === "below_grid");
   const main = (
     <>
-      With {a.design.n_seeds} seeds of {num(a.design.n_episodes)} episodes, the edge is detected {pct(a.settings.target_power)} of the time: {floors.join(", ")}.
+      {below ? "Read" : "Measured"} from the sweep&apos;s {a.design.n_seeds} seeds of {num(a.design.n_episodes)} episodes, the smallest premium caught {pct(a.settings.target_power)} of the time (the detection floor) is {listed}.
     </>
   );
   const real = m.vrp && m.mapped.length ? `At the real SPX premium, ${vp(m.vrp.estimate)} vol pts, power is ${m.mapped.map((r) => `${pct(r.power, 0)} for ${name(r.arm)}`).join(" and ")}.` : "";
@@ -146,6 +156,11 @@ export function M4View() {
   const stamp = `grid ${prov.grid_hash} · analysis git ${short(prov.analysis_git_sha, 10)}${prov.analysis_git_dirty ? "+dirty" : ""} · sweep git ${prov.sweep_git_shas.map((x) => short(x, 10)).join(", ")} · ${a.report_date} · synthetic`;
   const gap = a.gap;
   const read = m4Reading(m);
+  // arms whose measured curve falls somewhere as the premium rises
+  const dips = a.arm_order.filter((arm) => {
+    const ys = (a.arms[arm]?.curve.points ?? []).filter((p) => p.measured && p.power !== null).map((p) => p.power ?? 0);
+    return ys.some((y, i) => i > 0 && y < (ys[i - 1] ?? 0));
+  }).map((arm) => `${armPhrase(arm)}'s`);
   return (
     <>
       {!a.confirmatory ? (
@@ -169,7 +184,8 @@ export function M4View() {
             json={() => a}
           />
           <p className={ui.dim} style={{ fontSize: 12.5 }}>
-            Line: median-unbiased estimate; band: its exact {pct(a.settings.curve_level)} interval; dots: the premiums the grid ran. Shaded: the real premium&apos;s 95% interval.
+            Line: <InfoTip term="sweep.medianUnbiased">median-unbiased</InfoTip> estimate; band: its exact {pct(a.settings.curve_level)} interval; dots: the premiums the grid ran. Shaded: the real premium&apos;s 95% interval.
+            {dips.length ? ` At S = ${a.design.n_seeds} a curve estimated from the sweep dips by sampling noise, as ${dips.join(" and ")} does; it is shown as measured, not smoothed (pre-registration A9).` : ""}
           </p>
         </div>
       </Card>
@@ -178,7 +194,7 @@ export function M4View() {
           items={[
             ...a.arm_order.flatMap((arm) => {
               const x = a.arms[arm];
-              return x ? [{ label: `Floor · ${ARM_LABEL[arm] ?? arm}`, value: floorText(x), note: `band ${vp(x.floor.lo)} to ${x.floor.hi === null ? "above the grid" : vp(x.floor.hi)} · between ${vp(x.floor.bracket[0])} and ${vp(x.floor.bracket[1])}`, term: "floor" }] : [];
+              return x ? [{ label: `Floor · ${ARM_LABEL[arm] ?? arm}`, value: floorText(x), note: `${belowGrid(x.floor) ? `${belowGrid(x.floor)} · ` : ""}band ${vp(x.floor.lo)} to ${x.floor.hi === null ? "above the grid" : vp(x.floor.hi)} · between ${vp(x.floor.bracket[0])} and ${vp(x.floor.bracket[1])}`, term: "floor" }] : [];
             }),
             { label: "Gap, PPO − seller", value: gap && gap.value !== null ? `${gap.kind === "lower_bound" ? "≥ " : ""}${vp(gap.value)} vol pts` : "–", note: gap ? `${gap.kind.replace("_", " ")}${gap.band_range[0] !== null || gap.band_range[1] !== null ? ` · range ${vp(gap.band_range[0])} to ${gap.band_range[1] === null ? "above the grid" : vp(gap.band_range[1])}` : ""}` : "needs both arms", term: "gap" },
             { label: "Design", value: `S = ${a.design.n_seeds} × N = ${num(a.design.n_episodes)}`, note: `${prov.cells_used} of ${prov.cells_total} cells · ${a.confirmatory ? "confirmatory" : "exploratory"}` },
@@ -300,7 +316,7 @@ export function M4View() {
             </table>
           </div>
           <p className={ui.dim} style={{ fontSize: 12.5, marginTop: 8 }}>
-            Brown-Forsythe W on seed means. Not rejected is weak evidence of equal τ², not proof.
+            Brown-Forsythe W on seed means. Not rejected is weak evidence of equal <InfoTip term="tau2">τ²</InfoTip>, not proof.
           </p>
         </div>
         <p className={lab.section}>

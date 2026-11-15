@@ -215,7 +215,7 @@ function ExitBar({ m }: { m: MixSummary }) {
         {rows.map(([k, n]) => (
           <span key={k}>
             <span className={ui.swatch} style={{ background: colors[k] ?? t.s5, display: "inline-block", marginRight: 4 }} aria-hidden="true" />
-            {EXIT_LABEL[k] ?? k} {pct(n / total, 0)} <InfoTip term={`exit.${k}`} />
+            {EXIT_LABEL[k] ?? k} {pct(n / total, 0)} <InfoTip term={`exit.${k}`} label={`About ${EXIT_LABEL[k] ?? k}`} />
           </span>
         ))}
       </div>
