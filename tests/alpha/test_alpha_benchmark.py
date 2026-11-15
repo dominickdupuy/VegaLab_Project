@@ -31,7 +31,7 @@ def small_fresh(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(bm, "FRESH_N", 16)
 
 
-def test_paired_unpaired_and_ratio() -> None:
+def test_one_seed_is_the_path_se_alone() -> None:
     a = np.array([3.0, 5.0, 7.0, 9.0])
     b = np.array([1.0, 2.0, 3.0, 4.0])
     value, se = bm.paired(a, b)
@@ -40,8 +40,24 @@ def test_paired_unpaired_and_ratio() -> None:
     value, se = bm.unpaired(a, b)
     assert value == pytest.approx(a.mean() - b.mean())
     assert se == pytest.approx(np.hypot(a.std(ddof=1) / 2, b.std(ddof=1) / 2))
-    r, rse = bm.ratio(np.full(50, 2.0), np.full(50, 4.0))
-    assert r == pytest.approx(0.5) and rse == pytest.approx(0.0, abs=1e-12)
+
+
+def test_several_seeds_add_the_seed_spread() -> None:
+    # two seeds on the same four paths: path noise of the seed average, plus the seed spread
+    m = np.array([[1.0, 2.0, 3.0, 4.0], [3.0, 4.0, 5.0, 6.0]])
+    value, se = bm.level(m)
+    seed_var = np.var([2.5, 4.5], ddof=1) / 2
+    path_var = np.var([2.0, 3.0, 4.0, 5.0], ddof=1) / 4
+    assert value == pytest.approx(3.5) and se == pytest.approx(np.sqrt(seed_var + path_var))
+    # identical seeds: nothing but the path noise
+    assert bm.level(np.array([m[0], m[0]]))[1] == pytest.approx(bm.level(m[0])[1])
+
+
+def test_ratio_by_the_delta_method() -> None:
+    r, se = bm.ratio((2.0, 0.0), (4.0, 0.0))
+    assert r == pytest.approx(0.5) and se == pytest.approx(0.0)
+    r, se = bm.ratio((2.0, 1.0), (4.0, 2.0))
+    assert se == pytest.approx(np.sqrt(1.0 + 0.25 * 4.0) / 4.0)
 
 
 def test_timing_seller_sells_only_when_rich() -> None:
@@ -85,6 +101,7 @@ def test_ppo_benchmark_on_a_rich_world(tmp_path: Path) -> None:
     assert b.attainable.value is not None and b.attainable.value > 0
     assert b.noise_fit is not None and b.capture_ratio.verdict
     assert any("oracle" in line for line in lines)
+    assert b.n_seeds == 1 and len(b.seeds) == 1 and b.n_train == 4
     path = bm.bench_path(tmp_path, ds.hash, "ppo", 4096)
     assert path.is_file()
     assert bm.load_benchmark(path) == b
@@ -119,6 +136,48 @@ def test_scripted_arm_rejects_a_budget_and_ppo_needs_one(tmp_path: Path) -> None
         bm.run_benchmark(ds, "flat", 100, tmp_path)
     with pytest.raises(ValueError, match="budget"):
         bm.run_benchmark(ds, "ppo", None, tmp_path, trainer=fake)
+    with pytest.raises(ValueError, match="n_seeds"):
+        bm.run_benchmark(ds, "flat", None, tmp_path, n_seeds=2)
+    with pytest.raises(ValueError, match="n_seeds"):
+        bm.run_benchmark(ds, "ppo", 4096, tmp_path, trainer=fake, n_seeds=bm.MAX_SEEDS + 1)
+
+
+def test_each_seed_trains_its_own_learner_and_noise_control(tmp_path: Path) -> None:
+    ds = build_dataset(SynthSpec(generator=ConstVrpParams(premium_pts=6.0), **SMALL), tmp_path)
+    calls: list[tuple[int, str]] = []
+
+    def counting(config: RunConfig, provider: ChainProvider) -> FakeLearned:
+        assert config.train is not None and isinstance(provider, DatasetChainProvider)
+        calls.append((config.train.seed, provider.world))
+        return FakeLearned(config.train.seed)
+
+    lines: list[str] = []
+    b = bm.run_benchmark(ds, "ppo", 4096, tmp_path, trainer=counting, log=lines.append, n_seeds=3)
+    assert sorted(calls) == [(s, w) for s in range(3) for w in ("signal", "twin")]
+    assert len(lines) == bm.stages("ppo", 3)
+    assert [r.seed for r in b.seeds] == [0, 1, 2] and b.n_seeds == 3
+    # the fake learner's structure depends on the seed, so the seeds disagree
+    assert len({round(r.captured, 6) for r in b.seeds}) > 1
+    assert b.captured.value == pytest.approx(np.mean([r.captured for r in b.seeds]))
+    one = bm.run_benchmark(ds, "ppo", 4096, tmp_path, trainer=fake, n_seeds=1)
+    assert bm.bench_path(tmp_path, ds.hash, "ppo", 4096, 3) != bm.bench_path(
+        tmp_path, ds.hash, "ppo", 4096, 1
+    )
+    assert one.n_seeds == 1
+
+
+def test_the_oracle_is_chosen_once_per_generator(tmp_path: Path) -> None:
+    spec = SynthSpec(generator=ConstVrpParams(premium_pts=6.0), **SMALL)
+    first: list[str] = []
+    bm.run_benchmark(build_dataset(spec, tmp_path), "flat", None, tmp_path, log=first.append)
+    bigger = build_dataset(spec.model_copy(update={"n_train": 8}), tmp_path)
+    second: list[str] = []
+    b = bm.run_benchmark(bigger, "flat", None, tmp_path, log=second.append)
+    assert not any("reused" in line for line in first)
+    assert any("reused" in line for line in second)
+    assert len(second) == bm.stages("flat", 1) and b.oracle != "flat"
+    assert bm.oracle_key(spec) == bm.oracle_key(bigger.spec)
+    assert bm.oracle_key(spec) != bm.oracle_key(spec.model_copy(update={"seed": 4}))
 
 
 @pytest.mark.parametrize("arm", ["ppo", "a2c", "dqn"])
@@ -135,6 +194,6 @@ def test_each_real_learner_trains_on_the_frozen_paths_only(arm: LearnedArm, tmp_
         return chain
 
     provider.reset = spy  # type: ignore[method-assign]
-    policy = bm.learned_trainer(bm._train_config(ds, arm, 2048), provider)
+    policy = bm.learned_trainer(bm.train_config(ds, arm, 2048, seed=0), provider)
     assert set(seen) == {0, 1, 2, 3}  # cycled every frozen train path, and nothing else
     assert len(bm.evaluate_on(ds, "signal", "heldout", policy)) == 16

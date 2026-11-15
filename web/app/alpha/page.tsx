@@ -1,8 +1,12 @@
 "use client";
 
 import type { EChartsOption } from "echarts";
-import { Suspense, useEffect, useMemo, useState } from "react";
-import { Card, PageHead, Progress, Verdict } from "@/components/Bits";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { AgentsCard, benchKey } from "@/components/alpha/AgentsCard";
+import { type ForestItem, forestOption } from "@/components/alpha/charts";
+import { JobLine } from "@/components/alpha/JobLine";
+import { SweepCard } from "@/components/alpha/SweepCard";
+import { Card, PageHead } from "@/components/Bits";
 import { Chart } from "@/components/Chart";
 import { Reading } from "@/components/PageBits";
 import { Empty, ErrorBox, Loading } from "@/components/States";
@@ -21,8 +25,7 @@ import {
 } from "@/lib/api";
 import { ARM_LABEL, axis, base, type Tokens, useTokens } from "@/lib/chart";
 import { num, pct, short, usd, when } from "@/lib/format";
-import { type Loadable, useFetch } from "@/lib/useFetch";
-import { usePoll } from "@/lib/usePoll";
+import { useFetch } from "@/lib/useFetch";
 import { setQuery, useQuery } from "@/lib/url";
 
 /**
@@ -147,14 +150,16 @@ function GenerateCard({ options, dataset, onOpen }: { options: AlphaOptions; dat
               <thead>
                 <tr>
                   <th>Earlier datasets</th>
+                  <th className={ui.num}>Train</th>
                   <th>Hash</th>
                   <th>Built</th>
                 </tr>
               </thead>
               <tbody>
-                {recent.data.slice(0, 6).map((m) => (
+                {recent.data.slice(0, 8).map((m) => (
                   <tr key={m.hash} className={`${ui.clickRow} ${m.hash === dataset?.hash ? ui.rowSelected : ""}`} onClick={() => open(m.hash)}>
                     <td>{m.title}</td>
+                    <td className={ui.num}>{num(m.n_train)}</td>
                     <td className="mono">{short(m.hash)}</td>
                     <td style={{ whiteSpace: "nowrap" }}>{when(m.created_at)}</td>
                   </tr>
@@ -170,19 +175,24 @@ function GenerateCard({ options, dataset, onOpen }: { options: AlphaOptions; dat
 
 // ---------- train ----------
 
-function TrainCard({ options, ds, job, onJob }: { options: AlphaOptions; ds?: AlphaDataset; job: Loadable<AlphaJob>; onJob: (id: string) => void }) {
+function TrainCard({ options, ds, onJob }: { options: AlphaOptions; ds?: AlphaDataset; onJob: (id: string) => void }) {
   const [arm, setArm] = useState(options.learners_available ? "ppo" : "delta_seller");
   const [steps, setSteps] = useState<number | null>(options.default_timesteps);
+  const [seeds, setSeeds] = useState<number>(options.default_seeds);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<ApiError>();
   const learned = options.learned_arms.includes(arm);
 
-  const launch = async () => {
+  const submit = async (arms: string[]) => {
     if (!ds) return;
     setBusy(true);
     setError(undefined);
     try {
-      onJob((await api.alphaBench({ dataset: ds.hash, arm, total_timesteps: learned ? steps : null })).job_id);
+      for (const a of arms) {
+        const isLearned = options.learned_arms.includes(a);
+        const job = await api.alphaBench({ dataset: ds.hash, arm: a, total_timesteps: isLearned ? steps : null, n_seeds: isLearned ? seeds : 1 });
+        onJob(job.job_id);
+      }
     } catch (err) {
       setError(toError(err));
     }
@@ -190,7 +200,7 @@ function TrainCard({ options, ds, job, onJob }: { options: AlphaOptions; ds?: Al
   };
 
   return (
-    <Card title="Train on exactly that data" info="A learned arm trains twice with the same seed and budget: once on the dataset's train paths, once on their noise twin. Whatever the second copy earns is memorised noise.">
+    <Card title="Train on exactly that data" info="A learned arm trains on each of its seeds twice with the same budget: once on the dataset's train paths, once on their noise twin. Whatever the second copy earns is memorised noise. More seeds measure training luck: with one, a result's se is path noise alone.">
       {!ds ? (
         <p>Generate or open a dataset first.</p>
       ) : (
@@ -212,30 +222,29 @@ function TrainCard({ options, ds, job, onJob }: { options: AlphaOptions; ds?: Al
                 <input className={ui.input} type="number" step={1} min={2048} value={steps ?? ""} onChange={(e) => setSteps(e.target.value === "" ? null : Number(e.target.value))} />
               </label>
             ) : null}
+            {learned ? (
+              <label className={ui.field}>
+                <span className={ui.fieldLabel}>Training seeds</span>
+                <input className={ui.input} type="number" step={1} min={1} max={options.max_seeds} value={seeds} onChange={(e) => setSeeds(Number(e.target.value))} />
+              </label>
+            ) : null}
           </div>
           <p>
             {learned
-              ? `${ARM_LABEL[arm] ?? arm} trains on the ${num(ds.n_train)} frozen paths of dataset ${short(ds.hash)}, then a second copy on their noise twin.`
+              ? `${ARM_LABEL[arm] ?? arm} trains ${num(2 * seeds)} times (${seeds} seed${seeds === 1 ? "" : "s"}, signal and twin) on the ${num(ds.n_train)} frozen paths of dataset ${short(ds.hash)}.`
               : "A scripted arm needs no training; it is scored on the same paths in seconds."}
           </p>
-          <button type="button" className={`${ui.btn} ${ui.btnPrimary}`} disabled={busy} onClick={launch}>
-            {busy ? "Submitting…" : "Train and score"}
-          </button>
+          <div className={ui.row}>
+            <button type="button" className={`${ui.btn} ${ui.btnPrimary}`} disabled={busy} onClick={() => submit([arm])}>
+              {busy ? "Submitting…" : "Train and score"}
+            </button>
+            {options.learners_available ? (
+              <button type="button" className={ui.btn} disabled={busy} onClick={() => submit(options.learned_arms)}>
+                Train all three learners
+              </button>
+            ) : null}
+          </div>
           {error ? <p className={ui.fieldError}>{error.message}</p> : null}
-          {job.data ? (
-            <div className={ui.stack}>
-              <div className={ui.spread}>
-                <span>
-                  {ARM_LABEL[job.data.policy] ?? job.data.policy}, job <span className="mono">{job.data.job_id}</span>
-                </span>
-                <Verdict value={job.data.state} />
-              </div>
-              <Progress fraction={job.data.fraction} state={job.data.state} />
-              {job.data.error ? <p className={ui.fieldError}>{job.data.error}</p> : null}
-              {job.data.log_tail.length ? <pre className={ui.log}>{job.data.log_tail.join("\n")}</pre> : null}
-            </div>
-          ) : null}
-          {job.error ? <ErrorBox what="the benchmark job" error={job.error} onRetry={job.reload} /> : null}
         </div>
       )}
     </Card>
@@ -309,65 +318,15 @@ function ordered(rows: BenchRow[]): BenchRow[] {
   return ROW_ORDER.map(([p, w]) => rows.find((r) => r.policy === p && `${r.world}/${r.split}` === w)).filter((r): r is BenchRow => Boolean(r));
 }
 
-function forestOption(t: Tokens, rows: BenchRow[]): EChartsOption {
+function rowItems(t: Tokens, rows: BenchRow[]): ForestItem[] {
   const color: Record<string, string> = { arm: t.s1, noise_control: t.s4, oracle: t.s2, flat: t.muted };
-  return {
-    ...base(t),
-    animation: false, // a results chart has nothing to reveal, and a re-render must not restart it
-    grid: { left: 300, right: 24, top: 8, bottom: 44 },
-    tooltip: {
-      ...base(t).tooltip,
-      trigger: "item",
-      formatter: (p: unknown) => {
-        const r = rows[(p as { dataIndex: number }).dataIndex];
-        return r ? `${POLICY[r.policy]}, ${WORLD[`${r.world}/${r.split}`]}<br/>${usd(r.mean)} ± ${usd(2 * r.se)}, n ${r.n}` : "";
-      },
-    },
-    legend: { show: false },
-    xAxis: { type: "value", name: "Mean net P&L per episode, $", nameLocation: "middle", ...axis(t) },
-    yAxis: {
-      type: "category",
-      inverse: true,
-      data: rows.map((r) => `{p|${POLICY[r.policy]}}{w|${WORLD[`${r.world}/${r.split}`]}}`),
-      ...axis(t, { splitLine: { show: false } }),
-      axisLabel: {
-        margin: 10,
-        rich: {
-          p: { width: 160, align: "left", color: t.text, fontFamily: t.font, fontSize: 12.5 },
-          w: { width: 120, align: "left", color: t.text2, fontFamily: t.font, fontSize: 12.5 },
-        },
-      },
-    },
-    series: [
-      {
-        type: "custom",
-        name: "± 2 se",
-        renderItem: (_params: unknown, api: unknown) => {
-          const a = api as { value: (i: number) => number; coord: (v: [number, number]) => [number, number] };
-          const i = a.value(0);
-          const r = rows[i];
-          if (!r) return null;
-          const lo = a.coord([r.mean - 2 * r.se, i]);
-          const hi = a.coord([r.mean + 2 * r.se, i]);
-          const c = color[r.policy] ?? t.s5;
-          const line = (x1: number, y1: number, x2: number, y2: number) => ({ type: "line", shape: { x1, y1, x2, y2 }, style: { stroke: c, lineWidth: 1.5 } });
-          return { type: "group", children: [line(lo[0], lo[1], hi[0], hi[1]), line(lo[0], lo[1] - 4, lo[0], lo[1] + 4), line(hi[0], hi[1] - 4, hi[0], hi[1] + 4)] };
-        },
-        data: rows.map((r, i) => [i, r.mean - 2 * r.se, r.mean + 2 * r.se]),
-        encode: { x: [1, 2], y: 0 },
-        z: 1,
-      },
-      {
-        type: "scatter",
-        name: "Mean",
-        symbol: "rect",
-        symbolSize: 8,
-        data: rows.map((r, i) => ({ value: [r.mean, i], itemStyle: { color: color[r.policy] ?? t.s5 } })),
-        markLine: { silent: true, symbol: "none", lineStyle: { color: t.axis }, label: { show: false }, data: [{ xAxis: 0 }] },
-        z: 2,
-      },
-    ],
-  } as EChartsOption;
+  return rows.map((r) => ({
+    label: `{p|${POLICY[r.policy]}}{w|${WORLD[`${r.world}/${r.split}`]}}`,
+    mean: r.mean,
+    se: r.se,
+    color: color[r.policy] ?? t.s5,
+    tip: `${POLICY[r.policy]}, ${WORLD[`${r.world}/${r.split}`]}<br/>${usd(r.mean)} ± ${usd(2 * r.se)}, n ${r.n}`,
+  }));
 }
 
 function headline(b: Benchmark): string {
@@ -400,10 +359,40 @@ function Measure({ name, s, money = true }: { name: string; s?: BenchStat | null
   );
 }
 
+function SeedTable({ bench }: { bench: Benchmark }) {
+  const seeds = bench.seeds ?? [];
+  return (
+    <div className={ui.tableWrap}>
+      <table className={ui.table}>
+        <thead>
+          <tr>
+            <th>Training seed</th>
+            <th className={ui.num}>Edge from the signal</th>
+            <th className={ui.num}>Capture ratio</th>
+            <th className={ui.num}>Overfit gap</th>
+            <th className={ui.num}>Noise fit</th>
+          </tr>
+        </thead>
+        <tbody>
+          {seeds.map((r) => (
+            <tr key={r.seed}>
+              <td>{r.seed}</td>
+              <td className={ui.num}>{usd(r.captured)}</td>
+              <td className={ui.num}>{r.capture_ratio === null || r.capture_ratio === undefined ? "none" : pct(r.capture_ratio)}</td>
+              <td className={ui.num}>{usd(r.overfit_gap)}</td>
+              <td className={ui.num}>{r.noise_fit === null || r.noise_fit === undefined ? "" : usd(r.noise_fit)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function CompareCard({ bench }: { bench?: Benchmark }) {
   const t = useTokens();
   const rows = useMemo(() => (bench ? ordered(bench.rows) : []), [bench]);
-  const option = useMemo(() => forestOption(t, rows), [t, rows]);
+  const option = useMemo(() => forestOption(t, rowItems(t, rows), "Mean net P&L per episode, $", (v) => usd(v)), [t, rows]);
   if (!bench) {
     return (
       <Card title="Compare: from the signal, or from noise?" info={false}>
@@ -439,6 +428,12 @@ function CompareCard({ bench }: { bench?: Benchmark }) {
             </tbody>
           </table>
         </div>
+        {(bench.seeds?.length ?? 0) > 1 ? <SeedTable bench={bench} /> : null}
+        {(bench.n_seeds ?? 1) === 1 && bench.total_timesteps ? (
+          <p>
+            One training seed: these standard errors are path noise alone and say nothing about how another seed would have done.
+          </p>
+        ) : null}
         <Chart
           option={option}
           height={330}
@@ -487,24 +482,29 @@ function Alpha() {
   const query = useQuery();
   const options = useFetch((s) => api.alphaOptions(s), "alpha-options");
   const [dataset, setDataset] = useState<AlphaDataset>();
-  const [jobId, setJobId] = useState<string>();
-  const job = useFetch((s) => api.alphaJob(jobId ?? "", s), `alpha-job-${jobId ?? ""}`, Boolean(jobId));
-  const running = job.data ? job.data.state === "queued" || job.data.state === "running" : Boolean(jobId);
-  usePoll([job], running, 1500);
-  const saved = useFetch((s) => api.alphaSaved(dataset?.hash ?? "", s), `alpha-saved-${dataset?.hash ?? ""}-${job.data?.state ?? ""}`, Boolean(dataset));
-  const fresh = job.data?.benchmark?.dataset === dataset?.hash ? job.data?.benchmark : undefined;
-  const bench = fresh ?? saved.data?.[0];
+  const [jobs, setJobs] = useState<string[]>([]);
+  const [ended, setEnded] = useState(0);
+  const [selected, setSelected] = useState<string>();
+  const hash = dataset?.hash ?? "";
+  const saved = useFetch((s) => api.alphaSaved(hash, s), `alpha-saved-${hash}-${ended}`, Boolean(dataset));
+  const sweeps = useFetch((s) => api.alphaSweeps(hash, s), `alpha-sweeps-${hash}-${ended}`, Boolean(dataset));
+  const benches = saved.data ?? [];
+  const bench = benches.find((b) => benchKey(b) === selected) ?? benches[0];
+  const onEnd = useCallback((job: AlphaJob) => {
+    setEnded((n) => n + 1);
+    if (job.benchmark) setSelected(benchKey(job.benchmark));
+  }, []);
 
   const wanted = query.str("dataset");
   useEffect(() => {
     if (wanted && wanted !== dataset?.hash) api.alphaDataset(wanted).then(setDataset, () => undefined);
-    // only the URL drives this; opening a dataset writes the URL below
   }, [wanted]);
   const open = (d: AlphaDataset) => {
     setDataset(d);
-    setJobId(undefined);
+    setSelected(undefined);
     setQuery({ dataset: d.hash });
   };
+  const addJob = (id: string) => setJobs((js) => [id, ...js]);
 
   return (
     <>
@@ -519,11 +519,22 @@ function Alpha() {
         <div className={ui.split}>
           <div className={ui.stack}>
             <GenerateCard options={options.data} dataset={dataset} onOpen={open} />
-            <TrainCard options={options.data} ds={dataset} job={job} onJob={setJobId} />
+            <TrainCard options={options.data} ds={dataset} onJob={addJob} />
+            {jobs.length ? (
+              <Card title="Jobs this session" info={false}>
+                <div className={ui.stack}>
+                  {jobs.map((id) => (
+                    <JobLine key={id} id={id} onEnd={onEnd} />
+                  ))}
+                </div>
+              </Card>
+            ) : null}
           </div>
           <div className={ui.stack}>
             {dataset ? <DataCards ds={dataset} /> : <Empty title="No dataset open">Generate one, or open an earlier one from the list.</Empty>}
+            {dataset ? <AgentsCard benches={benches} selected={bench ? benchKey(bench) : undefined} onSelect={setSelected} /> : null}
             <CompareCard bench={bench} />
+            {dataset ? <SweepCard options={options.data} ds={dataset} sweeps={sweeps.data ?? []} onJob={addJob} /> : null}
           </div>
         </div>
       ) : null}

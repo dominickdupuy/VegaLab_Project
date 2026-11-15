@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 
 from optspread.alpha.dataset import (
+    HELDOUT_OFFSET,
     DatasetError,
     SynthSpec,
     build_dataset,
@@ -38,7 +39,18 @@ def test_hash_is_stable_and_sensitive() -> None:
 
 def test_seeds_are_disjoint_by_split() -> None:
     train, held = SPEC.seeds("train"), SPEC.seeds("heldout")
-    assert list(train) == [11, 12, 13] and list(held) == [14, 15, 16, 17, 18]
+    assert list(train) == [11, 12, 13]
+    assert list(held) == [11 + HELDOUT_OFFSET + i for i in range(5)]
+
+
+def test_held_out_paths_do_not_depend_on_the_train_size(tmp_path: Path) -> None:
+    small = build_dataset(SPEC, tmp_path)
+    large = build_dataset(SPEC.model_copy(update={"n_train": 7}), tmp_path)
+    assert small.hash != large.hash
+    for world in ("signal", "twin"):
+        assert np.array_equal(small.spot(world, "heldout"), large.spot(world, "heldout"))
+    # the smaller train set is the start of the larger one
+    assert np.array_equal(small.spot("signal", "train"), large.spot("signal", "train")[:3])
 
 
 def test_build_writes_the_generator_output(tmp_path: Path) -> None:

@@ -9,8 +9,11 @@ hash, so the same spec is always the same directory and is never rebuilt.
 ``load_dataset`` refuses a directory whose npz no longer matches its manifest: the
 point of freezing is that "the data the agent saw" is a checkable claim.
 
-Path seeds: train ``seed .. seed+n_train-1``, held-out the next ``n_heldout``. Both
-splits are drawn from the same generator but share no path.
+Path seeds: train ``seed .. seed+n_train-1``, held-out ``seed+HELDOUT_OFFSET ..``. Both
+splits are drawn from the same generator but share no path, and the held-out paths do not
+depend on ``n_train``: datasets that differ only in their number of train paths are scored
+on the same held-out paths, and the smaller train set is the start of the larger one, which
+is what a sweep over the number of train paths needs.
 """
 
 from __future__ import annotations
@@ -38,6 +41,7 @@ FIELDS = ("spot", "iv", "signal")
 DATASETS_DIR = Path("alpha") / "datasets"
 # Not "manifest.json": that name marks a run directory, and a dataset is not a run.
 PATHS_FILE, MANIFEST_FILE = "paths.npz", "dataset.json"
+HELDOUT_OFFSET = 2**20  # past the largest train split (n_train <= 2000)
 _HASH = re.compile(r"^[0-9a-f]{16}$")
 
 
@@ -61,7 +65,7 @@ class SynthSpec(BaseModel):
     def seeds(self, split: Split) -> range:
         if split == "train":
             return range(self.seed, self.seed + self.n_train)
-        start = self.seed + self.n_train
+        start = self.seed + HELDOUT_OFFSET
         return range(start, start + self.n_heldout)
 
 
