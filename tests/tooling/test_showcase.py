@@ -66,3 +66,26 @@ def test_a_run_writes_its_catalog_entry(tmp_path: Path, monkeypatch: pytest.Monk
     assert catalog["seed"] == showcase.SEED
     assert [r["key"] for r in catalog["runs"]] == ["launched/fake-1", "launched/fake-2"]
     assert catalog["runs"][0]["group"] == "strikes" and calls == ["delta_seller"] * 2
+
+
+@pytest.mark.behaviour
+def test_a_fresh_root_skips_the_runs_on_missing_data_and_runs_the_rest(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = tmp_path / "show"
+    ran: list[str] = []
+
+    def fake(job_id: str, spec_json: str, runs_root: str) -> str:
+        assert (Path(runs_root) / ".jobs").is_dir()  # where the worker writes its progress
+        ran.append(json.loads(spec_json)["policy"])
+        return f"launched/fake-{len(ran)}"
+
+    real = next(r for r in showcase.plan() if r[3].get("source") == "optionmetrics")
+    synthetic = showcase.plan()[0]
+    monkeypatch.setattr(showcase, "execute_job", fake)
+    monkeypatch.setattr(showcase, "available_sources", lambda: ("synthetic",))
+    monkeypatch.setattr(showcase, "plan", lambda: [real, synthetic])
+    assert showcase.main(["--root", str(root)]) == 0
+    assert "skipping 1 run(s) on optionmetrics" in capsys.readouterr().out
+    catalog = json.loads((root / "catalog.json").read_text())
+    assert [r["label"] for r in catalog["runs"]] == [synthetic[2]] and len(ran) == 1

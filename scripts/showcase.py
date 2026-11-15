@@ -25,7 +25,8 @@ Runs go through the dashboard's own job path
 (``optspread.dashboard.jobs.worker.execute_job``), so each
 records its equity paths, and a PPO run its policy. ``<root>/catalog.json`` lists every
 run's key, group, question, label and settings; the Runs page and the workflows read it.
-The real-data runs need the panel under ``$VEGALAB_DATA/panel``. A second call reuses
+The real-data runs need the panel under ``$VEGALAB_DATA/panel``; where it is missing they are
+skipped with a note, so a fresh clone gets every synthetic run. A second call reuses
 every run already on disk. The confirmatory sweep is not part of it: copy a sweep root
 into ``--root`` to show it beside the showcase.
 """
@@ -39,7 +40,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from optspread.dashboard.jobs.spec import JobSpec
+from optspread.dashboard.jobs.spec import JOBS_DIR, JobSpec, available_sources
 from optspread.dashboard.jobs.worker import execute_job
 
 SEED = 20_000
@@ -227,10 +228,18 @@ def main(argv: list[str] | None = None) -> int:
         JobSpec(**kw)  # refuse a bad setting before anything runs
         if args.dry_run:
             print(f"[{group}] {label}")
+    # A run on data this machine does not have (the licensed panel) is skipped, not failed.
+    here = set(available_sources())
+    missing = [r for r in runs if JobSpec(**r[3]).source not in here]
+    if missing:
+        sources = ", ".join(sorted({JobSpec(**kw).source for _, _, _, kw in missing}))
+        print(f"skipping {len(missing)} run(s) on {sources}: not available here (set VEGALAB_DATA)")
     if args.dry_run:
         print(f"{len(runs)} runs")
         return 0
-    args.root.mkdir(parents=True, exist_ok=True)
+    runs = [r for r in runs if r not in missing]
+    # The worker writes its progress under <root>/.jobs, which the server's queue makes.
+    (args.root / JOBS_DIR).mkdir(parents=True, exist_ok=True)
     catalog: list[dict[str, Any]] = []
     for i, (group, question, label, kw) in enumerate(runs):
         start = time.time()
