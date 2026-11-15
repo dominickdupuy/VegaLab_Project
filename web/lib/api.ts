@@ -63,6 +63,12 @@ export type Design = Schemas["DesignOut"];
 
 export type Power = Schemas["PowerOut"];
 
+// ---------- the synthetic market ----------
+
+export type SynthParams = Schemas["SynthParams"];
+
+export type SynthPaths = Schemas["SynthPathsOut"];
+
 // ---------- leak demo ----------
 
 export type LeakSide = Schemas["LeakSideOut"];
@@ -580,6 +586,7 @@ export const api = {
   job: (id: string, s?: AbortSignal) => get<Job>(`/api/jobs/${encodeURIComponent(id)}`, undefined, s),
   launch: (spec: Spec) => request<Job>("POST", "/api/jobs", spec),
   power: (p: Partial<PowerParams>, s?: AbortSignal) => get<Power>("/api/power", p as Params, s),
+  synth: (p: SynthParams, s?: AbortSignal) => get<SynthPaths>("/api/synth", p as Params, s),
   leakDemo: (eps: number, n_seeds: number) => request<LeakDemo>("POST", "/api/leaks/demo", { eps, n_seeds }),
   sweeps: (s?: AbortSignal) => get<SweepList>("/api/sweeps", undefined, s),
   sweep: (key: string, s?: AbortSignal) => get<Sweep>("/api/sweeps/detail", { key }, s),
