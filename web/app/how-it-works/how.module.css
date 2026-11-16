@@ -1,7 +1,7 @@
-/* How it works: five compact steps in a row, two then one on narrower screens. */
+/* How it works: six compact steps, three to a row, two then one on narrower screens. */
 .steps {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
   margin: 0;
   padding: 0;

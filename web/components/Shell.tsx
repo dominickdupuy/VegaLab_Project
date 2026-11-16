@@ -65,10 +65,13 @@ function ServerStatus() {
   const text = live ? `server code · ${short(health.data?.git_sha ?? "", 7)}` : health.error ? "server offline" : "connecting";
   // the commit the server runs, not a run's: a run names its own under Provenance
   const tip = health.error?.message ?? (health.data?.git_sha ? `The commit this server runs: ${health.data.git_sha}. Each run names the commit that made it under Provenance.` : undefined);
+  // below 1400px only the dot shows: the words move to the tooltip and the accessible name
   return (
-    <span className={ui.serverStatus} title={tip}>
+    <span className={ui.serverStatus} title={tip ? `${text}. ${tip}` : text} role="img" aria-label={text}>
       <span className={`${ui.dot} ${cls}`} aria-hidden="true" />
-      <span className={ui.serverStatusText}>{text}</span>
+      <span className={ui.serverStatusText} aria-hidden="true">
+        {text}
+      </span>
     </span>
   );
 }

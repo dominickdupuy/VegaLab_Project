@@ -7,13 +7,18 @@ import s from "./how.module.css";
 export const metadata: Metadata = { title: "How it works" };
 
 /**
- * The platform in five steps, each one sentence and the page that does it. Reached from
+ * The platform in six steps, each one sentence and the page that does it. Reached from
  * the footer and the "Vega Lab" label in the header, not the nav: the home page stays
  * the place to start, so the way back to it sits at the top.
  */
 const STEPS: { title: string; text: string; go: { href: string; label: string }[] }[] = [
   { title: "The market", text: "A simulated SPX market where you plant an edge of known size, so the right answer is known before you test.", go: [{ href: "/synth/", label: "Synth data" }] },
   { title: "Run a strategy", text: "Launch the fixed-delta seller or a learning agent on it and read what it made per episode, after costs.", go: [{ href: "/launch/", label: "Launch" }] },
+  {
+    title: "Does the agent find it?",
+    text: "Plant an edge of known size, train an agent on exactly that data, and see how much of the edge it captures and how much it overfits.",
+    go: [{ href: "/alpha/", label: "Synthetic alpha" }],
+  },
   { title: "Compare runs", text: "Put two runs on the same market paths side by side, so luck cancels and only their difference is left.", go: [{ href: "/runs/", label: "Runs" }] },
   {
     title: "Is the edge real?",
