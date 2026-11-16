@@ -1,4 +1,4 @@
-.PHONY: check lint typecheck test format bench gate drag leaks m1 m2 m3gate reproduce vrp m4 m4gate m5gate drift edge showcase run pilot sweep replay train-smoke web serve web-dev
+.PHONY: check lint typecheck test format bench gate drag leaks m1 m2 m3gate reproduce vrp m4 m4gate m5gate drift edge showcase run pilot sweep replay train-smoke web serve web-dev alpha
 
 # The venv's interpreter: Scripts/ on Windows, bin/ everywhere else.
 PY ?= $(if $(wildcard .venv/Scripts/python .venv/Scripts/python.exe),.venv/Scripts/python,.venv/bin/python)
@@ -120,6 +120,12 @@ edge:
 #   make showcase ARGS="--root runs/showcase"   (--dry-run to list them)
 showcase:
 	$(PY) -m scripts.showcase $(ARGS)
+
+# Synthetic alpha in one command (#46): generate, train, score and report, for built-in and
+# plug-in arms, written where the Synthetic alpha page reads it, e.g.
+#   make alpha ARGS="run --root runs --arms ppo delta_seller --sweep edge --values 0 1 2 4"
+alpha:
+	$(PY) -m scripts.alpha $(ARGS)
 
 # One run, written as a run directory. Flags go in ARGS, e.g.
 #   make run ARGS="--policy delta_seller --episodes 200 --source optionmetrics"

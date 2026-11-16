@@ -163,3 +163,30 @@ the server's existing process pool; `SynthJobManager` shares the executor and th
   constructed case, reuse on second call.
 - Server routes via the existing test client fixtures. `npm run build` for the page.
 - `make check` stays green (ruff, mypy --strict, coverage floor 85).
+
+## Extensions: the detection floor, plug-in agents, one command
+
+Added on branch `alpha-core` after the port; nothing above changes, and nothing the study
+runs is touched (no default of `train.py`, the env, pricing, costs or the study's analysis).
+
+- **Edge-size sweep and floor.** `AlphaSweepSpec.axis = "edge"` moves the generator's edge
+  knob (`EDGE_KNOB`: `const_vrp.premium_pts`, `mr_vrp.vol_pts`, `drift.bps_per_day`; `noise`
+  and `spot_mr` are refused), one dataset per size on the same path seeds. Each size's
+  captured edge is tested with `analysis.decide_contrast`'s one-sided t on the S per-seed
+  figures (a deterministic arm: `BLOCKS` = 5 disjoint held-out path blocks, kept in
+  `Benchmark.blocks`), and `optspread.alpha.floor` feeds those t statistics to
+  `m4analysis.noncentrality_interval`, `power_at`, `detection_floor` and `interpolate`
+  unchanged. Status is the study's: `reached`, `below_grid`, `not_reached` (plus
+  `untestable` with under two figures). Every output says the floor is rough at few seeds.
+  A sweep written before `edge` keeps its hash: `values` is `tuple[int | float, ...]`, so
+  integers stay integers.
+- **Plug-ins.** `optspread.alpha.plugins.AlphaPlugin(name, label, policy | trainer,
+  description)`, loaded from `OPTSPREAD_ALPHA_PLUGINS` / `OPTSPREAD_ALPHA_PLUGINS_FILE`
+  (import paths, `pkg.mod:attr` or `file.py:attr`) in every process that resolves an arm;
+  never from a request. A rule is scored like a scripted arm, a trainer is trained like a
+  learned one (signal and twin, per seed). Benchmark and sweep directories carry the
+  plug-in's source digest. `GET /api/alpha/arms`; `AlphaOptionsOut.arm_details` and
+  `plugin_error`.
+- **One command.** `python -m scripts.alpha run|arms` (`make alpha ARGS=...`): dataset,
+  benchmarks, an optional sweep per arm, a plain-words summary, all under the runs root
+  the page reads.

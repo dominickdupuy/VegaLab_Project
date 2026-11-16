@@ -21,11 +21,20 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from optspread.alpha.benchmark import MAX_SEEDS, Arm, bench_path, run_benchmark, stages
+from optspread.alpha.benchmark import (
+    MAX_SEEDS,
+    Arm,
+    bench_path,
+    check_arm,
+    is_learned,
+    run_benchmark,
+    stages,
+)
 from optspread.alpha.dataset import load_dataset
-from optspread.alpha.sweep import AlphaSweepSpec, run_sweep, sweep_path
+from optspread.alpha.plugins import NAME_PATTERN
+from optspread.alpha.sweep import AlphaSweepSpec, edge_knob, run_sweep, sweep_path
 from optspread.config import LEARNED_ARMS
 from optspread.dashboard.jobs.queue import JobState, JobStatus, QueueFullError
 from optspread.dashboard.jobs.spec import JOBS_DIR, ppo_available
@@ -41,15 +50,20 @@ class BenchSpec(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     dataset: str = Field(pattern=r"^[0-9a-f]{16}$")
-    arm: Arm = "ppo"
+    arm: Arm = Field(default="ppo", pattern=NAME_PATTERN)
     total_timesteps: int | None = Field(default=DEFAULT_TIMESTEPS, ge=2048, le=5_000_000)
     n_seeds: int = Field(default=1, ge=1, le=MAX_SEEDS)
 
+    @field_validator("arm")
+    @classmethod
+    def _known(cls, arm: str) -> str:
+        return check_arm(arm)
+
     @model_validator(mode="after")
     def _budget(self) -> BenchSpec:
-        if (self.arm in LEARNED_ARMS) != (self.total_timesteps is not None):
+        if is_learned(self.arm) != (self.total_timesteps is not None):
             raise ValueError("total_timesteps is set exactly when the arm is learned")
-        if self.arm not in LEARNED_ARMS and self.n_seeds != 1:
+        if not is_learned(self.arm) and self.n_seeds != 1:
             raise ValueError("a scripted arm is deterministic: n_seeds is 1")
         return self
 
@@ -129,7 +143,9 @@ class AlphaJobManager:
     def submit(self, spec: AlphaSpec) -> str:
         if spec.arm in LEARNED_ARMS and not ppo_available():
             raise ValueError(f"the {spec.arm.upper()} arm is not available in this checkout")
-        load_dataset(self.runs_root, spec.dataset)  # refuse an unknown dataset here
+        ds = load_dataset(self.runs_root, spec.dataset)  # refuse an unknown dataset here
+        if isinstance(spec, AlphaSweepSpec) and spec.axis == "edge":
+            edge_knob(ds.spec.generator)  # refuse a generator with no edge size here
         with self._lock:
             if sum(not j.future.done() for j in self.jobs.values()) >= MAX_PENDING:
                 raise QueueFullError(

@@ -89,7 +89,7 @@ module they drive.
 | `pricing.py` | Hemdutt | Black-Scholes prices and analytic greeks, NaN-free at the limits. |
 | `market.py` | Hemdutt | Zero-drift GBM with the chain priced off the path vol, plus a plantable premium. |
 | `effects.py` | Hemdutt | The `PlantedEffect` interface: the constant premium (D2), and skew and term examples. |
-| `alpha/` | Dominick | Synthetic alpha (#46): generators with a planted, time-varying edge and their null twin, frozen hashed datasets, a provider that replays them, and the benchmark that scores an arm against the oracle, the twin and a copy trained on noise. |
+| `alpha/` | Dominick | Synthetic alpha (#46): generators with a planted, time-varying edge and their null twin, frozen hashed datasets, a provider that replays them, and the benchmark that scores an arm against the oracle, the twin and a copy trained on noise; sweeps, each arm's detection floor (`floor.py`, the study's curve and floor) and plug-in trading agents (`plugins.py`). `scripts/alpha.py` runs it all in one command. |
 | `costs.py` | Hemdutt | Quoted half-spread plus commission. |
 | `margin.py` | Hemdutt | Max-loss for defined risk; Cboe Rule 10.3(c)(5)(A), the broad-based index rule, for undefined risk. |
 | `actions.py` | Hemdutt | The locked action library: FLAT, iron condor, short strangle, put credit spread. |
@@ -779,9 +779,84 @@ sample.
   out of sample: memorised noise). Each se is the seed spread of the per-seed figure plus the
   path noise of the seed-averaged one, the tau^2/S + sigma^2/(S N) split of the power lab;
   with one seed it is path noise alone and says nothing about training luck.
-- **Sweep** one setting, the number of train paths or the training budget, one benchmark
-  per value. Held-out path seeds do not depend on the train size, so every point is scored
-  on the same held-out paths and each train set is the start of the next.
+- **Sweep** one setting, the number of train paths, the training budget or the planted
+  edge's size, one benchmark per value. Held-out path seeds do not depend on the train size
+  or the edge, so every point is scored on the same held-out paths and each train set is
+  the start of the next.
+- **Detection floor** (`optspread.alpha.floor`): how big must the planted edge be before an
+  arm finds it reliably? An edge-size sweep moves one knob, `premium_pts` (`const_vrp`),
+  `vol_pts` (`mr_vrp`, the null only with `mean_pts` 0) or `bps_per_day` (`drift`), through
+  sizes that include 0, the null, where the signal world is its own twin. At each size the
+  captured edge is tested the study's way: one-sided t at 5% on the S per-seed figures,
+  S - 1 degrees of freedom (`analysis.decide_contrast`'s test; a rule, which has no seeds,
+  is read on five disjoint blocks of held-out paths, the study's seed-block design). The
+  curve and the floor are `optspread.m4analysis`'s, reused unchanged: the noncentrality
+  inverted from each size's t (median-unbiased, with its exact 95% band), linear in size
+  through (0, 0), and the floor where power first reaches 80%, with the study's status:
+  `reached` (between two swept sizes), `below_grid` (under the smallest positive size) or
+  `not_reached` (above the largest). With few seeds the floor is rough: at S = 3 each test
+  has 2 degrees of freedom and its band is wide, and the study found a floor read off a
+  noisy curve sits about a tenth low even at S = 5. Read it as a bracket between swept
+  sizes; the page, the API and the command line all say so. A learner's edge sweep needs at
+  least 2 seeds.
+
+**Your own trading agent (plug-ins).** A plug-in arm is Python on the serving machine,
+registered by import path; the page only names it, and no code is ever taken from a
+browser or a request. It is an `optspread.alpha.plugins.AlphaPlugin`:
+
+```python
+from optspread.alpha.plugins import AlphaPlugin
+
+my_rule = AlphaPlugin(name="my_rule", label="My rule", policy=MyPolicy)  # a rule
+my_learner = AlphaPlugin(name="my_learner", trainer=train_mine)          # a learner
+```
+
+- `name`: lower case letters, digits and `_`, not a built-in arm's. `label` and
+  `description` are what the page shows.
+- `policy`: a zero-argument factory returning a `Policy`, the protocol every arm
+  implements: `reset(seed) -> None` once per episode, then `act(obs, info) -> int` each
+  day, an action id from `optspread.actions` (`FLAT`, `IRON_CONDOR`, `SHORT_STRANGLE`,
+  `PUT_CREDIT_SPREAD`). `obs` is the observation vector named by `optspread.env.OBS_NAMES`
+  (`atm_iv`, `realized_vol_20d`, ...); `info` carries `position` and `day`. A rule is
+  scored as it stands, like the scripted arms: no budget, no seeds.
+- or `trainer`: `Callable[[RunConfig, ChainProvider], Policy]`, the benchmark's own
+  `SynthTrainer` shape. It is called once per training seed on the dataset's train paths
+  and once on the twin's (the noise control), exactly as PPO is; the seed and budget are
+  `config.train.seed` and `config.train.total_timesteps`, the market and episode
+  `config.market` and `config.env`, and `provider` replays the frozen train paths
+  (`provider.n_paths` of them). `config.policy` is a `ppo` placeholder: ignore it.
+
+Register by `package.module:attr` or `path/to/file.py:attr`, in `OPTSPREAD_ALPHA_PLUGINS`
+(separated by commas or spaces), or in a JSON file `OPTSPREAD_ALPHA_PLUGINS_FILE` names
+(`{"plugins": ["pkg.mod:attr"]}`), set before the server starts (its job workers inherit
+it), or with `--plugin` on the command line below. A bad path is refused with the reason
+(`cannot be imported`, `has no attribute`, `not an AlphaPlugin`); the page shows a broken
+list in its options rather than hiding it. A plug-in then appears as one more arm: in the
+page's arm pickers labelled "(plug-in)", on the scoreboard, in the sweeps and in the floor
+chart, benchmarked on the same frozen data, seeds, twin, oracle and held-out paths as PPO,
+A2C and DQN. `GET /api/alpha/arms` lists every arm the server can run. Results are keyed
+by the plug-in's name and a digest of its source file, so editing the file gives new
+results instead of stale ones. `examples/alpha_plugin.py` has two: `iv_timer`, a rule that
+sells a rolled short strangle while ATM implied vol is above its 10-day average by a
+quarter vol point and is flat otherwise (it times `mr_vrp`, and on `const_vrp`, where
+implied vol never moves, it never sells), and `iv_picker`, a trivial learner that keeps
+whichever of flat, always-sell and the timer earned most on its seed's half of the train
+paths.
+
+**One command.** `python -m scripts.alpha run` (or `make alpha ARGS="run ..."`) builds the
+dataset its flags describe, benchmarks every `--arms` (built-in or plug-in), optionally
+runs one `--sweep` per arm (`edge`, `n_train` or `total_timesteps`, over `--values`), and
+prints a short summary in plain words, the floors included. It writes exactly what the
+page reads, under `--root` (default the runs root), and a second run recomputes nothing;
+`python -m scripts.alpha arms` lists the arms. For example:
+
+```bash
+export OPTSPREAD_ALPHA_PLUGINS=examples/alpha_plugin.py:iv_timer,examples/alpha_plugin.py:iv_picker
+python -m scripts.alpha run --root runs --generator const_vrp --set premium_pts=4 \
+    --days 20 --train 16 --heldout 60 --arms ppo delta_seller iv_picker \
+    --timesteps 4096 --seeds 3 --sweep edge --values 0 0.5 1 2 4
+python -m optspread.server --runs runs      # then /alpha/?dataset=<the printed hash>
+```
 
 Short premium is negatively skewed, which is what the oracle rule is for: on 16 noise paths
 a short strangle beat flat at z = 2.8 because the rare large loss was not drawn; on 200 none
@@ -802,6 +877,24 @@ paths than on new ones and a copy trained on pure noise "earns" $7,234 in sample
 2 se; by 64 paths both are gone. The three arms are not told apart on this dataset, and one
 seed would have misled: PPO's three seeds took 29%, 55% and 86% of the edge. The page is
 **Synthetic alpha**; its data and results load from the URL (`/alpha/?dataset=<hash>`).
+
+**On real SPX days** (`optspread.alpha.realtest`, exploratory). A benchmark keeps numbers,
+not weights, so the test rebuilds each seed's policy from the benchmark's own config on the
+same train paths (deterministic on CPU) and says whether the rebuilt policies reproduce the
+stored held-out mean. Each policy, the oracle and flat then play every window of A8's
+evaluation dates (2019-01-02 to 2022-08-24; the holdout is never read) at the dataset's
+episode length, with the same environment and costs, beside the benchmark's synthetic
+held-out figures. One window starts on every day, so neighbours share most of their days:
+the se is the VRP mapping's stationary bootstrap (Politis-White mean block, never shorter
+than the episode) on the seed-averaged P&L, plus the seed spread with several seeds. Real
+chains carry the market's own premium, not the planted one. A plug-in arm is tested the
+same way: a rule as it stands, a learner rebuilt per seed through its own registered
+trainer, with the benchmark's config and seeds and the same reproduce check. A plug-in no
+longer registered, or whose source digest differs from the one its benchmark recorded, is
+refused with that reason, since its policies could not be the benchmark's. The card
+launches it as a job (`POST /api/alpha/real`) and writes
+`<runs root>/alpha/real/<benchmark>/realtest.json`; where `$VEGALAB_DATA/panel` is absent
+it says real data is not available on that machine.
 
 ## The dashboard
 
@@ -837,15 +930,17 @@ from the committed file: `cd web && npm ci && npm run build && npm run typecheck
 | Sweep | `grid-<hash>.json` (or a `sweep.json`) and their cells; `docs/M4_ANALYSIS.json` | per-arm means by premium (± se of block means), every cell, each arm against itself at zero block by block; power curves with bands, floors, the gap, the real premium read off each curve, the decision per premium, tau^2 homogeneity and the bootstrap check, once `make m4` has written the analysis |
 | Attribution | `<attribution root>/edge/edge-<hash>.json` (`make edge`) | per arm and premium, each component's edge (delta, gamma, vega, theta, carry, cost, residual) with its se and one-sided 95% bound, diverging and stacked across premiums with the P&L edge marked; the same split by structure held; residual share per cell; reproduces, agrees or differs per cell, each cell linked to its run's own attribution; the grid's action mix by arm and premium (`actionmix/grid-<hash>.json`) |
 | Synth data | `optspread.api.synth`, `MarketConfig` | the simulated market before a run is launched on it: sample index paths, the near-tenor ATM vol along each and the smile half way through, for the path vol and the research knobs (drift in bps a day, vol of vol, skew slope; each left out of the config hash at zero), and a link that launches a run on that market |
-| Synthetic alpha | `<runs root>/alpha/datasets/<hash>/`, `<runs root>/alpha/bench/`, `<runs root>/alpha/sweeps/` | plant an edge (constant or mean-reverting premium, mean-reverting spot, drift, or none), freeze the paths and their noise twin, train PPO, A2C or DQN (or all three) on exactly the train paths on several seeds (a second copy on the twin), and read the attainable edge, the edge taken, the capture ratio, the overfit gap and the noise fit, each with its se and z and per seed; every result on the dataset side by side; and sweeps over the train size or the training budget |
+| Synthetic alpha | `<runs root>/alpha/datasets/<hash>/`, `<runs root>/alpha/bench/`, `<runs root>/alpha/sweeps/`, `<runs root>/alpha/real/` | plant an edge (constant or mean-reverting premium, mean-reverting spot, drift, or none), freeze the paths and their noise twin, train PPO, A2C or DQN (or all three) on exactly the train paths on several seeds (a second copy on the twin), and read the attainable edge, the edge taken, the capture ratio, the overfit gap and the noise fit, each with its se and z and per seed; every result on the dataset side by side; sweeps over the train size or the training budget; and each arm's detection floor from a sweep over the planted edge's size (power against size, the 80% floor marked); plug-in arms registered on the server appear in every picker, labelled; and the selected result on real SPX days (exploratory; A8's evaluation dates, where the panel is present) |
 | How it works | the site | five steps, from the market to whether a result can be trusted, each one sentence and a link to the page that does it; reached from the footer and the Vega Lab label, not the nav |
 
 Every page keeps its settings in the URL, so any view links as it stands (the link
 button copies it). A workflow is a question a trader (or a reviewer of our claims) would
 ask, walked through the real pages: real edge or luck, tuning the seller, what eats the
 edge, the real market's premium, where the P&L comes from, how big a backtest must be,
-whether a backtest could be cheating, whether a learner beats a rule, and verifying our
-claims (started from the trust band, not a card). Each step says what to do, rings the control to use (three pulses, no overlay),
+whether a backtest could be cheating, whether a learner beats a rule, whether an agent
+finds an edge we planted (Synthetic alpha, on a small frozen world so each step takes
+seconds to a minute; its last step, real SPX days, is skipped where there is no panel),
+and verifying our claims (started from the trust band, not a card). Each step says what to do, rings the control to use (three pulses, no overlay),
 keeps Next locked until the action is done, and ends with one sentence on what the
 result means, with its numbers. A step knows its action was done from the address bar
 and from the server's own answers (`web/lib/activity.ts`), never from a page's state;
@@ -930,7 +1025,9 @@ Where the project stands against the project document's schedule (section 12):
 - **After the course.** The model lab (#46): a dataset generator with planted alpha that a
   researcher's own model plugs into, to compare how well models find it and how they
   overfit. The research knobs, the A2C and DQN arms, the Synth data page and the Synthetic alpha
-  benchmark (`optspread.alpha`) are its start; a researcher's own model is what is left.
+  benchmark (`optspread.alpha`) are its start, with each arm's detection floor, plug-in
+  trading agents and one command; a forecaster interface (predictions a fixed rule
+  trades) is what is left.
 
 A strategy run on real chains reads one fixed date range: training to 2018-12-31,
 evaluation 2019-01-02 to 2022-08-24, and nothing after that (pre-registration A8, #28).

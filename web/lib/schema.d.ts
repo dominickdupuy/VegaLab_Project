@@ -4,6 +4,27 @@
  */
 
 export interface paths {
+    "/api/alpha/arms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Alpha Arms
+         * @description The arms a benchmark can run: built-ins, then plug-ins registered on the server
+         *     (``OPTSPREAD_ALPHA_PLUGINS``); no code is ever taken from a request.
+         */
+        get: operations["alpha_arms_api_alpha_arms_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/alpha/benchmarks": {
         parameters: {
             query?: never;
@@ -136,6 +157,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/alpha/real": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Alpha Real Read
+         * @description The benchmark's real-data test, if it has run, and whether it can run here.
+         */
+        get: operations["alpha_real_read_api_alpha_real_get"];
+        put?: never;
+        /**
+         * Alpha Real Start
+         * @description Score a benchmark's policies on the real SPX evaluation windows, as a job.
+         */
+        post: operations["alpha_real_start_api_alpha_real_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/alpha/real/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Alpha Real Status */
+        get: operations["alpha_real_status_api_alpha_real_jobs__job_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/alpha/sweeps": {
         parameters: {
             query?: never;
@@ -147,7 +209,8 @@ export interface paths {
         put?: never;
         /**
          * Alpha Sweep
-         * @description One benchmark per value of the number of train paths or the training budget.
+         * @description One benchmark per value of the number of train paths, the training budget or the
+         *     planted edge's size (which also gives the arm's detection floor).
          */
         post: operations["alpha_sweep_api_alpha_sweeps_post"];
         delete?: never;
@@ -1135,6 +1198,36 @@ export interface components {
             path: string;
             run: components["schemas"]["RunActionMix"] | null;
         };
+        /**
+         * AlphaArmOut
+         * @description One arm the page can benchmark: a built-in or a plug-in registered on the server.
+         */
+        AlphaArmOut: {
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "learned" | "scripted" | "plugin";
+            /** Label */
+            label: string;
+            /** Name */
+            name: string;
+            /**
+             * Source
+             * @description A plug-in's import path and code digest.
+             */
+            source: string | null;
+            /**
+             * Trainable
+             * @description Trained per seed with a budget, like PPO.
+             */
+            trainable: boolean;
+        };
         /** AlphaDatasetOut */
         AlphaDatasetOut: {
             /** Edge */
@@ -1163,6 +1256,13 @@ export interface components {
              * @description What was planted.
              */
             edge: string;
+            /**
+             * Edge Knob
+             * @description The knob an edge-size sweep moves; None if it has none.
+             */
+            edge_knob: string | null;
+            /** Edge Unit */
+            edge_unit: string | null;
             /** Kind */
             kind: string;
             /** Knobs */
@@ -1260,6 +1360,8 @@ export interface components {
         };
         /** AlphaOptionsOut */
         AlphaOptionsOut: {
+            /** Arm Details */
+            arm_details: components["schemas"]["AlphaArmOut"][];
             /** Arms */
             arms: string[];
             /** Default Seeds */
@@ -1268,12 +1370,20 @@ export interface components {
             default_timesteps: number;
             /** Generators */
             generators: components["schemas"]["AlphaGeneratorOut"][];
-            /** Learned Arms */
+            /**
+             * Learned Arms
+             * @description The arms that train per seed with a budget: built-in learners and plug-ins with a trainer.
+             */
             learned_arms: string[];
             /** Learners Available */
             learners_available: boolean;
             /** Max Seeds */
             max_seeds: number;
+            /**
+             * Plugin Error
+             * @description Why the configured plug-ins could not be loaded.
+             */
+            plugin_error: string | null;
             /** Spec Knobs */
             spec_knobs: components["schemas"]["AlphaKnobOut"][];
         };
@@ -1284,10 +1394,72 @@ export interface components {
             signal: components["schemas"]["AlphaWorldOut"];
             twin: components["schemas"]["AlphaWorldOut"];
         };
+        /** AlphaRealJobOut */
+        AlphaRealJobOut: {
+            /** Created At */
+            created_at: string;
+            /** Done */
+            done: number;
+            /** Error */
+            error: string;
+            /** Fraction */
+            fraction: number;
+            /** Job Id */
+            job_id: string;
+            /** Log Tail */
+            log_tail: string[];
+            /** Phase */
+            phase: string;
+            /** Policy */
+            policy: string;
+            result: components["schemas"]["RealTest"] | null;
+            /** Run Id */
+            run_id: string;
+            /** Run Key */
+            run_key: string;
+            /**
+             * Source
+             * @default synthetic
+             */
+            source: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "queued" | "running" | "done" | "failed" | "cancelled";
+            /** Total */
+            total: number;
+        };
+        /** AlphaRealOut */
+        AlphaRealOut: {
+            /** Available */
+            available: boolean;
+            /** First Date */
+            first_date: string;
+            /** Last Date */
+            last_date: string;
+            /** Message */
+            message: string;
+            /**
+             * Refused
+             * @default
+             */
+            refused: string;
+            result: components["schemas"]["RealTest"] | null;
+            /** Source */
+            source: string;
+            /** Split */
+            split: string;
+        };
         /** AlphaSweep */
         AlphaSweep: {
             /** Datasets */
             datasets: string[];
+            /** Edge Knob */
+            edge_knob?: string | null;
+            /** Edge Unit */
+            edge_unit?: string | null;
+            floor?: components["schemas"]["EdgeFloor"] | null;
             /** Generator */
             generator: string;
             /** Key */
@@ -1303,10 +1475,13 @@ export interface components {
             captured: components["schemas"]["BenchStat"];
             /** Dataset */
             dataset: string;
+            /** Figures */
+            figures?: number[];
             /** N Train */
             n_train: number;
             noise_fit: components["schemas"]["BenchStat"] | null;
             overfit_gap: components["schemas"]["BenchStat"];
+            test?: components["schemas"]["EdgeTest"] | null;
             /** Total Timesteps */
             total_timesteps: number | null;
             /** Value */
@@ -1317,15 +1492,14 @@ export interface components {
             /**
              * Arm
              * @default ppo
-             * @enum {string}
              */
-            arm: "ppo" | "a2c" | "dqn" | "delta_seller" | "always_on" | "flat";
+            arm: string;
             /**
              * Axis
              * @default n_train
              * @enum {string}
              */
-            axis: "n_train" | "total_timesteps";
+            axis: "n_train" | "total_timesteps" | "edge";
             /** Dataset */
             dataset: string;
             /**
@@ -1336,7 +1510,7 @@ export interface components {
             /** Total Timesteps */
             total_timesteps?: number | null;
             /** Values */
-            values: number[];
+            values: (number)[];
         };
         /** AlphaWorldOut */
         AlphaWorldOut: {
@@ -1455,12 +1629,11 @@ export interface components {
         };
         /** Benchmark */
         Benchmark: {
-            /**
-             * Arm
-             * @enum {string}
-             */
-            arm: "ppo" | "a2c" | "dqn" | "delta_seller" | "always_on" | "flat";
+            /** Arm */
+            arm: string;
             attainable: components["schemas"]["BenchStat"];
+            /** Blocks */
+            blocks?: number[];
             capture_ratio: components["schemas"]["BenchStat"];
             captured: components["schemas"]["BenchStat"];
             /** Dataset */
@@ -1485,6 +1658,8 @@ export interface components {
             /** Oracle */
             oracle: string;
             overfit_gap: components["schemas"]["BenchStat"];
+            /** Plugin */
+            plugin?: string | null;
             /** Rows */
             rows: components["schemas"]["BenchRow"][];
             /** Seeds */
@@ -1989,6 +2164,59 @@ export interface components {
             source: string;
         };
         /**
+         * EdgeFloor
+         * @description An arm's detection floor in edge-size units, the study's way, with its curve.
+         */
+        EdgeFloor: {
+            /** Alpha */
+            alpha: number;
+            /** Bracket */
+            bracket: [
+                number,
+                number | null
+            ] | null;
+            /** Curve */
+            curve: [
+                number,
+                number,
+                number,
+                number
+            ][];
+            /** Edge */
+            edge: number | null;
+            /** Hi */
+            hi: number | null;
+            /** Lo */
+            lo: number | null;
+            /** Max Power */
+            max_power: number | null;
+            /** N */
+            n: number;
+            /**
+             * Note
+             * @default With few seeds the floor is rough: each size's test has S - 1 degrees of freedom, so its band is wide, and a floor read off a noisy curve tends to sit low (by about a tenth at S = 5 in the study's simulations). Read it as a bracket between swept sizes, not a number.
+             */
+            note: string;
+            /** Null Detected */
+            null_detected: boolean | null;
+            /** Reading */
+            reading: string;
+            /** Recrossings */
+            recrossings: number[];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "reached" | "below_grid" | "not_reached" | "untestable";
+            /** Target Power */
+            target_power: number;
+            /**
+             * Unit
+             * @enum {string}
+             */
+            unit: "seeds" | "path blocks";
+        };
+        /**
          * EdgeGridOut
          * @description A grid under the runs root, with the commands that write its edge and action mix.
          */
@@ -2042,6 +2270,47 @@ export interface components {
             run_keys: {
                 [key: string]: string | null;
             };
+        };
+        /**
+         * EdgeTest
+         * @description The one-sided t test on one size's per-seed (or per-block) captured edge.
+         */
+        EdgeTest: {
+            /** Critical */
+            critical: number;
+            /** Detected */
+            detected: boolean;
+            /** Df */
+            df: number;
+            /** Edge */
+            edge: number;
+            /** Estimate */
+            estimate: number;
+            /** Lower Bound */
+            lower_bound: number;
+            /** N */
+            n: number;
+            /** Noncentrality */
+            noncentrality: [
+                number,
+                number,
+                number
+            ];
+            /** Power */
+            power: number;
+            /** Power Hi */
+            power_hi: number;
+            /** Power Lo */
+            power_lo: number;
+            /** Se */
+            se: number;
+            /** T */
+            t: number | null;
+            /**
+             * Unit
+             * @enum {string}
+             */
+            unit: "seeds" | "path blocks";
         };
         /** EpisodeMix */
         EpisodeMix: {
@@ -3591,6 +3860,76 @@ export interface components {
             /** P90 */
             p90: number;
         };
+        /** RealRow */
+        RealRow: {
+            /** Policy */
+            policy: string;
+            /** Real Mean */
+            real_mean: number;
+            /** Real Per Seed */
+            real_per_seed: number[];
+            /** Real Se */
+            real_se: number;
+            /** Synthetic Mean */
+            synthetic_mean: number;
+            /** Synthetic N */
+            synthetic_n: number;
+            /** Synthetic Se */
+            synthetic_se: number;
+        };
+        /** RealTest */
+        RealTest: {
+            /** Arm */
+            arm: string;
+            /** Benchmark */
+            benchmark: string;
+            /** Block */
+            block: number;
+            /** Dataset */
+            dataset: string;
+            edge: components["schemas"]["BenchStat"];
+            /**
+             * Exploratory
+             * @default true
+             */
+            exploratory: boolean;
+            /** First Date */
+            first_date: string;
+            /** Generator */
+            generator: string;
+            /** Last Date */
+            last_date: string;
+            /** N Days */
+            n_days: number;
+            /** N Seeds */
+            n_seeds: number;
+            /** N Windows */
+            n_windows: number;
+            /**
+             * Note
+             * @default Exploratory: a real-data result is not part of the pre-registered analysis, which is the synthetic sweep (D2).
+             */
+            note: string;
+            /** Oracle */
+            oracle: string;
+            /** Panel */
+            panel: [
+                string,
+                string
+            ][];
+            /** Reproduced */
+            reproduced: boolean | null;
+            /** Reproduced Mean */
+            reproduced_mean: number | null;
+            /** Rows */
+            rows: components["schemas"]["RealRow"][];
+            /** Split */
+            split: string;
+            /** Total Timesteps */
+            total_timesteps: number | null;
+            /** Verdict */
+            verdict: string;
+        };
         /**
          * RegionOut
          * @description Real less simulated over the simulator's contracts in one moneyness region.
@@ -4443,6 +4782,26 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    alpha_arms_api_alpha_arms_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlphaArmOut"][];
+                };
+            };
+        };
+    };
     alpha_bench_api_alpha_benchmarks_post: {
         parameters: {
             query?: never;
@@ -4673,6 +5032,106 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AlphaOptionsOut"];
+                };
+            };
+        };
+    };
+    alpha_real_read_api_alpha_real_get: {
+        parameters: {
+            query: {
+                dataset: string;
+                arm: string;
+                total_timesteps?: number | null;
+                n_seeds?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlphaRealOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    alpha_real_start_api_alpha_real_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlphaRealJobOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    alpha_real_status_api_alpha_real_jobs__job_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlphaRealJobOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

@@ -15,11 +15,12 @@ from typing import Any, Literal, get_args
 
 from pydantic import Field
 
+from optspread.alpha import plugins as plug
 from optspread.alpha.benchmark import ARMS, BENCH_FILE, MAX_SEEDS, Benchmark, load_benchmark
 from optspread.alpha.dataset import DATASETS_DIR, PATHS_FILE, SynthDataset, SynthSpec, preview
 from optspread.alpha.generators import GENERATORS, GeneratorParams
 from optspread.alpha.jobs import DEFAULT_SEEDS, DEFAULT_TIMESTEPS
-from optspread.alpha.sweep import AlphaSweep, load_sweep
+from optspread.alpha.sweep import EDGE_KNOB, AlphaSweep, load_sweep
 from optspread.api._base import Out
 from optspread.api.jobs import JobOut, job_out
 from optspread.config import LEARNED_ARMS
@@ -77,17 +78,80 @@ class AlphaGeneratorOut(Out):
     taker: str = Field(description="Which policy can take it, and whether the agent sees it.")
     signal_label: str
     knobs: list[AlphaKnobOut]
+    edge_knob: str | None = Field(
+        default=None, description="The knob an edge-size sweep moves; None if it has none."
+    )
+    edge_unit: str | None = None
+
+
+class AlphaArmOut(Out):
+    """One arm the page can benchmark: a built-in or a plug-in registered on the server."""
+
+    name: str
+    label: str
+    kind: Literal["learned", "scripted", "plugin"]
+    trainable: bool = Field(description="Trained per seed with a budget, like PPO.")
+    description: str = ""
+    source: str | None = Field(default=None, description="A plug-in's import path and code digest.")
 
 
 class AlphaOptionsOut(Out):
     generators: list[AlphaGeneratorOut]
     spec_knobs: list[AlphaKnobOut]
     arms: list[str]
-    learned_arms: list[str]
+    learned_arms: list[str] = Field(
+        description="The arms that train per seed with a budget: built-in learners and "
+        "plug-ins with a trainer."
+    )
     learners_available: bool
+    arm_details: list[AlphaArmOut] = Field(default_factory=list)
+    plugin_error: str | None = Field(
+        default=None, description="Why the configured plug-ins could not be loaded."
+    )
     default_timesteps: int
     default_seeds: int
     max_seeds: int
+
+
+_BUILTIN_LABEL = {
+    "ppo": "PPO",
+    "a2c": "A2C",
+    "dqn": "DQN",
+    "delta_seller": "Fixed-delta seller",
+    "always_on": "Always-on condor",
+    "flat": "Flat",
+}
+
+
+def alpha_arms() -> tuple[list[AlphaArmOut], str | None]:
+    """The built-in arms this checkout can run, then every registered plug-in."""
+    available = ppo_available()
+    out = [
+        AlphaArmOut(
+            name=a,
+            label=_BUILTIN_LABEL.get(a, a),
+            kind="learned" if a in LEARNED_ARMS else "scripted",
+            trainable=a in LEARNED_ARMS,
+        )
+        for a in ARMS
+        if available or a not in LEARNED_ARMS
+    ]
+    try:
+        loaded = plug.plugins()
+    except plug.PluginError as exc:
+        return out, str(exc)
+    for p in loaded.values():
+        out.append(
+            AlphaArmOut(
+                name=p.name,
+                label=f"{p.plugin.title} (plug-in)",
+                kind="plugin",
+                trainable=p.plugin.trainable,
+                description=p.plugin.description,
+                source=f"{p.source}@{p.digest}",
+            )
+        )
+    return out, None
 
 
 def alpha_options() -> AlphaOptionsOut:
@@ -104,15 +168,20 @@ def alpha_options() -> AlphaOptionsOut:
                 taker=info.taker,
                 signal_label=info.signal_label,
                 knobs=[_knob(k, v) for k, v in model.model_fields.items() if k != "kind"],
+                edge_knob=EDGE_KNOB[kind][0] if kind in EDGE_KNOB else None,
+                edge_unit=EDGE_KNOB[kind][1] if kind in EDGE_KNOB else None,
             )
         )
     available = ppo_available()
+    arms, error = alpha_arms()
     return AlphaOptionsOut(
         generators=gens,
         spec_knobs=[_knob(k, v) for k, v in SynthSpec.model_fields.items() if k != "generator"],
-        arms=[a for a in ARMS if available or a not in LEARNED_ARMS],
-        learned_arms=list(LEARNED_ARMS),
+        arms=[a.name for a in arms],
+        learned_arms=[*LEARNED_ARMS, *(a.name for a in arms if a.kind == "plugin" and a.trainable)],
         learners_available=available,
+        arm_details=arms,
+        plugin_error=error,
         default_timesteps=DEFAULT_TIMESTEPS,
         default_seeds=DEFAULT_SEEDS,
         max_seeds=MAX_SEEDS,

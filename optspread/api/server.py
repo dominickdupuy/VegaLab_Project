@@ -56,6 +56,7 @@ from optspread.alpha.dataset import (
 )
 from optspread.alpha.jobs import AlphaJobManager, AlphaSpec, BenchSpec
 from optspread.alpha.sweep import AlphaSweep, AlphaSweepSpec, list_sweeps
+from optspread.api import alpha_real
 from optspread.api import builders as w
 from optspread.api.cache import Answers, file_stamp, tree_stamp
 from optspread.attribution import default_root
@@ -498,6 +499,15 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
     def alpha_options() -> w.AlphaOptionsOut:
         return w.alpha_options()
 
+    @app.get("/api/alpha/arms")
+    def alpha_arms() -> list[w.AlphaArmOut]:
+        """The arms a benchmark can run: built-ins, then plug-ins registered on the server
+        (``OPTSPREAD_ALPHA_PLUGINS``); no code is ever taken from a request."""
+        arms, error = w.alpha_arms()
+        if error is not None:
+            raise HTTPException(500, error)
+        return arms
+
     @app.get("/api/alpha/datasets")
     def alpha_datasets() -> list[w.AlphaManifestOut]:
         return w.alpha_manifests(list_datasets(cfg.runs))
@@ -555,7 +565,8 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
 
     @app.post("/api/alpha/sweeps", status_code=201)
     def alpha_sweep(spec: dict[str, object]) -> w.AlphaJobOut:
-        """One benchmark per value of the number of train paths or the training budget."""
+        """One benchmark per value of the number of train paths, the training budget or the
+        planted edge's size (which also gives the arm's detection floor)."""
         try:
             parsed = AlphaSweepSpec.model_validate(spec)
         except ValidationError as exc:
@@ -567,6 +578,8 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
         if job_id not in benches.jobs:
             raise HTTPException(404, f"no synthetic alpha job {job_id!r}")
         return _alpha_status(job_id)
+
+    alpha_real.register(app, cfg.runs, cfg.data, lambda: jobs["manager"].executor)
 
     @app.post("/api/leaks/demo")
     def leaks(params: w.LeakDemoParams) -> w.LeakDemoOut:

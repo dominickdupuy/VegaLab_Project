@@ -67,6 +67,12 @@ def test_the_m4gate_target_passes_its_args_through(tmp_path: Path) -> None:
 
 
 @pytest.mark.behaviour
+def test_the_alpha_target_passes_its_args_through(tmp_path: Path) -> None:
+    line = _dry_run(tmp_path, "alpha", "ARGS=run --root /tmp/r", "PY=py").strip()
+    assert line == "py -m scripts.alpha run --root /tmp/r"
+
+
+@pytest.mark.behaviour
 def test_the_script_targets_import_the_checkout_they_live_in(tmp_path: Path) -> None:
     # `python scripts/x.py` puts scripts/ first on the path, and optspread then comes from
     # whatever a shared venv's editable install points at; `-m scripts.x` imports this one.

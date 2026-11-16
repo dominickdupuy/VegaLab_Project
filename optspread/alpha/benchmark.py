@@ -25,6 +25,12 @@ power lab uses: the spread of the per-seed figures (training luck, tau^2 / S) an
 path noise of the seed-averaged figure (sigma^2 / (S N), estimated from the per-path
 averages). With one seed the first part is absent and the se is the path se alone, which
 says nothing about training luck; the page says so. Every verdict is at |z| > 2.
+
+An arm is a built-in (``ARMS``) or a plug-in (``optspread.alpha.plugins``): a plug-in rule
+is scored like the scripted arms and a plug-in learner trained like the learned ones, on
+the same frozen paths, seeds, twin and oracle. Each result also keeps the captured edge on
+``BLOCKS`` disjoint blocks of held-out paths, the per-"seed" figures a deterministic arm's
+detection test reads (``optspread.alpha.floor``).
 """
 
 from __future__ import annotations
@@ -37,6 +43,7 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
 
 from optspread.actions import FLAT, IRON_CONDOR, PUT_CREDIT_SPREAD, SHORT_STRANGLE
+from optspread.alpha import plugins as plug
 from optspread.alpha.dataset import Split, SynthDataset, SynthSpec, World, generate_arrays
 from optspread.alpha.generators import FloatArray, MrVrpParams
 from optspread.alpha.provider import DatasetChainProvider, dataset_env
@@ -55,8 +62,10 @@ from optspread.policies import FlatPolicy, Info, Observation, Policy, make_polic
 from optspread.scripted import make_seller
 from optspread.types import ChainProvider, Position
 
-Arm = Literal["ppo", "a2c", "dqn", "delta_seller", "always_on", "flat"]
-ARMS: tuple[Arm, ...] = ("ppo", "a2c", "dqn", "delta_seller", "always_on", "flat")
+BuiltinArm = Literal["ppo", "a2c", "dqn", "delta_seller", "always_on", "flat"]
+ARMS: tuple[BuiltinArm, ...] = ("ppo", "a2c", "dqn", "delta_seller", "always_on", "flat")
+# A built-in arm's name or a registered plug-in's (``optspread.alpha.plugins``).
+Arm = str
 # Config and the chains to train on in, trained policy out. ``learned_trainer`` is the
 # production one (``optspread.train.train``); the tests pass a stand-in without torch.
 SynthTrainer = Callable[[RunConfig, ChainProvider], Policy]
@@ -69,7 +78,40 @@ ROLL_DTE = 5
 BENCH_DIR = Path("alpha") / "bench"
 BENCH_FILE = "benchmark.json"
 ORACLE_DIR = Path("alpha") / "oracle"
+BLOCKS = 5  # disjoint held-out path blocks, the S of a deterministic arm's test
 _IV = OBS_NAMES.index("atm_iv")
+
+
+# -- arms ---------------------------------------------------------------------- #
+
+
+def arm_names() -> tuple[str, ...]:
+    """Every arm a benchmark can run: the built-ins, then the registered plug-ins."""
+    return (*ARMS, *plug.plugins())
+
+
+def check_arm(arm: str) -> str:
+    """``arm`` if it is a built-in or a registered plug-in; a ValueError naming both otherwise."""
+    if arm in ARMS or plug.find(arm) is not None:
+        return arm
+    extra = ", ".join(plug.plugins()) or f"none (set {plug.PLUGINS_ENV})"
+    raise ValueError(
+        f"unknown arm {arm!r}: the built-in arms are {', '.join(ARMS)}; plug-ins: {extra}"
+    )
+
+
+def is_learned(arm: str) -> bool:
+    """Trained per seed (a built-in learner or a plug-in with a trainer), with a budget."""
+    if arm in LEARNED_ARMS:
+        return True
+    found = plug.find(arm)
+    return found is not None and found.plugin.trainable
+
+
+def arm_key(arm: str) -> str:
+    """What a benchmark directory is named by: the arm, or a plug-in's name and code digest."""
+    found = plug.find(arm)
+    return found.key if found is not None else arm
 
 
 # -- policies ------------------------------------------------------------------ #
@@ -203,7 +245,7 @@ class SeedResult(_Frozen):
 class Benchmark(_Frozen):
     dataset: str
     generator: str
-    arm: Arm
+    arm: str
     total_timesteps: int | None
     n_seeds: int = 1
     n_train: int = 0
@@ -217,12 +259,18 @@ class Benchmark(_Frozen):
     overfit_gap: BenchStat
     noise_fit: BenchStat | None
     seeds: tuple[SeedResult, ...] = Field(default_factory=tuple)
+    # The seed-averaged captured edge on BLOCKS disjoint blocks of held-out paths, in order;
+    # empty on results written before it was kept, or with under 2 paths a block.
+    blocks: tuple[float, ...] = Field(default_factory=tuple)
+    # A plug-in arm's import path and code digest, ``pkg.mod:attr@digest``.
+    plugin: str | None = None
 
 
 def bench_path(
     root: Path, dataset: str, arm: Arm, total_timesteps: int | None, n_seeds: int = 1
 ) -> Path:
-    return root / BENCH_DIR / f"{dataset}-{arm}-{total_timesteps or 0}-s{n_seeds}" / BENCH_FILE
+    name = f"{dataset}-{arm_key(arm)}-{total_timesteps or 0}-s{n_seeds}"
+    return root / BENCH_DIR / name / BENCH_FILE
 
 
 def load_benchmark(path: Path) -> Benchmark:
@@ -306,6 +354,8 @@ def evaluate_on(ds: SynthDataset, world: World, split: Split, policy: Policy) ->
 
 
 def train_config(ds: SynthDataset, arm: LearnedArm, total_timesteps: int, seed: int) -> RunConfig:
+    """What a learner is trained with; a plug-in learner gets the ``ppo`` one, a placeholder
+    for the arm name ``RunConfig`` cannot hold, with its own seed and budget."""
     return RunConfig(
         market=ds.spec.market(),
         env=EnvConfig(episode_days=ds.spec.n_days),
@@ -316,7 +366,20 @@ def train_config(ds: SynthDataset, arm: LearnedArm, total_timesteps: int, seed: 
 
 def stages(arm: Arm, n_seeds: int) -> int:
     """Lines ``run_benchmark`` logs when it computes, for a progress bar."""
-    return 2 * n_seeds + 4 if arm in LEARNED_ARMS else 4
+    return 2 * n_seeds + 4 if is_learned(arm) else 4
+
+
+def captured_blocks(
+    held: FloatArray, twin: FloatArray, n_blocks: int = BLOCKS
+) -> tuple[float, ...]:
+    """The seed-averaged captured edge on ``n_blocks`` equal, disjoint blocks of held-out
+    paths (a remainder past ``n_blocks`` times the block size is left out); empty when a
+    block would hold fewer than two paths."""
+    per_path = (np.atleast_2d(held) - np.atleast_2d(twin)).mean(axis=0)
+    size = len(per_path) // n_blocks
+    if size < 2:
+        return ()
+    return tuple(float(b.mean()) for b in per_path[: size * n_blocks].reshape(n_blocks, size))
 
 
 def _verdicts(
@@ -375,8 +438,13 @@ def run_benchmark(
     log: Callable[[str], None] | None = None,
     n_seeds: int = 1,
 ) -> Benchmark:
-    """Train (if learned) on ``n_seeds`` seeds, evaluate, and write ``benchmark.json``."""
-    learned = arm in LEARNED_ARMS
+    """Train (if learned) on ``n_seeds`` seeds, evaluate, and write ``benchmark.json``.
+
+    ``trainer`` trains the built-in learners; a plug-in learner is trained by its own.
+    """
+    check_arm(arm)
+    found = plug.find(arm)
+    learned = is_learned(arm)
     if learned != (total_timesteps is not None):
         raise ValueError(
             "a training budget (total_timesteps) is given exactly when the arm is learned"
@@ -385,8 +453,13 @@ def run_benchmark(
         raise ValueError(f"n_seeds must be 1 to {MAX_SEEDS} for a learned arm and 1 otherwise")
     path = bench_path(root, ds.hash, arm, total_timesteps, n_seeds)
     if path.is_file():
-        return load_benchmark(path)
+        cached = load_benchmark(path)
+        # A deterministic result written before blocks were kept is quick to redo; a
+        # learner's is kept as it is (its test reads the per-seed figures).
+        if learned or cached.blocks or ds.n_paths("heldout") < 2 * BLOCKS:
+            return cached
     say = log if log is not None else (lambda _: None)
+    train_with = found.plugin.trainer if found is not None and found.plugin.trainer else trainer
 
     def row(policy: str, world: World, split: Split, pnls: FloatArray) -> BenchRow:
         mean, se = level(pnls)
@@ -401,19 +474,23 @@ def run_benchmark(
     if learned:
         assert total_timesteps is not None
         for seed in range(n_seeds):
-            config = train_config(ds, cast(LearnedArm, arm), total_timesteps, seed)
+            learner = cast(LearnedArm, arm if found is None else "ppo")
+            config = train_config(ds, learner, total_timesteps, seed)
             say(f"seed {seed}: training {arm} on {ds.n_paths('train')} signal paths")
-            policy = trainer(config, DatasetChainProvider(ds, "signal", "train"))
+            policy = train_with(config, DatasetChainProvider(ds, "signal", "train"))
             train.append(evaluate_on(ds, "signal", "train", policy))
             held.append(evaluate_on(ds, "signal", "heldout", policy))
             twin.append(evaluate_on(ds, "twin", "heldout", policy))
             say(f"seed {seed}: training the noise control on the twin's train paths")
-            control = trainer(config, DatasetChainProvider(ds, "twin", "train"))
+            control = train_with(config, DatasetChainProvider(ds, "twin", "train"))
             nc_in.append(evaluate_on(ds, "twin", "train", control))
             nc_out.append(evaluate_on(ds, "twin", "heldout", control))
         say(f"evaluated {n_seeds} seed(s) on train, held-out and the twin")
     else:
-        policy = make_policy(cast(PolicyName, arm), roll_dte=ROLL_DTE)
+        if found is not None and found.plugin.policy is not None:
+            policy = found.plugin.policy()
+        else:
+            policy = make_policy(cast(PolicyName, arm), roll_dte=ROLL_DTE)
         train.append(evaluate_on(ds, "signal", "train", policy))
         held.append(evaluate_on(ds, "signal", "heldout", policy))
         twin.append(evaluate_on(ds, "twin", "heldout", policy))
@@ -479,6 +556,8 @@ def run_benchmark(
         overfit_gap=stats[3],
         noise_fit=stats[4],
         seeds=tuple(per_seed),
+        blocks=captured_blocks(a_held, a_twin),
+        plugin=f"{found.source}@{found.digest}" if found is not None else None,
     )
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
