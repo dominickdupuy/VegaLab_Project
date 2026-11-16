@@ -76,7 +76,19 @@ def test_health_and_the_site(client: TestClient) -> None:
     assert "runs" in client.get("/runs/").text
 
 
-PAGES = ("/", "/runs/", "/launch/", "/power/", "/data/", "/leaks/", "/sweep/", "/attribution/")
+PAGES = (
+    "/",
+    "/workbench/",
+    "/tutorial/",
+    "/how-it-works/",
+    "/runs/",
+    "/launch/",
+    "/power/",
+    "/data/",
+    "/leaks/",
+    "/sweep/",
+    "/attribution/",
+)
 
 
 @pytest.mark.behaviour

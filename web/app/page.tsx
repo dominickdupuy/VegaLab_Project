@@ -1,148 +1,191 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
 import { StudyFinding } from "@/components/home/StudyFinding";
-import { TrustBand } from "@/components/home/TrustBand";
-import { WorkflowCard } from "@/components/home/WorkflowCard";
 import { InfoTip } from "@/components/InfoTip";
-import { ErrorBox, Loading } from "@/components/States";
-import { Checks, StudyDesign } from "@/components/Study";
 import ui from "@/components/ui.module.css";
-import { api, type M4, type Overview, type Study, type SweepList, type Vrp } from "@/lib/api";
-import { SOURCE_LABEL } from "@/lib/chart";
-import { num, signed } from "@/lib/format";
-import { WORKFLOWS } from "@/lib/tours";
+import { api, docUrl } from "@/lib/api";
+import { tourHref } from "@/lib/tours";
 import { useFetch } from "@/lib/useFetch";
+import s from "./landing.module.css";
 
-// the 3D surface is the heaviest chunk on the site: it loads after the text, on idle
-const HomeSurface = dynamic(() => import("@/components/home/HomeSurface"), { ssr: false, loading: () => <div className={ui.heroStage} aria-hidden="true" /> });
+/**
+ * The landing page: what the platform asks, how it answers, what it has found so far and
+ * where a researcher starts. The working surface (the guided questions, the live SPX
+ * surface, the checks) is the Workbench at /workbench/; the controls are taught at /tutorial/.
+ */
 
-function useIdle(): boolean {
-  const [idle, setIdle] = useState(false);
-  useEffect(() => {
-    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void };
-    if (w.requestIdleCallback) {
-      const id = w.requestIdleCallback(() => setIdle(true), { timeout: 1200 });
-      return () => w.cancelIdleCallback?.(id);
-    }
-    const id = window.setTimeout(() => setIdle(true), 300);
-    return () => window.clearTimeout(id);
-  }, []);
-  return idle;
-}
+type Go = { href: string; label: string };
+const STUDIES: { title: string; question: string; how: string; pages: Go[]; tour: string }[] = [
+  {
+    title: "Is the premium real?",
+    question: "Do SPX options price in more volatility than the market delivers, and would a backtest of this size tell that apart from noise?",
+    how: "The measured premium on real SPX days, and a sweep over many seeds of a seller run on markets with the premium planted or not.",
+    pages: [
+      { href: "/data/?q=premium", label: "Real data" },
+      { href: "/sweep/", label: "Sweep" },
+    ],
+    tour: "edge",
+  },
+  {
+    title: "Can an agent capture it?",
+    question: "Given an edge of known size, does a learning agent find it, or does it fit noise in its training days?",
+    how: "Plant an edge, train an agent on exactly that data, and score it on held-out days against the rule-based seller and the edge's floor.",
+    pages: [{ href: "/alpha/", label: "Synthetic alpha" }],
+    tour: "alpha",
+  },
+  {
+    title: "What eats the edge?",
+    question: "How much of one vol point survives the bid-ask spread, commissions, a small account and a wilder market?",
+    how: "Run the same seller with and without costs on the same market paths, so the difference is the cost and nothing else.",
+    pages: [
+      { href: "/launch/", label: "Launch" },
+      { href: "/runs/", label: "Runs" },
+    ],
+    tour: "costs",
+  },
+  {
+    title: "How big must a test be?",
+    question: "How many seeds and episodes before a result of this size means something?",
+    how: "The power of the paired test for a given effect, from the variance components the pilot measured.",
+    pages: [{ href: "/power/", label: "Power lab" }],
+    tour: "size",
+  },
+];
 
-/** The slim strip under the questions: what the site holds now. An item with nothing to say is left out.
- * The checks and the study design are in the trust band below it. */
-function StatusStrip({ ov, vrp, study, sweeps, m4 }: { ov?: Overview; vrp?: Vrp; study?: Study; sweeps?: SweepList; m4?: M4 }) {
-  const spans = ov?.coverage ?? [];
-  const first = spans.map((s) => s.first).sort()[0];
-  const last = spans.map((s) => s.last).sort().slice(-1)[0];
-  const h = vrp?.mapping?.headline;
-  const grid = sweeps?.sweeps.find((s) => s.kind === "grid" && s.sweep_hash === study?.grid_hash) ?? sweeps?.sweeps.find((s) => s.kind === "grid");
+const TRUST: { title: string; text: string; go: Go }[] = [
+  {
+    title: "Known answers first",
+    text: "Every method is first run on a simulated market where the size of the edge is set by hand, so a test that misses it, or finds one that is not there, shows up before any real data is read.",
+    go: { href: "/synth/", label: "Synth data" },
+  },
+  {
+    title: "Paired seeds, a rule fixed in advance",
+    text: "Two strategies are compared on the same market paths, so luck cancels. The test, its α and its sample size were written down before the sweep ran.",
+    go: { href: "/workbench/?study=1#study", label: "Pre-registration" },
+  },
+  {
+    title: "Checked for leaks, replayable",
+    text: "A detector plants look-ahead bugs in every field and shows each is caught. Any run can be replayed from its record and compared byte for byte.",
+    go: { href: "/leaks/", label: "Leak detector" },
+  },
+];
+
+function Finding() {
+  const m4 = useFetch((x) => api.m4(x), "m4");
+  const vrp = useFetch((x) => api.vrp(x), "vrp");
+  const ready = Boolean(m4.data?.available && m4.data.analysis);
   return (
-    <div className={ui.status} aria-label="Status">
-      {ov ? (
-        <Link href="/data/" className={ui.statusItem}>
-          <span className={ui.statusLabel}>Data</span>
-          <span className={ui.statusValue}>{first && last ? `SPX ${first.slice(0, 4)}–${last.slice(0, 4)}` : "Synthetic world"}</span>
-          <span className={ui.statusNote}>{spans.length ? spans.map((s) => SOURCE_LABEL[s.source] ?? s.source).join(" + ") : "the real panel is not built on this server"}</span>
-        </Link>
-      ) : null}
-      {h ? (
-        <Link href="/data/?section=vrp" className={ui.statusItem}>
-          <span className={ui.statusLabel}>
-            Real premium <InfoTip term="vrp" />
-          </span>
-          <span className={ui.statusValue}>{signed(h.mean)} vol pts</span>
-          <span className={ui.statusNote}>
-            95% {signed(h.mean_low)} to {signed(h.mean_high)} · {h.first.slice(0, 4)}–{h.last.slice(0, 4)}
-          </span>
-        </Link>
-      ) : null}
-      {grid ? (
-        <Link href="/sweep/?view=power" className={ui.statusItem}>
-          <span className={ui.statusLabel}>
-            Sweep <InfoTip term="sweep" />
-          </span>
-          <span className={ui.statusValue}>{m4?.available ? "Analysed" : `${num(grid.n_present)} of ${num(grid.n_cells)} cells`}</span>
-          <span className={ui.statusNote}>
-            {grid.arms.length} arms × {grid.premiums.length} premiums × {grid.n_seeds} seeds{m4?.analysis ? ` · ${m4.analysis.confirmatory ? "confirmatory" : "exploratory"}` : ""}
-          </span>
-        </Link>
-      ) : null}
-      {ov && ov.n_runs ? (
-        <Link href="/runs/" className={ui.statusItem}>
-          <span className={ui.statusLabel}>Runs</span>
-          <span className={ui.statusValue}>{num(ov.n_runs)} indexed</span>
-          <span className={ui.statusNote}>{num(ov.n_ok)} read cleanly · every one listed</span>
-        </Link>
-      ) : null}
-    </div>
+    <section className={s.section} aria-labelledby="finding-title">
+      <h2 id="finding-title" className={ui.sectionTitle}>
+        What it has found so far
+      </h2>
+      {ready ? (
+        <StudyFinding m4={m4.data} vrp={vrp.data} />
+      ) : (
+        <p className={s.note}>
+          {m4.error
+            ? "The server did not answer, so the current result cannot be shown. Start it with make serve and reload."
+            : m4.data
+              ? "The sweep's analysis is not on this server yet. Once it is, its result appears here and on the Workbench."
+              : "Loading the current result…"}
+        </p>
+      )}
+    </section>
   );
 }
 
-function Home() {
-  const q = useSearchParams();
-  const idle = useIdle();
-  const ov = useFetch((s) => api.overview(s), "overview");
-  const study = useFetch((s) => api.study(s), "study");
-  const checks = useFetch((s) => api.checks(s), "checks");
-  const vrp = useFetch((s) => api.vrp(s), "vrp");
-  const sweeps = useFetch((s) => api.sweeps(s), "sweeps");
-  const m4 = useFetch((s) => api.m4(s), "m4");
-  // the questions only: the reviewer's workflow starts from the trust band below them
-  const featured = WORKFLOWS.filter((w) => w.featured && !w.reviewer);
-  const more = WORKFLOWS.filter((w) => !w.featured && !w.reviewer);
-
+export default function Landing() {
   return (
     <>
-      <section className={ui.homeHero}>
-        <div className={ui.homeLead}>
-          <div className={ui.homeHead}>
-            <p className={ui.eyebrow}>optspread platform · Vega Lab</p>
-            <h1>What do you want to find out?</h1>
-            <p>Pick a question. Each one walks you through the platform: you run, compare and read the result yourself, one step at a time.</p>
-          </div>
-          <div className={ui.wfGrid2}>
-            {featured.map((w) => (
-              <WorkflowCard key={w.id} w={w} big />
-            ))}
-          </div>
-        </div>
-        {/* the study's result first, beside the questions; the real vol surface under it */}
-        <div className={ui.homeSide}>
-          <StudyFinding m4={m4.data} vrp={vrp.data} />
-          {idle ? <HomeSurface m4={m4.data} vrp={vrp.data} built={ov.data ? ov.data.data.built : undefined} finding={Boolean(m4.data?.available && m4.data.analysis)} /> : <div className={ui.heroStage} aria-hidden="true" />}
+      <section className={s.hero}>
+        <p className={ui.eyebrow}>Vega Lab · optspread platform</p>
+        <h1 className={s.heroTitle}>Is the variance risk premium a real edge, and can a learning agent find it?</h1>
+        <p className={s.heroLede}>
+          SPX options tend to price in more volatility than the market then delivers. <InfoTip term="vrp" /> This platform measures how large that premium is, whether a
+          seller keeps it after costs, and whether a reinforcement-learning agent can find it. Every method is tested first on a simulated SPX market where the edge's size is
+          known, then on real SPX days, against a test fixed in advance.
+        </p>
+        <div className={s.heroGo}>
+          <Link href="/workbench/" className={`${ui.btn} ${ui.btnPrimary}`}>
+            Open the workbench →
+          </Link>
+          <Link href="/tutorial/" className={ui.btn}>
+            Take the tutorial
+          </Link>
+          <span className={s.heroHint}>New here? The tutorial takes ten minutes and ends with a result you produced.</span>
         </div>
       </section>
 
-      {ov.error ? <ErrorBox what="the overview" error={ov.error} onRetry={ov.reload} /> : null}
-      <StatusStrip ov={ov.data} vrp={vrp.data} study={study.data} sweeps={sweeps.data} m4={m4.data} />
+      <Finding />
 
-      <section className={ui.stack}>
-        <h2 className={ui.sectionTitle}>More questions</h2>
-        <div className={ui.wfGrid}>
-          {more.map((w) => (
-            <WorkflowCard key={w.id} w={w} />
+      <section className={s.section} aria-labelledby="study-title">
+        <h2 id="study-title" className={ui.sectionTitle}>
+          What you can study
+        </h2>
+        <ol className={s.grid}>
+          {STUDIES.map((x) => (
+            <li key={x.title} className={`${ui.card} ${s.study}`}>
+              <h3 className={ui.cardTitle}>{x.title}</h3>
+              <p className={s.question}>{x.question}</p>
+              <p className={s.how}>{x.how}</p>
+              <span className={s.go}>
+                <Link href={tourHref(x.tour)} className={`${ui.btn} ${ui.btnSmall} ${ui.btnPrimary}`}>
+                  Guided walk-through
+                </Link>
+                {x.pages.map((g) => (
+                  <Link key={g.href} href={g.href} className={`${ui.btn} ${ui.btnSmall}`}>
+                    {g.label} →
+                  </Link>
+                ))}
+              </span>
+            </li>
           ))}
-        </div>
+        </ol>
+        <p className={s.note}>
+          More questions, the live SPX surface and every check are on the <Link href="/workbench/">Workbench</Link>.
+        </p>
       </section>
 
-      <TrustBand checks={checks.data} study={study.data} />
-      {checks.error ? <ErrorBox what="the checks" error={checks.error} onRetry={checks.reload} /> : null}
-      {q.get("checks") === "1" ? <div id="checks">{checks.data ? <Checks rows={checks.data} /> : checks.error ? null : <Loading what="the checks" />}</div> : null}
-      {q.get("study") === "1" ? <div id="study">{study.data ? <StudyDesign s={study.data} /> : study.error ? <ErrorBox what="the study design" error={study.error} /> : <Loading what="the study design" />}</div> : null}
-    </>
-  );
-}
+      <section className={s.section} aria-labelledby="trust-title">
+        <h2 id="trust-title" className={ui.sectionTitle}>
+          Why the numbers can be trusted
+        </h2>
+        <ul className={s.trust}>
+          {TRUST.map((x) => (
+            <li key={x.title} className={s.trustItem}>
+              <h3 className={s.trustTitle}>{x.title}</h3>
+              <p className={s.how}>{x.text}</p>
+              <Link href={x.go.href}>{x.go.label} →</Link>
+            </li>
+          ))}
+        </ul>
+        <p className={s.note}>
+          Each check's verdict, with its evidence, is in <Link href="/workbench/#trust">Can you trust these numbers?</Link> on the Workbench.
+        </p>
+      </section>
 
-export default function HomePage() {
-  return (
-    <Suspense fallback={<Loading what="the platform" />}>
-      <Home />
-    </Suspense>
+      <section className={s.section} aria-labelledby="repro-title">
+        <h2 id="repro-title" className={ui.sectionTitle}>
+          Run it yourself
+        </h2>
+        <div className={s.repro}>
+          <pre className={s.code}>
+            <code>{"make web && make serve   # the dashboard on http://127.0.0.1:8600\nmake reproduce            # the study's numbers from scratch"}</code>
+          </pre>
+          <p className={s.how}>
+            The steps, the data each needs and what to expect are in{" "}
+            <a href={docUrl("REPRODUCE.md")} target="_blank" rel="noreferrer">
+              REPRODUCE.md
+            </a>
+            ; the test fixed in advance is in{" "}
+            <a href={docUrl("PRE_REGISTRATION.md")} target="_blank" rel="noreferrer">
+              PRE_REGISTRATION.md
+            </a>
+            .
+          </p>
+        </div>
+      </section>
+    </>
   );
 }

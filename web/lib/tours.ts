@@ -20,8 +20,8 @@
  * The contract the pages keep (rename one here if a page renames it):
  *   query   /launch/ preset · /power/ preset, n_seeds, n_episodes, delta · /leaks/ view,
  *           eps · /sweep/ view, arm · /attribution/ arm, p · /runs/ key, a, b, question ·
- *           /data/ q (premium|surface|sim|seller), date, sigma · / checks, study (the
- *           homepage's panels) · /alpha/ dataset, gen and the knobs by name (premium_pts,
+ *           /data/ q (premium|surface|sim|seller), date, sigma · /workbench/ checks, study (the
+ *           the workbench's panels) · /alpha/ dataset, gen and the knobs by name (premium_pts,
  *           n_days, n_train, n_heldout, ...), arm, timesteps, seeds
  *   targets a control is found by data-guide="<name>" first (lib/guide.ts), else by
  *           its visible text or label (see Target). Names are <page>-<control>:
@@ -1131,10 +1131,10 @@ export const WORKFLOWS: Workflow[] = [
     steps: [
       {
         id: "checks",
-        href: "/",
+        href: "/workbench/",
         task: "Open the checks: press Checks in “Can you trust these numbers?”, under the questions.",
         target: { guide: "home-checks", text: /^\s*checks/i },
-        done: (c) => c.path === "/" && c.q.get("checks") === "1",
+        done: (c) => c.path.startsWith("/workbench") && c.q.get("checks") === "1",
         read: (c) => {
           const rows = at(c.call("GET /api/checks") ?? c.before("GET /api/checks")) as Check[] | undefined;
           if (!rows) return null;
@@ -1144,10 +1144,10 @@ export const WORKFLOWS: Workflow[] = [
       },
       {
         id: "study",
-        href: "/",
+        href: "/workbench/",
         task: "Open Pre-registration in “Can you trust these numbers?”: the rule fixed before any data.",
         target: { guide: "home-study", text: /pre-registration/i },
-        done: (c) => c.path === "/" && c.q.get("study") === "1",
+        done: (c) => c.path.startsWith("/workbench") && c.q.get("study") === "1",
         read: (c) => {
           const s = at(c.call("GET /api/study") ?? c.before("GET /api/study")) as Study | undefined;
           if (!s) return null;
@@ -1251,6 +1251,12 @@ export function stepHref(w: Workflow, i: number): string {
   const [path, hash] = step.href.split("#");
   const sep = (path ?? "").includes("?") ? "&" : "?";
   return `${path}${sep}wf=${w.id}&step=${i + 1}${hash ? `#${hash}` : ""}`;
+}
+
+/** A workflow's first step with `start=1`, the link a workflow card opens; "/workbench/" for an unknown id. */
+export function tourHref(id: string): string {
+  const w = WORKFLOWS.find((x) => x.id === id);
+  return w ? `${stepHref(w, 0)}&start=1` : "/workbench/";
 }
 
 /** The page a step lives on: its href's path. */

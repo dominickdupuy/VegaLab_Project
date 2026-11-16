@@ -12,7 +12,7 @@ import ui from "./ui.module.css";
 import { CopyLink, WorkflowStrip } from "./Workflow";
 
 const TABS: { href: string; label: string }[] = [
-  { href: "/", label: "Home" },
+  { href: "/workbench/", label: "Workbench" },
   { href: "/alpha/", label: "Synthetic alpha" },
   { href: "/runs/", label: "Runs" },
   { href: "/launch/", label: "Launch" },
@@ -133,7 +133,7 @@ export function Shell({ children }: { children: ReactNode }) {
             <Link href="/" className={ui.brandName} aria-label="optspread platform, home">
               optspread platform
             </Link>
-            <Link href="/how-it-works/" className={ui.brandLab} title="How it works" aria-label="Vega Lab: how it works">
+            <Link href="/tutorial/" className={ui.brandLab} title="Tutorial" aria-label="Vega Lab: the tutorial">
               VEGA LAB
             </Link>
           </span>
@@ -151,7 +151,7 @@ export function Shell({ children }: { children: ReactNode }) {
       <main className={ui.main}>{children}</main>
       <footer className={ui.footer}>
         <span>Vega Lab · CIS 4914 · University of Florida</span>
-        <Link href="/how-it-works/">How it works</Link>
+        <Link href="/tutorial/">Tutorial</Link>
       </footer>
     </div>
   );
