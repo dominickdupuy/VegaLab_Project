@@ -8,6 +8,7 @@ import { short } from "@/lib/format";
 import { flipTheme, useTheme } from "@/lib/theme";
 import { useFetch } from "@/lib/useFetch";
 import { usePoll } from "@/lib/usePoll";
+import { MarketingShell } from "./marketing/MarketingShell";
 import ui from "./ui.module.css";
 import { CopyLink, WorkflowStrip } from "./Workflow";
 
@@ -29,7 +30,7 @@ function active(path: string, href: string): boolean {
   return path === href || path.startsWith(href) || `${path}/` === href;
 }
 
-function ThemeButton() {
+export function ThemeButton() {
   const [theme] = useTheme();
   const dark = theme === "dark";
   const ref = useRef<HTMLButtonElement>(null);
@@ -125,6 +126,8 @@ function Nav({ path }: { path: string }) {
 
 export function Shell({ children }: { children: ReactNode }) {
   const path = usePathname() ?? "/";
+  // the landing page and the tutorial wear the product's chrome; every other page the app's
+  if (path === "/" || path.startsWith("/tutorial")) return <MarketingShell>{children}</MarketingShell>;
   return (
     <div className={ui.shell}>
       <header className={ui.header}>

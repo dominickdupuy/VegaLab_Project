@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { PageHead } from "@/components/Bits";
 import ui from "@/components/ui.module.css";
 import { tourHref } from "@/lib/tours";
 import s from "./tutorial.module.css";
@@ -133,17 +132,29 @@ function HeaderDrawing() {
 export default function Tutorial() {
   return (
     <>
-      <PageHead
-        eyebrow="Vega Lab"
-        title="Tutorial"
-        lede="How the site is laid out, the research loop it runs, and a first session that ends with a result you produced."
-        right={
-          <Link href={tourHref("edge")} className={`${ui.btn} ${ui.btnPrimary}`}>
-            Start the first session →
-          </Link>
-        }
-      />
-      <div className={s.layout}>
+      <section className={s.hero}>
+        <div className={s.heroInner}>
+          <span className={s.badge}>Tutorial · about 10 minutes</span>
+          <h1>Learn Vega Lab by running a real test</h1>
+          <p>How the app is laid out, the research loop it runs, and a first session that ends with a paired comparison you produced yourself.</p>
+          <div className={s.heroGo}>
+            <Link href={tourHref("edge")} className={s.btnMain}>
+              Start the first session →
+            </Link>
+            <Link href="/workbench/" className={s.btnGhost}>
+              Open the app
+            </Link>
+          </div>
+          <ol className={s.progress}>
+            {SECTIONS.map((x) => (
+              <li key={x.id}>
+                <a href={`#${x.id}`}>{x.label}</a>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+      <div className={`${s.layout} ${s.wrap}`}>
         <nav className={s.toc} aria-label="On this page">
           <p className={s.tocHead}>On this page</p>
           {SECTIONS.map((x) => (
@@ -161,6 +172,9 @@ export default function Tutorial() {
             <h2 id="way-title" className={ui.sectionTitle}>
               1. Finding your way
             </h2>
+            <p className={s.intro}>
+              Every page of the app shares one header. Open the app in another tab and follow along; the numbers on the drawing match the list.
+            </p>
             <div className={`${ui.card} ${s.headerCard}`}>
               <HeaderDrawing />
               <ol className={s.legend}>
