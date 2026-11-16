@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Card } from "@/components/Bits";
 import { Chart } from "@/components/Chart";
+import { Labelled } from "@/components/InfoTip";
 import { Reading } from "@/components/PageBits";
 import ui from "@/components/ui.module.css";
 import { type AlphaDataset, type AlphaOptions, ApiError, api, type AlphaSweep } from "@/lib/api";
@@ -117,7 +118,9 @@ export function SweepCard({ options, ds, sweeps, onJob }: { options: AlphaOption
             <input className={ui.input} value={values} onChange={(e) => setValues(e.target.value)} />
           </label>
           <label className={ui.field}>
-            <span className={ui.fieldLabel}>Arm</span>
+            <span className={ui.fieldLabel}>
+              <Labelled term="alpha.arm">Arm</Labelled>
+            </span>
             <select className={ui.select} value={arm} onChange={(e) => setArm(e.target.value)}>
               {options.arms
                 .filter((a) => axis === "n_train" || options.learned_arms.includes(a))
@@ -130,13 +133,17 @@ export function SweepCard({ options, ds, sweeps, onJob }: { options: AlphaOption
           </label>
           {learned && axis === "n_train" ? (
             <label className={ui.field}>
-              <span className={ui.fieldLabel}>Timesteps per learner</span>
+              <span className={ui.fieldLabel}>
+                <Labelled term="alpha.budget">Timesteps per learner</Labelled>
+              </span>
               <input className={ui.input} type="number" min={2048} step={1} value={steps} onChange={(e) => setSteps(Number(e.target.value))} />
             </label>
           ) : null}
           {learned ? (
             <label className={ui.field}>
-              <span className={ui.fieldLabel}>Seeds per point</span>
+              <span className={ui.fieldLabel}>
+                <Labelled term="alpha.seeds">Seeds per point</Labelled>
+              </span>
               <input className={ui.input} type="number" min={1} max={options.max_seeds} step={1} value={seeds} onChange={(e) => setSeeds(Number(e.target.value))} />
             </label>
           ) : null}

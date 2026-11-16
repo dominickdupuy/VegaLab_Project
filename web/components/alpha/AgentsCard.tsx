@@ -3,11 +3,13 @@
 import { useMemo } from "react";
 import { Card } from "@/components/Bits";
 import { Chart } from "@/components/Chart";
+import { InfoTip } from "@/components/InfoTip";
 import { Reading } from "@/components/PageBits";
 import ui from "@/components/ui.module.css";
 import type { Benchmark, BenchStat } from "@/lib/api";
 import { ARM_LABEL, armColor, useTokens } from "@/lib/chart";
 import { num, pct, usd } from "@/lib/format";
+import { guide } from "@/lib/guide";
 import { forestOption } from "./charts";
 
 /** What identifies a benchmark on one dataset: the arm, its budget and its seeds. */
@@ -69,17 +71,33 @@ export function AgentsCard({ benches, selected, onSelect }: { benches: Benchmark
           <table className={ui.table}>
             <thead>
               <tr>
-                <th>Arm</th>
+                <th>
+                  Arm <InfoTip term="alpha.arm" />
+                </th>
                 <th>Setting</th>
-                <th className={ui.num}>Capture ratio</th>
-                <th className={ui.num}>Edge from the signal</th>
-                <th className={ui.num}>Overfit gap</th>
-                <th className={ui.num}>Noise fit</th>
+                <th className={ui.num}>
+                  Capture ratio <InfoTip term="alpha.capture" />
+                </th>
+                <th className={ui.num}>
+                  Edge from the signal <InfoTip term="alpha.captured" label="About the edge from the signal" />
+                </th>
+                <th className={ui.num}>
+                  Overfit gap <InfoTip term="alpha.overfit" />
+                </th>
+                <th className={ui.num}>
+                  Noise fit <InfoTip term="alpha.noiseFit" />
+                </th>
               </tr>
             </thead>
             <tbody>
               {benches.map((b) => (
-                <tr key={benchKey(b)} className={`${ui.clickRow} ${benchKey(b) === selected ? ui.rowSelected : ""}`} onClick={() => onSelect(benchKey(b))}>
+                <tr
+                  key={benchKey(b)}
+                  className={`${ui.clickRow} ${benchKey(b) === selected ? ui.rowSelected : ""}`}
+                  onClick={() => onSelect(benchKey(b))}
+                  data-selected={benchKey(b) === selected ? "" : undefined}
+                  {...guide(`alpha-bench-${benchKey(b)}`)}
+                >
                   <td>{ARM_LABEL[b.arm] ?? b.arm}</td>
                   <td>{setting(b)}</td>
                   <td className={ui.num}>{cell(b.capture_ratio, (v) => pct(v))}</td>

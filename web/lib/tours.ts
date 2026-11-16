@@ -21,7 +21,8 @@
  *   query   /launch/ preset · /power/ preset, n_seeds, n_episodes, delta · /leaks/ view,
  *           eps · /sweep/ view, arm · /attribution/ arm, p · /runs/ key, a, b, question ·
  *           /data/ q (premium|surface|sim|seller), date, sigma · / checks, study (the
- *           homepage's panels)
+ *           homepage's panels) · /alpha/ dataset, gen and the knobs by name (premium_pts,
+ *           n_days, n_train, n_heldout, ...), arm, timesteps, seeds
  *   targets a control is found by data-guide="<name>" first (lib/guide.ts), else by
  *           its visible text or label (see Target). Names are <page>-<control>:
  *           launch-run, launch-preset-<name> · runs-question-<group>, runs-pair-<a>|<b> (a
@@ -30,16 +31,21 @@
  *           power-episodes, power-preset · leaks-run, leaks-eps, leaks-view, leaks-floor,
  *           leaks-field, leaks-plant · sweep-arm, sweep-view · attribution-arm,
  *           attribution-premium · data-date, data-next-day, data-sigma-from ·
- *           home-checks, home-study · export (every figure's export bar).
+ *           home-checks, home-study · alpha-generator, alpha-generate,
+ *           alpha-dataset-<hash> (an earlier dataset's row), alpha-arm, alpha-steps,
+ *           alpha-seeds, alpha-train, alpha-bench-<arm>-<steps>-s<seeds> (a result's row,
+ *           data-selected when it is the one shown), alpha-floor-arm-<arm>, alpha-floor-run,
+ *           alpha-real-run · export (every figure's export bar).
  */
 
 import type { Activity, Call } from "./activity";
-import type { Attribution, Check, EdgeDetail, Grid, Job, LeakCoverage, LeakDemo, LeakField, LeakFloor, M4, Power, Replay, RunDetail, Seller, Simulated, Study, Sweep, Term, Vrp } from "./api";
+import type { AlphaDataset, AlphaJob, AlphaOptions, Attribution, Benchmark, BenchStat, Check, EdgeDetail, Grid, Job, LeakCoverage, LeakDemo, LeakField, LeakFloor, M4, Power, Replay, RunDetail, Seller, Simulated, Study, Sweep, Term, Vrp } from "./api";
 import { api } from "./api";
 import { type Catalog, type PairedCompare, runsApi } from "./api_runs";
 import { groupName, notBuilt, type Pair, PAIRS, type PairSpec, pairGuide, resolvePair, runIdOf } from "./catalog";
 import { MINUS, num, pct, prem, short, usd } from "./format";
 import { fieldWord, luck, shareOf, shareWord } from "./leakwords";
+import type { components } from "./schema";
 
 /** $ of mean P&L per episode for one vol point of premium (pre-registration A6). */
 export const PER_VOL = 824.3;
@@ -116,7 +122,7 @@ export interface Workflow {
   minutes: number;
   /** What you will do, three short lines. */
   youWill: string[];
-  icon: "edge" | "market" | "pnl" | "size" | "leak" | "learner" | "review" | "tune" | "costs";
+  icon: "edge" | "market" | "pnl" | "size" | "leak" | "learner" | "review" | "tune" | "costs" | "planted";
   /** Shown first and largest on the homepage. */
   featured?: boolean;
   reviewer?: boolean;
@@ -360,6 +366,152 @@ function tradeOff(d: Paired, tailB: number | null, tailA: number | null, change:
   const tail = tailWords(m);
   if (!d.clear) return `${change} made no difference to the mean you could tell from luck at this sample size, ${m ? "but" : "and"} ${tail}`;
   return `${change} earned ${d.diff > 0 ? "more" : "less"}, and ${tail}`;
+}
+
+
+// ---------------------------------------------------------------- synthetic alpha
+
+type AlphaReal = components["schemas"]["AlphaRealOut"];
+type AlphaRealJob = components["schemas"]["AlphaRealJobOut"];
+type RealTest = components["schemas"]["RealTest"];
+
+/**
+ * The small world the Synthetic alpha workflow opens the page on, every knob in its query:
+ * 4 vol pts of premium on 20-day paths, 16 to train on and 64 held out; PPO at 4,096 steps on
+ * 2 seeds. Small enough that each step finishes in seconds to a minute.
+ */
+const ALPHA_START = "/alpha/?gen=const_vrp&premium_pts=4&n_days=20&n_train=16&n_heldout=64&arm=ppo&timesteps=4096&seeds=2";
+const ALPHA_ARM: Record<string, string> = { ...ARM, a2c: "A2C", dqn: "DQN" };
+const genOf = (d: AlphaDataset | undefined) => (d?.spec as { generator?: { kind?: string } } | undefined)?.generator?.kind;
+const zOf = (s: BenchStat | null | undefined) => (s && s.value !== null && s.value !== undefined && s.se ? s.value / s.se : 0);
+const pmUsd = (s: BenchStat) => (s.value === null || s.value === undefined ? "none" : `${usd(s.value)} ± ${usd(2 * (s.se ?? 0))}`);
+const g3 = (x: number) => (Math.abs(x) >= 10 ? num(x, 1) : String(Number(x.toPrecision(3))));
+/** "1 vol point", "2 vol points", "0.7 vol points". */
+const sized = (x: number, unit: string, show = g3) => `${show(x)} ${x === 1 ? unit.replace(/points$/, "point") : unit}`;
+
+/** The newest job of this step's `post` that matches and that the server reports done, with the body it was sent. */
+function alphaJob(ctx: Ctx, post: Call, poll: Call, match: (b: Record<string, unknown>) => boolean): { job: AlphaJob; body: Record<string, unknown> } | undefined {
+  const posts = ctx.calls(post).filter((a) => match(body(a)));
+  const polls = ctx.calls(poll);
+  for (const p of [...posts].reverse()) {
+    const first = p.data as AlphaJob | undefined;
+    if (!first?.job_id) continue;
+    let job = first;
+    for (const s of polls) if (s.at >= p.at && (s.data as AlphaJob | undefined)?.job_id === first.job_id) job = s.data as AlphaJob;
+    if (job.state === "done") return { job, body: body(p) };
+  }
+  return undefined;
+}
+
+/** A job of this step that failed, so the strip says why rather than wait. */
+function alphaFailed(ctx: Ctx, post: Call, poll: Call): string | null {
+  const ids = new Set(ctx.calls(post).map((p) => (p.data as AlphaJob | undefined)?.job_id));
+  const bad = ctx
+    .calls(poll)
+    .map((a) => a.data as AlphaJob | undefined)
+    .filter((j) => j && ids.has(j.job_id) && j.state === "failed")
+    .pop();
+  return bad ? `the job failed: ${bad.error || bad.phase}` : null;
+}
+
+/** The dataset the first step made, and whether the page shows another one now. */
+function alphaDs(c: Ctx): { hash: string; other: boolean } | undefined {
+  const hash = c.kept("dataset")?.hash;
+  if (typeof hash !== "string" || !hash) return undefined;
+  const open = c.q.get("dataset");
+  return { hash, other: Boolean(c.path.startsWith("/alpha") && open && open !== hash) };
+}
+
+/** "This is another dataset: open 1a2b3c4d again from Earlier datasets, then …", or the task as it is. */
+function onAlphaDs(c: Ctx, task: string): string {
+  const d = alphaDs(c);
+  return d?.other ? `This is another dataset: open ${short(d.hash)} again from Earlier datasets, then ${task.charAt(0).toLowerCase()}${task.slice(1)}` : task;
+}
+
+/** No dataset open (a reload of a bare /alpha/): the way to one, while a step's own control is not drawn. */
+const noDataset = (c: Ctx): Target[] => (c.q.get("dataset") ? [] : [{ guide: "alpha-generate", text: /^\s*generate and freeze\s*$/i, fallback: true }]);
+
+/** Another dataset open: its way back, the workflow's row under Earlier datasets. */
+function backToAlphaDs(c: Ctx): Target | undefined {
+  const d = alphaDs(c);
+  return d?.other ? { guide: `alpha-dataset-${d.hash}`, css: `tr[data-guide="alpha-dataset-${d.hash}"]` } : undefined;
+}
+
+const alphaOptions = (c: Ctx) => at(c.call("GET /api/alpha/options") ?? c.before("GET /api/alpha/options")) as AlphaOptions | undefined;
+
+/** Capture ratio, overfit gap and noise fit of a benchmark, in one plain sentence. */
+function alphaBenchRead(b: Benchmark): string {
+  const arm = ALPHA_ARM[b.arm] ?? b.arm;
+  const seeds = b.n_seeds ?? 1;
+  const r = b.capture_ratio;
+  const att = b.attainable.value ?? 0;
+  const take =
+    r.value === null || r.value === undefined
+      ? `the oracle found no measurable edge to take, so there is no capture ratio`
+      : zOf(b.captured) > 2
+        ? `${arm} took ${pct(r.value)} ± ${pct(2 * (r.se ?? 0))} of the ${usd(att)} per episode the oracle earned (capture ratio)`
+        : zOf(b.captured) < -2
+          ? `${arm} did worse where the edge was planted than on its noise twin, so it took none of the oracle's ${usd(att)} per episode (capture ratio ${pct(r.value)} ± ${pct(2 * (r.se ?? 0))})`
+          : `${arm}'s capture ratio, ${pct(r.value)} ± ${pct(2 * (r.se ?? 0))} of the oracle's ${usd(att)} per episode, cannot be told from zero`;
+  const over = zOf(b.overfit_gap) > 2 ? `it did ${usd(b.overfit_gap.value)} per episode better on its own train paths than on new ones (overfit gap), so it learned those paths` : `its overfit gap, ${pmUsd(b.overfit_gap)}, shows no clear overfitting`;
+  const n = b.noise_fit;
+  const noise = !n ? "" : zOf(n) > 2 ? `, and a copy trained on pure noise “earned” ${usd(n.value)} per episode in sample only (noise fit): it memorises noise` : `, and the copy trained on pure noise shows no memorised noise (noise fit ${pmUsd(n)})`;
+  return `On ${seeds} seed${seeds === 1 ? "" : "s"} of ${num(b.total_timesteps ?? 0)} steps, ${take}; ${over}${noise}.`;
+}
+
+/** The seller's detection floor from an edge sweep, in one plain sentence that says how rough it is. */
+function alphaFloorRead(sw: NonNullable<AlphaJob["sweep"]>): string | null {
+  const f = sw.floor;
+  if (!f) return null;
+  const unit = sw.edge_unit ?? "units";
+  const who = ALPHA_ARM[sw.spec.arm] ?? sw.spec.arm;
+  const on = `${f.n} ${f.unit ?? "figures"}`;
+  const sizes = sw.spec.values.map(Number).filter((v) => v > 0);
+  const list = `${sizes.map((v) => g3(v)).join(", ")} ${unit}`;
+  const g2 = (x: number) => String(Number(x.toPrecision(2)));
+  const Who = who.charAt(0).toUpperCase() + who.slice(1);
+  const head =
+    f.status === "untestable"
+      ? `There is no floor for ${who}: each size needs at least two seeds or path blocks to test`
+      : f.status === "not_reached"
+        ? `${Who} is not found reliably at any planted size swept (${list}): even at the largest its power is ${pct(f.max_power ?? 0)}, under 80%, so its floor is above ${sized(f.bracket?.[0] ?? Math.max(...sizes), unit)}`
+        : f.status === "below_grid"
+          ? `${Who} is found reliably at every planted size swept (${list}), so its floor is below the smallest, ${sized(f.bracket?.[1] ?? Math.min(...sizes), unit)}: about ${sized(f.edge ?? 0, unit, g2)} on the line drawn to zero`
+          : `${Who} is found 80% of the time from about ${sized(f.edge ?? 0, unit, g2)} of planted edge, between the swept ${g3(f.bracket?.[0] ?? 0)} and ${sized(f.bracket?.[1] ?? 0, unit)}`;
+  const alarm = f.null_detected ? `, though it also “found” an edge at 0, where none is planted, so the curve is suspect` : "";
+  return `${head}${alarm}; each size is tested on only ${on}, so read the floor as a bracket between swept sizes, not a precise number.`;
+}
+
+/** Whether a real-data test is of the result the train step made (any, before it has kept one). */
+function ofKept(c: Ctx, r: RealTest): boolean {
+  const d = alphaDs(c);
+  const key = c.kept("train")?.key;
+  return (!d || r.dataset === d.hash) && (typeof key !== "string" || key === `${r.arm}-${r.total_timesteps ?? 0}-s${r.n_seeds}`);
+}
+
+/**
+ * The real-data test of this step: from a job it finished, or a result already on disk
+ * for that benchmark, which the page may have read before the step began (it reads the
+ * selected result's test as soon as it shows it).
+ */
+function alphaRealOf(c: Ctx): RealTest | undefined {
+  const job = alphaJob(c, "POST /api/alpha/real", "GET /api/alpha/real/jobs/*", () => true)?.job as AlphaRealJob | undefined;
+  if (job?.result && ofKept(c, job.result)) return job.result;
+  const reads = [c.before("GET /api/alpha/real"), ...c.calls("GET /api/alpha/real")];
+  return reads
+    .map((a) => (a?.data as AlphaReal | undefined)?.result ?? undefined)
+    .filter((r): r is RealTest => Boolean(r) && ofKept(c, r as RealTest))
+    .pop();
+}
+
+function alphaRealRead(r: RealTest): string {
+  const arm = r.rows.find((x) => x.policy === "arm");
+  if (!arm) return "";
+  const who = ALPHA_ARM[r.arm] ?? r.arm;
+  const z = zOf(r.edge);
+  const vs = z > 2 ? "beat flat by more than 2 se there" : z < -2 ? "lost against flat by more than 2 se there" : "cannot be told from flat there";
+  const redo = r.reproduced === false ? " (its rebuilt policies did not reproduce the benchmark, so these are policies retrained here)" : "";
+  return `On ${num(r.n_windows)} overlapping real SPX windows of ${r.n_days} days (${r.first_date} to ${r.last_date}), ${who}${redo} made ${usd(arm.real_mean)} ± ${usd(2 * arm.real_se)} a window against ${usd(arm.synthetic_mean)} ± ${usd(2 * arm.synthetic_se)} on held-out synthetic paths, and ${vs}; real chains carry the market's own premium, not the planted one, so this is exploratory.`;
 }
 
 // ---------------------------------------------------------------- the workflows
@@ -858,6 +1010,113 @@ export const WORKFLOWS: Workflow[] = [
         (a, b, d) => `Trained 500,000 steps, PPO made ${usd(b.risk.mean)} per episode at 2 vol pts against ${usd(a.risk.mean)} after 200,000 (${signedUsd(d.diff)}, ${ci(d)}): ${!d.clear ? "more training did not clearly help on this pair; one training seed's luck is as large as the effect" : d.diff > 0 ? "more training paid" : "more training did worse here: one training seed is a noisy guide"}.`,
         (p) => `Does more training help? Under ${groupName(p.group)}, press Compare on “${p.b.label}” (against “${p.a.label}”).`,
       ),
+    ],
+  },
+  {
+    id: "alpha",
+    featured: true,
+    title: "Does an agent find a planted edge?",
+    question: "Plant a premium of known size: how much of it does PPO take, and how big must it be to be found?",
+    minutes: 4,
+    icon: "planted",
+    youWill: ["Freeze a small world with 4 vol pts planted, and its noise twin", "Train PPO on it and read what it took, overfit and memorised", "Find the seller's detection floor, then try real SPX days"],
+    steps: [
+      {
+        id: "dataset",
+        href: ALPHA_START,
+        task: "The form is filled in with a small world: Constant variance premium, 4 vol pts planted, 20-day paths, 16 to train on and 64 held out. Press Generate and freeze.",
+        target: { guide: "alpha-generate", text: /^\s*generate and freeze\s*$/i },
+        done: (c) => c.calls("POST /api/alpha/datasets").some((a) => genOf(a.data as AlphaDataset) === "const_vrp"),
+        keep: (c) => ({
+          hash: c
+            .calls("POST /api/alpha/datasets")
+            .map((a) => a.data as AlphaDataset)
+            .filter((d) => genOf(d) === "const_vrp")
+            .pop()?.hash,
+        }),
+        read: (c) => {
+          const d = c
+            .calls("POST /api/alpha/datasets")
+            .map((a) => a.data as AlphaDataset)
+            .filter((x) => genOf(x) === "const_vrp")
+            .pop();
+          if (!d) return null;
+          const pts = Number((d.spec as { generator?: { premium_pts?: number } }).generator?.premium_pts);
+          const planted = Number.isFinite(pts) ? `implied vol sits ${g3(pts)} vol pts above the vol that drives the path` : `${d.edge.charAt(0).toLowerCase()}${d.edge.slice(1).replace(/\.$/, "")}`;
+          return `Dataset ${short(d.hash)} is frozen: ${num(d.n_train)} train and ${num(d.n_heldout)} held-out paths of ${num(Number(d.spec.n_days))} days where ${planted}, beside its noise twin, the same random shocks with nothing planted; an agent only ever trains on the ${num(d.n_train)} train paths.`;
+        },
+      },
+      {
+        id: "train",
+        href: "/alpha/",
+        task: (c) => onAlphaDs(c, "Train PPO on it: Arm PPO, 4,096 timesteps and 2 training seeds are filled in. Press Train and score; it trains four times (each seed on the signal and on the twin), so allow a minute."),
+        target: (c) => backToAlphaDs(c) ?? [{ guide: "alpha-train", text: /^\s*train and score\s*$/i }, ...noDataset(c)],
+        done: (c) => Boolean(alphaJob(c, "POST /api/alpha/benchmarks", "GET /api/alpha/jobs/*", (b) => b.arm === "ppo" && Number(b.n_seeds) >= 2)?.job.benchmark),
+        blocked: (c) => {
+          const o = alphaOptions(c);
+          if (o && !o.learners_available) return "PPO is not installed on this server (the train extra)";
+          return alphaFailed(c, "POST /api/alpha/benchmarks", "GET /api/alpha/jobs/*");
+        },
+        keep: (c) => {
+          const b = alphaJob(c, "POST /api/alpha/benchmarks", "GET /api/alpha/jobs/*", (x) => x.arm === "ppo" && Number(x.n_seeds) >= 2)?.job.benchmark;
+          return b ? { key: `${b.arm}-${b.total_timesteps ?? 0}-s${b.n_seeds ?? 1}` } : undefined;
+        },
+        read: (c) => {
+          const b = alphaJob(c, "POST /api/alpha/benchmarks", "GET /api/alpha/jobs/*", (x) => x.arm === "ppo" && Number(x.n_seeds) >= 2)?.job.benchmark;
+          return b ? alphaBenchRead(b) : null;
+        },
+      },
+      {
+        id: "floor",
+        href: "/alpha/",
+        task: (c) => onAlphaDs(c, "How big must the edge be? In that card tick only the fixed-delta seller (untick PPO), keep the sizes 0, 1, 2, 4 and press Find each arm's floor. A rule needs no training, so it takes seconds."),
+        target: (c) =>
+          backToAlphaDs(c) ?? [
+            // the checkboxes only while they are wrong: PPO still ticked, the seller not yet
+            { guide: "alpha-floor-untick-ppo", css: '[data-guide="alpha-floor-arm-ppo"]:has(input:checked)' },
+            { guide: "alpha-floor-tick-seller", css: '[data-guide="alpha-floor-arm-delta_seller"]:has(input:not(:checked))' },
+            { guide: "alpha-floor-run", text: /find each arm.s floor/i },
+            ...noDataset(c),
+          ],
+        done: (c) => Boolean(alphaJob(c, "POST /api/alpha/sweeps", "GET /api/alpha/jobs/*", (b) => b.arm === "delta_seller" && b.axis === "edge")?.job.sweep?.floor),
+        blocked: (c) => alphaFailed(c, "POST /api/alpha/sweeps", "GET /api/alpha/jobs/*"),
+        read: (c) => {
+          const sw = alphaJob(c, "POST /api/alpha/sweeps", "GET /api/alpha/jobs/*", (b) => b.arm === "delta_seller" && b.axis === "edge")?.job.sweep;
+          return sw ? alphaFloorRead(sw) : null;
+        },
+      },
+      {
+        id: "real",
+        href: "/alpha/",
+        task: (c) => onAlphaDs(c, "Optional: score PPO on real SPX days. With PPO's row picked in Agents on this dataset, press Test on real SPX days in On real SPX days. It retrains each seed, then plays every real window from 2019 to 2022, a minute or two."),
+        target: (c) => {
+          const back = backToAlphaDs(c);
+          if (back) return back;
+          const key = c.kept("train")?.key;
+          return [
+            // PPO's row while another result is the one shown
+            ...(typeof key === "string" ? [{ guide: "alpha-pick-ppo", css: `tr[data-guide="alpha-bench-${key}"]:not([data-selected])` }] : []),
+            { guide: "alpha-real-run", text: /^\s*test on real spx days\s*$/i },
+            ...noDataset(c),
+          ];
+        },
+        done: (c) => Boolean(alphaRealOf(c)),
+        blocked: (c) => {
+          const r = at(c.call("GET /api/alpha/real") ?? c.before("GET /api/alpha/real")) as AlphaReal | undefined;
+          if (r && !r.available) return "there is no real SPX panel on this server, so this optional step is skipped";
+          if (r?.refused) return r.refused;
+          const bad = c
+            .calls("GET /api/alpha/real/jobs/*")
+            .map((a) => a.data as AlphaRealJob | undefined)
+            .filter((j) => j?.state === "failed")
+            .pop();
+          return bad ? `the real-data test failed: ${bad.error || bad.phase}` : null;
+        },
+        read: (c) => {
+          const r = alphaRealOf(c);
+          return r ? alphaRealRead(r) : null;
+        },
+      },
     ],
   },
   {

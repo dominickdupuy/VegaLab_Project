@@ -12,7 +12,7 @@
  */
 
 import { GLOSSARY_DATA } from "./glossary_data";
-import { ATTRIBUTION_TIPS, LEAK_TIPS, POWER_TIPS, SWEEP_TIPS } from "./glossary_pages";
+import { ALPHA_TIPS, ATTRIBUTION_TIPS, LEAK_TIPS, POWER_TIPS, SWEEP_TIPS } from "./glossary_pages";
 import { RUNS_GLOSSARY } from "./glossary_runs";
 
 export type Glossary = Record<string, string>;
@@ -230,6 +230,11 @@ const JARGON: [RegExp, string][] = [
   [/\bdetection floor\b|\bfloor\b/i, "floor"],
   [/\btheta\b/i, "theta_pnl"],
   [/\bgamma\b/i, "gamma_pnl"],
+  [/\bcapture ratio\b/i, "alpha.capture"],
+  [/\boverfit gap\b/i, "alpha.overfit"],
+  [/\bnoise fit\b/i, "alpha.noiseFit"],
+  [/\bnoise twin\b/i, "alpha.twin"],
+  [/\boracle\b/i, "alpha.oracle"],
 ];
 
 /** The glossary's lines for the jargon `text` uses, in a fixed order, each once. */
@@ -249,4 +254,4 @@ export const LEARNED_ARMS: ReadonlySet<string> = new Set(["ppo", "a2c", "dqn"]);
 // one glossary. A term only one page uses is namespaced by that page ("power.surface",
 // "data.skew"), so the same word can mean the page's thing there and the general thing
 // everywhere else; the Runs pages' terms are site-wide (they replace only aliases here).
-extend(RUNS_GLOSSARY, prefixed("power", POWER_TIPS), prefixed("sweep", SWEEP_TIPS), prefixed("attribution", ATTRIBUTION_TIPS), prefixed("leaks", LEAK_TIPS), prefixed("data", GLOSSARY_DATA));
+extend(RUNS_GLOSSARY, prefixed("power", POWER_TIPS), prefixed("sweep", SWEEP_TIPS), prefixed("attribution", ATTRIBUTION_TIPS), prefixed("leaks", LEAK_TIPS), prefixed("data", GLOSSARY_DATA), prefixed("alpha", ALPHA_TIPS));

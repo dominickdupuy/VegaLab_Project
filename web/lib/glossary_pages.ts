@@ -1,5 +1,5 @@
 /**
- * One-line explanations for the Power lab, Sweep, Attribution and Leak detector pages:
+ * One-line explanations for the Power lab, Sweep, Attribution, Leak detector and Synthetic alpha pages:
  * what a control or chart is and how to read it. Merged into the site glossary under
  * each page's name (lib/glossary.ts), so a page asks for `power.surface` or
  * `sweep.view`; a term these pages share with others (seeds, the floor, the greeks)
@@ -81,3 +81,20 @@ export const LEAK_TIPS = {
   field: "Plant the leak into one field only, sized in that field's own standard deviation, and see whether the detector names it.",
 } as const;
 
+
+export const ALPHA_TIPS = {
+  arm: "Arm: the strategy being tested. A learner (PPO, A2C, DQN) trains on the train paths first; a scripted rule needs no training and is scored on the same paths.",
+  oracle: "Oracle: the best simple rule for this kind of world, picked from a fixed menu of scripted strategies on 200 fresh paths the agent never sees. What it earns is the edge there was to take; if no rule beats flat by 2 se, flat is the oracle and there is no edge.",
+  twin: "Noise twin: a copy of every path with the same random shocks and the same costs, but nothing planted. Signal minus twin is what the planted edge paid; anything earned on the twin alone is luck.",
+  n_train: "Train paths: the frozen paths a learner trains on, over and over. Its score on them is compared with its score on the held-out paths.",
+  n_heldout: "Held-out paths: frozen paths the agent never trains on. Every comparison is scored on them unless a row says train.",
+  capture: "Capture ratio: the agent's edge from the signal divided by the attainable edge, so the share of the planted edge it took. 100% matches the best simple rule; 0% took none of it.",
+  overfit: "Overfit gap: the agent's profit on its own train paths minus its profit on the held-out paths. Well above zero means it learned those paths, not the edge.",
+  noiseFit: "Noise fit: a copy of the learner trained on the noise twin, its profit on its train paths minus on held-out ones. There is nothing to learn on the twin, so anything above zero is memorised noise.",
+  attainable: "Attainable edge: the oracle's profit on the signal world minus on its noise twin, per episode. The edge a simple rule can take, and what the capture ratio divides by.",
+  captured: "Captured edge (the agent's edge from the signal): the agent's profit on the signal world minus on its noise twin, path by path. Costs and path luck cancel, so what is left came from the planted signal.",
+  budget: "Training budget: how many market steps each learner trains for, per seed, before it is scored. The copy trained on the noise twin gets the same budget.",
+  seeds: "Training seeds: how many times the learner is trained from scratch on the same frozen paths. One training run can be lucky or unlucky, so with one seed the se counts path noise only.",
+  unconditional: "Unconditional: the right trade is the same every day, so a strategy can take the edge without reading anything it observes. The agent only has to find the trade, not when to make it.",
+  z: "z: the value divided by its se. Beyond 2 either way the page calls it real; inside that, it could be chance.",
+} as const;

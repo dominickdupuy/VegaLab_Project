@@ -3,11 +3,15 @@
 import type { EChartsOption } from "echarts";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { AgentsCard, benchKey } from "@/components/alpha/AgentsCard";
+import { nameArms, plugins } from "@/components/alpha/arms";
 import { type ForestItem, forestOption } from "@/components/alpha/charts";
+import { FloorCard } from "@/components/alpha/FloorCard";
 import { JobLine } from "@/components/alpha/JobLine";
+import { RealTestCard } from "@/components/alpha/RealTestCard";
 import { SweepCard } from "@/components/alpha/SweepCard";
 import { Card, PageHead } from "@/components/Bits";
 import { Chart } from "@/components/Chart";
+import { InfoTip, Labelled } from "@/components/InfoTip";
 import { Reading } from "@/components/PageBits";
 import { Empty, ErrorBox, Loading } from "@/components/States";
 import ui from "@/components/ui.module.css";
@@ -25,15 +29,19 @@ import {
 } from "@/lib/api";
 import { ARM_LABEL, axis, base, type Tokens, useTokens } from "@/lib/chart";
 import { num, pct, short, usd, when } from "@/lib/format";
+import { guide } from "@/lib/guide";
 import { useFetch } from "@/lib/useFetch";
-import { setQuery, useQuery } from "@/lib/url";
+import { type QueryValue, setQuery, useQuery, useQuerySync } from "@/lib/url";
 
 /**
  * Plant an edge of known size in a synthetic market, freeze the paths, train an agent on
  * exactly those paths, and compare what it earned with what the planted edge paid (the
  * oracle) and with what it earns where nothing is planted (the noise twin, and a copy of the
  * agent trained on it). The open dataset lives in the URL (?dataset=<hash>), so a reload or
- * a shared link shows the same data and its saved results.
+ * a shared link shows the same data and its saved results. So do the forms, read once on
+ * mount and written back as they change, so a link (or a workflow step) opens them filled:
+ * gen (the generator), its knobs and the dataset's by name (premium_pts, n_days, n_train,
+ * n_heldout, ...), and the training arm, timesteps and seeds.
  */
 
 const POLICY: Record<string, string> = { arm: "Agent", noise_control: "Agent trained on noise", oracle: "Oracle", flat: "Flat" };
@@ -44,6 +52,18 @@ const WORLD: Record<string, string> = {
   "twin/heldout": "noise twin, held-out",
 };
 
+/** A form value as a query value: numbers and strings as they are, anything else dropped. */
+function toQ(v: unknown): QueryValue {
+  return typeof v === "number" || typeof v === "string" ? v : null;
+}
+
+/** A knob's value from the query, clamped to its range, or its default. */
+function knobOf(q: ReturnType<typeof useQuery>, k: AlphaKnob): number {
+  const lo = k.minimum ?? -Infinity;
+  const hi = k.maximum ?? Infinity;
+  return k.kind === "integer" ? q.int(k.name, k.default, lo, hi) : q.num(k.name, k.default, lo, hi);
+}
+
 function toError(err: unknown): ApiError {
   return err instanceof ApiError ? err : new ApiError(0, String(err));
 }
@@ -51,7 +71,9 @@ function toError(err: unknown): ApiError {
 function NumberField({ k, value, onChange }: { k: AlphaKnob; value: unknown; onChange: (v: number | null) => void }) {
   return (
     <label className={ui.field}>
-      <span className={ui.fieldLabel}>{k.label}</span>
+      <span className={ui.fieldLabel}>
+        <Labelled term={`alpha.${k.name}`}>{k.label}</Labelled>
+      </span>
       <input
         className={ui.input}
         type="number"
@@ -69,12 +91,28 @@ function NumberField({ k, value, onChange }: { k: AlphaKnob; value: unknown; onC
 // ---------- generate ----------
 
 function GenerateCard({ options, dataset, onOpen }: { options: AlphaOptions; dataset?: AlphaDataset; onOpen: (d: AlphaDataset) => void }) {
-  const [kind, setKind] = useState(options.generators[1]?.kind ?? "noise");
+  const q = useQuery();
+  const firstKind = options.generators[1]?.kind ?? "noise";
+  const [kind, setKind] = useState(() => q.oneOf("gen", options.generators.map((g) => g.kind), firstKind));
   const gen = options.generators.find((g) => g.kind === kind) ?? options.generators[0];
   const [params, setParams] = useState<Record<string, Spec>>(() =>
-    Object.fromEntries(options.generators.map((g) => [g.kind, Object.fromEntries(g.knobs.map((k) => [k.name, k.default]))])),
+    Object.fromEntries(options.generators.map((g) => [g.kind, Object.fromEntries(g.knobs.map((k) => [k.name, g.kind === kind ? knobOf(q, k) : k.default]))])),
   );
-  const [spec, setSpec] = useState<Spec>(() => Object.fromEntries(options.spec_knobs.map((k) => [k.name, k.default])));
+  const [spec, setSpec] = useState<Spec>(() => Object.fromEntries(options.spec_knobs.map((k) => [k.name, knobOf(q, k)])));
+  // the URL: the generator and every knob that differs from its default (another
+  // generator's knobs are dropped, so a link carries only the one it builds)
+  const shown: Record<string, QueryValue> = { gen: kind };
+  const defaults: Record<string, QueryValue> = { gen: firstKind };
+  for (const g of options.generators) for (const k of g.knobs) if (g.kind !== kind) shown[k.name] = null;
+  for (const k of gen?.knobs ?? []) {
+    shown[k.name] = toQ(params[kind]?.[k.name]);
+    defaults[k.name] = k.default;
+  }
+  for (const k of options.spec_knobs) {
+    shown[k.name] = toQ(spec[k.name]);
+    defaults[k.name] = k.default;
+  }
+  useQuerySync(shown, defaults);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<ApiError>();
   const recent = useFetch((s) => api.alphaDatasets(s), `alpha-recent-${dataset?.hash ?? ""}`);
@@ -112,7 +150,7 @@ function GenerateCard({ options, dataset, onOpen }: { options: AlphaOptions; dat
       <div className={ui.stack}>
         <label className={ui.field}>
           <span className={ui.fieldLabel}>Generator</span>
-          <select className={ui.select} value={kind} onChange={(e) => setKind(e.target.value)}>
+          <select className={ui.select} value={kind} onChange={(e) => setKind(e.target.value)} {...guide("alpha-generator")}>
             {options.generators.map((g) => (
               <option key={g.kind} value={g.kind}>
                 {g.title}
@@ -125,7 +163,15 @@ function GenerateCard({ options, dataset, onOpen }: { options: AlphaOptions; dat
             <dt>Planted</dt>
             <dd>{gen.edge}</dd>
             <dt>Who can take it</dt>
-            <dd>{gen.taker}</dd>
+            <dd>
+              {gen.taker}
+              {/\bunconditional\b/i.test(gen.taker) ? (
+                <>
+                  {" "}
+                  <InfoTip term="alpha.unconditional" />
+                </>
+              ) : null}
+            </dd>
           </dl>
         ) : null}
         {gen && gen.knobs.length ? (
@@ -140,7 +186,7 @@ function GenerateCard({ options, dataset, onOpen }: { options: AlphaOptions; dat
             <NumberField key={k.name} k={k} value={spec[k.name]} onChange={(v) => setSpec((s) => ({ ...s, [k.name]: v }))} />
           ))}
         </div>
-        <button type="button" className={`${ui.btn} ${ui.btnPrimary}`} disabled={busy} onClick={build}>
+        <button type="button" className={`${ui.btn} ${ui.btnPrimary}`} disabled={busy} onClick={build} {...guide("alpha-generate")}>
           {busy ? "Generating…" : "Generate and freeze"}
         </button>
         {error ? <p className={ui.fieldError}>{error.message}</p> : null}
@@ -151,17 +197,19 @@ function GenerateCard({ options, dataset, onOpen }: { options: AlphaOptions; dat
                 <tr>
                   <th>Earlier datasets</th>
                   <th className={ui.num}>Train</th>
-                  <th>Hash</th>
-                  <th>Built</th>
                 </tr>
               </thead>
               <tbody>
+                {/* the hash and the time under the title: four columns overflow this narrow card */}
                 {recent.data.slice(0, 8).map((m) => (
-                  <tr key={m.hash} className={`${ui.clickRow} ${m.hash === dataset?.hash ? ui.rowSelected : ""}`} onClick={() => open(m.hash)}>
-                    <td>{m.title}</td>
+                  <tr key={m.hash} className={`${ui.clickRow} ${m.hash === dataset?.hash ? ui.rowSelected : ""}`} onClick={() => open(m.hash)} {...guide(`alpha-dataset-${m.hash}`)}>
+                    <td>
+                      {m.title}
+                      <span className={ui.dim} style={{ display: "block" }}>
+                        <span className="mono">{short(m.hash)}</span> · {when(m.created_at)}
+                      </span>
+                    </td>
                     <td className={ui.num}>{num(m.n_train)}</td>
-                    <td className="mono">{short(m.hash)}</td>
-                    <td style={{ whiteSpace: "nowrap" }}>{when(m.created_at)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -176,12 +224,18 @@ function GenerateCard({ options, dataset, onOpen }: { options: AlphaOptions; dat
 // ---------- train ----------
 
 function TrainCard({ options, ds, onJob }: { options: AlphaOptions; ds?: AlphaDataset; onJob: (id: string) => void }) {
-  const [arm, setArm] = useState(options.learners_available ? "ppo" : "delta_seller");
-  const [steps, setSteps] = useState<number | null>(options.default_timesteps);
-  const [seeds, setSeeds] = useState<number>(options.default_seeds);
+  const q = useQuery();
+  const firstArm = options.learners_available ? "ppo" : "delta_seller";
+  const [arm, setArm] = useState(() => q.oneOf("arm", options.arms, firstArm));
+  const [steps, setSteps] = useState<number | null>(() => q.int("timesteps", options.default_timesteps, 2048, 5_000_000));
+  const [seeds, setSeeds] = useState<number>(() => q.int("seeds", options.default_seeds, 1, options.max_seeds));
+  const learned = options.learned_arms.includes(arm);
+  useQuerySync(
+    { arm, timesteps: learned ? steps : null, seeds: learned ? seeds : null },
+    { arm: firstArm, timesteps: options.default_timesteps, seeds: options.default_seeds },
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<ApiError>();
-  const learned = options.learned_arms.includes(arm);
 
   const submit = async (arms: string[]) => {
     if (!ds) return;
@@ -207,8 +261,10 @@ function TrainCard({ options, ds, onJob }: { options: AlphaOptions; ds?: AlphaDa
         <div className={ui.stack}>
           <div className={ui.grid2}>
             <label className={ui.field}>
-              <span className={ui.fieldLabel}>Arm</span>
-              <select className={ui.select} value={arm} onChange={(e) => setArm(e.target.value)}>
+              <span className={ui.fieldLabel}>
+                <Labelled term="alpha.arm">Arm</Labelled>
+              </span>
+              <select className={ui.select} value={arm} onChange={(e) => setArm(e.target.value)} {...guide("alpha-arm")}>
                 {options.arms.map((a) => (
                   <option key={a} value={a}>
                     {ARM_LABEL[a] ?? a}
@@ -218,28 +274,38 @@ function TrainCard({ options, ds, onJob }: { options: AlphaOptions; ds?: AlphaDa
             </label>
             {learned ? (
               <label className={ui.field}>
-                <span className={ui.fieldLabel}>Timesteps per learner</span>
-                <input className={ui.input} type="number" step={1} min={2048} value={steps ?? ""} onChange={(e) => setSteps(e.target.value === "" ? null : Number(e.target.value))} />
+                <span className={ui.fieldLabel}>
+                  <Labelled term="alpha.budget">Timesteps per learner</Labelled>
+                </span>
+                <input className={ui.input} type="number" step={1} min={2048} value={steps ?? ""} onChange={(e) => setSteps(e.target.value === "" ? null : Number(e.target.value))} {...guide("alpha-steps")} />
               </label>
             ) : null}
             {learned ? (
               <label className={ui.field}>
-                <span className={ui.fieldLabel}>Training seeds</span>
-                <input className={ui.input} type="number" step={1} min={1} max={options.max_seeds} value={seeds} onChange={(e) => setSeeds(Number(e.target.value))} />
+                <span className={ui.fieldLabel}>
+                  <Labelled term="alpha.seeds">Training seeds</Labelled>
+                </span>
+                <input className={ui.input} type="number" step={1} min={1} max={options.max_seeds} value={seeds} onChange={(e) => setSeeds(Number(e.target.value))} {...guide("alpha-seeds")} />
               </label>
             ) : null}
           </div>
           <p>
-            {learned
-              ? `${ARM_LABEL[arm] ?? arm} trains ${num(2 * seeds)} times (${seeds} seed${seeds === 1 ? "" : "s"}, signal and twin) on the ${num(ds.n_train)} frozen paths of dataset ${short(ds.hash)}.`
-              : "A scripted arm needs no training; it is scored on the same paths in seconds."}
+            {learned ? (
+              <>
+                {`${ARM_LABEL[arm] ?? arm} trains ${num(2 * seeds)} times (${seeds} seed${seeds === 1 ? "" : "s"}, signal and `}
+                <InfoTip term="alpha.twin">twin</InfoTip>
+                {`) on the ${num(ds.n_train)} frozen paths of dataset ${short(ds.hash)}.`}
+              </>
+            ) : (
+              "A scripted arm needs no training; it is scored on the same paths in seconds."
+            )}
           </p>
           <div className={ui.row}>
-            <button type="button" className={`${ui.btn} ${ui.btnPrimary}`} disabled={busy} onClick={() => submit([arm])}>
+            <button type="button" className={`${ui.btn} ${ui.btnPrimary}`} disabled={busy} onClick={() => submit([arm])} {...guide("alpha-train")}>
               {busy ? "Submitting…" : "Train and score"}
             </button>
             {options.learners_available ? (
-              <button type="button" className={ui.btn} disabled={busy} onClick={() => submit(options.learned_arms)}>
+              <button type="button" className={ui.btn} disabled={busy} onClick={() => submit(options.learned_arms.filter((a) => !plugins(options).has(a)))}>
                 Train all three learners
               </button>
             ) : null}
@@ -342,7 +408,7 @@ function headline(b: Benchmark): string {
   return `${arm}'s gain from the planted signal is not distinguishable from zero; the oracle took ${usd(edge)} per episode (${ratio}).`;
 }
 
-function Measure({ name, s, money = true }: { name: string; s?: BenchStat | null; money?: boolean }) {
+function Measure({ name, s, money = true, term }: { name: string; s?: BenchStat | null; money?: boolean; term?: string }) {
   if (!s) return null;
   const fmt = (x: number) => (money ? usd(x) : pct(x));
   const value = s.value ?? null;
@@ -350,7 +416,7 @@ function Measure({ name, s, money = true }: { name: string; s?: BenchStat | null
   const z = value !== null && se ? value / se : null;
   return (
     <tr>
-      <td>{name}</td>
+      <td>{term ? <Labelled term={term}>{name}</Labelled> : name}</td>
       <td className={ui.num}>{value === null ? "none" : fmt(value)}</td>
       <td className={ui.num}>{se === null ? "" : fmt(2 * se)}</td>
       <td className={ui.num}>{z === null ? "" : num(z, 1)}</td>
@@ -366,11 +432,21 @@ function SeedTable({ bench }: { bench: Benchmark }) {
       <table className={ui.table}>
         <thead>
           <tr>
-            <th>Training seed</th>
-            <th className={ui.num}>Edge from the signal</th>
-            <th className={ui.num}>Capture ratio</th>
-            <th className={ui.num}>Overfit gap</th>
-            <th className={ui.num}>Noise fit</th>
+            <th>
+              Training seed <InfoTip term="alpha.seeds" label="About training seeds" />
+            </th>
+            <th className={ui.num}>
+              Edge from the signal <InfoTip term="alpha.captured" label="About the edge from the signal" />
+            </th>
+            <th className={ui.num}>
+              Capture ratio <InfoTip term="alpha.capture" />
+            </th>
+            <th className={ui.num}>
+              Overfit gap <InfoTip term="alpha.overfit" />
+            </th>
+            <th className={ui.num}>
+              Noise fit <InfoTip term="alpha.noiseFit" />
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -414,17 +490,21 @@ function CompareCard({ bench }: { bench?: Benchmark }) {
               <tr>
                 <th>Measure</th>
                 <th className={ui.num}>Value</th>
-                <th className={ui.num}>± 2 se</th>
-                <th className={ui.num}>z</th>
+                <th className={ui.num}>
+                  ± 2 se <InfoTip term="se" />
+                </th>
+                <th className={ui.num}>
+                  z <InfoTip term="alpha.z" />
+                </th>
                 <th>Reading</th>
               </tr>
             </thead>
             <tbody>
-              <Measure name="Attainable edge (oracle, signal minus twin)" s={bench.attainable} />
-              <Measure name="Agent's edge from the signal (signal minus twin)" s={bench.captured} />
-              <Measure name="Capture ratio" s={bench.capture_ratio} money={false} />
-              <Measure name="Overfit gap (train minus held-out)" s={bench.overfit_gap} />
-              <Measure name="Noise fit (noise-trained, in minus out of sample)" s={bench.noise_fit} />
+              <Measure name="Attainable edge (oracle, signal minus twin)" s={bench.attainable} term="alpha.attainable" />
+              <Measure name="Agent's edge from the signal (signal minus twin)" s={bench.captured} term="alpha.captured" />
+              <Measure name="Capture ratio" s={bench.capture_ratio} money={false} term="alpha.capture" />
+              <Measure name="Overfit gap (train minus held-out)" s={bench.overfit_gap} term="alpha.overfit" />
+              <Measure name="Noise fit (noise-trained, in minus out of sample)" s={bench.noise_fit} term="alpha.noiseFit" />
             </tbody>
           </table>
         </div>
@@ -444,9 +524,13 @@ function CompareCard({ bench }: { bench?: Benchmark }) {
           <table className={ui.table}>
             <thead>
               <tr>
-                <th>Oracle candidate</th>
+                <th>
+                  Oracle candidate <InfoTip term="alpha.oracle" />
+                </th>
                 <th className={ui.num}>Fresh-sample mean</th>
-                <th className={ui.num}>se</th>
+                <th className={ui.num}>
+                  se <InfoTip term="se" />
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -505,6 +589,7 @@ function Alpha() {
     setQuery({ dataset: d.hash });
   };
   const addJob = (id: string) => setJobs((js) => [id, ...js]);
+  nameArms(options.data); // plug-in arms read as "<label> (plug-in)" everywhere below
 
   return (
     <>
@@ -534,7 +619,9 @@ function Alpha() {
             {dataset ? <DataCards ds={dataset} /> : <Empty title="No dataset open">Generate one, or open an earlier one from the list.</Empty>}
             {dataset ? <AgentsCard benches={benches} selected={bench ? benchKey(bench) : undefined} onSelect={setSelected} /> : null}
             <CompareCard bench={bench} />
-            {dataset ? <SweepCard options={options.data} ds={dataset} sweeps={sweeps.data ?? []} onJob={addJob} /> : null}
+            <RealTestCard bench={bench} />
+            {dataset ? <SweepCard options={options.data} ds={dataset} sweeps={(sweeps.data ?? []).filter((s) => s.spec.axis !== "edge")} onJob={addJob} /> : null}
+            {dataset ? <FloorCard options={options.data} ds={dataset} sweeps={sweeps.data ?? []} onJob={addJob} /> : null}
           </div>
         </div>
       ) : null}
