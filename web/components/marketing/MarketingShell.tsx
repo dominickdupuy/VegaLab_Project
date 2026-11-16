@@ -23,8 +23,8 @@ export function MarketingShell({ children }: { children: ReactNode }) {
             </span>
           </Link>
           <nav className={m.links} aria-label="Site">
-            <Link href="/#features">Features</Link>
-            <Link href="/#how">How it works</Link>
+            <Link href="/#features">The app</Link>
+            <Link href="/tutorial/#loop">How it works</Link>
             <Link href="/#results">Results</Link>
             <Link href="/tutorial/">Tutorial</Link>
             <Link href="/#faq">FAQ</Link>

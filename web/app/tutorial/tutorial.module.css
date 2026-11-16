@@ -268,9 +268,7 @@
 
 /* the hero band and the page's width, under the product chrome */
 .hero {
-  background:
-    radial-gradient(800px 380px at 90% -20%, color-mix(in srgb, var(--accent-2) 55%, transparent), transparent 70%),
-    var(--hero);
+  background: var(--hero);
   color: var(--hero-text);
 }
 
@@ -283,15 +281,6 @@
   gap: 16px;
 }
 
-.badge {
-  align-self: flex-start;
-  padding: 6px 12px;
-  border-radius: var(--radius-pill);
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  background: rgba(255, 255, 255, 0.08);
-  font-size: 13px;
-  color: var(--hero-muted, #c9dbf1);
-}
 
 .heroInner h1 {
   margin: 0;
@@ -318,8 +307,8 @@
 .btnGhost {
   display: inline-flex;
   align-items: center;
-  padding: 12px 20px;
-  border-radius: var(--radius-pill);
+  padding: 11px 20px;
+  border-radius: 8px;
   font-weight: 700;
   text-decoration: none;
 }
@@ -343,18 +332,18 @@
   list-style: none;
 }
 
+.progress {
+  gap: 8px 24px;
+}
+
 .progress a {
-  display: inline-block;
-  padding: 8px 14px;
-  border-radius: var(--radius-pill);
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--hero-text);
-  text-decoration: none;
-  font-size: 14px;
+  color: var(--hero-muted, #c9dbf1);
+  font-size: 15px;
+  text-underline-offset: 3px;
 }
 
 .progress a:hover {
-  background: rgba(255, 255, 255, 0.18);
+  color: var(--hero-text);
 }
 
 .wrap {

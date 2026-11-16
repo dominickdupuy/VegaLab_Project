@@ -70,8 +70,8 @@
 .cta {
   display: inline-flex;
   align-items: center;
-  padding: 9px 16px;
-  border-radius: var(--radius-pill);
+  padding: 8px 16px;
+  border-radius: 8px;
   background: var(--accent);
   color: var(--accent-ink);
   font-weight: 700;
@@ -155,5 +155,4 @@
 .barRight button {
   color: var(--text);
   border-color: var(--line-strong);
-  border-radius: var(--radius-pill);
 }
