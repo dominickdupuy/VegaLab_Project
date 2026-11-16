@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import threading
 from pathlib import Path
 
 import numpy as np
@@ -13,6 +14,7 @@ from optspread.alpha.dataset import (
     DatasetError,
     SynthSpec,
     build_dataset,
+    check_dataset,
     load_dataset,
     preview,
     spec_hash,
@@ -109,3 +111,50 @@ def test_datasets_and_benchmarks_are_never_listed_as_runs(tmp_path: Path) -> Non
 
     build_dataset(SPEC, tmp_path)
     assert scan_runs(tmp_path) == ()
+
+
+def test_concurrent_builds_of_one_spec_are_safe_and_build_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import optspread.alpha.dataset as dataset_mod
+
+    spec = SPEC.model_copy(update={"n_train": 40, "n_heldout": 200})
+    generated = []
+    real = dataset_mod.generate_arrays
+    monkeypatch.setattr(dataset_mod, "generate_arrays", lambda s: generated.append(s) or real(s))
+    errors: list[BaseException] = []
+    gate = threading.Barrier(6)
+
+    def build() -> None:
+        gate.wait()
+        try:
+            build_dataset(spec, tmp_path)
+        except BaseException as exc:  # pragma: no cover - the failure being guarded
+            errors.append(exc)
+
+    threads = [threading.Thread(target=build) for _ in range(6)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    # once: a shared temporary name lost files (FileNotFoundError) and the last manifest
+    # could name another build's npz
+    assert errors == [] and len(generated) == 1
+    ds = load_dataset(tmp_path, spec_hash(spec))
+    assert sorted(p.name for p in ds.dir.iterdir()) == [".build.lock", "dataset.json", "paths.npz"]
+
+
+def test_check_dataset_is_load_datasets_check_without_the_paths(tmp_path: Path) -> None:
+    ds = build_dataset(SPEC, tmp_path)
+    assert check_dataset(tmp_path, ds.hash) == SPEC
+    with pytest.raises(DatasetError, match="no dataset"):
+        check_dataset(tmp_path, "0" * 16)
+    arrays = dict(np.load(ds.dir / "paths.npz"))
+    arrays["signal_train_spot"][0, 1] += 1.0
+    np.savez(ds.dir / "paths.npz", **arrays)
+    with pytest.raises(DatasetError, match="digest"):
+        check_dataset(tmp_path, ds.hash)
+    (ds.dir / "paths.npz").unlink()  # a missing npz is a DatasetError, not an OSError
+    for check in (check_dataset, load_dataset):
+        with pytest.raises(DatasetError, match="cannot be read"):
+            check(tmp_path, ds.hash)

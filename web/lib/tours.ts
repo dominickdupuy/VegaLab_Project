@@ -403,15 +403,16 @@ function alphaJob(ctx: Ctx, post: Call, poll: Call, match: (b: Record<string, un
   return undefined;
 }
 
-/** A job of this step that failed, so the strip says why rather than wait. */
+/** A job of this step that failed or was cancelled, so the strip says why rather than wait. */
 function alphaFailed(ctx: Ctx, post: Call, poll: Call): string | null {
   const ids = new Set(ctx.calls(post).map((p) => (p.data as AlphaJob | undefined)?.job_id));
   const bad = ctx
     .calls(poll)
     .map((a) => a.data as AlphaJob | undefined)
-    .filter((j) => j && ids.has(j.job_id) && j.state === "failed")
+    .filter((j) => j && ids.has(j.job_id) && (j.state === "failed" || j.state === "cancelled"))
     .pop();
-  return bad ? `the job failed: ${bad.error || bad.phase}` : null;
+  if (!bad) return null;
+  return bad.state === "cancelled" ? `the job was ${bad.error || "cancelled"}` : `the job failed: ${bad.error || bad.phase}`;
 }
 
 /** The dataset the first step made, and whether the page shows another one now. */

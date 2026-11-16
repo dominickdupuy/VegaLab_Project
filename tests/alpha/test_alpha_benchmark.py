@@ -197,3 +197,19 @@ def test_each_real_learner_trains_on_the_frozen_paths_only(arm: LearnedArm, tmp_
     policy = bm.learned_trainer(bm.train_config(ds, arm, 2048, seed=0), provider)
     assert set(seen) == {0, 1, 2, 3}  # cycled every frozen train path, and nothing else
     assert len(bm.evaluate_on(ds, "signal", "heldout", policy)) == 16
+
+
+def test_an_unreadable_cached_benchmark_is_recomputed(tmp_path: Path) -> None:
+    ds = build_dataset(SynthSpec(generator=ConstVrpParams(premium_pts=6.0), **SMALL), tmp_path)
+    first = bm.run_benchmark(ds, "delta_seller", None, tmp_path)
+    path = bm.bench_path(tmp_path, ds.hash, "delta_seller", None, 1)
+    path.write_text('{"dataset": "cut sh')  # a write cut short, or an older shape
+    again = bm.run_benchmark(ds, "delta_seller", None, tmp_path)  # raised ValidationError
+    assert again == first and bm.load_benchmark(path) == first
+    assert sorted(p.name for p in path.parent.iterdir()) == ["benchmark.json"]
+    # whether the oracle shows an edge is the benchmark's verdict, not a nonzero figure
+    assert bm.edge_shown(first) == (first.attainable.verdict == bm.EDGE_SHOWN)
+    weak = first.model_copy(
+        update={"attainable": bm.BenchStat(value=150.0, se=100.0, verdict=bm.NO_EDGE)}
+    )
+    assert weak.attainable.value and not bm.edge_shown(weak)

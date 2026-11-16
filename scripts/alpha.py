@@ -42,13 +42,14 @@ from optspread.alpha.benchmark import (
     SynthTrainer,
     arm_names,
     check_arm,
+    edge_shown,
     is_learned,
     learned_trainer,
     run_benchmark,
 )
 from optspread.alpha.dataset import SynthSpec, build_dataset
 from optspread.alpha.generators import GENERATORS, GeneratorKind
-from optspread.alpha.sweep import AlphaSweep, AlphaSweepSpec, SweepAxis, edge_knob, run_sweep
+from optspread.alpha.sweep import AlphaSweep, AlphaSweepSpec, SweepAxis, check_edge, run_sweep
 from optspread.config import LEARNED_ARMS
 from optspread.dashboard.jobs.spec import ppo_available
 from optspread.runs.rundir import default_runs_root
@@ -241,7 +242,7 @@ def _cmd_run(
             parser.error("--sweep needs at least two --values")
         if sweep == "edge":
             try:
-                edge_knob(spec.generator)
+                check_edge(spec, args.values)
             except ValueError as exc:
                 parser.error(str(exc))
 
@@ -292,13 +293,16 @@ def _cmd_run(
     first = results[0]
     print()
     print(f"Summary, dataset {ds.hash} ({info.title.lower()}):")
-    if first.attainable.value:
+    if edge_shown(first):
         print(
             f"The oracle ({first.oracle}) shows a {_pm(first.attainable, _usd)} edge a path "
             "on held-out paths (signal minus twin)."
         )
     else:
-        print("The oracle finds no attainable edge on this dataset.")
+        print(
+            f"The oracle finds no attainable edge on this dataset ({first.oracle}: "
+            f"{_pm(first.attainable, _usd)} a path, signal minus twin, not 2 se above zero)."
+        )
     for b in results:
         print(f"- {bench_line(b)}")
     for s in sweeps:

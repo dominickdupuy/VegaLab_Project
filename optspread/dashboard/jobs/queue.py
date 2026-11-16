@@ -153,6 +153,17 @@ class JobManager:
         self.executor = self.factory()
         self.rebuilds += 1
 
+    def replace_pool(self, pool: Executor) -> None:
+        """Replace ``pool`` with a fresh one if it is still the current pool.
+
+        For the Synthetic alpha queues, which share this pool and find it broken (or shut
+        down) when they submit. This queue's own jobs that were on it are then handled
+        by ``_recover`` exactly as after any dead worker: the pool is not replaced twice.
+        """
+        with self._lock:
+            if self.executor is pool:
+                self._rebuild()
+
     def _recover(self) -> None:
         """After a dead worker: a new pool, the started jobs failed, the rest relaunched.
 

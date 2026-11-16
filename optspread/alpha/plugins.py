@@ -23,7 +23,12 @@ arm, so the server's job workers, which inherit its environment, see the same pl
 for any process started after it.
 
 A benchmark of a plug-in is keyed by its name and the digest of its module's source file,
-so editing the agent's file gives new results rather than serving stale ones.
+so editing the agent's file gives new results rather than serving stale ones. The digest is
+kept current: every lookup (``plugins``, ``find``) checks the source file's inode, size and
+modification time against the ones it was loaded from, and on a change imports the module
+again and digests the new source, in the server and in each long-lived job worker alike.
+A digest therefore always names the code that would run now; an edit that no longer
+imports is refused with its reason rather than served from the old code.
 """
 
 from __future__ import annotations
@@ -36,6 +41,7 @@ import json
 import os
 import re
 import sys
+import threading
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -94,11 +100,16 @@ class AlphaPlugin:
         return self.label or self.name.replace("_", " ")
 
 
+Stamp = tuple[int, int, int]  # a file's inode, size and modification time (ns)
+
+
 @dataclass(frozen=True, slots=True)
 class LoadedPlugin:
     plugin: AlphaPlugin
     source: str  # the import path it was registered by
     digest: str  # first 8 hex of the sha256 of its module's source file
+    file: Path | None = None  # that source file, when it has one
+    stamp: Stamp | None = None  # the file's stamp when it was read and imported
 
     @property
     def name(self) -> str:
@@ -110,13 +121,58 @@ class LoadedPlugin:
         return f"{self.plugin.name}.{self.digest}"
 
 
+def _stamp(file: Path | None) -> Stamp | None:
+    if file is None:
+        return None
+    try:
+        st = file.stat()
+    except OSError:
+        return None
+    return (st.st_ino, st.st_size, st.st_mtime_ns)
+
+
+# What each plug-in module was last executed from, by module name: its source file's
+# stamp and the digest of the very bytes executed. A module whose file has changed since
+# is executed again, from its source and never a cached .pyc (which Python trusts on the
+# whole second and the size, so a quick edit of the same length would run the old code).
+_imported: dict[str, tuple[Stamp | None, str]] = {}
+
+
+def _source_file(module: ModuleType) -> Path | None:
+    try:
+        source = inspect.getsourcefile(module)
+    except TypeError:
+        return None
+    return Path(source) if source else None
+
+
+def _read(file: Path | None) -> tuple[Stamp | None, str]:
+    """The file's stamp, then the digest of its bytes (an edit between shows later)."""
+    stamp = _stamp(file)
+    try:
+        data = file.read_bytes() if file is not None else b""
+    except OSError:
+        data = b""
+    return stamp, hashlib.sha256(data).hexdigest()[:8]
+
+
+def _execute(module: ModuleType, file: Path) -> None:
+    """Run ``file``'s source as it is now in ``module``, and record what was run."""
+    stamp = _stamp(file)
+    data = file.read_bytes()
+    exec(compile(data, str(file), "exec"), module.__dict__)
+    _imported[module.__name__] = (stamp, hashlib.sha256(data).hexdigest()[:8])
+
+
 def _module(path: str) -> ModuleType:
+    """The module ``path`` names, executed again first if its source changed since."""
     if path.endswith(".py") or "/" in path or os.sep in path:
         file = Path(path).expanduser().resolve()
         if not file.is_file():
             raise PluginError(f"plug-in file {path!r} does not exist")
         name = "optspread_alpha_plugin_" + hashlib.sha256(str(file).encode()).hexdigest()[:12]
-        if name in sys.modules:
+        seen = _imported.get(name)
+        if name in sys.modules and seen is not None and seen[0] == _stamp(file):
             return sys.modules[name]
         spec = importlib.util.spec_from_file_location(name, file)
         if spec is None or spec.loader is None:
@@ -124,30 +180,34 @@ def _module(path: str) -> ModuleType:
         module = importlib.util.module_from_spec(spec)
         sys.modules[name] = module
         try:
-            spec.loader.exec_module(module)
+            _execute(module, file)
         except Exception as exc:
-            del sys.modules[name]
+            del sys.modules[name]  # never the old code under the new file's name
+            _imported.pop(name, None)
             raise PluginError(f"plug-in file {path!r} failed to import: {exc!r}") from exc
         return module
     try:
-        return importlib.import_module(path)
+        module = importlib.import_module(path)
     except ImportError as exc:
         raise PluginError(f"plug-in module {path!r} cannot be imported: {exc}") from exc
     except Exception as exc:
         raise PluginError(f"plug-in module {path!r} failed to import: {exc!r}") from exc
-
-
-def _digest(module: ModuleType) -> str:
-    try:
-        source = inspect.getsourcefile(module)
-        data = Path(source).read_bytes() if source else b""
-    except (OSError, TypeError):
-        data = b""
-    return hashlib.sha256(data).hexdigest()[:8]
+    source = _source_file(module)
+    if module.__name__ not in _imported:
+        # imported before (by its package, or at start-up): taken as its file is now
+        _imported[module.__name__] = _read(source)
+    elif source is not None and _imported[module.__name__][0] != _stamp(source):
+        try:
+            _execute(module, source)
+        except Exception as exc:
+            _imported.pop(module.__name__, None)
+            raise PluginError(f"plug-in module {path!r} failed to import: {exc!r}") from exc
+    return module
 
 
 def load_plugin(path: str) -> LoadedPlugin:
-    """Import ``package.module:attr`` or ``file.py:attr`` and check it is an ``AlphaPlugin``."""
+    """Import ``package.module:attr`` or ``file.py:attr`` and check it is an ``AlphaPlugin``
+    (executing its module again if the source changed since it last was)."""
     mod_path, sep, attr = path.strip().rpartition(":")
     if not sep or not mod_path or not attr:
         raise PluginError(
@@ -164,7 +224,9 @@ def load_plugin(path: str) -> LoadedPlugin:
             f"plug-in {path!r} is a {type(obj).__name__}, not an AlphaPlugin "
             "(optspread.alpha.plugins.AlphaPlugin)"
         )
-    return LoadedPlugin(obj, path.strip(), _digest(module))
+    # the source the module was executed from: its stamp and digest
+    stamp, digest = _imported.get(module.__name__) or _read(_source_file(module))
+    return LoadedPlugin(obj, path.strip(), digest, _source_file(module), stamp)
 
 
 def configured_paths(env: Mapping[str, str] | None = None) -> tuple[str, ...]:
@@ -187,12 +249,21 @@ def configured_paths(env: Mapping[str, str] | None = None) -> tuple[str, ...]:
 
 
 _cache: dict[tuple[str, ...], dict[str, LoadedPlugin]] = {}
+_lock = threading.RLock()  # the server resolves arms from its thread pool
+
+
+def _changed(loaded: LoadedPlugin) -> bool:
+    return loaded.stamp != _stamp(loaded.file)
 
 
 def plugins() -> dict[str, LoadedPlugin]:
-    """Every configured plug-in by name, loaded once per configuration."""
+    """Every configured plug-in by name, loaded once per configuration and loaded again,
+    with a new digest, whenever its source file has changed since."""
     paths = configured_paths()
-    if paths not in _cache:
+    with _lock:
+        cached = _cache.get(paths)
+        if cached is not None and not any(_changed(p) for p in cached.values()):
+            return cached
         out: dict[str, LoadedPlugin] = {}
         for p in paths:
             loaded = load_plugin(p)
@@ -203,7 +274,7 @@ def plugins() -> dict[str, LoadedPlugin]:
                 )
             out[loaded.name] = loaded
         _cache[paths] = out
-    return _cache[paths]
+        return out
 
 
 def find(name: str) -> LoadedPlugin | None:

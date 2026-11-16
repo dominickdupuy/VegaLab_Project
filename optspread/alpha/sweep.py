@@ -12,7 +12,10 @@ A sweep runs one benchmark per value on one axis and keeps each one's headline f
 * ``edge``: the planted edge's size (``EDGE_KNOB``: the premium of ``const_vrp``, the
   premium's s.d. of ``mr_vrp``, the drift of ``drift``), zero for the null. Each value is
   its own dataset, the open one with only that knob changed, on the same path seeds, so
-  every size shares its spot shocks, its twin and its held-out paths. Each size's captured
+  every size shares its spot shocks, its twin and its held-out paths. ``check_edge``
+  refuses, before anything runs, a size outside the knob's range and an ``mr_vrp`` base
+  whose ``mean_pts`` is not 0: its premium s.d. at 0 still leaves that constant premium,
+  so size 0 would not be the null the floor's curve is drawn through. Each size's captured
   edge is tested per seed and the sizes give a power curve and the arm's detection floor
   (``optspread.alpha.floor``, the study's machinery). A floor needs two or more training
   seeds for a learner; a deterministic arm is read on path blocks.
@@ -24,7 +27,7 @@ reused like one, so a sweep that is run again recomputes nothing.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any, Literal
 
@@ -32,6 +35,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    ValidationError,
     ValidationInfo,
     field_validator,
     model_validator,
@@ -51,10 +55,11 @@ from optspread.alpha.benchmark import (
 )
 from optspread.alpha.dataset import SynthDataset, SynthSpec, build_dataset, load_dataset
 from optspread.alpha.floor import EdgeFloor, EdgeTest, Unit, edge_floor, seed_test
-from optspread.alpha.generators import GeneratorParams
+from optspread.alpha.generators import GeneratorParams, MrVrpParams
 from optspread.alpha.plugins import NAME_PATTERN
 from optspread.alpha.plugins import find as find_plugin
 from optspread.config import config_hash
+from optspread.fileio import atomic_write_text
 
 SweepAxis = Literal["n_train", "total_timesteps", "edge"]
 STORED = {"stored": True}  # validation context of a result read back from disk
@@ -188,11 +193,40 @@ def edge_knob(generator: GeneratorParams) -> tuple[str, str]:
     return EDGE_KNOB[generator.kind]
 
 
+def zero_is_null(generator: GeneratorParams) -> bool:
+    """Whether ``generator`` with its edge knob at 0 plants nothing (is its own twin):
+    ``mr_vrp`` only with ``mean_pts`` 0, the other knobs always."""
+    return not isinstance(generator, MrVrpParams) or generator.mean_pts == 0.0
+
+
 def with_edge(spec: SynthSpec, value: float) -> SynthSpec:
     """``spec`` with only its generator's edge knob set to ``value`` (validated)."""
     knob, _ = edge_knob(spec.generator)
     params: dict[str, Any] = {**spec.generator.model_dump(), knob: value}
     return SynthSpec.model_validate({**spec.model_dump(), "generator": params})
+
+
+def check_edge(base: SynthSpec, values: Sequence[float]) -> tuple[str, str]:
+    """The knob an edge-size sweep over ``values`` moves on ``base``, and its unit, after
+    checking it can run: a ValueError, saying why, for a generator with no edge size, an
+    ``mr_vrp`` base with a nonzero ``mean_pts``, or a size outside the knob's range."""
+    knob, unit = edge_knob(base.generator)
+    g = base.generator
+    if not zero_is_null(g):
+        assert isinstance(g, MrVrpParams)
+        raise ValueError(
+            f"an edge-size sweep on mr_vrp moves vol_pts, which is the null only with mean_pts "
+            f"0; this dataset's mean_pts is {g.mean_pts:g}, a premium that stays at every size, "
+            "so size 0 would not be the null. Sweep a dataset with mean_pts 0 (or const_vrp's "
+            "premium_pts for a constant premium)"
+        )
+    for v in values:
+        try:
+            with_edge(base, float(v))
+        except ValidationError as exc:
+            why = exc.errors()[0]["msg"]
+            raise ValueError(f"edge size {v:g} is out of range for {knob}: {why}") from None
+    return knob, unit
 
 
 def detection_figures(b: Benchmark) -> tuple[tuple[float, ...], Unit]:
@@ -242,10 +276,13 @@ def run_sweep(
     """One benchmark per value, each written and reused as a benchmark; then ``sweep.json``."""
     path = sweep_path(root, spec)
     if path.is_file():
-        return load_sweep(path)
+        try:
+            return load_sweep(path)
+        except (OSError, ValueError):
+            pass  # unreadable: run again (each point is a benchmark, reused if it is whole)
     say = log if log is not None else (lambda _: None)
     base = load_dataset(root, spec.dataset)
-    knob = edge_knob(base.spec.generator) if spec.axis == "edge" else None
+    knob = check_edge(base.spec, spec.values) if spec.axis == "edge" else None
     points = []
     tests = []
     for value in spec.values:
@@ -290,12 +327,12 @@ def run_sweep(
         points=tuple(points),
         edge_knob=knob[0] if knob else None,
         edge_unit=knob[1] if knob else None,
-        floor=edge_floor(tests, knob[1]) if knob else None,
+        floor=edge_floor(tests, knob[1], zero_is_null=zero_is_null(base.spec.generator))
+        if knob
+        else None,
     )
     if sweep.floor is not None:
         say(f"floor: {sweep.floor.reading}")
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(".tmp")
-    tmp.write_text(sweep.model_dump_json(indent=2), newline="\n")
-    tmp.replace(path)
+    atomic_write_text(path, sweep.model_dump_json(indent=2), newline="\n")
     return sweep

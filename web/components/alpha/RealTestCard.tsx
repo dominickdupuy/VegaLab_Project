@@ -14,6 +14,7 @@ import type { components } from "@/lib/schema";
 import { useFetch } from "@/lib/useFetch";
 import { usePoll } from "@/lib/usePoll";
 import { benchKey } from "./AgentsCard";
+import { jobLost } from "./JobLine";
 import { type ForestItem, forestOption } from "./charts";
 
 /**
@@ -36,18 +37,21 @@ function plusMinus(mean: number, se: number): string {
   return `${usd(mean)} ± ${usd(2 * se)}`;
 }
 
-function RealJobLine({ id, onEnd }: { id: string; onEnd: () => void }) {
+/** The test's job, polled until it ends. `onEnd` hears when it is done, or with why when the
+ * server no longer has it (or cannot be read), so the card offers the test again. */
+function RealJobLine({ id, onEnd }: { id: string; onEnd: (lost?: string) => void }) {
   const job = useFetch((s) => get<RealJob>(`/api/alpha/real/jobs/${encodeURIComponent(id)}`, undefined, s), `alpha-real-job-${id}`);
   const state = job.data?.state;
-  const live = !state || state === "queued" || state === "running";
+  const lost = jobLost(job.error);
+  const live = !lost && (!state || state === "queued" || state === "running");
   usePoll([job], live, 1500);
   const told = useRef(false);
   useEffect(() => {
-    if (state === "done" && !told.current) {
+    if ((state === "done" || lost) && !told.current) {
       told.current = true;
-      onEnd();
+      onEnd(lost);
     }
-  }, [state, onEnd]);
+  }, [state, lost, onEnd]);
   if (!job.data) return null;
   const d = job.data;
   return (
@@ -149,9 +153,10 @@ export function RealTestCard({ bench }: { bench?: Benchmark }) {
     setJob(undefined);
     setError(undefined);
   }, [key]);
-  const ended = useCallback(() => {
+  const ended = useCallback((lost?: string) => {
     setJob(undefined);
     setTick((n) => n + 1);
+    if (lost) setError(new ApiError(404, lost));
   }, []);
   if (!bench) return null;
   const start = async () => {

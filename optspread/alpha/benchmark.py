@@ -57,6 +57,7 @@ from optspread.config import (
     config_hash,
 )
 from optspread.env import OBS_NAMES
+from optspread.fileio import atomic_write_text
 from optspread.harness import run_episode
 from optspread.policies import FlatPolicy, Info, Observation, Policy, make_policy
 from optspread.scripted import make_seller
@@ -337,7 +338,7 @@ def choose_oracle(ds: SynthDataset, root: Path, say: Callable[[str], None]) -> O
     best = max(shown, key=lambda m: m.mean) if shown else scored[0]
     choice = OracleChoice(policy=best.policy, menu=tuple(scored))
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(choice.model_dump_json(indent=2), newline="\n")
+    atomic_write_text(path, choice.model_dump_json(indent=2), newline="\n")
     say(f"oracle: {best.policy} ({best.mean:,.0f} a path on the fresh sample)")
     return choice
 
@@ -382,6 +383,16 @@ def captured_blocks(
     return tuple(float(b.mean()) for b in per_path[: size * n_blocks].reshape(n_blocks, size))
 
 
+EDGE_SHOWN = "the planted edge is tradeable: the oracle earned it"
+NO_EDGE = "no attainable edge: the best scripted policy earned nothing measurable from it"
+
+
+def edge_shown(b: Benchmark) -> bool:
+    """The benchmark's own verdict on the attainable edge: the oracle beat the twin by
+    ``Z`` standard errors (what the capture ratio needs), not just a nonzero figure."""
+    return b.attainable.verdict == EDGE_SHOWN
+
+
 def _verdicts(
     attainable: tuple[float, float],
     captured: tuple[float, float],
@@ -393,9 +404,7 @@ def _verdicts(
     a = BenchStat(
         value=attainable[0],
         se=attainable[1],
-        verdict="the planted edge is tradeable: the oracle earned it"
-        if za > Z
-        else "no attainable edge: the best scripted policy earned nothing measurable from it",
+        verdict=EDGE_SHOWN if za > Z else NO_EDGE,
     )
     if zc > Z:
         cv = "the arm earned money from the planted signal"
@@ -452,12 +461,14 @@ def run_benchmark(
     if not 1 <= n_seeds <= MAX_SEEDS or (not learned and n_seeds != 1):
         raise ValueError(f"n_seeds must be 1 to {MAX_SEEDS} for a learned arm and 1 otherwise")
     path = bench_path(root, ds.hash, arm, total_timesteps, n_seeds)
-    if path.is_file():
-        cached = load_benchmark(path)
-        # A deterministic result written before blocks were kept is quick to redo; a
-        # learner's is kept as it is (its test reads the per-seed figures).
-        if learned or cached.blocks or ds.n_paths("heldout") < 2 * BLOCKS:
-            return cached
+    try:
+        cached = load_benchmark(path) if path.is_file() else None
+    except (OSError, ValueError):
+        cached = None  # unreadable (cut short, or an older shape): computed again below
+    # A deterministic result written before blocks were kept is quick to redo; a
+    # learner's is kept as it is (its test reads the per-seed figures).
+    if cached is not None and (learned or cached.blocks or ds.n_paths("heldout") < 2 * BLOCKS):
+        return cached
     say = log if log is not None else (lambda _: None)
     train_with = found.plugin.trainer if found is not None and found.plugin.trainer else trainer
 
@@ -560,8 +571,6 @@ def run_benchmark(
         plugin=f"{found.source}@{found.digest}" if found is not None else None,
     )
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(".tmp")
-    tmp.write_text(bench.model_dump_json(indent=2), newline="\n")
-    tmp.replace(path)
+    atomic_write_text(path, bench.model_dump_json(indent=2), newline="\n")
     say(f"{bench.captured.verdict}; {bench.overfit_gap.verdict}")
     return bench

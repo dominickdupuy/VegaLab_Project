@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING
 from pydantic import ValidationError
 
 from optspread.alpha.dataset import DatasetError
+from optspread.alpha.jobs import PoolUnavailableError, Rebuild
 from optspread.alpha.realjobs import BenchRef, RealJobManager, find_benchmark
 from optspread.alpha.realtest import (
     REAL_SPLIT,
@@ -94,12 +95,16 @@ def alpha_real_job(status: JobStatus, runs: Path) -> AlphaRealJobOut:
 
 
 def register(
-    app: FastAPI, runs: Path, data: Path, executor: Callable[[], Executor]
+    app: FastAPI,
+    runs: Path,
+    data: Path,
+    executor: Callable[[], Executor],
+    rebuild: Rebuild | None = None,
 ) -> RealJobManager:
     """Add the three routes to ``app``; the tests reach the queue through the return."""
     from fastapi import HTTPException
 
-    manager = RealJobManager(runs, data, executor)
+    manager = RealJobManager(runs, data, executor, rebuild)
 
     def spec_of(raw: dict[str, object]) -> BenchRef:
         try:
@@ -132,6 +137,8 @@ def register(
             raise HTTPException(422, str(exc)) from exc
         except QueueFullError as exc:
             raise HTTPException(429, str(exc)) from exc
+        except PoolUnavailableError as exc:
+            raise HTTPException(503, str(exc)) from exc
         return alpha_real_job(manager.status(job_id), runs)
 
     def alpha_real_status(job_id: str) -> AlphaRealJobOut:

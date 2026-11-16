@@ -15,7 +15,6 @@ from __future__ import annotations
 import re
 import secrets
 import threading
-import traceback
 from collections.abc import Callable
 from concurrent.futures import Executor, Future
 from dataclasses import dataclass, field
@@ -36,7 +35,7 @@ from optspread.alpha.benchmark import (
     load_benchmark,
 )
 from optspread.alpha.dataset import load_dataset
-from optspread.alpha.jobs import BenchSpec
+from optspread.alpha.jobs import BenchSpec, Rebuild, outcome, submit_to_pool
 from optspread.alpha.realtest import (
     RealDataUnavailableError,
     plugin_for,
@@ -142,18 +141,26 @@ class RealJob:
 class RealJobManager:
     """Real-data test jobs on an executor shared with the run queue; never shuts it down."""
 
-    def __init__(self, runs_root: Path, data_root: Path, executor: Callable[[], Executor]) -> None:
+    def __init__(
+        self,
+        runs_root: Path,
+        data_root: Path,
+        executor: Callable[[], Executor],
+        rebuild: Rebuild | None = None,
+    ) -> None:
         self.runs_root = runs_root
         self.data_root = data_root
         self.jobs_dir = runs_root / JOBS_DIR
         self.executor = executor
+        self.rebuild = rebuild
         self.jobs: dict[str, RealJob] = {}
         self._lock = threading.RLock()
 
     def submit(self, ref: BenchRef | BenchSpec) -> str:
         """Queue the test; ``RealDataUnavailableError`` without a panel, ``FileNotFoundError``
         without the benchmark, ``ValueError`` without the learner or for a plug-in gone or
-        changed since its benchmark (``PluginChangedError``), ``QueueFullError``."""
+        changed since its benchmark (``PluginChangedError``), ``QueueFullError``,
+        ``PoolUnavailableError``."""
         if not real_available(self.data_root):
             raise RealDataUnavailableError(unavailable_message(self.data_root))
         if ref.arm in LEARNED_ARMS and not ppo_available():
@@ -169,7 +176,7 @@ class RealJobManager:
             self.jobs_dir.mkdir(parents=True, exist_ok=True)
             job_id = "r" + secrets.token_hex(6)
             args = (job_id, spec.model_dump_json(), str(self.runs_root), str(self.data_root))
-            future = self.executor().submit(execute_real, *args)
+            future = submit_to_pool(self.executor, self.rebuild, execute_real, *args)
             stamp = datetime.now(UTC).isoformat(timespec="seconds")
             self.jobs[job_id] = RealJob(job_id, spec, stamp, future)
         return job_id
@@ -184,19 +191,17 @@ class RealJobManager:
         except OSError:
             lines = []
         error, run_key = "", ""
+        status: JobState
         if finished:
-            exc = job.future.exception()
-            if exc is not None:
-                error = "".join(traceback.format_exception_only(exc)).strip()
-                status: JobState = "failed"
-            else:
-                status, run_key = "done", job.future.result()
+            status, run_key, error = outcome(job.future)
         else:
             status = "running" if state else "queued"
         return JobStatus(
             job_id=job_id,
             state=status,
-            phase="failed" if status == "failed" else str(state.get("phase", "queued")),
+            phase=status
+            if status in ("failed", "cancelled")
+            else str(state.get("phase", "queued")),
             done=int(state.get("done", 0)),
             total=int(state.get("total", stages(job.spec.arm, job.spec.n_seeds))),
             run_id=str(state.get("run_id", "")),

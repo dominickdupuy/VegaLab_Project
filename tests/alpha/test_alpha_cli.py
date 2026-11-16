@@ -119,3 +119,31 @@ def test_bad_flags_are_refused_with_the_reason(
     with pytest.raises(SystemExit) as exc:
         cli.main(argv, trainer=fake)
     assert exc.value.code == 2 and message in capsys.readouterr().err
+
+
+def test_the_summary_follows_the_benchmarks_verdict_on_the_edge(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    real = cli.run_benchmark
+
+    def weak(*args: object, **kwargs: object) -> bm.Benchmark:
+        b = real(*args, **kwargs)  # type: ignore[arg-type]
+        # a nonzero attainable figure the z test does not call an edge
+        stat = bm.BenchStat(value=150.0, se=100.0, verdict=bm.NO_EDGE)
+        return b.model_copy(update={"attainable": stat})
+
+    monkeypatch.setattr(cli, "run_benchmark", weak)
+    argv = ["run", "--root", str(tmp_path), *TINY, "--arms", "delta_seller"]
+    assert cli.main(argv) == 0
+    out = capsys.readouterr().out
+    assert "The oracle finds no attainable edge" in out and "shows a" not in out
+
+
+def test_an_edge_sweep_out_of_range_is_refused_before_anything_runs(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    argv = ["run", "--root", str(tmp_path), *TINY, "--sweep", "edge", "--values", "0", "30"]
+    with pytest.raises(SystemExit):
+        cli.main(argv)
+    assert "edge size 30 is out of range for premium_pts" in capsys.readouterr().err
+    assert list_datasets(tmp_path) == []

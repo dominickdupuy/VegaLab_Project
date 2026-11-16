@@ -574,9 +574,9 @@ function Alpha() {
   const sweeps = useFetch((s) => api.alphaSweeps(hash, s), `alpha-sweeps-${hash}-${ended}`, Boolean(dataset));
   const benches = saved.data ?? [];
   const bench = benches.find((b) => benchKey(b) === selected) ?? benches[0];
-  const onEnd = useCallback((job: AlphaJob) => {
+  const onEnd = useCallback((job?: AlphaJob) => {
     setEnded((n) => n + 1);
-    if (job.benchmark) setSelected(benchKey(job.benchmark));
+    if (job?.benchmark) setSelected(benchKey(job.benchmark));
   }, []);
 
   const wanted = query.str("dataset");

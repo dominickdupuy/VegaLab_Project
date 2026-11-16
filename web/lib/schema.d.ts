@@ -58,6 +58,7 @@ export interface paths {
         /**
          * Alpha Build
          * @description Generate and freeze a dataset, or return the one already on disk for this spec.
+         *     A 429 while too many others are being generated.
          */
         post: operations["alpha_build_api_alpha_datasets_post"];
         delete?: never;

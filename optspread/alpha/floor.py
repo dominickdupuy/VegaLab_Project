@@ -22,7 +22,9 @@ edge size between the sizes through an anchor at (0, 0), the power at a lambda i
 ``below_grid`` (under the smallest positive size, resting on the line to zero) or
 ``not_reached`` (above the largest size swept). Size zero, if swept, is the null: the
 signal world is then its own twin, so the captured edge is zero by construction and is
-reported as the false-alarm check, not as a knot of the curve.
+reported as the false-alarm check, not as a knot of the curve. That anchor is drawn only
+where size zero is the null (``zero_is_null``; the sweep says whether it is and refuses a
+grid where it is not), never assumed.
 
 **With few seeds the floor is rough.** At S = 3 a t test has 2 degrees of freedom, the
 noncentrality band at one size spans several units, and the study found that even at
@@ -174,11 +176,20 @@ def _reading(
     )
 
 
-def edge_floor(tests: Sequence[EdgeTest], param: str = "units") -> EdgeFloor:
+def edge_floor(
+    tests: Sequence[EdgeTest], param: str = "units", *, zero_is_null: bool = True
+) -> EdgeFloor:
     """The power curve and the 80% floor over the sizes' tests, one arm and one grid.
 
     ``param`` names the edge's unit in the reading (``vol points``, ``bps a day``).
+    ``zero_is_null`` says size zero plants nothing; the curve runs through (0, 0) only
+    then, and a ValueError says so otherwise.
     """
+    if not zero_is_null:
+        raise ValueError(
+            "no detection floor: size 0 is not the null on this grid, so the power curve "
+            "cannot be drawn through (0, 0)"
+        )
     null = next((t for t in tests if t.edge == 0.0), None)
     positive = sorted((t for t in tests if t.edge > 0.0), key=lambda t: t.edge)
     unit: Unit = tests[0].unit if tests else "seeds"

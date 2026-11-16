@@ -6,11 +6,15 @@ the oracle's fresh sample with monkeypatch and the worker sees it.
 
 from __future__ import annotations
 
+import threading
 import time
-from collections.abc import Iterator
-from concurrent.futures import ThreadPoolExecutor
+from collections.abc import Callable, Iterator
+from concurrent.futures import Executor, Future, ThreadPoolExecutor
+from concurrent.futures.process import BrokenProcessPool
 from pathlib import Path
+from typing import Any
 
+import numpy as np
 import pytest
 
 pytest.importorskip("fastapi")
@@ -18,7 +22,9 @@ pytest.importorskip("httpx")
 
 from fastapi.testclient import TestClient
 
+from optspread import manifest as manifest_mod
 from optspread.alpha import benchmark as bm
+from optspread.alpha import dataset as dataset_mod
 from optspread.api.server import Settings, create_app
 from optspread.dashboard.jobs.queue import JobManager
 from optspread.dashboard.runindex import REPO_ROOT
@@ -151,3 +157,108 @@ def test_seeds_and_sweeps_are_refused_with_the_reason(client: TestClient) -> Non
     }
     response = client.post("/api/alpha/sweeps", json=flat_budget)
     assert response.status_code == 422 and "learned arm" in str(response.json())
+
+
+def _app(tmp_path: Path, gate_docs: Path, manager: JobManager) -> TestClient:
+    runs = tmp_path / "runs"
+    settings = Settings(
+        runs,
+        gate_docs,
+        tmp_path / "nodata",
+        tmp_path / "noweb",
+        REPO_ROOT / "README.md",
+        attribution=tmp_path / "attr",
+    )
+    return TestClient(create_app(settings, manager), base_url="http://127.0.0.1")
+
+
+class _Broken(Executor):
+    def submit(self, fn: Callable[..., Any], /, *args: Any, **kwargs: Any) -> Future[Any]:
+        raise BrokenProcessPool("a worker died")
+
+
+def test_a_broken_pool_is_rebuilt_at_submit_or_is_a_503(
+    tmp_path: Path, gate_docs: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(bm, "FRESH_N", 16)
+    runs = tmp_path / "runs"
+    manager = JobManager(runs, executor=_Broken(), factory=lambda: ThreadPoolExecutor(1))
+    with _app(tmp_path, gate_docs, manager) as c:
+        ds = c.post("/api/alpha/datasets", json=SPEC).json()
+        spec = {"dataset": ds["hash"], "arm": "flat", "total_timesteps": None}
+        job = c.post("/api/alpha/benchmarks", json=spec)
+        assert job.status_code == 201, job.text  # was a 500: BrokenProcessPool escaped
+        assert manager.rebuilds == 1 and not isinstance(manager.executor, _Broken)
+        assert _finish(c, job.json()["job_id"])["state"] == "done"
+    hopeless = JobManager(runs, executor=_Broken(), factory=_Broken)
+    with _app(tmp_path, gate_docs, hopeless) as c:
+        job = c.post("/api/alpha/benchmarks", json=spec)
+        assert job.status_code == 503 and "restart the server" in job.json()["detail"]
+
+
+@pytest.mark.parametrize(
+    ("generator", "values", "message"),
+    [
+        ({"kind": "const_vrp", "premium_pts": 4}, [0, 25], "25 is out of range for premium_pts"),
+        ({"kind": "drift", "bps_per_day": 5}, [0, 60], "60 is out of range for bps_per_day"),
+        ({"kind": "mr_vrp", "vol_pts": 4}, [0, 21], "21 is out of range for vol_pts"),
+        ({"kind": "mr_vrp", "mean_pts": 3, "vol_pts": 4}, [0, 4], "the null only with mean_pts 0"),
+    ],
+)
+def test_an_edge_sweep_that_cannot_run_is_a_422_at_submit(
+    client: TestClient, generator: dict[str, object], values: list[float], message: str
+) -> None:
+    ds = client.post("/api/alpha/datasets", json={**SPEC, "generator": generator}).json()
+    sweep = {"dataset": ds["hash"], "arm": "flat", "axis": "edge", "values": values}
+    response = client.post("/api/alpha/sweeps", json=sweep)
+    assert response.status_code == 422 and message in response.json()["detail"]
+
+
+def test_listing_a_datasets_results_does_not_hash_its_paths_each_time(
+    client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ds = client.post("/api/alpha/datasets", json=SPEC).json()
+    full, cached = [], []
+    monkeypatch.setattr(dataset_mod, "file_sha256", lambda p: full.append(p) or "")
+    real = manifest_mod.file_sha256
+    monkeypatch.setattr(manifest_mod, "file_sha256", lambda p: cached.append(p) or real(p))
+    for _ in range(3):
+        assert client.get(f"/api/alpha/datasets/{ds['hash']}/benchmarks").json() == []
+        assert client.get(f"/api/alpha/datasets/{ds['hash']}/sweeps").json() == []
+    assert full == [] and len(cached) <= 1  # once per version of the file, at most
+    # a changed file is a new version: digested again, and refused
+    path = tmp_path / "runs" / "alpha" / "datasets" / ds["hash"]
+    arrays = dict(np.load(path / "paths.npz"))
+    arrays["signal_train_spot"][0, 1] += 1.0
+    np.savez(path / "paths.npz", **arrays)
+    assert client.get(f"/api/alpha/datasets/{ds['hash']}/benchmarks").status_code == 404
+    assert client.get("/api/alpha/datasets/0123456789abcdef/sweeps").status_code == 404
+
+
+def test_a_build_runs_off_the_event_loop_and_too_many_at_once_is_a_429(
+    tmp_path: Path, gate_docs: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    started, release = threading.Semaphore(0), threading.Event()
+    real = dataset_mod.generate_arrays
+
+    def slow(spec: dataset_mod.SynthSpec) -> dict[str, Any]:
+        started.release()
+        assert release.wait(60)
+        return real(spec)
+
+    monkeypatch.setattr(dataset_mod, "generate_arrays", slow)
+    manager = JobManager(tmp_path / "runs", executor=ThreadPoolExecutor(1))
+    with _app(tmp_path, gate_docs, manager) as c, ThreadPoolExecutor(2) as pool:
+        builds = [
+            pool.submit(c.post, "/api/alpha/datasets", json={**SPEC, "seed": seed})
+            for seed in (1, 2)
+        ]
+        assert started.acquire(timeout=30) and started.acquire(timeout=30)
+        # two builds are generating: the server still answers, and a third is refused
+        assert c.get("/api/alpha/options").status_code == 200
+        third = c.post("/api/alpha/datasets", json={**SPEC, "seed": 3})
+        assert third.status_code == 429 and "already being generated" in third.json()["detail"]
+        release.set()
+        assert [b.result(timeout=60).status_code for b in builds] == [201, 201]
+        # a dataset already on disk never waits for a slot
+        assert c.post("/api/alpha/datasets", json={**SPEC, "seed": 1}).status_code == 201

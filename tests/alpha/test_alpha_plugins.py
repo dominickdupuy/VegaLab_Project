@@ -157,3 +157,47 @@ def test_a_plugin_bench_spec(monkeypatch: pytest.MonkeyPatch) -> None:
         BenchSpec(dataset="0123456789abcdef", arm="iv_timer", total_timesteps=None, n_seeds=2)
     spec = BenchSpec(dataset="0123456789abcdef", arm="iv_picker", total_timesteps=4096, n_seeds=3)
     assert spec.stages == 2 * 3 + 4
+
+
+RULE = """from optspread.alpha.plugins import AlphaPlugin
+from optspread.policies import FlatPolicy
+edited = AlphaPlugin(name="edited", label="{label}", policy=FlatPolicy)
+"""
+
+
+def test_an_edited_plugin_is_loaded_again_with_a_new_digest(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    file = tmp_path / "edited_rule.py"
+    file.write_text(RULE.format(label="v1"))
+    monkeypatch.setenv(plug.PLUGINS_ENV, f"{file}:edited")
+    first = plug.find("edited")
+    assert first is not None and first.plugin.label == "v1"
+    assert plug.find("edited") is first  # unchanged: the cached load, not a new import
+    # the same length, within the same second: a cached .pyc would still pass for fresh
+    file.write_text(RULE.format(label="v2"))
+    second = plug.find("edited")
+    assert second is not None and second.plugin.label == "v2"
+    assert second.digest != first.digest and bm.arm_key("edited") == f"edited.{second.digest}"
+    # an edit that no longer imports is refused with its reason, never the old code
+    file.write_text("raise RuntimeError('half-saved')\n")
+    with pytest.raises(plug.PluginError, match="half-saved"):
+        plug.find("edited")
+    file.write_text(RULE.format(label="v3"))
+    third = plug.find("edited")
+    assert third is not None and third.plugin.label == "v3"
+
+
+def test_an_edited_plugin_module_is_reloaded(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.syspath_prepend(str(tmp_path))
+    file = tmp_path / "dotted_rule_mod.py"
+    file.write_text(RULE.format(label="v1"))
+    monkeypatch.setenv(plug.PLUGINS_ENV, "dotted_rule_mod:edited")
+    first = plug.find("edited")
+    file.write_text(RULE.format(label="v2"))
+    second = plug.find("edited")
+    assert first is not None and second is not None
+    assert (first.plugin.label, second.plugin.label) == ("v1", "v2")
+    assert first.digest != second.digest

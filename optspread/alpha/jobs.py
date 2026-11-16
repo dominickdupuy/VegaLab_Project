@@ -7,6 +7,12 @@ A benchmark trains and evaluates for minutes, so it runs on the server's process
 the manager rebuilt after a dead worker is the one used) and reports through the same
 progress files a launched run writes (``optspread.dashboard.jobs.worker._Progress``).
 Building a dataset is quick and is not a job.
+
+The pool is the run queue's, so it can break (a worker killed) or be rebuilt under a job.
+A submit that finds it broken asks for a fresh one (``rebuild``, the run queue's
+``JobManager.replace_pool``) and tries once more, else ``PoolUnavailableError`` (the server
+answers 503). A job whose future was cancelled with the old pool reads ``cancelled``, and
+one whose worker died reads ``failed``, each saying so and to launch it again.
 """
 
 from __future__ import annotations
@@ -16,6 +22,7 @@ import threading
 import traceback
 from collections.abc import Callable
 from concurrent.futures import Executor, Future
+from concurrent.futures.process import BrokenProcessPool
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -32,9 +39,9 @@ from optspread.alpha.benchmark import (
     run_benchmark,
     stages,
 )
-from optspread.alpha.dataset import load_dataset
+from optspread.alpha.dataset import check_dataset, load_dataset
 from optspread.alpha.plugins import NAME_PATTERN
-from optspread.alpha.sweep import AlphaSweepSpec, edge_knob, run_sweep, sweep_path
+from optspread.alpha.sweep import AlphaSweepSpec, check_edge, run_sweep, sweep_path
 from optspread.config import LEARNED_ARMS
 from optspread.dashboard.jobs.queue import JobState, JobStatus, QueueFullError
 from optspread.dashboard.jobs.spec import JOBS_DIR, ppo_available
@@ -44,6 +51,60 @@ from optspread.fileio import read_json
 DEFAULT_TIMESTEPS = 100_000
 MAX_PENDING = 4  # benchmarks and sweeps queued or running at once: each trains learners
 DEFAULT_SEEDS = 5
+
+CANCELLED = (
+    "cancelled: the server's job pool was shut down or rebuilt before this job finished; "
+    "launch it again"
+)
+WORKER_DIED = (
+    "BrokenProcessPool: a worker process died while this job was on it (killed, for example "
+    "out of memory); the pool is rebuilt at the next launch, so launch it again"
+)
+
+Rebuild = Callable[[Executor], None]  # replace this pool, if it is still the current one
+
+
+class PoolUnavailableError(RuntimeError):
+    """The shared pool is broken or shut down and no fresh one could be had. The server
+    answers 503."""
+
+
+def submit_to_pool(
+    executor: Callable[[], Executor],
+    rebuild: Rebuild | None,
+    work: Callable[..., str],
+    *args: str,
+) -> Future[str]:
+    """``work(*args)`` on the current pool; on a broken or shut-down one, ``rebuild`` it and
+    try once more. ``PoolUnavailableError`` when that is not possible."""
+    pool = executor()
+    try:
+        return pool.submit(work, *args)
+    except RuntimeError as exc:  # BrokenProcessPool, or "cannot schedule ... after shutdown"
+        if rebuild is None:
+            raise PoolUnavailableError(
+                f"the server's job pool cannot take work ({exc}); restart the server"
+            ) from exc
+        rebuild(pool)
+    try:
+        return executor().submit(work, *args)
+    except RuntimeError as exc:
+        raise PoolUnavailableError(
+            f"the server's job pool cannot take work even after a rebuild ({exc}); "
+            "restart the server"
+        ) from exc
+
+
+def outcome(future: Future[str]) -> tuple[JobState, str, str]:
+    """A finished future's state, its result (the written file) and its error, in words."""
+    if future.cancelled():
+        return "cancelled", "", CANCELLED
+    exc = future.exception()
+    if exc is None:
+        return "done", future.result(), ""
+    if isinstance(exc, BrokenProcessPool):
+        return "failed", "", WORKER_DIED
+    return "failed", "", "".join(traceback.format_exception_only(exc)).strip()
 
 
 class BenchSpec(BaseModel):
@@ -132,20 +193,28 @@ class BenchJob:
 class AlphaJobManager:
     """Benchmark jobs on an executor shared with the run queue; never shuts it down."""
 
-    def __init__(self, runs_root: Path, executor: Callable[[], Executor]) -> None:
+    def __init__(
+        self,
+        runs_root: Path,
+        executor: Callable[[], Executor],
+        rebuild: Rebuild | None = None,
+    ) -> None:
         self.runs_root = runs_root
         self.jobs_dir = runs_root / JOBS_DIR
         self.jobs_dir.mkdir(parents=True, exist_ok=True)
         self.executor = executor
+        self.rebuild = rebuild
         self.jobs: dict[str, BenchJob] = {}
         self._lock = threading.RLock()
 
     def submit(self, spec: AlphaSpec) -> str:
+        """Queue the job; ``DatasetError`` for an unknown dataset, ``ValueError`` for what
+        the worker would refuse, ``QueueFullError``, ``PoolUnavailableError``."""
         if spec.arm in LEARNED_ARMS and not ppo_available():
             raise ValueError(f"the {spec.arm.upper()} arm is not available in this checkout")
-        ds = load_dataset(self.runs_root, spec.dataset)  # refuse an unknown dataset here
+        base = check_dataset(self.runs_root, spec.dataset)  # refuse an unknown dataset here
         if isinstance(spec, AlphaSweepSpec) and spec.axis == "edge":
-            edge_knob(ds.spec.generator)  # refuse a generator with no edge size here
+            check_edge(base, spec.values)  # and an edge sweep that cannot run
         with self._lock:
             if sum(not j.future.done() for j in self.jobs.values()) >= MAX_PENDING:
                 raise QueueFullError(
@@ -155,7 +224,7 @@ class AlphaJobManager:
             job_id = "a" + secrets.token_hex(6)
             args = (job_id, spec.model_dump_json(), str(self.runs_root))
             work = execute_sweep if isinstance(spec, AlphaSweepSpec) else execute_bench
-            future = self.executor().submit(work, *args)
+            future = submit_to_pool(self.executor, self.rebuild, work, *args)
             stamp = datetime.now(UTC).isoformat(timespec="seconds")
             self.jobs[job_id] = BenchJob(job_id, spec, stamp, future)
         return job_id
@@ -172,19 +241,17 @@ class AlphaJobManager:
         except OSError:
             lines = []
         error, run_key = "", ""
+        status: JobState
         if finished:
-            exc = job.future.exception()
-            if exc is not None:
-                error = "".join(traceback.format_exception_only(exc)).strip()
-                status: JobState = "failed"
-            else:
-                status, run_key = "done", job.future.result()
+            status, run_key, error = outcome(job.future)
         else:
             status = "running" if state else "queued"
         return JobStatus(
             job_id=job_id,
             state=status,
-            phase="failed" if status == "failed" else str(state.get("phase", "queued")),
+            phase=status
+            if status in ("failed", "cancelled")
+            else str(state.get("phase", "queued")),
             done=int(state.get("done", 0)),
             total=int(state.get("total", job.spec.stages)),
             run_id=str(state.get("run_id", "")),

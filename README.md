@@ -785,8 +785,9 @@ sample.
   the start of the next.
 - **Detection floor** (`optspread.alpha.floor`): how big must the planted edge be before an
   arm finds it reliably? An edge-size sweep moves one knob, `premium_pts` (`const_vrp`),
-  `vol_pts` (`mr_vrp`, the null only with `mean_pts` 0) or `bps_per_day` (`drift`), through
-  sizes that include 0, the null, where the signal world is its own twin. At each size the
+  `vol_pts` (`mr_vrp`, the null only with `mean_pts` 0, so an `mr_vrp` dataset with another
+  mean is refused) or `bps_per_day` (`drift`), through sizes that include 0, the null, where
+  the signal world is its own twin; a size outside the knob's range is refused at launch. At each size the
   captured edge is tested the study's way: one-sided t at 5% on the S per-seed figures,
   S - 1 degrees of freedom (`analysis.decide_contrast`'s test; a rule, which has no seeds,
   is read on five disjoint blocks of held-out paths, the study's seed-block design). The

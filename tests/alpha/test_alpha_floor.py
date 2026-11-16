@@ -9,10 +9,17 @@ import pytest
 from fake_learner import FakeLearned
 
 from optspread.alpha import benchmark as bm
-from optspread.alpha.dataset import SynthSpec, build_dataset, load_dataset
+from optspread.alpha.dataset import WORLDS, SynthSpec, build_dataset, generate_arrays, load_dataset
 from optspread.alpha.floor import ROUGH, EdgeTest, edge_floor, seed_test
 from optspread.alpha.generators import ConstVrpParams, DriftParams, MrVrpParams, SpotMrParams
-from optspread.alpha.sweep import AlphaSweepSpec, edge_knob, run_sweep, with_edge
+from optspread.alpha.sweep import (
+    AlphaSweepSpec,
+    check_edge,
+    edge_knob,
+    run_sweep,
+    with_edge,
+    zero_is_null,
+)
 from optspread.analysis import decide_contrast
 from optspread.config import RunConfig
 from optspread.m4analysis import noncentrality_for_power
@@ -180,3 +187,40 @@ def test_a_deterministic_result_without_blocks_is_redone(tmp_path: Path) -> None
     path.write_text(b.model_copy(update={"blocks": ()}).model_dump_json())
     assert bm.run_benchmark(ds, "delta_seller", None, tmp_path).blocks == b.blocks
     assert bm.captured_blocks(np.zeros(9), np.zeros(9)) == ()  # under 2 paths a block
+
+
+@pytest.mark.parametrize(
+    "generator",
+    [ConstVrpParams(premium_pts=4.0), MrVrpParams(vol_pts=4.0), DriftParams(bps_per_day=5.0)],
+)
+def test_size_zero_is_the_null_where_the_floor_anchors_it(generator: object) -> None:
+    base = SynthSpec(generator=generator, n_days=10, n_train=2, n_heldout=2)  # type: ignore[arg-type]
+    assert zero_is_null(base.generator)
+    arrays = generate_arrays(with_edge(base, 0.0))
+    for split in ("train", "heldout"):
+        for field in ("spot", "iv", "signal"):
+            signal, twin = (arrays[f"{w}_{split}_{field}"] for w in WORLDS)
+            assert np.array_equal(signal, twin), (split, field)
+
+
+def test_an_mr_vrp_base_with_a_mean_premium_is_not_swept() -> None:
+    base = SynthSpec(generator=MrVrpParams(mean_pts=3.0, vol_pts=4.0), n_days=10)
+    assert not zero_is_null(base.generator)
+    # at vol_pts 0 the premium is still 3 points: the signal world is not its twin
+    arrays = generate_arrays(with_edge(base, 0.0).model_copy(update={"n_train": 1}))
+    assert not np.array_equal(arrays["signal_train_iv"], arrays["twin_train_iv"])
+    with pytest.raises(ValueError, match="the null only with mean_pts 0"):
+        check_edge(base, (0, 2, 4))
+    with pytest.raises(ValueError, match=r"cannot be drawn through \(0, 0\)"):
+        edge_floor([seed_test(1.0, SPREAD + 3.0, "seeds")], "vol points", zero_is_null=False)
+
+
+def test_edge_sizes_are_checked_against_the_knob_range() -> None:
+    const = SynthSpec(generator=ConstVrpParams(premium_pts=4.0), n_days=10)
+    assert check_edge(const, (0, 10, 20)) == ("premium_pts", "vol points")
+    with pytest.raises(ValueError, match=r"edge size 20.5 is out of range for premium_pts"):
+        check_edge(const, (0, 20.5))
+    with pytest.raises(ValueError, match="bps_per_day"):
+        check_edge(SynthSpec(generator=DriftParams(), n_days=10), (0, 51))
+    with pytest.raises(ValueError, match="no edge size"):
+        check_edge(SynthSpec(generator=SpotMrParams(), n_days=10), (0, 1))

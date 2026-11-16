@@ -27,6 +27,7 @@ import os
 import re
 import threading
 from collections.abc import AsyncIterator, Callable, Sequence
+from concurrent.futures import Executor
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import date
@@ -51,10 +52,12 @@ from optspread.alpha.dataset import (
     SynthDataset,
     SynthSpec,
     build_dataset,
+    check_dataset,
     list_datasets,
     load_dataset,
+    spec_hash,
 )
-from optspread.alpha.jobs import AlphaJobManager, AlphaSpec, BenchSpec
+from optspread.alpha.jobs import AlphaJobManager, AlphaSpec, BenchSpec, PoolUnavailableError
 from optspread.alpha.sweep import AlphaSweep, AlphaSweepSpec, list_sweeps
 from optspread.api import alpha_real
 from optspread.api import builders as w
@@ -103,6 +106,7 @@ class Settings:
     workers: int = 2
     host: str = "127.0.0.1"  # the address served on; its name is an allowed Host header
     max_jobs: int = MAX_PENDING  # jobs queued or running before a launch is a 429
+    max_builds: int = 2  # Synthetic alpha datasets generated at once before a build is a 429
     attribution: Path | None = None  # cached attribution; None is attribution.default_root()
     actionmix: Path | None = None  # action-mix files; None is actionmix.default_root()
     cache: Path | None = None  # answers kept on disk; None keeps them in memory only
@@ -219,8 +223,17 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
     cfg = settings if settings is not None else Settings.from_env()
     reader = w.PanelReader(cfg.data)
     jobs: dict[str, JobManager] = {}
-    # benchmarks share the run queue's pool, read at each submit (it may be rebuilt)
-    benches = AlphaJobManager(cfg.runs, lambda: jobs["manager"].executor)
+
+    # benchmarks share the run queue's pool, read at each submit (it may be rebuilt), and
+    # ask it for a fresh one when they find it broken
+    def pool() -> Executor:
+        return jobs["manager"].executor
+
+    def replace_pool(broken: Executor) -> None:
+        jobs["manager"].replace_pool(broken)
+
+    benches = AlphaJobManager(cfg.runs, pool, replace_pool)
+    building = threading.BoundedSemaphore(cfg.max_builds)
     tasks = w.Tasks()
     attribution_root = cfg.attribution if cfg.attribution is not None else default_root()
     redact = redactor(
@@ -490,10 +503,20 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
     # -- synthetic alpha (optspread.alpha) ----------------------------------- #
 
     def _alpha_dataset(dataset_hash: str) -> SynthDataset:
+        """The dataset with its paths, digested in full: for a route that reads them."""
         try:
             return load_dataset(cfg.runs, dataset_hash)
         except DatasetError as exc:
             raise HTTPException(404, str(exc)) from exc
+
+    def _alpha_known(dataset_hash: str) -> str:
+        """The hash, once the dataset is checked without reading its paths (the npz is
+        digested once per version of the file): for a route that only names it."""
+        try:
+            check_dataset(cfg.runs, dataset_hash)
+        except DatasetError as exc:
+            raise HTTPException(404, str(exc)) from exc
+        return dataset_hash
 
     @app.get("/api/alpha/options")
     def alpha_options() -> w.AlphaOptionsOut:
@@ -514,14 +537,32 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
 
     @app.post("/api/alpha/datasets", status_code=201)
     def alpha_build(spec: dict[str, object]) -> w.AlphaDatasetOut:
-        """Generate and freeze a dataset, or return the one already on disk for this spec."""
+        """Generate and freeze a dataset, or return the one already on disk for this spec.
+        A 429 while too many others are being generated."""
+        # A plain def, so FastAPI runs it on its thread pool and the server answers other
+        # requests meanwhile. The guided workflow's world builds in well under a second; the
+        # largest the spec allows (7,000 paths of 252 days, in both worlds) takes about 20 s
+        # and 85 MB, so at most max_builds generate at once and one more is refused.
         try:
             parsed = SynthSpec.model_validate(spec)
-            return w.alpha_dataset(build_dataset(parsed, cfg.runs))
         except ValidationError as exc:
             raise HTTPException(422, [e["msg"] for e in exc.errors()]) from exc
+        try:
+            return w.alpha_dataset(load_dataset(cfg.runs, spec_hash(parsed)))
+        except DatasetError:
+            pass  # not built yet (or damaged): generate it
+        if not building.acquire(blocking=False):
+            raise HTTPException(
+                429,
+                f"{cfg.max_builds} datasets are already being generated; build again when "
+                "one finishes",
+            )
+        try:
+            return w.alpha_dataset(build_dataset(parsed, cfg.runs))
         except ValueError as exc:
             raise HTTPException(422, str(exc)) from exc
+        finally:
+            building.release()
 
     @app.get("/api/alpha/datasets/{dataset_hash}")
     def alpha_dataset(dataset_hash: str) -> w.AlphaDatasetOut:
@@ -530,21 +571,24 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
     @app.get("/api/alpha/datasets/{dataset_hash}/benchmarks")
     def alpha_saved(dataset_hash: str) -> list[Benchmark]:
         """Every benchmark already written for the dataset, newest first."""
-        return list_benchmarks(cfg.runs, _alpha_dataset(dataset_hash).hash)
+        return list_benchmarks(cfg.runs, _alpha_known(dataset_hash))
 
     @app.get("/api/alpha/datasets/{dataset_hash}/sweeps")
     def alpha_sweeps(dataset_hash: str) -> list[AlphaSweep]:
         """Every sweep that ran on the dataset, as its base or one of its points."""
-        return list_sweeps(cfg.runs, _alpha_dataset(dataset_hash).hash)
+        return list_sweeps(cfg.runs, _alpha_known(dataset_hash))
 
     def _alpha_submit(spec: AlphaSpec) -> w.AlphaJobOut:
-        _alpha_dataset(spec.dataset)
         try:
             job_id = benches.submit(spec)
+        except DatasetError as exc:
+            raise HTTPException(404, str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(422, str(exc)) from exc
         except QueueFullError as exc:
             raise HTTPException(429, str(exc)) from exc
+        except PoolUnavailableError as exc:
+            raise HTTPException(503, str(exc)) from exc
         return _alpha_status(job_id)
 
     def _alpha_status(job_id: str) -> w.AlphaJobOut:
@@ -579,7 +623,7 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
             raise HTTPException(404, f"no synthetic alpha job {job_id!r}")
         return _alpha_status(job_id)
 
-    alpha_real.register(app, cfg.runs, cfg.data, lambda: jobs["manager"].executor)
+    alpha_real.register(app, cfg.runs, cfg.data, pool, replace_pool)
 
     @app.post("/api/leaks/demo")
     def leaks(params: w.LeakDemoParams) -> w.LeakDemoOut:
