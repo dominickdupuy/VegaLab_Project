@@ -2093,3 +2093,10 @@ button.statusItem:hover {
   pointer-events: none;
   transition: transform var(--t) var(--ease-out), width var(--t) var(--ease-out);
 }
+
+/* the footer's credits: three names spaced apart, no separators */
+.footerCredits {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+}

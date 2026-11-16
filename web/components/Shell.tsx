@@ -153,7 +153,11 @@ export function Shell({ children }: { children: ReactNode }) {
       </header>
       <main className={ui.main}>{children}</main>
       <footer className={ui.footer}>
-        <span>Vega Lab · CIS 4914 · University of Florida</span>
+        <span className={ui.footerCredits}>
+          <span>Vega Lab</span>
+          <span>CIS 4914</span>
+          <span>University of Florida</span>
+        </span>
         <Link href="/tutorial/">Tutorial</Link>
       </footer>
     </div>

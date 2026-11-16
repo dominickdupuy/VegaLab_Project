@@ -67,7 +67,8 @@ export function MarketingShell({ children }: { children: ReactNode }) {
           </div>
           <div className={m.footerCol}>
             <h4>Project</h4>
-            <span>Vega Lab · CIS 4914</span>
+            <span>Vega Lab</span>
+            <span>CIS 4914</span>
             <span>University of Florida</span>
           </div>
         </div>

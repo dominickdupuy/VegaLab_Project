@@ -134,7 +134,7 @@ export default function Tutorial() {
     <>
       <section className={s.hero}>
         <div className={s.heroInner}>
-          <span className={s.badge}>Tutorial · about 10 minutes</span>
+          <span className={s.badge}>A 10-minute tutorial</span>
           <h1>Learn Vega Lab by running a real test</h1>
           <p>How the app is laid out, the research loop it runs, and a first session that ends with a paired comparison you produced yourself.</p>
           <div className={s.heroGo}>

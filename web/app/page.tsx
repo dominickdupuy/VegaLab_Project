@@ -61,7 +61,7 @@ function ProductShot() {
         <i />
         <i />
         <i />
-        <span>Vega Lab · Power lab</span>
+        <span>Power lab</span>
       </div>
       <div className={s.shotBody}>
         <div className={s.shotChart}>
@@ -71,12 +71,12 @@ function ProductShot() {
             <path d="M20 168 C 120 167, 170 140, 210 100 S 280 50, 310 44" className={s.shotB} />
             <path d="M20 168 L310 168" className={s.shotAxis} />
           </svg>
-          <span className={s.shotLabel}>power vs. edge size · 80% target</span>
+          <span className={s.shotLabel}>power vs. edge size, against an 80% target</span>
         </div>
         <div className={s.shotSide}>
           <span className={s.pill}>PASS</span>
           <b>Paired test</b>
-          <span>same paths · 5 seeds</span>
+          <span>Same paths, 5 seeds</span>
           <span className={s.bar}>
             <span style={{ width: "72%" }} />
           </span>
@@ -170,7 +170,11 @@ export default function Landing() {
                 Take the 10-minute tutorial →
               </Link>
             </div>
-            <p className={s.heroFine}>Runs locally · no account · every number reproducible</p>
+            <ul className={s.heroFine}>
+              <li>Runs locally</li>
+              <li>No account</li>
+              <li>Every number reproducible</li>
+            </ul>
           </div>
           <ProductShot />
         </div>
