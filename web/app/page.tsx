@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Story } from "@/components/home/Story";
 import { StudyFinding } from "@/components/home/StudyFinding";
 import ui from "@/components/ui.module.css";
 import { api, docUrl, type M4, type Vrp } from "@/lib/api";
@@ -9,33 +10,10 @@ import { useFetch } from "@/lib/useFetch";
 import s from "./home.module.css";
 
 /**
- * Home: the basics a newcomer asks first, the problem the project takes on, our answer to
+ * Home: the basics a newcomer asks first, told as a story with drawings, the problem the project takes on, our answer to
  * it, the result so far, and the way into the app. The guided questions live on the
  * Workbench (/workbench/); the controls are taught at /tutorial/.
  */
-
-const BASICS: { q: string; a: string }[] = [
-  {
-    q: "What is an option?",
-    a: "A contract that gives the right, but not the obligation, to buy (a call) or sell (a put) something at a set price, the strike, until a set date, the expiry. SPX options are on the S&P 500 index. The buyer pays the seller a price up front for that right.",
-  },
-  {
-    q: "What is the variance risk premium?",
-    a: "Volatility is how much a price swings. Every option's price implies a volatility; the swings that then happen are the realized volatility. SPX options have tended to price in more than shows up, so option sellers earn the difference on average and give much of it back in crashes. That gap is the premium, measured here in vol points.",
-  },
-  {
-    q: "What is a reinforcement learning agent?",
-    a: "A program that learns a strategy by trial and error. Each day it sees the market, picks an action (which options to sell, or none) and is paid a reward, its profit after costs. Over many simulated episodes it leans toward what paid. Ours uses PPO, a standard reinforcement learning algorithm.",
-  },
-  {
-    q: "What is a backtest?",
-    a: "Running a strategy on past or simulated data to see what it would have made. It is how a strategy is judged before money is at risk, and it is easy to fool yourself with: too few runs, a lucky stretch, or code that quietly peeks at tomorrow's prices.",
-  },
-  {
-    q: "What is the fixed-delta seller?",
-    a: "Our baseline: a fixed rule that sells options a set distance from the current price and rolls them on a schedule. It does not learn. If the agent cannot match it, the agent has not found anything a simple rule would miss.",
-  },
-];
 
 const SOLUTION: { title: string; text: string; go: { href: string; label: string }[] }[] = [
   {
@@ -121,14 +99,7 @@ export default function Home() {
         <h2 id="basics" className={ui.sectionTitle}>
           The basics
         </h2>
-        <dl className={s.basics}>
-          {BASICS.map((x) => (
-            <div key={x.q} className={`${ui.card} ${s.basic}`}>
-              <dt>{x.q}</dt>
-              <dd>{x.a}</dd>
-            </div>
-          ))}
-        </dl>
+        <Story />
       </section>
 
       <section className={s.section} aria-labelledby="problem">

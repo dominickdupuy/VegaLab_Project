@@ -6,30 +6,16 @@
   margin-top: 12px;
 }
 
+.section h2 {
+  scroll-margin-top: 130px;
+}
+
 .lede {
   margin: 0;
   color: var(--text-2);
   max-width: 80ch;
 }
 
-.basics {
-  margin: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 16px;
-}
-
-.basic dt {
-  font-weight: 700;
-  font-size: var(--fs-md);
-  color: var(--text);
-  margin-bottom: 6px;
-}
-
-.basic dd {
-  margin: 0;
-  color: var(--text-2);
-}
 
 .problem {
   display: flex;
@@ -156,9 +142,6 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .basics {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 /* the hero: the pitch and a real screenshot of the Workbench, on the header's dark band */
