@@ -276,9 +276,10 @@ export function WorkflowStrip() {
     setSaved(null);
     setQuery({ wf: null, step: null, start: null });
   };
+  // the questions live on the Workbench (/ is the landing page), so a finished workflow returns there
   const finish = () => {
     leave();
-    router.push("/");
+    router.push("/workbench/");
   };
 
   const canNext = done || Boolean(blocked);
@@ -349,8 +350,16 @@ export function WorkflowStrip() {
             ←
           </button>
           {last ? (
-            <button type="button" className={`${ui.btn} ${ui.btnSmall} ${ui.btnPrimary}`} disabled={!canNext} onClick={finish} title={canNext ? undefined : "Do this step first"}>
-              Finish
+            <button
+              type="button"
+              className={`${ui.btn} ${ui.btnSmall} ${ui.btnPrimary}`}
+              disabled={!canNext}
+              onClick={finish}
+              aria-label="Finish (back to the Workbench)"
+              title={canNext ? "Finish (back to the Workbench)" : "Do this step first"}
+            >
+              <span className={ui.finishLong}>Finish (back to the Workbench)</span>
+              <span className={ui.finishShort}>Finish</span>
             </button>
           ) : (
             <button type="button" className={`${ui.btn} ${ui.btnSmall} ${ui.btnPrimary}`} disabled={!canNext} onClick={() => go(i + 1)} title={canNext ? undefined : "Do this step first"}>

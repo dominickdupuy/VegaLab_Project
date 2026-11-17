@@ -16,7 +16,7 @@ const ICON: Record<Workflow["icon"], ReactNode> = {
   costs: <path d="M12 3v18M16.5 7.5c-.8-1.3-2.4-2-4.5-2-2.6 0-4.3 1.3-4.3 3.2 0 4.6 9.1 2.4 9.1 7 0 2-1.9 3.3-4.8 3.3-2.2 0-4-.8-4.9-2.3" />,
 };
 
-/** One workflow on the homepage: the question it answers and what you will do. */
+/** One workflow on the Workbench: the question it answers and what you will do. */
 export function WorkflowCard({ w, big }: { w: Workflow; big?: boolean }) {
   return (
     <Link href={`${stepHref(w, 0)}&start=1`} className={`${ui.wfCard} ${big ? ui.wfCardBig : ""}`}>

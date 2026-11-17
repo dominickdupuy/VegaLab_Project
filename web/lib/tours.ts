@@ -1247,7 +1247,7 @@ export function workflow(id: string | null | undefined): Workflow | undefined {
 /** A step's URL with the workflow in it. */
 export function stepHref(w: Workflow, i: number): string {
   const step = w.steps[i];
-  if (!step) return "/";
+  if (!step) return "/workbench/";
   const [path, hash] = step.href.split("#");
   const sep = (path ?? "").includes("?") ? "&" : "?";
   return `${path}${sep}wf=${w.id}&step=${i + 1}${hash ? `#${hash}` : ""}`;

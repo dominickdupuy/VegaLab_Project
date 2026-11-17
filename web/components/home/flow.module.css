@@ -1,16 +1,20 @@
 /* Our solution as a flow: four equal cards joined by arrows, each with its live result and one action. */
+/* the cards share four row tracks (subgrid): title, text, result panel, action line up across them */
 .flow {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 30px minmax(0, 1fr) 30px minmax(0, 1fr) 30px minmax(0, 1fr);
-  align-items: stretch;
+  grid-template-rows: repeat(4, auto);
+  gap: 0;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .card {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-row: span 4;
+  grid-template-rows: subgrid;
+  row-gap: 0;
   padding: 18px 18px 16px;
   border: 1px solid var(--line);
   transition: transform var(--t-fast) var(--ease-out), box-shadow var(--t-fast);
@@ -22,6 +26,7 @@
 }
 
 .arrow {
+  grid-row: span 4;
   display: grid;
   place-items: center;
   color: var(--muted);
@@ -48,7 +53,7 @@
   justify-content: center;
   gap: 6px;
   min-height: 150px;
-  margin: auto 0 12px;
+  margin: 0 0 12px;
   padding: 10px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -76,6 +81,15 @@
   font-size: 12px;
   line-height: 1.4;
   color: var(--muted);
+}
+
+/* card 2's provenance, quieter than its caption */
+.fine {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--muted);
+  opacity: 0.85;
 }
 
 .note b {
@@ -154,6 +168,7 @@
 
 .real,
 .implied {
+  fill: none;
   stroke-width: 2;
   stroke-linecap: round;
 }
@@ -261,6 +276,7 @@
 @media (max-width: 1180px) {
   .flow {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: none;
     gap: 16px;
   }
 

@@ -105,6 +105,9 @@ function Home() {
             <p className={ui.eyebrow}>Workbench</p>
             <h1>What do you want to find out?</h1>
             <p>Pick a question. Each one walks you through the platform: you run, compare and read the result yourself, one step at a time.</p>
+            <p className={ui.homePointer}>
+              New to optspread? <Link href="/">See the overview on Home →</Link>
+            </p>
           </div>
           <div className={ui.wfGrid2}>
             {featured.map((w) => (

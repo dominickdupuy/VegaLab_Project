@@ -402,10 +402,12 @@
     gap: 0 12px;
     padding-top: 8px;
   }
+  /* the brand only as wide as its words, so its underline is too, with a little room below them */
   .brand {
     min-width: 0;
-    flex: 1 1 auto;
+    flex: 0 1 auto;
     overflow: hidden;
+    padding-bottom: 6px;
   }
   .brandName {
     font-size: 17px;
@@ -432,7 +434,7 @@
   }
 }
 
-/* a narrow phone keeps VEGA LAB, the link to How it works, a little smaller */
+/* a narrow phone keeps VEGA LAB, part of the link home, a little smaller */
 @media (max-width: 420px) {
   .brandName {
     font-size: 16px;
@@ -1259,6 +1261,21 @@
   pointer-events: none;
 }
 
+/* Finish says where it goes; on a phone the short word, so the strip's title keeps its room */
+.finishShort {
+  display: none;
+}
+
+@media (max-width: 600px) {
+  .finishLong {
+    display: none;
+  }
+
+  .finishShort {
+    display: inline;
+  }
+}
+
 .wfClose {
   border: 0;
   background: transparent;
@@ -1592,7 +1609,7 @@
   color: var(--text-2);
 }
 
-/* ---------- the homepage ---------- */
+/* ---------- the Workbench (the questions; once the homepage) ---------- */
 .homeHead {
   display: flex;
   flex-direction: column;
@@ -1607,6 +1624,17 @@
 .homeHead p {
   color: var(--muted);
   max-width: 72ch;
+}
+
+/* the Workbench's one quiet line back to the overview on Home */
+.homeHead .homePointer {
+  font-size: 14px;
+}
+
+.homePointer a {
+  color: var(--accent-text);
+  font-weight: 600;
+  text-underline-offset: 3px;
 }
 
 .wfGrid {

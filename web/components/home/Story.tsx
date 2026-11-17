@@ -5,9 +5,9 @@ import s from "./story.module.css";
 
 /**
  * The basics on Home, told in order: what an option is, why sellers earn a premium, the
- * simple rule that collects it, the agent that tries to beat the rule, and the backtest
- * that judges both, which is where the problem starts. Each has a drawing; they are
- * grouped into three columns, all visible at once.
+ * simple rule that collects it and the agent that tries to beat the rule, each with a
+ * drawing, in two cards. The backtest that judges both (step 5) opens the problem, so its
+ * drawing and the ways a backtest fools you are exported for it.
  * The drawings are schematic, not data: the colours follow the charts (--s1 the seller
  * and implied vol, --s2 the agent and realised vol), and text keeps the text colours.
  */
@@ -218,11 +218,14 @@ function BacktestFig() {
       <line x1="24" y1={y(0)} x2={x(n - 1)} y2={y(0.08 * (n - 1))} className={s.dash} />
       <polyline points={path(runs[best] ?? [])} className={s.line1} />
       <polyline points={path(runs[worst] ?? [])} className={s.line2} />
-      {spread([
-        { key: "lucky", y: y(ends[best] ?? 0), cls: s.lab },
-        { key: "true edge", y: y(0.08 * (n - 1)), cls: s.cap },
-        { key: "unlucky", y: y(ends[worst] ?? 0), cls: s.lab },
-      ]).map((l) => (
+      {spread(
+        [
+          { key: "lucky", y: y(ends[best] ?? 0), cls: s.lab },
+          { key: "true edge", y: y(0.08 * (n - 1)), cls: s.cap },
+          { key: "unlucky", y: y(ends[worst] ?? 0), cls: s.lab },
+        ],
+        18,
+      ).map((l) => (
         <text key={l.key} x={x(n - 1) + 6} y={l.y + 4} className={l.cls}>
           {l.key}
         </text>
@@ -234,7 +237,7 @@ function BacktestFig() {
   );
 }
 
-/** Card 3's list: the three ways a backtest turns noise into profit, each with a small icon. */
+/** The three ways a backtest turns noise into profit, each with a small icon; shown in the problem. */
 const FOOLS: { name: string; text: string; icon: ReactNode }[] = [
   {
     name: "A lucky draw",
@@ -273,99 +276,96 @@ const FOOLS: { name: string; text: string; icon: ReactNode }[] = [
   },
 ];
 
+/** "Three ways a backtest fools you": a compact box, the three side by side. */
+export function Fools() {
+  return (
+    <div className={s.fools}>
+      <p className={s.foolsTitle}>Three ways a backtest fools you</p>
+      <ul>
+        {FOOLS.map((f) => (
+          <li key={f.name}>
+            <svg className={s.icon} viewBox="0 0 28 28" width="26" height="26" aria-hidden="true">
+              {f.icon}
+            </svg>
+            <b>{f.name}</b>
+            <span>{f.text}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** Dom's step 5, in the same frame as the other drawings, for the problem. */
+export function Backtests() {
+  return (
+    <div className={`${s.frame} ${s.wide}`}>
+      <BacktestFig />
+    </div>
+  );
+}
+
 /**
- * The basics as three columns, all visible at once and ending level: options and their
- * premium (Dom's steps 1 and 2), the two ways to collect it (3 and 4), and the backtest
- * that judges both (5) and the three ways it fools you, which leads on to the problem. A click, Enter or Space marks a
- * card, one at a time, so a reader can keep their place while talking it through; a link
- * inside a card never marks it.
+ * The basics as two cards side by side: options and their premium (Dom's steps 1 and 2),
+ * and the two ways to collect it (3 and 4). Each idea is a row, words beside its drawing,
+ * and every drawing sits in a frame of one height, so the rows line up across the cards.
+ * A click, Enter or Space marks a card, one at a time, so a reader can keep their place
+ * while talking it through.
  */
 export function Story() {
   const [on, setOn] = useState<number | null>(null);
   const toggle = (i: number) => setOn((x) => (x === i ? null : i));
-  const card = (i: number, body: ReactNode, after?: ReactNode) => (
+  const card = (i: number, title: string, rows: { text: ReactNode; fig: ReactNode }[]) => (
     <article
+      role="button"
+      tabIndex={0}
+      aria-pressed={on === i}
       className={`${s.col} ${on === i ? s.colOn : ""}`}
-      onClick={(e) => {
-        if (!(e.target as HTMLElement).closest("a")) toggle(i);
+      onClick={() => toggle(i)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          toggle(i);
+        }
       }}
     >
-      <div
-        role="button"
-        tabIndex={0}
-        aria-pressed={on === i}
-        className={s.hit}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            toggle(i);
-          }
-        }}
-      >
-        {body}
-      </div>
-      {after}
+      <h3>{title}</h3>
+      {rows.map((r, k) => (
+        <div key={k} className={s.row}>
+          <p>{r.text}</p>
+          <div className={s.frame}>{r.fig}</div>
+        </div>
+      ))}
     </article>
   );
   return (
     <div className={s.cols}>
-      {card(
-        0,
-        <>
-          <h3>Options, and why they&apos;re priced a little high</h3>
-          <p>An option is a bet on how far a price moves. A put seller is paid a premium up front, keeps it if the S&amp;P 500 stays above the strike, and pays out if it falls below.</p>
-          <div className={s.figWrap}>
-            <OptionFig />
-          </div>
-          <p>Options are usually priced for bigger swings than then happen. That gap, the variance risk premium, is what a seller earns on average, and gives back in a crash.</p>
-          <div className={s.figWrap}>
-            <PremiumFig />
-          </div>
-        </>,
-      )}
-      {card(
-        1,
-        <>
-          <h3>Two ways to collect it: a simple rule, or a learner</h3>
-          <p>The fixed-delta seller sells options a set distance from today&apos;s price and rolls them on a schedule. It learns nothing; it is our baseline.</p>
-          <div className={s.figWrap}>
-            <SellerFig />
-          </div>
-          <p>A reinforcement learning agent (PPO) sees the market each day, chooses what to sell, and is rewarded with its profit after costs.</p>
-          <div className={s.figWrap}>
-            <AgentFig />
-          </div>
-        </>,
-      )}
-      {card(
-        2,
-        <>
-          <h3>Every answer comes from a backtest, and luck scatters it</h3>
-          <p>To judge either one you run it on market data. Run the same strategy on different random markets and the results scatter: with an edge this small, luck can look like skill, and skill like luck.</p>
-          <div className={s.figWrap}>
-            <BacktestFig />
-          </div>
-          <div className={s.fools}>
-            <p className={s.foolsTitle}>Three ways a backtest fools you</p>
-            <ul>
-              {FOOLS.map((f) => (
-                <li key={f.name}>
-                  <svg className={s.icon} viewBox="0 0 28 28" width="28" height="28" aria-hidden="true">
-                    {f.icon}
-                  </svg>
-                  <span>
-                    <b>{f.name}</b>
-                    {f.text}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </>,
-        <p className={s.ask}>
-          <b>So how do you tell a real edge from luck?</b> <a href="#problem">See the problem ↓</a>
-        </p>,
-      )}
+      {card(0, "Options, and why they're priced a little high", [
+        {
+          text: "An option is a bet on how far a price moves. A put seller is paid a premium up front, keeps it if the S&P 500 stays above the strike, and pays out if it falls below.",
+          fig: <OptionFig />,
+        },
+        {
+          text: (
+            <>
+              Options are usually priced for bigger swings than then happen. Volatility is measured in percent a year, and a vol point is one percentage point of it:
+              options priced as if the market will move 21% a year, when it really moves 20%, carry a premium of one vol point. That gap, the variance risk premium, is what a
+              seller earns on average, and gives back in a crash.
+            </>
+          ),
+          fig: <PremiumFig />,
+        },
+      ])}
+      {card(1, "Two ways to collect it: a simple rule, or a learner", [
+        {
+          text: "The fixed-delta seller sells options a set distance from today's price and rolls them on a schedule. It learns nothing; it is our baseline.",
+          fig: <SellerFig />,
+        },
+        {
+          text: "A reinforcement learning agent (PPO) sees the market each day, chooses what to sell, and is rewarded with its profit after costs.",
+          fig: <AgentFig />,
+        },
+      ])}
     </div>
   );
 }

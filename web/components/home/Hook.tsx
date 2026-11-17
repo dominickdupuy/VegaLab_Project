@@ -8,13 +8,16 @@ import type { M4, M4Analysis, Study, Vrp } from "@/lib/api";
 import { ARM_LABEL } from "@/lib/chart";
 import { MINUS, num, pct, prem, signed, usd } from "@/lib/format";
 import { tCritical, tPower } from "@/lib/tpower";
+import { Backtests, Fools } from "./Story";
 import s from "./hook.module.css";
 
 /**
- * "Can a backtest see it?": the problem on Home as something to move. Plant an edge of a
- * size, pick how many seeds the study runs, and see how often the study's own test would
- * catch it, beside two dozen simulated studies drawn from that test's sampling
- * distribution.
+ * The problem on Home: on the left, why a backtest alone says little (Dom's step 5 and
+ * the three ways a backtest fools you); on the right, the question most studies skip and
+ * a widget to move. Plant an edge of a size, pick how many seeds the study runs, and see
+ * how often the study's own test would catch it, beside two dozen simulated studies drawn
+ * from that test's sampling distribution. Nothing here links out: every action is in
+ * "Our solution".
  *
  * The power is the study's, from the sweep (docs/M4_ANALYSIS.json, served at /api/m4):
  * each arm's measured curve gives the noncentrality at the sweep's S seeds, linear in
@@ -68,9 +71,23 @@ interface Model {
   critical: number;
 }
 
+/**
+ * The measured curve held level where it dips: the running maximum, over edge size, of the
+ * noncentrality read at the sweep's S. The sweep's PPO curve dips near 0.5 vol pts from
+ * sampling noise; held level, a bigger edge is never caught less often. Where the curve
+ * already rises (the real premium, the seller's whole range) it is the curve itself.
+ */
+function held(k: { x: number[]; lam: number[] }, premium: number): number {
+  let top = interp(k.x, k.lam, premium);
+  k.x.forEach((x, i) => {
+    if (x <= premium) top = Math.max(top, k.lam[i] ?? top);
+  });
+  return top;
+}
+
 function model(k: { x: number[]; lam: number[] }, premium: number, seeds: number, base: number, perVol: number, alpha: number): Model {
   const scale = Math.sqrt(seeds / base);
-  const lam5 = interp(k.x, k.lam, premium);
+  const lam5 = held(k, premium);
   // the standard error the curve implies at this premium; at zero, the first segment's (the noncentrality is linear through the anchor)
   const first = k.x.findIndex((v) => v > 0);
   const se5 = premium > 0 && lam5 > 0 ? (premium * perVol) / lam5 : first > 0 && (k.lam[first] ?? 0) > 0 ? ((k.x[first] ?? 0) * perVol) / (k.lam[first] ?? 1) : perVol;
@@ -78,47 +95,43 @@ function model(k: { x: number[]; lam: number[] }, premium: number, seeds: number
   return { lam, edge: premium * perVol, se: se5 / scale, power: tPower(lam, seeds, alpha), critical: tCritical(seeds - 1, alpha) };
 }
 
-/** A seeded generator (mulberry32), so the same settings always draw the same studies. */
-function rng(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function normal(r: () => number): number {
-  const u = Math.max(r(), 1e-12);
-  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * r());
+/** The standard normal's quantile (Acklam's rational approximation, relative error about 1e-9). */
+function normalQuantile(q: number): number {
+  const a = [-39.69683028665376, 220.9460984245205, -275.9285104469687, 138.357751867269, -30.66479806614716, 2.506628277459239];
+  const b = [-54.47609879822406, 161.5858368580409, -155.6989798598866, 66.80131188771972, -13.28068155288572];
+  const c = [-0.007784894002430293, -0.3223964580411365, -2.400758277161838, -2.549732539343734, 4.374664141464968, 2.938163982698783];
+  const d = [0.007784695709041462, 0.3224671290700398, 2.445134137142996, 3.754408661907416];
+  const [a0, a1, a2, a3, a4, a5] = a as [number, number, number, number, number, number];
+  const [b0, b1, b2, b3, b4] = b as [number, number, number, number, number];
+  const [c0, c1, c2, c3, c4, c5] = c as [number, number, number, number, number, number];
+  const [d0, d1, d2, d3] = d as [number, number, number, number];
+  const lo = 0.02425;
+  if (q < lo) {
+    const r = Math.sqrt(-2 * Math.log(q));
+    return (((((c0 * r + c1) * r + c2) * r + c3) * r + c4) * r + c5) / ((((d0 * r + d1) * r + d2) * r + d3) * r + 1);
+  }
+  if (q > 1 - lo) return -normalQuantile(1 - q);
+  const u = q - 0.5;
+  const r = u * u;
+  return ((((((a0 * r + a1) * r + a2) * r + a3) * r + a4) * r + a5) * u) / (((((b0 * r + b1) * r + b2) * r + b3) * r + b4) * r + 1);
 }
 
 interface Study1 {
   /** the study's estimate of the edge, $ per episode */
   est: number;
-  t: number;
   caught: boolean;
 }
 
 /**
- * Two dozen studies from the test's own sampling distribution: the estimate is the edge
- * plus normal noise of the grand mean's standard error, and the t statistic divides it by
- * that error as S seeds estimate it (a chi-square on S - 1 df). Study i always uses stream
- * i, so moving the edge slides the dots and adding seeds pulls them in.
+ * Two dozen studies, one at each of the evenly spaced quantiles (i + 0.5) / N of the
+ * estimate's sampling distribution: the edge plus normal noise of the grand mean's
+ * standard error. The test catches the share p of all studies, so the top round(p N) are
+ * filled and the filled share is the headline's. Deterministic: study i is always the
+ * same quantile, so moving the edge slides the dots and adding seeds pulls them in.
  */
-function draw(m: Model, seeds: number): Study1[] {
-  const df = seeds - 1;
-  return Array.from({ length: DOTS }, (_, i) => {
-    const r = rng(9_973 * (i + 1));
-    const z = normal(r);
-    let v = 0;
-    for (let j = 0; j < df; j++) v += normal(r) ** 2;
-    const u = Math.sqrt(v / df);
-    const t = (m.lam + z) / u;
-    return { est: m.edge + m.se * z, t, caught: t > m.critical };
-  });
+function draw(m: Model): Study1[] {
+  const caught = Math.round(m.power * DOTS);
+  return Array.from({ length: DOTS }, (_, i) => ({ est: m.edge + m.se * normalQuantile((i + 0.5) / DOTS), caught: i >= DOTS - caught }));
 }
 
 function stops(real: number | null): number[] {
@@ -190,7 +203,7 @@ function Plot({ arm, studies, m, domain, seeds, premium }: { arm: Arm; studies: 
       </text>
       {studies.map((d, i) => (
         <circle key={i} r={R} cx={0} cy={0} className={`${s.dot} ${colour} ${d.caught ? s.caught : s.missed}`} style={{ transform: `translate(${at[i]?.cx ?? 0}px, ${at[i]?.cy ?? 0}px)` }}>
-          <title>{`Study ${i + 1}: ${d.est < 0 ? MINUS : "+"}${usd(Math.abs(d.est))} per episode, t = ${num(d.t, 2)}: ${d.caught ? "caught" : "missed"}`}</title>
+          <title>{`A study measuring ${d.est < 0 ? MINUS : "+"}${usd(Math.abs(d.est))} per episode: ${d.caught ? "caught" : "missed"}`}</title>
         </circle>
       ))}
     </svg>
@@ -238,7 +251,7 @@ export function Hook({ m4, study, vrp }: { m4?: M4; study?: Study; vrp?: Vrp }) 
   const other = curves?.[arm === "ppo" ? "delta_seller" : "ppo"] ?? null;
   const m = a && k && base && perVol && alpha ? model(k, premium, seeds, base, perVol, alpha) : null;
   const mOther = a && other && base && perVol && alpha ? model(other, premium, seeds, base, perVol, alpha) : null;
-  const studies = m ? draw(m, seeds) : [];
+  const studies = m ? draw(m) : [];
   // one scale for both arms and every setting, so the dots move rather than the axis: the noisier arm at the fewest seeds
   const domain = useMemo<[number, number] | null>(() => {
     if (!curves?.ppo || !base || !perVol || !alpha) return null;
@@ -247,29 +260,36 @@ export function Hook({ m4, study, vrp }: { m4?: M4; study?: Study; vrp?: Vrp }) 
     return [-2.4 * worst, EDGE_MAX * perVol + 2.4 * worst];
   }, [curves, base, perVol, alpha, edges]);
 
+  // the left column: step 5 of the basics, the real premium, and the ways a backtest fools you
   const text = (
     <div className={s.text}>
+      <h3 className={s.title}>Every answer about which strategy to choose comes from a backtest, and luck scatters it.</h3>
       <p>
-        The edge an option seller chases is small and noisy.{" "}
+        The edge an option seller is chasing is small and noisy.
         {realMean !== null ? (
           <>
-            On real SPX data the premium is about <b>{signed(realMean)} vol points</b> <InfoTip term="vrp" />, and its 95% interval runs from {signed(realLo)} to {signed(realHi)}.
+            {" "}
+            On real SPX data we measure a premium of about {signed(realMean)} vol points <InfoTip term="vrp" />, and its 95% interval runs from {signed(realLo)} to {signed(realHi)}
+            {realLo !== null && realLo < 0 ? ": we cannot even be sure it is positive." : "."}
           </>
         ) : null}
       </p>
-      <p>So a backtest that “made money” says little on its own, and one that found nothing says little more.</p>
-      <p className={s.q}>
-        What most studies never state: how small an edge could this setup reliably detect?
-      </p>
+      <p>So a profitable backtest is weak evidence on its own, whether it comes from a simple rule or a learning agent.</p>
+      <Backtests />
+      <Fools />
     </div>
   );
+  const ask = <p className={s.q}>What most studies never report is how small an edge their setup could reliably detect, and whether a learning agent finds a real edge as well as a simple rule does.</p>;
 
   if (!a || !m || !domain || !perVol || !base || !alpha) {
     return (
       <div className={`${ui.card} ${s.hook}`}>
         {text}
-        <div className={s.widget}>
-          <p className={s.sub}>{m4?.error || (m4 && !m4.available) ? "The sweep's analysis is not on this server, so the study's noise cannot be shown." : "Loading the study's measured noise…"}</p>
+        <div className={s.right}>
+          {ask}
+          <div className={s.widget}>
+            <p className={s.sub}>{m4?.error || (m4 && !m4.available) ? "The sweep's analysis is not on this server, so the study's noise cannot be shown." : "Loading the study's measured noise…"}</p>
+          </div>
         </div>
       </div>
     );
@@ -287,7 +307,10 @@ export function Hook({ m4, study, vrp }: { m4?: M4; study?: Study; vrp?: Vrp }) 
   return (
     <div className={`${ui.card} ${s.hook}`}>
       {text}
-      <div className={s.widget}>
+      <div className={s.right}>
+        {ask}
+        <div className={s.widget}>
+        <div className={s.lead}>
         <p className={s.headline} aria-live="polite" data-hook="headline">
           {premium === 0 ? (
             <>
@@ -304,9 +327,10 @@ export function Hook({ m4, study, vrp }: { m4?: M4; study?: Study; vrp?: Vrp }) 
           <InfoTip
             label="What caught means"
             title="Caught"
-            text={`The study's own test, fixed before the sweep: a one-sided t test on the ${seeds} seed means at the ${pct(alpha, 0)} level. A study catches the edge when its t statistic clears ${num(m.critical, 2)}, the 95th percentile of t on ${seeds - 1} degrees of freedom. Here ${caught} of ${DOTS} dots are caught; the headline is the exact share over all possible studies, from ${ARM_LABEL[arm]}'s measured power curve in the sweep (${m4?.file ?? "M4_ANALYSIS.json"}), scaled from ${base} seeds by √(S/${base}). Dollars use the study's ${usd(perVol)} per vol point.`}
+            text={`The study's own test, fixed before the sweep: a one-sided t test on the ${seeds} seed means at the ${pct(alpha, 0)} level. A study catches the edge when its t statistic clears ${num(m.critical, 2)}, the 95th percentile of t on ${seeds - 1} degrees of freedom. The headline is the exact share over all possible studies, from ${ARM_LABEL[arm]}'s measured power curve in the sweep (${m4?.file ?? "M4_ANALYSIS.json"}), scaled from ${base} seeds by √(S/${base}); the ${DOTS} dots sit at evenly spaced quantiles, so ${caught} of them are filled. Dollars use the study's ${usd(perVol)} per vol point. The study's measured curve dips near 0.5 vol pts from sampling noise (see What we found); here it is held level so a bigger edge is never caught less often.`}
           />
         </p>
+        </div>
         <div className={s.controls}>
           <Stepped
             id="hook-edge"
@@ -317,13 +341,14 @@ export function Hook({ m4, study, vrp }: { m4?: M4; study?: Study; vrp?: Vrp }) 
             onChange={setEdgeAt}
             show={premium === real ? `${prem(premium)} · the real premium` : `${prem(premium)} · ${usd(premium * perVol)} per episode`}
           />
-          <Stepped id="hook-seeds" label="Seeds" term="seeds" values={SEED_STOPS} at={si} onChange={setSeedAt} show={seeds === base ? `${seeds} · the study's` : String(seeds)} />
+          <Stepped id="hook-seeds" label="Seeds" term="seeds" values={SEED_STOPS} at={si} onChange={setSeedAt} show={seeds === base ? `${seeds} · the study's design` : String(seeds)} />
           <div className={s.seg}>
             <Segmented label="Strategy" value={arm} options={ARMS} onChange={setArm} />
           </div>
         </div>
         <Plot arm={arm} studies={studies} m={m} domain={domain} seeds={seeds} premium={premium} />
         <p className={s.foot}>{foot}</p>
+        </div>
       </div>
     </div>
   );

@@ -5,7 +5,7 @@ import { type ReactNode, useState } from "react";
 import { InfoTip } from "@/components/InfoTip";
 import ui from "@/components/ui.module.css";
 import { floorShort } from "@/components/views/M4View";
-import type { M4, M4Analysis, Vrp } from "@/lib/api";
+import { api, type M4, type M4Analysis, type Vrp } from "@/lib/api";
 import { type Catalog, type CatalogRun, runsApi } from "@/lib/api_runs";
 import { ARM_LABEL } from "@/lib/chart";
 import { MINUS, num, pct, prem, usd } from "@/lib/format";
@@ -40,7 +40,11 @@ function Step({ title, text, mini, go }: { title: string; text: ReactNode; mini:
 
 const FW = 240;
 
-/** 1. The planted premium: the vol options are priced at, above the vol the paths realise. */
+// hand-shaped wiggles, the same on every load: implied vol calm, realised vol jumpier
+const IMPLIED_WAVE = [0, -1.2, 0.8, -0.6, 1.2, -0.8, 0.4, -1.2, 0.8, 0];
+const REALISED_WAVE = [0, 2.4, -1.8, 2.8, -1.2, 2, -2.6, 1.4, -1.8, 0.6];
+
+/** 1. The planted premium: the vol options are priced at, above the vol the paths realise, the gap scaled to its size. */
 function PlantFig({ size, max }: { size: number; max: number }) {
   const H = 64;
   const base = 46;
@@ -48,18 +52,21 @@ function PlantFig({ size, max }: { size: number; max: number }) {
   const gap = 6 + 24 * Math.sqrt(size / max);
   const top = base - gap;
   const inside = gap >= 15;
+  const x = (i: number) => 4 + (i * (FW - 8)) / (IMPLIED_WAVE.length - 1);
+  const upper = IMPLIED_WAVE.map((w, i) => `${x(i)},${top + w}`);
+  const lower = REALISED_WAVE.map((w, i) => `${x(i)},${base + w}`);
   return (
     <svg className={s.svg} viewBox={`0 0 ${FW} ${H}`} role="img" aria-label={`Options priced ${prem(size)} vol points above the volatility the market realises`}>
-      <rect x={4} y={top} width={FW - 8} height={gap} className={s.gap} />
-      <line x1={4} x2={FW - 4} y1={top} y2={top} className={s.implied} />
-      <line x1={4} x2={FW - 4} y1={base} y2={base} className={s.real} />
-      <text x={6} y={top - 4} className={s.lab}>
+      <polygon points={[...upper, ...[...lower].reverse()].join(" ")} className={s.gap} />
+      <polyline points={upper.join(" ")} className={s.implied} />
+      <polyline points={lower.join(" ")} className={s.real} />
+      <text x={6} y={top - 5} className={s.lab}>
         what options charge
       </text>
-      <text x={6} y={base + 12} className={s.lab}>
+      <text x={6} y={base + 14} className={s.lab}>
         what happens
       </text>
-      <text x={FW - 6} y={inside ? top + gap / 2 + 4 : top - 4} className={s.labStrong} textAnchor="end">
+      <text x={FW - 6} y={inside ? top + gap / 2 + 4 : top - 5} className={s.labStrong} textAnchor="end">
         the gap = the edge
       </text>
     </svg>
@@ -177,7 +184,10 @@ export function Flow({ m4, vrp }: { m4?: M4; vrp?: Vrp }) {
   const sizes = (a?.design.premiums ?? []).filter((p) => p > 0);
   const [size, setSize] = useState<number | null>(null);
   const planted = size ?? (sizes.includes(1) ? 1 : (sizes[0] ?? 1));
-  const sellerAt = a?.arms.delta_seller?.decisions.find((d) => d.premium === planted);
+  // the market's own vol, from the launch defaults (MarketConfig.sigma); 20% if the server does not say
+  const opts = useFetch((x) => api.jobOptions(x), "jobOptions");
+  const sigma = Number(opts.data?.defaults.sigma);
+  const vol = Number.isFinite(sigma) && sigma > 0 ? sigma * 100 : 20;
 
   const cat = useFetch((x) => runsApi.catalog(x), "catalog");
   const pair = fairPair(cat.data);
@@ -215,16 +225,9 @@ export function Flow({ m4, vrp }: { m4?: M4; vrp?: Vrp }) {
               </label>
             ) : null}
             <PlantFig size={planted} max={Math.max(...sizes, 1)} />
-            {sellerAt && sellerAt.estimate !== null && a ? (
-              <p className={s.note}>
-                In the sweep it paid the seller <b>{money(sellerAt.estimate)}</b> per episode{" "}
-                <InfoTip
-                  icon="source"
-                  label="Where this comes from"
-                  text={`The fixed-delta seller with ${prem(planted)} vol pt${planted === 1 ? "" : "s"} planted, against itself at zero, paired by seed block over ${a.design.n_seeds} seeds × ${num(a.design.n_episodes)} episodes: the sweep's own contrast (docs/${m4?.file}).`}
-                />
-              </p>
-            ) : null}
+            <p className={s.note}>
+              Options priced at <b>{prem(vol + planted)}% vol</b> when the market moves at {prem(vol)}%
+            </p>
           </>
         }
         go={{ href: "/synth/", label: "Try it in Synth data →" }}
@@ -252,8 +255,9 @@ export function Flow({ m4, vrp }: { m4?: M4; vrp?: Vrp }) {
               </p>
               <PairFig {...shown} label={`1 vol pt planted against the fair world: ${money(shown.mean)} per episode, 95% interval ${money(shown.lo)} to ${money(shown.hi)}`} />
               <p className={s.note}>
-                95% range {money(shown.lo)} to {money(shown.hi)}: {shown.lo > 0 ? "clear of zero" : "it includes zero"}
+                {shown.lo > 0 ? "Whole range above zero: a real edge" : "Range includes zero: not clear yet"}
               </p>
+              {paired ? <p className={s.fine}>From the example runs; your own run will differ a little.</p> : null}
             </>
           ) : pending ? (
             <p className={s.empty}>Loading…</p>

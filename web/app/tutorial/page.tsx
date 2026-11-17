@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Tutorial" };
 /**
  * The tutorial: how to find your way around the site, the research loop it runs (what
  * How it works used to hold), and a first session to follow. Reached from Home
- * and the footer; /how-it-works/ sends its readers here.
+ * and the footer.
  */
 
 type Go = { href: string; label: string };
@@ -88,7 +88,7 @@ const FIRST: string[] = [
   "Launch it again with the “Planted 1 vol pt” quick start: now the options are dear by one vol point.",
   "On Runs, compare the two on the same market paths. The strip reads the difference out to you, with its uncertainty.",
   "On the Power lab, raise the seeds until a quarter of a vol point is caught 80% of the time. That is the size of test a learned strategy needs.",
-  "Press Finish. You have now run the study's core comparison yourself; the Workbench's other questions follow the same pattern.",
+  "Press Finish: the strip closes and you are back on the Workbench. You have now run the study's core comparison yourself; the Workbench's other questions follow the same pattern.",
 ];
 
 const SECTIONS: { id: string; label: string }[] = [

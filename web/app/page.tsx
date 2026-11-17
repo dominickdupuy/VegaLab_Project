@@ -12,9 +12,9 @@ import { useFetch } from "@/lib/useFetch";
 import s from "./home.module.css";
 
 /**
- * Home: the basics a newcomer asks first, in three columns with drawings; the problem the project takes on, as a widget
- * to move ("Can a backtest see it?"); our answer to it as a flow of four steps, each with its live result; the result
- * so far; and the way into the app. The guided questions live on the
+ * Home: the basics a newcomer asks first, in two cards of words beside drawings; the problem the project takes on,
+ * why a backtest alone says little beside a widget to move; our answer to it as a flow of four steps, each with its
+ * live result and one action; the result so far; and the way into the app. The guided questions live on the
  * Workbench (/workbench/); the controls are taught at /tutorial/.
  */
 
