@@ -1,11 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { PageHead } from "@/components/Bits";
 import { StudyFinding } from "@/components/home/StudyFinding";
 import ui from "@/components/ui.module.css";
-import { api, docUrl } from "@/lib/api";
-import { signed } from "@/lib/format";
+import { api, docUrl, type M4, type Vrp } from "@/lib/api";
+import { pct, signed } from "@/lib/format";
 import { useFetch } from "@/lib/useFetch";
 import s from "./home.module.css";
 
@@ -77,29 +76,46 @@ const FAQ: { q: string; a: string }[] = [
   { q: "What do I need to run it locally?", a: "The project's Python venv and Node. Run make web, then make serve, and open port 8600. The simulator needs no market data." },
 ];
 
+/** The study's result in one sentence, from the served analysis; nothing until it is there. */
+function headline(m4?: M4, vrp?: Vrp): string | null {
+  const a = m4?.available ? m4.analysis : undefined;
+  if (!m4 || !a) return null;
+  const est = m4.vrp?.estimate ?? vrp?.mapping?.headline?.mean;
+  const atReal = m4.mapped.find((r) => r.arm === "ppo")?.power;
+  if (est === undefined || est === null || atReal === undefined || atReal === null) return null;
+  return `Our current result: SPX options have paid about ${est.toFixed(2)} vol points of premium, and at that size a ${a.design.n_seeds}-seed study catches the PPO agent's edge ${pct(atReal, 0)} of the time.`;
+}
+
 export default function Home() {
   const m4 = useFetch((x) => api.m4(x), "m4");
   const vrp = useFetch((x) => api.vrp(x), "vrp");
   const h = vrp.data?.mapping?.headline;
   const ready = Boolean(m4.data?.available && m4.data.analysis);
+  const line = headline(m4.data, vrp.data);
 
   return (
     <>
-      <PageHead
-        eyebrow="Vega Lab"
-        title="Can a backtest tell a real options edge from luck?"
-        lede="We built a simulator of the SPX options market to measure the smallest edge a study like ours can actually detect, and whether a reinforcement learning agent finds it as well as a simple rule. Start with the basics below, or go straight to the app."
-        right={
-          <>
-            <Link href="/tutorial/" className={ui.btn}>
-              Take the tutorial
+      <section className={s.hero}>
+        <div className={s.heroCopy}>
+          <h1>Test whether an options edge is real before you trade on it.</h1>
+          <p>
+            Vega Lab is a backtesting lab for selling SPX volatility. You plant an edge of known size in a simulated market, run a strategy on it, and check whether a test of
+            that size would have noticed. Then you run the same checks on real SPX data.
+          </p>
+          {line ? <p className={s.result}>{line}</p> : null}
+          <div className={s.heroGo}>
+            <Link href="/workbench/" className={s.btnMain}>
+              Open the Workbench
             </Link>
-            <Link href="/workbench/" className={`${ui.btn} ${ui.btnPrimary}`}>
-              Open the Workbench →
+            <Link href="/tutorial/" className={s.heroLink}>
+              New here? Start with the tutorial →
             </Link>
-          </>
-        }
-      />
+          </div>
+        </div>
+        <figure className={s.shot}>
+          <img src="/landing/workbench.png" alt="The Workbench: guided questions on the left, the study's power curves and detection floors on the right" width={1280} height={800} />
+        </figure>
+      </section>
 
       <section className={s.section} aria-labelledby="basics">
         <h2 id="basics" className={ui.sectionTitle}>

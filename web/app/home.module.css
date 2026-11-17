@@ -160,3 +160,91 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* the hero: the pitch and a real screenshot of the Workbench, on the header's dark band */
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 44px;
+  align-items: center;
+  padding: 48px 44px;
+  border-radius: var(--radius-lg);
+  background: var(--hero);
+  color: var(--hero-text);
+}
+
+.heroCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.heroCopy h1 {
+  margin: 0;
+  font: 700 clamp(28px, 3.4vw, 42px) / 1.1 var(--font);
+  letter-spacing: -0.01em;
+}
+
+.heroCopy p {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--hero-muted, #c9dbf1);
+  max-width: 54ch;
+}
+
+.heroCopy .result {
+  padding-left: 14px;
+  border-left: 2px solid var(--hero-muted, #c9dbf1);
+  color: var(--hero-text);
+  font-size: 16px;
+}
+
+.heroGo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 20px;
+  margin-top: 4px;
+}
+
+.btnMain {
+  display: inline-flex;
+  align-items: center;
+  padding: 11px 20px;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #13233d;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.btnMain:hover {
+  background: #e6eef8;
+}
+
+.heroLink {
+  color: inherit;
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
+
+.shot {
+  margin: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+@media (max-width: 980px) {
+  .hero {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 32px 24px;
+  }
+}

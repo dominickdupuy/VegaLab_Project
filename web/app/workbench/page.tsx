@@ -102,7 +102,7 @@ function Home() {
       <section className={ui.homeHero}>
         <div className={ui.homeLead}>
           <div className={ui.homeHead}>
-            <p className={ui.eyebrow}>optspread platform · Vega Lab</p>
+            <p className={ui.eyebrow}>Workbench</p>
             <h1>What do you want to find out?</h1>
             <p>Pick a question. Each one walks you through the platform: you run, compare and read the result yourself, one step at a time.</p>
           </div>
