@@ -1,0 +1,210 @@
+/* The basics as a story: numbered chapters on a thread, words beside a drawing. */
+.story {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* the thread joining the chapter numbers */
+.story::before {
+  content: "";
+  position: absolute;
+  left: 15px;
+  top: 24px;
+  bottom: 24px;
+  width: 2px;
+  background: var(--line-strong);
+}
+
+.chapter {
+  position: relative;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 620px) minmax(0, 460px);
+  justify-content: start;
+  gap: 28px;
+  align-items: start;
+}
+
+.num {
+  margin-top: -3px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font: 700 15px/1 var(--font);
+  box-shadow: 0 0 0 4px var(--bg);
+}
+
+.copy {
+  padding-top: 0;
+}
+
+.copy h3 {
+  margin: 0 0 8px;
+  font: 700 20px/1.25 var(--font);
+  color: var(--text);
+}
+
+.copy p {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 16px;
+  line-height: 1.55;
+  max-width: 68ch;
+}
+
+.figWrap {
+  max-width: 460px;
+  padding: 12px 14px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-solid);
+  box-shadow: var(--sh-card);
+}
+
+.fig {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+/* marks: the seller and implied vol in --s1, the agent and realised vol in --s2 */
+.axis {
+  stroke: var(--axis);
+  stroke-width: 1.5;
+}
+
+.dash {
+  stroke: var(--muted);
+  stroke-width: 1.2;
+  stroke-dasharray: 4 4;
+  fill: none;
+}
+
+.mark {
+  stroke: var(--text);
+  stroke-width: 2;
+}
+
+.line1,
+.line2,
+.faint,
+.arrow {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.line1 {
+  stroke: var(--s1);
+}
+
+.line2 {
+  stroke: var(--s2);
+}
+
+.faint {
+  stroke: var(--axis);
+  stroke-width: 1.5;
+}
+
+.arrow {
+  stroke: var(--muted);
+}
+
+.head {
+  fill: var(--muted);
+}
+
+.fill1 {
+  fill: color-mix(in srgb, var(--s1) 16%, transparent);
+}
+
+.fill2 {
+  fill: color-mix(in srgb, var(--s2) 18%, transparent);
+}
+
+.fillGap {
+  fill: color-mix(in srgb, var(--s1) 12%, transparent);
+}
+
+.box1,
+.box2 {
+  stroke-width: 2;
+}
+
+.box1 {
+  fill: color-mix(in srgb, var(--s1) 12%, transparent);
+  stroke: var(--s1);
+}
+
+.box2 {
+  fill: color-mix(in srgb, var(--s2) 12%, transparent);
+  stroke: var(--s2);
+}
+
+/* text keeps the text colours, never a series colour */
+.lab,
+.labStrong,
+.cap,
+.boxT {
+  font-family: var(--font);
+}
+
+.lab {
+  font-size: 12.5px;
+  fill: var(--text-2);
+}
+
+.labStrong {
+  font-size: 13px;
+  font-weight: 700;
+  fill: var(--text);
+}
+
+.cap {
+  font-size: 11.5px;
+  fill: var(--muted);
+}
+
+.boxT {
+  font-size: 15px;
+  font-weight: 700;
+  fill: var(--text);
+}
+
+.next {
+  margin: 4px 0 0 56px;
+  font-size: 16px;
+  color: var(--text-2);
+}
+
+.next a {
+  color: var(--accent-text);
+  font-weight: 700;
+  text-underline-offset: 3px;
+}
+
+@media (max-width: 860px) {
+  .chapter {
+    grid-template-columns: 32px minmax(0, 1fr);
+  }
+
+  .figWrap {
+    grid-column: 2;
+  }
+
+  .next {
+    margin-left: 0;
+  }
+}

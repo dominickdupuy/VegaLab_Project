@@ -1,0 +1,233 @@
+/* Home: the basics, the problem, the solution, the result, the way in, the FAQ. */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.section h2 {
+  scroll-margin-top: 130px;
+}
+
+.lede {
+  margin: 0;
+  color: var(--text-2);
+  max-width: 80ch;
+}
+
+
+.problem {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 900px;
+}
+
+.problem p {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.problem b {
+  color: var(--text);
+}
+
+.problem .ask {
+  padding-left: 14px;
+  border-left: 3px solid var(--accent);
+  color: var(--text);
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.step p {
+  margin: 0;
+  color: var(--text-2);
+  flex: 1;
+}
+
+.num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font: 700 13px/1 var(--font);
+}
+
+.go {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.use {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.useCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.useCard p {
+  margin: 0;
+  color: var(--text-2);
+  flex: 1;
+}
+
+.useCard:hover .more {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.more {
+  color: var(--accent-text);
+  font-weight: 700;
+}
+
+.faq {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 40px;
+}
+
+.faq dt {
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.faq dd {
+  margin: 0;
+  color: var(--text-2);
+}
+
+@media (max-width: 1100px) {
+  .steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .steps,
+  .use,
+  .faq {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+}
+
+/* the hero: the pitch and a real screenshot of the Workbench, on the header's dark band */
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 44px;
+  align-items: center;
+  padding: 48px 44px;
+  border-radius: var(--radius-lg);
+  background: var(--hero);
+  color: var(--hero-text);
+}
+
+.heroCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.heroCopy h1 {
+  margin: 0;
+  font: 700 clamp(28px, 3.4vw, 42px) / 1.1 var(--font);
+  letter-spacing: -0.01em;
+}
+
+.heroCopy p {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--hero-muted, #c9dbf1);
+  max-width: 54ch;
+}
+
+.heroCopy .result {
+  padding-left: 14px;
+  border-left: 2px solid var(--hero-muted, #c9dbf1);
+  color: var(--hero-text);
+  font-size: 16px;
+}
+
+.heroGo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 20px;
+  margin-top: 4px;
+}
+
+.btnMain {
+  display: inline-flex;
+  align-items: center;
+  padding: 11px 20px;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #13233d;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.btnMain:hover {
+  background: #e6eef8;
+}
+
+.heroLink {
+  color: inherit;
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
+
+.shot {
+  margin: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+@media (max-width: 980px) {
+  .hero {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 32px 24px;
+  }
+}

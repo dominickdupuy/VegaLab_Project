@@ -1,0 +1,267 @@
+/* The tutorial: a contents column beside the body on wide screens, stacked on narrow ones. */
+.layout {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 32px;
+  align-items: start;
+}
+
+.toc {
+  position: sticky;
+  top: calc(env(safe-area-inset-top, 0px) + 140px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.toc a {
+  color: var(--text-2);
+  text-decoration: none;
+}
+
+.toc a:hover {
+  color: var(--accent-text);
+}
+
+.tocHead {
+  margin: 0;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 12px;
+}
+
+.toc .tocOut {
+  margin-top: 8px;
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  min-width: 0;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  scroll-margin-top: 140px;
+}
+
+.intro {
+  margin: 0;
+  color: var(--text-2);
+  max-width: 75ch;
+}
+
+/* 1. the header drawing and its legend */
+.headerCard {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.drawing {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 12px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--surface-solid);
+  overflow-x: auto;
+  font-size: 13px;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+.mockBrand {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mockName {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.mockLab {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--accent-text);
+  font-weight: 700;
+}
+
+.mockTabs {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+}
+
+.mockTabOn {
+  color: var(--accent-text);
+  font-weight: 700;
+  box-shadow: inset 0 -2px 0 var(--accent);
+  padding-bottom: 2px;
+}
+
+.mockRight {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mockDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #2f9e5b;
+}
+
+.mockIcon {
+  margin-left: 8px;
+  font-size: 15px;
+}
+
+.pin {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font: 700 11px/1 var(--font);
+  vertical-align: middle;
+}
+
+.legend {
+  margin: 0;
+  padding-left: 22px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 28px;
+  color: var(--text-2);
+}
+
+.legend b {
+  color: var(--text);
+}
+
+.habits {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 28px;
+}
+
+.habit dt {
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.habit dd {
+  margin: 0;
+  color: var(--text-2);
+}
+
+/* 2. the research loop */
+.steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font: 700 13px/1 var(--font);
+}
+
+.text {
+  margin: 0;
+  color: var(--text-2);
+  flex: 1;
+}
+
+.go {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 4px 0 0;
+}
+
+/* 3. the first session */
+.first {
+  margin: 0;
+  padding-left: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 80ch;
+  color: var(--text-2);
+}
+
+.first li::marker {
+  color: var(--accent-text);
+  font-weight: 700;
+}
+
+@media (max-width: 1100px) {
+  .steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+
+  .toc {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+  }
+
+  .tocHead {
+    width: 100%;
+  }
+
+  .toc .tocOut {
+    margin-top: 0;
+  }
+
+  .legend,
+  .habits,
+  .steps {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
