@@ -83,3 +83,15 @@ A table of contents (sticky on wide screens), then:
 - Manual check in the browser: both pages in light and dark themes, at desktop and phone
   widths. Every link resolves, `/how-it-works/` lands on `/tutorial/`, and the reviewer
   tour still completes its steps on `/workbench/`.
+
+## Revision after team feedback (2026-11-16)
+
+The team asked for one home page inside the app, not a separate landing site. So:
+
+- `/` is Home, in the app's own header, with a Home tab first. The brand name and the
+  VEGA LAB label both open it. The separate product chrome and its screenshot are gone.
+- Home answers the basic questions our advisor asked first (what an option is, what a
+  reinforcement learning agent is, and so on), states the problem, gives our four-step
+  solution with the page for each, shows the live result, links to the tutorial, the
+  Workbench and REPRODUCE.md, and ends with a short FAQ.
+- The tutorial stays its own page at `/tutorial/`, in the app's header.

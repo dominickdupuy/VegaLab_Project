@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { PageHead } from "@/components/Bits";
 import ui from "@/components/ui.module.css";
 import { tourHref } from "@/lib/tours";
 import s from "./tutorial.module.css";
@@ -8,17 +9,17 @@ export const metadata: Metadata = { title: "Tutorial" };
 
 /**
  * The tutorial: how to find your way around the site, the research loop it runs (what
- * How it works used to hold), and a first session to follow. Reached from the landing
- * page, the VEGA LAB label and the footer; /how-it-works/ sends its readers here.
+ * How it works used to hold), and a first session to follow. Reached from Home
+ * and the footer; /how-it-works/ sends its readers here.
  */
 
 type Go = { href: string; label: string };
 
 /** The header, left to right: the numbers on the drawing and what each part does. */
 const HEADER: { name: string; text: string }[] = [
-  { name: "optspread platform", text: "Back to the landing page, from anywhere." },
-  { name: "VEGA LAB", text: "Opens this tutorial." },
-  { name: "The tabs", text: "One page each. Workbench is the place to start work: the guided questions, the live SPX surface and the checks." },
+  { name: "optspread platform", text: "Back to Home, from anywhere." },
+  { name: "VEGA LAB", text: "Also goes to Home: the basics, the problem, our solution and the result." },
+  { name: "The tabs", text: "One page each. Home explains the project; Workbench is the place to start work: the guided questions, the live SPX surface and the checks." },
   { name: "Server status", text: "Green with the commit the server runs, amber while it connects, red if it is down. Hover it for the full commit." },
   { name: "Copy link", text: "Copies the address of exactly what you are looking at. Every page keeps its settings in the address, so the link reopens the same view." },
   { name: "Theme", text: "Light or dark. Charts follow." },
@@ -110,7 +111,8 @@ function HeaderDrawing() {
         </span>
       </span>
       <span className={s.mockTabs}>
-        <span className={s.mockTabOn}>Workbench</span>
+        <span className={s.mockTabOn}>Home</span>
+        <span>Workbench</span>
         <span>Synthetic alpha</span>
         <span>Runs</span>
         <span>Launch</span>
@@ -132,28 +134,22 @@ function HeaderDrawing() {
 export default function Tutorial() {
   return (
     <>
-      <section className={s.hero}>
-        <div className={s.heroInner}>
-          <h1>Learn Vega Lab by running a real test</h1>
-          <p>About ten minutes. It covers how the app is laid out and the order a study runs in, then walks you through a first comparison you run yourself.</p>
-          <div className={s.heroGo}>
-            <Link href={tourHref("edge")} className={s.btnMain}>
+      <PageHead
+        eyebrow="Vega Lab"
+        title="Tutorial"
+        lede="About ten minutes. How the app is laid out, the order a study runs in, and a first comparison you run yourself."
+        right={
+          <>
+            <Link href="/" className={ui.btn}>
+              ← Home
+            </Link>
+            <Link href={tourHref("edge")} className={`${ui.btn} ${ui.btnPrimary}`}>
               Start the first session →
             </Link>
-            <Link href="/workbench/" className={s.btnGhost}>
-              Open the app
-            </Link>
-          </div>
-          <ol className={s.progress}>
-            {SECTIONS.map((x) => (
-              <li key={x.id}>
-                <a href={`#${x.id}`}>{x.label}</a>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </section>
-      <div className={`${s.layout} ${s.wrap}`}>
+          </>
+        }
+      />
+      <div className={s.layout}>
         <nav className={s.toc} aria-label="On this page">
           <p className={s.tocHead}>On this page</p>
           {SECTIONS.map((x) => (

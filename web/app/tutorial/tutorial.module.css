@@ -8,7 +8,7 @@
 
 .toc {
   position: sticky;
-  top: calc(env(safe-area-inset-top, 0px) + 84px);
+  top: calc(env(safe-area-inset-top, 0px) + 140px);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -50,7 +50,7 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
-  scroll-margin-top: 84px;
+  scroll-margin-top: 140px;
 }
 
 .intro {
@@ -264,90 +264,4 @@
   .steps {
     grid-template-columns: minmax(0, 1fr);
   }
-}
-
-/* the hero band and the page's width, under the product chrome */
-.hero {
-  background: var(--hero);
-  color: var(--hero-text);
-}
-
-.heroInner {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 64px var(--gutter) 40px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-
-.heroInner h1 {
-  margin: 0;
-  font: 700 clamp(30px, 4.4vw, 48px) / 1.08 var(--font);
-  letter-spacing: -0.02em;
-  max-width: 22ch;
-}
-
-.heroInner p {
-  margin: 0;
-  font-size: 18px;
-  color: var(--hero-muted, #c9dbf1);
-  max-width: 62ch;
-}
-
-.heroGo {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 4px;
-}
-
-.btnMain,
-.btnGhost {
-  display: inline-flex;
-  align-items: center;
-  padding: 11px 20px;
-  border-radius: 8px;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.btnMain {
-  background: #ffffff;
-  color: #13233d;
-}
-
-.btnGhost {
-  color: inherit;
-  border: 1px solid currentColor;
-}
-
-.progress {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin: 18px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.progress {
-  gap: 8px 24px;
-}
-
-.progress a {
-  color: var(--hero-muted, #c9dbf1);
-  font-size: 15px;
-  text-underline-offset: 3px;
-}
-
-.progress a:hover {
-  color: var(--hero-text);
-}
-
-.wrap {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 48px var(--gutter) 80px;
 }

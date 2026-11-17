@@ -8,11 +8,11 @@ import { short } from "@/lib/format";
 import { flipTheme, useTheme } from "@/lib/theme";
 import { useFetch } from "@/lib/useFetch";
 import { usePoll } from "@/lib/usePoll";
-import { MarketingShell } from "./marketing/MarketingShell";
 import ui from "./ui.module.css";
 import { CopyLink, WorkflowStrip } from "./Workflow";
 
 const TABS: { href: string; label: string }[] = [
+  { href: "/", label: "Home" },
   { href: "/workbench/", label: "Workbench" },
   { href: "/alpha/", label: "Synthetic alpha" },
   { href: "/runs/", label: "Runs" },
@@ -30,7 +30,7 @@ function active(path: string, href: string): boolean {
   return path === href || path.startsWith(href) || `${path}/` === href;
 }
 
-export function ThemeButton() {
+function ThemeButton() {
   const [theme] = useTheme();
   const dark = theme === "dark";
   const ref = useRef<HTMLButtonElement>(null);
@@ -126,8 +126,6 @@ function Nav({ path }: { path: string }) {
 
 export function Shell({ children }: { children: ReactNode }) {
   const path = usePathname() ?? "/";
-  // the landing page and the tutorial wear the product's chrome; every other page the app's
-  if (path === "/" || path.startsWith("/tutorial")) return <MarketingShell>{children}</MarketingShell>;
   return (
     <div className={ui.shell}>
       <header className={ui.header}>
@@ -136,7 +134,7 @@ export function Shell({ children }: { children: ReactNode }) {
             <Link href="/" className={ui.brandName} aria-label="optspread platform, home">
               optspread platform
             </Link>
-            <Link href="/tutorial/" className={ui.brandLab} title="Tutorial" aria-label="Vega Lab: the tutorial">
+            <Link href="/" className={ui.brandLab} title="Home" aria-label="Vega Lab: home">
               VEGA LAB
             </Link>
           </span>

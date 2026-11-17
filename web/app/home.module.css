@@ -1,0 +1,162 @@
+/* Home: the basics, the problem, the solution, the result, the way in, the FAQ. */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.lede {
+  margin: 0;
+  color: var(--text-2);
+  max-width: 80ch;
+}
+
+.basics {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.basic dt {
+  font-weight: 700;
+  font-size: var(--fs-md);
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.basic dd {
+  margin: 0;
+  color: var(--text-2);
+}
+
+.problem {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 900px;
+}
+
+.problem p {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.problem b {
+  color: var(--text);
+}
+
+.problem .ask {
+  padding-left: 14px;
+  border-left: 3px solid var(--accent);
+  color: var(--text);
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.step p {
+  margin: 0;
+  color: var(--text-2);
+  flex: 1;
+}
+
+.num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font: 700 13px/1 var(--font);
+}
+
+.go {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.use {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.useCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.useCard p {
+  margin: 0;
+  color: var(--text-2);
+  flex: 1;
+}
+
+.useCard:hover .more {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.more {
+  color: var(--accent-text);
+  font-weight: 700;
+}
+
+.faq {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 40px;
+}
+
+.faq dt {
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.faq dd {
+  margin: 0;
+  color: var(--text-2);
+}
+
+@media (max-width: 1100px) {
+  .steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .steps,
+  .use,
+  .faq {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .basics {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
