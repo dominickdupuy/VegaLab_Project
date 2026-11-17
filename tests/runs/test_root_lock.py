@@ -263,12 +263,18 @@ def test_the_lock_file_left_behind_can_be_locked_by_every_account(tmp_path: Path
 def test_a_filesystem_without_flock_never_turns_a_left_file_into_a_held_lock(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    import filelock._unix as unix_lock
+    import fcntl
 
-    def missing(fd: int) -> bool:
-        raise OSError(errno.ENOSYS, "Function not implemented")
+    real_flock = fcntl.flock
 
-    monkeypatch.setattr(unix_lock, "_lock_fd_nonblocking", missing)
+    # Patch the system call, not filelock's private helper: 4.2.11 renamed that helper,
+    # while every version takes the lock through fcntl.flock.
+    def missing(fd: int, operation: int) -> None:
+        if operation & fcntl.LOCK_EX:
+            raise OSError(errno.ENOSYS, "Function not implemented")
+        real_flock(fd, operation)
+
+    monkeypatch.setattr(fcntl, "flock", missing)
     (tmp_path / LOCK_FILENAME).write_text("", encoding="utf-8")  # left by an earlier run
     for _ in range(2):
         with root_lock(tmp_path, timeout=0.2):
