@@ -1,10 +1,13 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { type ReactNode, useState } from "react";
 import s from "./story.module.css";
 
 /**
  * The basics on Home, told in order: what an option is, why sellers earn a premium, the
  * simple rule that collects it, the agent that tries to beat the rule, and the backtest
- * that judges both, which is where the problem starts. Each chapter has a drawing.
+ * that judges both, which is where the problem starts. Each has a drawing; they are
+ * grouped into three columns, all visible at once.
  * The drawings are schematic, not data: the colours follow the charts (--s1 the seller
  * and implied vol, --s2 the agent and realised vol), and text keeps the text colours.
  */
@@ -195,22 +198,24 @@ function spread<T extends { y: number }>(labels: T[], gap = 15): T[] {
 
 /** 5. The same strategy on different random markets: the results fan out around a small true edge. */
 function BacktestFig() {
+  const h = H;
   const n = 40;
   const runs = [11, 23, 37, 41, 58, 64, 79, 83].map((seed) => walk(seed, n, 0.08));
   const all = runs.flat();
   const lo = Math.min(...all);
   const hi = Math.max(...all);
-  const x = (i: number) => 30 + (i * 300) / (n - 1);
-  const y = (v: number) => 170 - ((v - lo) / (hi - lo || 1)) * 140;
+  // the paths stop short of the right edge, so the end labels sit inside the drawing
+  const x = (i: number) => 24 + (i * 262) / (n - 1);
+  const y = (v: number) => h - 30 - ((v - lo) / (hi - lo || 1)) * (h - 60);
   const ends = runs.map((r) => r[n - 1] ?? 0);
   const best = ends.indexOf(Math.max(...ends));
   const worst = ends.indexOf(Math.min(...ends));
   const path = (r: number[]) => r.map((v, i) => `${x(i)},${y(v)}`).join(" ");
   return (
     <Fig label="Eight backtests of the same strategy on different random markets: some end well up, some down, around a small true edge">
-      <line x1="30" y1={y(0)} x2="330" y2={y(0)} className={s.axis} />
+      <line x1="24" y1={y(0)} x2={x(n - 1)} y2={y(0)} className={s.axis} />
       {runs.map((r, i) => (i === best || i === worst ? null : <polyline key={i} points={path(r)} className={s.faint} />))}
-      <line x1="30" y1={y(0)} x2="330" y2={y(0.08 * (n - 1))} className={s.dash} />
+      <line x1="24" y1={y(0)} x2={x(n - 1)} y2={y(0.08 * (n - 1))} className={s.dash} />
       <polyline points={path(runs[best] ?? [])} className={s.line1} />
       <polyline points={path(runs[worst] ?? [])} className={s.line2} />
       {spread([
@@ -218,65 +223,149 @@ function BacktestFig() {
         { key: "true edge", y: y(0.08 * (n - 1)), cls: s.cap },
         { key: "unlucky", y: y(ends[worst] ?? 0), cls: s.lab },
       ]).map((l) => (
-        <text key={l.key} x="336" y={l.y + 4} className={l.cls}>
+        <text key={l.key} x={x(n - 1) + 6} y={l.y + 4} className={l.cls}>
           {l.key}
         </text>
       ))}
-      <text x="30" y="194" className={s.cap}>
+      <text x="24" y={h - 6} className={s.cap}>
         same strategy, same edge, eight random markets
       </text>
     </Fig>
   );
 }
 
-const CHAPTERS: { title: string; text: ReactNode; fig: ReactNode }[] = [
+/** Card 3's list: the three ways a backtest turns noise into profit, each with a small icon. */
+const FOOLS: { name: string; text: string; icon: ReactNode }[] = [
   {
-    title: "An option is a bet on how far a price moves",
-    text: "An option gives the right, not the obligation, to buy (a call) or sell (a put) at a set price, the strike, until a set date. SPX options are on the S&P 500. The seller of a put is paid a premium up front, keeps it if the index stays above the strike, and pays out if it falls below.",
-    fig: <OptionFig />,
+    name: "A lucky draw",
+    text: "One good run looks like skill.",
+    icon: (
+      <>
+        <rect x="3" y="3" width="22" height="22" rx="5" className={s.box1} />
+        <circle cx="9.5" cy="9.5" r="2" className={s.pip} />
+        <circle cx="14" cy="14" r="2" className={s.pip} />
+        <circle cx="18.5" cy="18.5" r="2" className={s.pip} />
+      </>
+    ),
   },
   {
-    title: "Options are usually priced a little high",
-    text: "Every option's price implies a volatility, how much the market expects prices to swing. The swings that then happen are usually smaller. That gap is the variance risk premium, measured in vol points. Sellers earn it on average and give much of it back in a crash.",
-    fig: <PremiumFig />,
+    name: "Costs left out",
+    text: "Profit that never paid for its trades.",
+    icon: (
+      <>
+        <circle cx="14" cy="14" r="11" className={s.box1} />
+        <text x="14" y="19" textAnchor="middle" className={s.coin}>
+          $
+        </text>
+      </>
+    ),
   },
   {
-    title: "A simple rule collects it",
-    text: "The fixed-delta seller sells options a set distance from today's price, out where the index rarely ends up, and rolls them on a schedule. It doesn't learn anything. It is our baseline: the edge a simple rule already gets.",
-    fig: <SellerFig />,
-  },
-  {
-    title: "Can a learning agent do better?",
-    text: "A reinforcement learning agent learns by trial and error. Each day it sees the market, picks which options to sell (or none), and is rewarded with its profit after costs. Over many simulated episodes it leans toward what paid. Ours uses PPO, a standard algorithm.",
-    fig: <AgentFig />,
-  },
-  {
-    title: "Every answer comes from a backtest",
-    text: "To judge the rule or the agent, you run it on market data and see what it made. Run the same strategy on different random markets, though, and the results scatter. With an edge this small, luck can look like skill, and skill can look like luck.",
-    fig: <BacktestFig />,
+    name: "Peeking at tomorrow",
+    text: "A bug that lets future prices leak in.",
+    icon: (
+      <>
+        <rect x="4" y="6" width="20" height="18" rx="3" className={s.box2} />
+        <path d="M4 11h20M10 3.5V8M18 3.5V8" className={s.cal} />
+        <path d="M9 18h8m-3-3 3 3-3 3" className={s.cal} />
+      </>
+    ),
   },
 ];
 
+/**
+ * The basics as three columns, all visible at once and ending level: options and their
+ * premium (Dom's steps 1 and 2), the two ways to collect it (3 and 4), and the backtest
+ * that judges both (5) and the three ways it fools you, which leads on to the problem. A click, Enter or Space marks a
+ * card, one at a time, so a reader can keep their place while talking it through; a link
+ * inside a card never marks it.
+ */
 export function Story() {
+  const [on, setOn] = useState<number | null>(null);
+  const toggle = (i: number) => setOn((x) => (x === i ? null : i));
+  const card = (i: number, body: ReactNode, after?: ReactNode) => (
+    <article
+      className={`${s.col} ${on === i ? s.colOn : ""}`}
+      onClick={(e) => {
+        if (!(e.target as HTMLElement).closest("a")) toggle(i);
+      }}
+    >
+      <div
+        role="button"
+        tabIndex={0}
+        aria-pressed={on === i}
+        className={s.hit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            toggle(i);
+          }
+        }}
+      >
+        {body}
+      </div>
+      {after}
+    </article>
+  );
   return (
-    <>
-      <ol className={s.story}>
-        {CHAPTERS.map((c, i) => (
-          <li key={c.title} className={s.chapter}>
-            <span className={s.num} aria-hidden="true">
-              {i + 1}
-            </span>
-            <div className={s.copy}>
-              <h3>{c.title}</h3>
-              <p>{c.text}</p>
-            </div>
-            <div className={s.figWrap}>{c.fig}</div>
-          </li>
-        ))}
-      </ol>
-      <p className={s.next}>
-        Which leads to the problem: <a href="#problem">how do you tell a real edge from luck? ↓</a>
-      </p>
-    </>
+    <div className={s.cols}>
+      {card(
+        0,
+        <>
+          <h3>Options, and why they&apos;re priced a little high</h3>
+          <p>An option is a bet on how far a price moves. A put seller is paid a premium up front, keeps it if the S&amp;P 500 stays above the strike, and pays out if it falls below.</p>
+          <div className={s.figWrap}>
+            <OptionFig />
+          </div>
+          <p>Options are usually priced for bigger swings than then happen. That gap, the variance risk premium, is what a seller earns on average, and gives back in a crash.</p>
+          <div className={s.figWrap}>
+            <PremiumFig />
+          </div>
+        </>,
+      )}
+      {card(
+        1,
+        <>
+          <h3>Two ways to collect it: a simple rule, or a learner</h3>
+          <p>The fixed-delta seller sells options a set distance from today&apos;s price and rolls them on a schedule. It learns nothing; it is our baseline.</p>
+          <div className={s.figWrap}>
+            <SellerFig />
+          </div>
+          <p>A reinforcement learning agent (PPO) sees the market each day, chooses what to sell, and is rewarded with its profit after costs.</p>
+          <div className={s.figWrap}>
+            <AgentFig />
+          </div>
+        </>,
+      )}
+      {card(
+        2,
+        <>
+          <h3>Every answer comes from a backtest, and luck scatters it</h3>
+          <p>To judge either one you run it on market data. Run the same strategy on different random markets and the results scatter: with an edge this small, luck can look like skill, and skill like luck.</p>
+          <div className={s.figWrap}>
+            <BacktestFig />
+          </div>
+          <div className={s.fools}>
+            <p className={s.foolsTitle}>Three ways a backtest fools you</p>
+            <ul>
+              {FOOLS.map((f) => (
+                <li key={f.name}>
+                  <svg className={s.icon} viewBox="0 0 28 28" width="28" height="28" aria-hidden="true">
+                    {f.icon}
+                  </svg>
+                  <span>
+                    <b>{f.name}</b>
+                    {f.text}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </>,
+        <p className={s.ask}>
+          <b>So how do you tell a real edge from luck?</b> <a href="#problem">See the problem ↓</a>
+        </p>,
+      )}
+    </div>
   );
 }

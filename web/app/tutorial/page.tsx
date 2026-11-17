@@ -17,9 +17,8 @@ type Go = { href: string; label: string };
 
 /** The header, left to right: the numbers on the drawing and what each part does. */
 const HEADER: { name: string; text: string }[] = [
-  { name: "optspread platform", text: "Back to Home, from anywhere." },
-  { name: "VEGA LAB", text: "Also goes to Home: the basics, the problem, our solution and the result." },
-  { name: "The tabs", text: "One page each. Home explains the project; Workbench is the place to start work: the guided questions, the live SPX surface and the checks." },
+  { name: "optspread platform · VEGA LAB", text: "The way home, from anywhere: the basics, the problem, our solution and the result. It is underlined, like a tab, while you are on Home." },
+  { name: "The tabs", text: "One page each. Workbench comes first and is the place to start work: the guided questions, the live SPX surface and the checks." },
   { name: "Server status", text: "Green with the commit the server runs, amber while it connects, red if it is down. Hover it for the full commit." },
   { name: "Copy link", text: "Copies the address of exactly what you are looking at. Every page keeps its settings in the address, so the link reopens the same view." },
   { name: "Theme", text: "Light or dark. Charts follow." },
@@ -99,33 +98,31 @@ const SECTIONS: { id: string; label: string }[] = [
 ];
 
 function HeaderDrawing() {
-  // a simplified header, its parts numbered to the list beside it; drawn in HTML so it follows the theme
+  // a simplified header as it looks on Home (the brand underlined), its parts numbered to the list beside it; drawn in HTML so it follows the theme
   return (
     <div className={s.drawing} aria-hidden="true">
-      <span className={s.mockBrand}>
+      <span className={`${s.mockBrand} ${s.mockBrandOn}`}>
         <span className={s.mockName}>
           optspread platform <b className={s.pin}>1</b>
         </span>
-        <span className={s.mockLab}>
-          VEGA LAB <b className={s.pin}>2</b>
-        </span>
+        <span className={s.mockLab}>VEGA LAB</span>
       </span>
       <span className={s.mockTabs}>
-        <span className={s.mockTabOn}>Home</span>
         <span>Workbench</span>
         <span>Synthetic alpha</span>
         <span>Runs</span>
         <span>Launch</span>
+        <span>Synth data</span>
         <span>…</span>
-        <b className={s.pin}>3</b>
+        <b className={s.pin}>2</b>
       </span>
       <span className={s.mockRight}>
         <span className={s.mockDot} />
-        <b className={s.pin}>4</b>
+        <b className={s.pin}>3</b>
         <span className={s.mockIcon}>⧉</span>
-        <b className={s.pin}>5</b>
+        <b className={s.pin}>4</b>
         <span className={s.mockIcon}>☾</span>
-        <b className={s.pin}>6</b>
+        <b className={s.pin}>5</b>
       </span>
     </div>
   );

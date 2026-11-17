@@ -31,7 +31,7 @@
  *           power-episodes, power-preset · leaks-run, leaks-eps, leaks-view, leaks-floor,
  *           leaks-field, leaks-plant · sweep-arm, sweep-view · attribution-arm,
  *           attribution-premium · data-date, data-next-day, data-sigma-from ·
- *           home-checks, home-study · alpha-generator, alpha-generate,
+ *           home-checks, home-study (on /workbench/) · alpha-generator, alpha-generate,
  *           alpha-dataset-<hash> (an earlier dataset's row), alpha-arm, alpha-steps,
  *           alpha-seeds, alpha-train, alpha-bench-<arm>-<steps>-s<seeds> (a result's row,
  *           data-selected when it is the one shown), alpha-floor-arm-<arm>, alpha-floor-run,
@@ -123,7 +123,7 @@ export interface Workflow {
   /** What you will do, three short lines. */
   youWill: string[];
   icon: "edge" | "market" | "pnl" | "size" | "leak" | "learner" | "review" | "tune" | "costs" | "planted";
-  /** Shown first and largest on the homepage. */
+  /** Shown first and largest on the Workbench. */
   featured?: boolean;
   reviewer?: boolean;
   steps: Step[];

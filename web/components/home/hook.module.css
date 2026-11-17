@@ -1,0 +1,195 @@
+/* "Can a backtest see it?": the problem in words on the left, the widget on the right. */
+.hook {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: 28px;
+  align-items: start;
+  padding: 26px 28px;
+}
+
+.text p {
+  margin: 0 0 12px;
+  color: var(--text-2);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.text b {
+  color: var(--text);
+}
+
+.text .q {
+  margin: 4px 0 0;
+  padding-left: 12px;
+  border-left: 3px solid var(--accent);
+  color: var(--text);
+  font-weight: 700;
+}
+
+.widget {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-solid);
+}
+
+.headline {
+  margin: 0;
+  font: 700 20px/1.3 var(--font);
+  color: var(--text);
+}
+
+.headline em {
+  font-style: normal;
+  color: var(--s2);
+}
+
+.sub {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: start;
+}
+
+.seg {
+  padding-top: 20px;
+}
+
+.slider {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.sliderLab {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.val {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.plot {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.zero {
+  stroke: var(--axis);
+  stroke-width: 1.5;
+}
+
+.zeroEdge {
+  stroke: var(--muted);
+  stroke-width: 1.2;
+  stroke-dasharray: 4 4;
+}
+
+.edge {
+  stroke: var(--dot);
+  stroke-width: 1.4;
+  stroke-dasharray: 4 4;
+}
+
+.zeroLab,
+.edgeLab,
+.legendLab {
+  font-family: var(--font);
+  font-size: 11.5px;
+}
+
+.zeroLab,
+.legendLab {
+  fill: var(--muted);
+}
+
+.edgeLab {
+  font-weight: 700;
+  fill: var(--text-2);
+}
+
+/* the studies: the arm's colour, filled when the test catches it, a ring when it misses */
+.ppo {
+  --dot: var(--s2);
+}
+
+.seller {
+  --dot: var(--s1);
+}
+
+.dot,
+.move {
+  transition: transform 320ms var(--ease-out), fill 200ms, stroke 200ms;
+}
+
+.dot {
+  stroke-width: 1.6;
+  stroke: var(--dot);
+}
+
+.dot.caught {
+  fill: var(--dot);
+}
+
+.dot.missed {
+  fill: var(--surface-solid);
+}
+
+.foot {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+@media (max-width: 1100px) {
+  .hook {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+  }
+}
+
+@media (max-width: 600px) {
+  .hook {
+    padding: 18px 16px;
+  }
+
+  .widget {
+    padding: 14px;
+  }
+
+  .controls {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .seg {
+    padding-top: 0;
+  }
+
+  /* the strip scales down by about half on a phone: its words grow to stay readable */
+  .zeroLab,
+  .edgeLab,
+  .legendLab {
+    font-size: 20px;
+  }
+}

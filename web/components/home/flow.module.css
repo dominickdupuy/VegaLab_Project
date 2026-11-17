@@ -1,0 +1,276 @@
+/* Our solution as a flow: four equal cards joined by arrows, each with its live result and one action. */
+.flow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 30px minmax(0, 1fr) 30px minmax(0, 1fr) 30px minmax(0, 1fr);
+  align-items: stretch;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  padding: 18px 18px 16px;
+  border: 1px solid var(--line);
+  transition: transform var(--t-fast) var(--ease-out), box-shadow var(--t-fast);
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--sh-raised);
+}
+
+.arrow {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font: 700 22px/1 var(--font);
+}
+
+.title {
+  margin: 0 0 6px;
+  font: 700 16px/1.3 var(--font);
+  color: var(--text);
+}
+
+.text {
+  margin: 0 0 12px;
+  color: var(--text-2);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+/* the live result: one height in every card, so the actions line up */
+.mini {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  min-height: 150px;
+  margin: auto 0 12px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-solid);
+}
+
+.cta {
+  width: 100%;
+  text-decoration: none;
+}
+
+.cta:hover {
+  text-decoration: none;
+}
+
+.svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.note b {
+  color: var(--text);
+}
+
+.empty {
+  margin: 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.big {
+  margin: 0;
+  font: 700 22px/1.2 var(--font);
+  color: var(--text);
+}
+
+.unit {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+/* card 1's size picker: a chip around a select */
+.chip {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 13px;
+}
+
+.chip select {
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: 700 13px/1 var(--font);
+  cursor: pointer;
+}
+
+.chip:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* marks: the seller and implied vol --s1, PPO and realised vol --s2; text in the text colours */
+.ppo {
+  --c: var(--s2);
+}
+
+.seller {
+  --c: var(--s1);
+}
+
+.axis {
+  stroke: var(--axis);
+  stroke-width: 1.2;
+}
+
+.zeroLine {
+  stroke: var(--muted);
+  stroke-width: 1.2;
+  stroke-dasharray: 3 3;
+}
+
+.gap {
+  fill: color-mix(in srgb, var(--s1) 14%, transparent);
+}
+
+.real,
+.implied {
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.real {
+  stroke: var(--s2);
+}
+
+.implied {
+  stroke: var(--s1);
+}
+
+.ci {
+  stroke: var(--s1);
+  stroke-width: 7;
+  stroke-linecap: round;
+}
+
+.meanDot {
+  fill: var(--text);
+  stroke: var(--surface-solid);
+  stroke-width: 1.5;
+}
+
+.target {
+  stroke: var(--s5);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.curve {
+  fill: none;
+  stroke: var(--c);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.dashed {
+  stroke-dasharray: 5 3;
+}
+
+.floorLine {
+  stroke: var(--c);
+  stroke-width: 1.2;
+  stroke-dasharray: 2 3;
+}
+
+.floorDot {
+  fill: var(--c);
+  stroke: var(--surface-solid);
+  stroke-width: 1.5;
+}
+
+.floorLab {
+  font-family: var(--font);
+  font-size: 10.5px;
+  font-weight: 700;
+  fill: var(--text-2);
+}
+
+.up {
+  fill: var(--s1);
+}
+
+.down {
+  fill: var(--s2);
+}
+
+.avg {
+  stroke: var(--text);
+  stroke-width: 1.2;
+  stroke-dasharray: 4 3;
+}
+
+.swatch {
+  display: inline-block;
+  width: 12px;
+  height: 0;
+  margin-right: 4px;
+  vertical-align: middle;
+  border-top: 2px solid var(--c);
+}
+
+.swatchDashed {
+  border-top-style: dashed;
+}
+
+.lab,
+.labStrong {
+  font-family: var(--font);
+}
+
+.lab {
+  font-size: 10px;
+  fill: var(--muted);
+}
+
+.labStrong {
+  font-size: 10.5px;
+  font-weight: 700;
+  fill: var(--text);
+}
+
+/* narrower: two by two, read left to right; a phone: one column */
+@media (max-width: 1180px) {
+  .flow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .arrow {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .flow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

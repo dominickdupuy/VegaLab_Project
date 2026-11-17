@@ -11,8 +11,8 @@ import { usePoll } from "@/lib/usePoll";
 import ui from "./ui.module.css";
 import { CopyLink, WorkflowStrip } from "./Workflow";
 
+// no Home tab: the brand is the way home, marked as the current page on /
 const TABS: { href: string; label: string }[] = [
-  { href: "/", label: "Home" },
   { href: "/workbench/", label: "Workbench" },
   { href: "/alpha/", label: "Synthetic alpha" },
   { href: "/runs/", label: "Runs" },
@@ -130,14 +130,10 @@ export function Shell({ children }: { children: ReactNode }) {
     <div className={ui.shell}>
       <header className={ui.header}>
         <div className={ui.headerInner}>
-          <span className={ui.brand}>
-            <Link href="/" className={ui.brandName} aria-label="optspread platform, home">
-              optspread platform
-            </Link>
-            <Link href="/" className={ui.brandLab} title="Home" aria-label="Vega Lab: home">
-              VEGA LAB
-            </Link>
-          </span>
+          <Link href="/" className={`${ui.brand} ${path === "/" ? ui.brandOn : ""}`} title="Home" aria-label="Home: optspread platform, Vega Lab" aria-current={path === "/" ? "page" : undefined}>
+            <span className={ui.brandName}>optspread platform</span>
+            <span className={ui.brandLab}>VEGA LAB</span>
+          </Link>
           <Nav path={path} />
           <div className={ui.headerRight}>
             <ServerStatus />

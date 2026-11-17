@@ -24,10 +24,13 @@
   height: 58px;
 }
 
-/* the name over VEGA LAB, both left-aligned */
+/* the name over VEGA LAB, both left-aligned: one link, the way home; underlined like a tab on Home */
 .brand {
+  position: relative;
+  align-self: stretch;
   display: inline-flex;
   flex-direction: column;
+  justify-content: center;
   align-items: flex-start;
   gap: 3px;
   line-height: 1.05;
@@ -35,8 +38,8 @@
   white-space: nowrap;
 }
 
-.brand a,
-.brand a:hover {
+.brand,
+.brand:hover {
   text-decoration: none;
 }
 
@@ -52,10 +55,29 @@
   font-weight: 700;
   letter-spacing: 0.2em;
   color: var(--hero-muted);
+  transition: color var(--t-fast);
 }
 
-.brandLab:hover {
+.brand:hover .brandLab,
+.brandOn .brandLab {
   color: var(--hero-text);
+}
+
+.brand:focus-visible {
+  outline: 2px solid #6b9ad8;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.brandOn::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: #6b9ad8;
 }
 
 .navWrap {
