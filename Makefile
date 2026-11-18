@@ -1,4 +1,4 @@
-.PHONY: check lint typecheck test format bench gate drag leaks m1 m2 m3gate reproduce vrp m4 m4gate m5gate drift edge showcase run pilot sweep replay train-smoke web serve web-dev alpha
+.PHONY: check lint typecheck test format bench gate drag leaks m1 m2 m3gate reproduce vrp m4 m4gate m5gate drift edge showcase run pilot sweep replay train-smoke web serve web-dev alpha demo
 
 # The venv's interpreter: Scripts/ on Windows, bin/ everywhere else.
 PY ?= $(if $(wildcard .venv/Scripts/python .venv/Scripts/python.exe),.venv/Scripts/python,.venv/bin/python)
@@ -164,6 +164,11 @@ web:
 
 serve:
 	$(PY) -m optspread.server --port $(PORT)
+
+# The demo branch: serve the committed site against the seeded runs, attribution and action
+# mix (see DEMO.md). VEGALAB_DATA, when set, still feeds the Data pages from your own panel.
+demo:
+	OPTSPREAD_RUNS=runs OPTSPREAD_ATTRIBUTION=attribution OPTSPREAD_ACTIONMIX=actionmix $(PY) -m optspread.server --port $(PORT)
 
 web-dev:
 	cd web && OPTSPREAD_API=http://127.0.0.1:$(PORT) $(NPM) run dev

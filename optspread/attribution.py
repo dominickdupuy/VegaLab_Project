@@ -115,8 +115,10 @@ view reads it there.
 
 from __future__ import annotations
 
+import io
 import math
 import os
+import zipfile
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
@@ -509,8 +511,22 @@ def load_sb3_policy(path: Path, config: RunConfig) -> Policy:  # pragma: no cove
     device = config.train.device if config.train is not None else "cpu"
     algorithm = config.train.algorithm if config.train is not None else "ppo"
     learner: Any = getattr(stable_baselines3, algorithm.upper())
-    model: Any = learner.load(path, device=device)
+    model: Any = learner.load(_deflated_copy(Path(path)), device=device)
     return SB3Policy(model)
+
+
+def _deflated_copy(path: Path) -> io.BytesIO:
+    """The policy zip re-packed in memory with every member deflated; the file is untouched.
+
+    torch 2.14 cannot read a checkpoint that SB3 streams out of a zip member stored
+    uncompressed ("failed reading file .data/serialization_id"), as the sweep's policies
+    are; a deflated member it reads."""
+    buf = io.BytesIO()
+    with zipfile.ZipFile(path) as src, zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as out:
+        for info in src.infolist():
+            out.writestr(info.filename, src.read(info))
+    buf.seek(0)
+    return buf
 
 
 def recorded_source(manifest: RunManifest) -> ChainSource:

@@ -1,0 +1,191 @@
+{
+  "dataset": "440eb5f8b9093167",
+  "generator": "noise",
+  "arm": "ppo",
+  "total_timesteps": 100000,
+  "n_seeds": 5,
+  "n_train": 64,
+  "oracle": "flat",
+  "noise_control": true,
+  "menu": [
+    {
+      "policy": "flat",
+      "mean": 0.0,
+      "se": 0.0
+    },
+    {
+      "policy": "hold_condor",
+      "mean": -1040.744506206306,
+      "se": 744.7390688250407
+    },
+    {
+      "policy": "roll_condor",
+      "mean": -636.362733174418,
+      "se": 636.9160034774247
+    },
+    {
+      "policy": "hold_strangle",
+      "mean": -1323.825979480797,
+      "se": 1182.599581357263
+    },
+    {
+      "policy": "roll_strangle",
+      "mean": -497.0703731874161,
+      "se": 1023.3045055338773
+    },
+    {
+      "policy": "hold_put_spread",
+      "mean": 36.31287430728262,
+      "se": 478.28454277749034
+    },
+    {
+      "policy": "roll_put_spread",
+      "mean": -2.704160328716389,
+      "se": 465.9713907374909
+    }
+  ],
+  "rows": [
+    {
+      "policy": "arm",
+      "world": "signal",
+      "split": "train",
+      "mean": -266.9050372496182,
+      "se": 317.04118395856557,
+      "n": 64
+    },
+    {
+      "policy": "arm",
+      "world": "signal",
+      "split": "heldout",
+      "mean": -78.68687859583834,
+      "se": 115.43714290072862,
+      "n": 256
+    },
+    {
+      "policy": "arm",
+      "world": "twin",
+      "split": "heldout",
+      "mean": -78.68687859583834,
+      "se": 115.43714290072862,
+      "n": 256
+    },
+    {
+      "policy": "noise_control",
+      "world": "twin",
+      "split": "train",
+      "mean": -266.9050372496182,
+      "se": 317.04118395856557,
+      "n": 64
+    },
+    {
+      "policy": "noise_control",
+      "world": "twin",
+      "split": "heldout",
+      "mean": -78.68687859583834,
+      "se": 115.43714290072862,
+      "n": 256
+    },
+    {
+      "policy": "oracle",
+      "world": "signal",
+      "split": "train",
+      "mean": 0.0,
+      "se": 0.0,
+      "n": 64
+    },
+    {
+      "policy": "oracle",
+      "world": "signal",
+      "split": "heldout",
+      "mean": 0.0,
+      "se": 0.0,
+      "n": 256
+    },
+    {
+      "policy": "oracle",
+      "world": "twin",
+      "split": "heldout",
+      "mean": 0.0,
+      "se": 0.0,
+      "n": 256
+    },
+    {
+      "policy": "flat",
+      "world": "signal",
+      "split": "heldout",
+      "mean": 0.0,
+      "se": 0.0,
+      "n": 256
+    }
+  ],
+  "attainable": {
+    "value": 0.0,
+    "se": 0.0,
+    "verdict": "no attainable edge: the best scripted policy earned nothing measurable from it"
+  },
+  "captured": {
+    "value": 0.0,
+    "se": 0.0,
+    "verdict": "the arm's edge from the signal is not distinguishable from zero"
+  },
+  "capture_ratio": {
+    "value": null,
+    "se": null,
+    "verdict": "no attainable edge to capture"
+  },
+  "overfit_gap": {
+    "value": -188.21815865377988,
+    "se": 268.0242484581859,
+    "verdict": "no detectable overfitting"
+  },
+  "noise_fit": {
+    "value": -188.21815865377988,
+    "se": 268.0242484581859,
+    "verdict": "noise not memorised"
+  },
+  "seeds": [
+    {
+      "seed": 0,
+      "captured": 0.0,
+      "capture_ratio": null,
+      "overfit_gap": -941.0907932688992,
+      "noise_fit": -941.0907932688992
+    },
+    {
+      "seed": 1,
+      "captured": 0.0,
+      "capture_ratio": null,
+      "overfit_gap": 0.0,
+      "noise_fit": 0.0
+    },
+    {
+      "seed": 2,
+      "captured": 0.0,
+      "capture_ratio": null,
+      "overfit_gap": 0.0,
+      "noise_fit": 0.0
+    },
+    {
+      "seed": 3,
+      "captured": 0.0,
+      "capture_ratio": null,
+      "overfit_gap": 0.0,
+      "noise_fit": 0.0
+    },
+    {
+      "seed": 4,
+      "captured": 0.0,
+      "capture_ratio": null,
+      "overfit_gap": 0.0,
+      "noise_fit": 0.0
+    }
+  ],
+  "blocks": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "plugin": null
+}

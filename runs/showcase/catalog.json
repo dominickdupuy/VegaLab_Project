@@ -1,0 +1,853 @@
+{
+ "seed": 20000,
+ "runs": [
+  {
+   "key": "launched/fc1271f6c3f45287-s20000",
+   "group": "strikes",
+   "question": "Which short-strike delta captures the most edge, and at what tail risk?",
+   "label": "seller short delta 0.10, premium 0",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "short_delta": 0.1,
+    "iv_premium_vol_pts": 0.0
+   }
+  },
+  {
+   "key": "launched/3bfd63901664b474-s20000",
+   "group": "strikes",
+   "question": "Which short-strike delta captures the most edge, and at what tail risk?",
+   "label": "seller short delta 0.10, premium 1",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "short_delta": 0.1,
+    "iv_premium_vol_pts": 1.0
+   }
+  },
+  {
+   "key": "launched/c912c00b75d14a8c-s20000",
+   "group": "strikes",
+   "question": "Which short-strike delta captures the most edge, and at what tail risk?",
+   "label": "seller short delta 0.10, premium 2",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "short_delta": 0.1,
+    "iv_premium_vol_pts": 2.0
+   }
+  },
+  {
+   "key": "launched/6b7063122cf24bc8-s20000",
+   "group": "strikes",
+   "question": "Which short-strike delta captures the most edge, and at what tail risk?",
+   "label": "seller short delta 0.16, premium 0",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "short_delta": 0.16,
+    "iv_premium_vol_pts": 0.0
+   }
+  },
+  {
+   "key": "launched/388e6db6df4ff9bf-s20000",
+   "group": "strikes",
+   "question": "Which short-strike delta captures the most edge, and at what tail risk?",
+   "label": "seller short delta 0.16, premium 1",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "short_delta": 0.16,
+    "iv_premium_vol_pts": 1.0
+   }
+  },
+  {
+   "key": "launched/880250d91ca9175f-s20000",
+   "group": "strikes",
+   "question": "Which short-strike delta captures the most edge, and at what tail risk?",
+   "label": "seller short delta 0.16, premium 2",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "short_delta": 0.16,
+    "iv_premium_vol_pts": 2.0
+   }
+  },
+  {
+   "key": "launched/6b1f3ac5eec143c3-s20000",
+   "group": "strikes",
+   "question": "Which short-strike delta captures the most edge, and at what tail risk?",
+   "label": "seller short delta 0.25, premium 0",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "short_delta": 0.25,
+    "iv_premium_vol_pts": 0.0
+   }
+  },
+  {
+   "key": "launched/bc2e1c4767007e9c-s20000",
+   "group": "strikes",
+   "question": "Which short-strike delta captures the most edge, and at what tail risk?",
+   "label": "seller short delta 0.25, premium 1",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "short_delta": 0.25,
+    "iv_premium_vol_pts": 1.0
+   }
+  },
+  {
+   "key": "launched/c1d176fa91726f69-s20000",
+   "group": "strikes",
+   "question": "Which short-strike delta captures the most edge, and at what tail risk?",
+   "label": "seller short delta 0.25, premium 2",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "short_delta": 0.25,
+    "iv_premium_vol_pts": 2.0
+   }
+  },
+  {
+   "key": "launched/49b4c9cc0b9918f8-s20000",
+   "group": "strikes",
+   "question": "Which short-strike delta captures the most edge, and at what tail risk?",
+   "label": "seller short delta 0.35, premium 0",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "short_delta": 0.35,
+    "iv_premium_vol_pts": 0.0
+   }
+  },
+  {
+   "key": "launched/e5e9c8b1eb1a979b-s20000",
+   "group": "strikes",
+   "question": "Which short-strike delta captures the most edge, and at what tail risk?",
+   "label": "seller short delta 0.35, premium 1",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "short_delta": 0.35,
+    "iv_premium_vol_pts": 1.0
+   }
+  },
+  {
+   "key": "launched/7dcc17839831305e-s20000",
+   "group": "strikes",
+   "question": "Which short-strike delta captures the most edge, and at what tail risk?",
+   "label": "seller short delta 0.35, premium 2",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "short_delta": 0.35,
+    "iv_premium_vol_pts": 2.0
+   }
+  },
+  {
+   "key": "launched/c33ed434ed3792a2-s20000",
+   "group": "wings",
+   "question": "How does wing width trade return against max loss?",
+   "label": "seller wing delta 0.02",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "wing_delta": 0.02,
+    "iv_premium_vol_pts": 1.0
+   }
+  },
+  {
+   "key": "launched/388e6db6df4ff9bf-s20000",
+   "group": "wings",
+   "question": "How does wing width trade return against max loss?",
+   "label": "seller wing delta 0.05",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "wing_delta": 0.05,
+    "iv_premium_vol_pts": 1.0
+   }
+  },
+  {
+   "key": "launched/44cd074401e81ae7-s20000",
+   "group": "wings",
+   "question": "How does wing width trade return against max loss?",
+   "label": "seller wing delta 0.10",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "wing_delta": 0.1,
+    "iv_premium_vol_pts": 1.0
+   }
+  },
+  {
+   "key": "launched/a0235fcb93a57d83-s20000",
+   "group": "tenor",
+   "question": "Short-dated or longer-dated condors?",
+   "label": "seller 21-day expiry, premium 0",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "expiry_idx": 0,
+    "iv_premium_vol_pts": 0.0
+   }
+  },
+  {
+   "key": "launched/c9eb7c5f881b4538-s20000",
+   "group": "tenor",
+   "question": "Short-dated or longer-dated condors?",
+   "label": "seller 21-day expiry, premium 1",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "expiry_idx": 0,
+    "iv_premium_vol_pts": 1.0
+   }
+  },
+  {
+   "key": "launched/6b7063122cf24bc8-s20000",
+   "group": "tenor",
+   "question": "Short-dated or longer-dated condors?",
+   "label": "seller 42-day expiry, premium 0",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "expiry_idx": 1,
+    "iv_premium_vol_pts": 0.0
+   }
+  },
+  {
+   "key": "launched/388e6db6df4ff9bf-s20000",
+   "group": "tenor",
+   "question": "Short-dated or longer-dated condors?",
+   "label": "seller 42-day expiry, premium 1",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "expiry_idx": 1,
+    "iv_premium_vol_pts": 1.0
+   }
+  },
+  {
+   "key": "launched/1eae72b293468438-s20000",
+   "group": "roll",
+   "question": "When should the seller roll?",
+   "label": "seller roll 0 days before expiry",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "roll_dte": 0,
+    "iv_premium_vol_pts": 1.0
+   }
+  },
+  {
+   "key": "launched/388e6db6df4ff9bf-s20000",
+   "group": "roll",
+   "question": "When should the seller roll?",
+   "label": "seller roll 5 days before expiry",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "roll_dte": 5,
+    "iv_premium_vol_pts": 1.0
+   }
+  },
+  {
+   "key": "launched/8ced53f7baacdd80-s20000",
+   "group": "roll",
+   "question": "When should the seller roll?",
+   "label": "seller roll 10 days before expiry",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "roll_dte": 10,
+    "iv_premium_vol_pts": 1.0
+   }
+  },
+  {
+   "key": "launched/b62a47aceebcd8f8-s20000",
+   "group": "costs",
+   "question": "How fast do trading costs eat the edge?",
+   "label": "seller costs off, premium 0",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "costs_enabled": false,
+    "iv_premium_vol_pts": 0.0
+   }
+  },
+  {
+   "key": "launched/6b7063122cf24bc8-s20000",
+   "group": "costs",
+   "question": "How fast do trading costs eat the edge?",
+   "label": "seller default costs, premium 0",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "iv_premium_vol_pts": 0.0
+   }
+  },
+  {
+   "key": "launched/16286a93b3b7e43d-s20000",
+   "group": "costs",
+   "question": "How fast do trading costs eat the edge?",
+   "label": "seller 2x spreads, premium 0",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "half_spread_frac": 0.015,
+    "min_half_spread": 0.3,
+    "iv_premium_vol_pts": 0.0
+   }
+  },
+  {
+   "key": "launched/98f073e4e27226ed-s20000",
+   "group": "costs",
+   "question": "How fast do trading costs eat the edge?",
+   "label": "seller 2x commission, premium 0",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "commission_per_contract": 1.3,
+    "iv_premium_vol_pts": 0.0
+   }
+  },
+  {
+   "key": "launched/f910efd92fdbcd5e-s20000",
+   "group": "costs",
+   "question": "How fast do trading costs eat the edge?",
+   "label": "seller costs off, premium 1",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "costs_enabled": false,
+    "iv_premium_vol_pts": 1.0
+   }
+  },
+  {
+   "key": "launched/388e6db6df4ff9bf-s20000",
+   "group": "costs",
+   "question": "How fast do trading costs eat the edge?",
+   "label": "seller default costs, premium 1",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "iv_premium_vol_pts": 1.0
+   }
+  },
+  {
+   "key": "launched/9b90f56b7e806ae6-s20000",
+   "group": "costs",
+   "question": "How fast do trading costs eat the edge?",
+   "label": "seller 2x spreads, premium 1",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "half_spread_frac": 0.015,
+    "min_half_spread": 0.3,
+    "iv_premium_vol_pts": 1.0
+   }
+  },
+  {
+   "key": "launched/5b2477a23dbf2e3e-s20000",
+   "group": "costs",
+   "question": "How fast do trading costs eat the edge?",
+   "label": "seller 2x commission, premium 1",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "commission_per_contract": 1.3,
+    "iv_premium_vol_pts": 1.0
+   }
+  },
+  {
+   "key": "launched/17aa152cc2868662-s20000",
+   "group": "account",
+   "question": "When does margin start refusing trades?",
+   "label": "seller with $50,000 cash",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "initial_cash": 50000.0,
+    "iv_premium_vol_pts": 1.0
+   }
+  },
+  {
+   "key": "launched/9ea88ff20daff074-s20000",
+   "group": "account",
+   "question": "When does margin start refusing trades?",
+   "label": "seller with $100,000 cash",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "initial_cash": 100000.0,
+    "iv_premium_vol_pts": 1.0
+   }
+  },
+  {
+   "key": "launched/388e6db6df4ff9bf-s20000",
+   "group": "account",
+   "question": "When does margin start refusing trades?",
+   "label": "seller with $1,000,000 cash",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "initial_cash": 1000000.0,
+    "iv_premium_vol_pts": 1.0
+   }
+  },
+  {
+   "key": "launched/b26f511cc8b2962e-s20000",
+   "group": "regime",
+   "question": "How does the volatility regime change the result?",
+   "label": "seller in a 10% vol world, premium 1",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "sigma": 0.1,
+    "iv_premium_vol_pts": 1.0
+   }
+  },
+  {
+   "key": "launched/388e6db6df4ff9bf-s20000",
+   "group": "regime",
+   "question": "How does the volatility regime change the result?",
+   "label": "seller in a 20% vol world, premium 1",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "sigma": 0.2,
+    "iv_premium_vol_pts": 1.0
+   }
+  },
+  {
+   "key": "launched/7d4d87cf5b11ed21-s20000",
+   "group": "regime",
+   "question": "How does the volatility regime change the result?",
+   "label": "seller in a 30% vol world, premium 1",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "sigma": 0.3,
+    "iv_premium_vol_pts": 1.0
+   }
+  },
+  {
+   "key": "launched/3fbf952092a9c3c7-s20000",
+   "group": "arms",
+   "question": "Which strategies detect the premium, and which stay flat when there is none?",
+   "label": "flat, premium 0",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "flat",
+    "iv_premium_vol_pts": 0.0
+   }
+  },
+  {
+   "key": "launched/d092c51f849e5d29-s20000",
+   "group": "arms",
+   "question": "Which strategies detect the premium, and which stay flat when there is none?",
+   "label": "flat, premium 0.5",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "flat",
+    "iv_premium_vol_pts": 0.5
+   }
+  },
+  {
+   "key": "launched/e393636beca25b98-s20000",
+   "group": "arms",
+   "question": "Which strategies detect the premium, and which stay flat when there is none?",
+   "label": "flat, premium 1",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "flat",
+    "iv_premium_vol_pts": 1.0
+   }
+  },
+  {
+   "key": "launched/b07b3170dc6ff213-s20000",
+   "group": "arms",
+   "question": "Which strategies detect the premium, and which stay flat when there is none?",
+   "label": "flat, premium 2",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "flat",
+    "iv_premium_vol_pts": 2.0
+   }
+  },
+  {
+   "key": "launched/8569918e8cf4661a-s20000",
+   "group": "arms",
+   "question": "Which strategies detect the premium, and which stay flat when there is none?",
+   "label": "flat, premium 4",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "flat",
+    "iv_premium_vol_pts": 4.0
+   }
+  },
+  {
+   "key": "launched/d551fdcde3de9258-s20000",
+   "group": "arms",
+   "question": "Which strategies detect the premium, and which stay flat when there is none?",
+   "label": "always-on condor, premium 0",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "always_on",
+    "iv_premium_vol_pts": 0.0
+   }
+  },
+  {
+   "key": "launched/66b9b68617d41e01-s20000",
+   "group": "arms",
+   "question": "Which strategies detect the premium, and which stay flat when there is none?",
+   "label": "always-on condor, premium 0.5",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "always_on",
+    "iv_premium_vol_pts": 0.5
+   }
+  },
+  {
+   "key": "launched/fae41da37d5b944d-s20000",
+   "group": "arms",
+   "question": "Which strategies detect the premium, and which stay flat when there is none?",
+   "label": "always-on condor, premium 1",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "always_on",
+    "iv_premium_vol_pts": 1.0
+   }
+  },
+  {
+   "key": "launched/2cf5dd5db4bac665-s20000",
+   "group": "arms",
+   "question": "Which strategies detect the premium, and which stay flat when there is none?",
+   "label": "always-on condor, premium 2",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "always_on",
+    "iv_premium_vol_pts": 2.0
+   }
+  },
+  {
+   "key": "launched/e16412b03b0273c8-s20000",
+   "group": "arms",
+   "question": "Which strategies detect the premium, and which stay flat when there is none?",
+   "label": "always-on condor, premium 4",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "always_on",
+    "iv_premium_vol_pts": 4.0
+   }
+  },
+  {
+   "key": "launched/72f03eb41dd1546d-s20000",
+   "group": "arms",
+   "question": "Which strategies detect the premium, and which stay flat when there is none?",
+   "label": "random, premium 0",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "random",
+    "iv_premium_vol_pts": 0.0
+   }
+  },
+  {
+   "key": "launched/90c8f4e70636db8f-s20000",
+   "group": "arms",
+   "question": "Which strategies detect the premium, and which stay flat when there is none?",
+   "label": "random, premium 0.5",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "random",
+    "iv_premium_vol_pts": 0.5
+   }
+  },
+  {
+   "key": "launched/dcf6171afc162be4-s20000",
+   "group": "arms",
+   "question": "Which strategies detect the premium, and which stay flat when there is none?",
+   "label": "random, premium 1",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "random",
+    "iv_premium_vol_pts": 1.0
+   }
+  },
+  {
+   "key": "launched/ec12e093d42d4451-s20000",
+   "group": "arms",
+   "question": "Which strategies detect the premium, and which stay flat when there is none?",
+   "label": "random, premium 2",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "random",
+    "iv_premium_vol_pts": 2.0
+   }
+  },
+  {
+   "key": "launched/378f29023a0da6bc-s20000",
+   "group": "arms",
+   "question": "Which strategies detect the premium, and which stay flat when there is none?",
+   "label": "random, premium 4",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "random",
+    "iv_premium_vol_pts": 4.0
+   }
+  },
+  {
+   "key": "launched/6b7063122cf24bc8-s20000",
+   "group": "arms",
+   "question": "Which strategies detect the premium, and which stay flat when there is none?",
+   "label": "seller, premium 0",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "iv_premium_vol_pts": 0.0
+   }
+  },
+  {
+   "key": "launched/67fa5d1d1d88336d-s20000",
+   "group": "arms",
+   "question": "Which strategies detect the premium, and which stay flat when there is none?",
+   "label": "seller, premium 0.5",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "iv_premium_vol_pts": 0.5
+   }
+  },
+  {
+   "key": "launched/388e6db6df4ff9bf-s20000",
+   "group": "arms",
+   "question": "Which strategies detect the premium, and which stay flat when there is none?",
+   "label": "seller, premium 1",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "iv_premium_vol_pts": 1.0
+   }
+  },
+  {
+   "key": "launched/880250d91ca9175f-s20000",
+   "group": "arms",
+   "question": "Which strategies detect the premium, and which stay flat when there is none?",
+   "label": "seller, premium 2",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "iv_premium_vol_pts": 2.0
+   }
+  },
+  {
+   "key": "launched/656db40927bfa505-s20000",
+   "group": "arms",
+   "question": "Which strategies detect the premium, and which stay flat when there is none?",
+   "label": "seller, premium 4",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "iv_premium_vol_pts": 4.0
+   }
+  },
+  {
+   "key": "launched/e0ffc3e9b5b5c223-s20000",
+   "group": "sample",
+   "question": "How many episodes does a study need?",
+   "label": "seller premium 0.5 with 50 episodes",
+   "settings": {
+    "n_episodes": 50,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "iv_premium_vol_pts": 0.5
+   }
+  },
+  {
+   "key": "launched/67fa5d1d1d88336d-s20000",
+   "group": "sample",
+   "question": "How many episodes does a study need?",
+   "label": "seller premium 0.5 with 200 episodes",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "iv_premium_vol_pts": 0.5
+   }
+  },
+  {
+   "key": "launched/5a737ef89199d220-s20000",
+   "group": "sample",
+   "question": "How many episodes does a study need?",
+   "label": "seller premium 0.5 with 500 episodes",
+   "settings": {
+    "n_episodes": 500,
+    "seed": 20000,
+    "policy": "delta_seller",
+    "iv_premium_vol_pts": 0.5
+   }
+  },
+  {
+   "key": "launched/99a07b1426cc6217-s20000",
+   "group": "arms",
+   "question": "Which strategies detect the premium, and which stay flat when there is none?",
+   "label": "PPO, premium 0",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "ppo",
+    "iv_premium_vol_pts": 0.0,
+    "total_timesteps": 200000
+   }
+  },
+  {
+   "key": "launched/e8c19cb2671033af-s20000",
+   "group": "arms",
+   "question": "Which strategies detect the premium, and which stay flat when there is none?",
+   "label": "PPO, premium 0.5",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "ppo",
+    "iv_premium_vol_pts": 0.5,
+    "total_timesteps": 200000
+   }
+  },
+  {
+   "key": "launched/b94d55c1d4b27086-s20000",
+   "group": "arms",
+   "question": "Which strategies detect the premium, and which stay flat when there is none?",
+   "label": "PPO, premium 1",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "ppo",
+    "iv_premium_vol_pts": 1.0,
+    "total_timesteps": 200000
+   }
+  },
+  {
+   "key": "launched/4a639ac15395ce5d-s20000",
+   "group": "arms",
+   "question": "Which strategies detect the premium, and which stay flat when there is none?",
+   "label": "PPO, premium 2",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "ppo",
+    "iv_premium_vol_pts": 2.0,
+    "total_timesteps": 200000
+   }
+  },
+  {
+   "key": "launched/2cb81ceb31473bbb-s20000",
+   "group": "arms",
+   "question": "Which strategies detect the premium, and which stay flat when there is none?",
+   "label": "PPO, premium 4",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "ppo",
+    "iv_premium_vol_pts": 4.0,
+    "total_timesteps": 200000
+   }
+  },
+  {
+   "key": "launched/4e83db184754edaa-s20000",
+   "group": "training",
+   "question": "How much training does PPO need?",
+   "label": "PPO premium 2 trained 100,000 steps",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "ppo",
+    "iv_premium_vol_pts": 2.0,
+    "total_timesteps": 100000
+   }
+  },
+  {
+   "key": "launched/4a639ac15395ce5d-s20000",
+   "group": "training",
+   "question": "How much training does PPO need?",
+   "label": "PPO premium 2 trained 200,000 steps",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "ppo",
+    "iv_premium_vol_pts": 2.0,
+    "total_timesteps": 200000
+   }
+  },
+  {
+   "key": "launched/5ef95091f11c1027-s20000",
+   "group": "training",
+   "question": "How much training does PPO need?",
+   "label": "PPO premium 2 trained 500,000 steps",
+   "settings": {
+    "n_episodes": 200,
+    "seed": 20000,
+    "policy": "ppo",
+    "iv_premium_vol_pts": 2.0,
+    "total_timesteps": 500000
+   }
+  }
+ ]
+}

@@ -1,0 +1,3515 @@
+{
+  "schema_version": 1,
+  "run_id": "01cb55e39f668100-s100000",
+  "config_hash": "01cb55e39f668100",
+  "policy": "ppo",
+  "seed": 100000,
+  "n_episodes": 500,
+  "mean_pnl": 20.550637953487456,
+  "se_pnl": 124.71413787855988,
+  "t_stat": 0.16478194295420295,
+  "mean_cost": 19.869810496627586,
+  "mean_trades": 0.328,
+  "episodes": [
+    {
+      "seed": 100000,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100001,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100002,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100003,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100004,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100005,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100006,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100007,
+      "pnl": -4764.378226163564,
+      "cost": 163.6970529502697,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100008,
+      "pnl": 4127.607180286781,
+      "cost": 87.99290803574468,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100009,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100010,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100011,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100012,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100013,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100014,
+      "pnl": 4474.090241325437,
+      "cost": 87.8165335458599,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100015,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100016,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100017,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100018,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100019,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100020,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100021,
+      "pnl": 3441.482195887016,
+      "cost": 85.11672241770506,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100022,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100023,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100024,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100025,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100026,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100027,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100028,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100029,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100030,
+      "pnl": 1365.900471043191,
+      "cost": 106.45000752280194,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100031,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100032,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100033,
+      "pnl": 3561.0380780348787,
+      "cost": 88.93091125943442,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100034,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100035,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100036,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100037,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100038,
+      "pnl": -3965.9264369187877,
+      "cost": 144.31475620433145,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100039,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100040,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100041,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100042,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100043,
+      "pnl": 2790.8326333271107,
+      "cost": 105.5020475353266,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100044,
+      "pnl": -1421.0145705190953,
+      "cost": 139.78516438163228,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100045,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100046,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100047,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100048,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100049,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100050,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100051,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100052,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100053,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100054,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100055,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100056,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100057,
+      "pnl": -31107.741165561834,
+      "cost": 352.59311908978776,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100058,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100059,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100060,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100061,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100062,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100063,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100064,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100065,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100066,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100067,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100068,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100069,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100070,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100071,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100072,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100073,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100074,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100075,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100076,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100077,
+      "pnl": -24554.187985680066,
+      "cost": 310.0013680657607,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100078,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100079,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100080,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100081,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100082,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100083,
+      "pnl": 2822.818028362002,
+      "cost": 104.2730358407554,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100084,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100085,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100086,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100087,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100088,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100089,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100090,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100091,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100092,
+      "pnl": 353.4645514257718,
+      "cost": 125.40509441662027,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100093,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100094,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100095,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100096,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100097,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100098,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100099,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100100,
+      "pnl": -1201.14012205787,
+      "cost": 132.1492854158708,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100101,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100102,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100103,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100104,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100105,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100106,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100107,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100108,
+      "pnl": -4670.937565182336,
+      "cost": 443.02010724698545,
+      "n_trades": 6,
+      "steps": 63
+    },
+    {
+      "seed": 100109,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100110,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100111,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100112,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100113,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100114,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100115,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100116,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100117,
+      "pnl": 3746.6138927768916,
+      "cost": 92.95718527392646,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100118,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100119,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100120,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100121,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100122,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100123,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100124,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100125,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100126,
+      "pnl": 1314.385991608142,
+      "cost": 112.67863038646507,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100127,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100128,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100129,
+      "pnl": 3623.603288786253,
+      "cost": 93.78833116093986,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100130,
+      "pnl": 3139.930701899226,
+      "cost": 102.37984296824789,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100131,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100132,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100133,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100134,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100135,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100136,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100137,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100138,
+      "pnl": -111.59195057151373,
+      "cost": 118.01353367713006,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100139,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100140,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100141,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100142,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100143,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100144,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100145,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100146,
+      "pnl": 3901.8699825030053,
+      "cost": 95.5732537412216,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100147,
+      "pnl": 4329.545515423641,
+      "cost": 88.99175004483382,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100148,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100149,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100150,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100151,
+      "pnl": -4264.38140533783,
+      "cost": 432.6106110710234,
+      "n_trades": 6,
+      "steps": 63
+    },
+    {
+      "seed": 100152,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100153,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100154,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100155,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100156,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100157,
+      "pnl": 2415.996163725038,
+      "cost": 107.87116360500346,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100158,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100159,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100160,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100161,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100162,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100163,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100164,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100165,
+      "pnl": -4093.2310177684994,
+      "cost": 153.1665791171572,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100166,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100167,
+      "pnl": 4209.939060227713,
+      "cost": 89.64398591889176,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100168,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100169,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100170,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100171,
+      "pnl": -35633.37103125185,
+      "cost": 383.30996848685976,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100172,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100173,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100174,
+      "pnl": 4135.07753310306,
+      "cost": 81.81816617455343,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100175,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100176,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100177,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100178,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100179,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100180,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100181,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100182,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100183,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100184,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100185,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100186,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100187,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100188,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100189,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100190,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100191,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100192,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100193,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100194,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100195,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100196,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100197,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100198,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100199,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100200,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100201,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100202,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100203,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100204,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100205,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100206,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100207,
+      "pnl": 3745.6188938581618,
+      "cost": 92.86698281957237,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100208,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100209,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100210,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100211,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100212,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100213,
+      "pnl": 2043.5536555722356,
+      "cost": 105.79585278777432,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100214,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100215,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100216,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100217,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100218,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100219,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100220,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100221,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100222,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100223,
+      "pnl": 2909.1416201721877,
+      "cost": 90.35173961851754,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100224,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100225,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100226,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100227,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100228,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100229,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100230,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100231,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100232,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100233,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100234,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100235,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100236,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100237,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100238,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100239,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100240,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100241,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100242,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100243,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100244,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100245,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100246,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100247,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100248,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100249,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100250,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100251,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100252,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100253,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100254,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100255,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100256,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100257,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100258,
+      "pnl": -2232.3330044705654,
+      "cost": 137.18176030058845,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100259,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100260,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100261,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100262,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100263,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100264,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100265,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100266,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100267,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100268,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100269,
+      "pnl": -1116.1036073252326,
+      "cost": 129.24319394390685,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100270,
+      "pnl": 4204.2563694254495,
+      "cost": 83.23605407502782,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100271,
+      "pnl": -10564.818536818842,
+      "cost": 207.0890330909341,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100272,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100273,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100274,
+      "pnl": 4331.1155526103685,
+      "cost": 86.26054677268456,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100275,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100276,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100277,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100278,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100279,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100280,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100281,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100282,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100283,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100284,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100285,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100286,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100287,
+      "pnl": -95.90574190358166,
+      "cost": 120.7477392413094,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100288,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100289,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100290,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100291,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100292,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100293,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100294,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100295,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100296,
+      "pnl": 4444.312769407756,
+      "cost": 85.62394863499554,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100297,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100298,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100299,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100300,
+      "pnl": 312.95896425971296,
+      "cost": 120.81323764743416,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100301,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100302,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100303,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100304,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100305,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100306,
+      "pnl": -1394.8937242922839,
+      "cost": 136.63453379302752,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100307,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100308,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100309,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100310,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100311,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100312,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100313,
+      "pnl": -6934.788968844106,
+      "cost": 183.01907609108412,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100314,
+      "pnl": 4587.035724942223,
+      "cost": 89.31802290450796,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100315,
+      "pnl": 4344.652912422549,
+      "cost": 94.22839092858885,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100316,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100317,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100318,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100319,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100320,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100321,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100322,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100323,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100324,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100325,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100326,
+      "pnl": 3595.6518384612864,
+      "cost": 91.3121160270733,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100327,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100328,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100329,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100330,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100331,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100332,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100333,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100334,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100335,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100336,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100337,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100338,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100339,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100340,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100341,
+      "pnl": 3855.51827354508,
+      "cost": 89.60168243334033,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100342,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100343,
+      "pnl": -1156.1919436481548,
+      "cost": 129.1012693835773,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100344,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100345,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100346,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100347,
+      "pnl": 4310.929325786885,
+      "cost": 88.66698777199167,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100348,
+      "pnl": 2669.8340904933866,
+      "cost": 107.2099918217508,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100349,
+      "pnl": 2642.4780249720206,
+      "cost": 92.95133435139735,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100350,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100351,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100352,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100353,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100354,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100355,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100356,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100357,
+      "pnl": 795.0532514626393,
+      "cost": 108.93406196286776,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100358,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100359,
+      "pnl": 2793.4578443284845,
+      "cost": 101.83038605332942,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100360,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100361,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100362,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100363,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100364,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100365,
+      "pnl": -1043.882678637281,
+      "cost": 124.84050988922712,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100366,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100367,
+      "pnl": 3293.4446721180575,
+      "cost": 97.71278153224668,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100368,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100369,
+      "pnl": 4845.19163993909,
+      "cost": 89.32306357782534,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100370,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100371,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100372,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100373,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100374,
+      "pnl": -9613.920895542367,
+      "cost": 189.4579333114795,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100375,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100376,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100377,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100378,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100379,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100380,
+      "pnl": 4218.742120926385,
+      "cost": 83.2958270654135,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100381,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100382,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100383,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100384,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100385,
+      "pnl": 3891.056239530095,
+      "cost": 91.34904470196918,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100386,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100387,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100388,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100389,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100390,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100391,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100392,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100393,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100394,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100395,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100396,
+      "pnl": 2199.600071153138,
+      "cost": 103.84405785330398,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100397,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100398,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100399,
+      "pnl": -1564.32918508281,
+      "cost": 417.2512821195139,
+      "n_trades": 6,
+      "steps": 63
+    },
+    {
+      "seed": 100400,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100401,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100402,
+      "pnl": 4618.989735348267,
+      "cost": 86.47914643574757,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100403,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100404,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100405,
+      "pnl": -3468.25542624481,
+      "cost": 146.46195771011702,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100406,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100407,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100408,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100409,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100410,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100411,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100412,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100413,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100414,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100415,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100416,
+      "pnl": 3775.841567424708,
+      "cost": 98.83633751251631,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100417,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100418,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100419,
+      "pnl": 1983.4451204146026,
+      "cost": 102.38017260981692,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100420,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100421,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100422,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100423,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100424,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100425,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100426,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100427,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100428,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100429,
+      "pnl": 4242.042900122004,
+      "cost": 83.32785443906377,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100430,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100431,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100432,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100433,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100434,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100435,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100436,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100437,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100438,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100439,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100440,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100441,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100442,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100443,
+      "pnl": 3523.693900857237,
+      "cost": 96.05466539251921,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100444,
+      "pnl": 3039.4486401751637,
+      "cost": 91.07362738095222,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100445,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100446,
+      "pnl": -5917.3932834242005,
+      "cost": 164.9374788593897,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100447,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100448,
+      "pnl": 4188.2694758600555,
+      "cost": 82.68142593946948,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100449,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100450,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100451,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100452,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100453,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100454,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100455,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100456,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100457,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100458,
+      "pnl": 124.0573124003131,
+      "cost": 121.89222981343082,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100459,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100460,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100461,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100462,
+      "pnl": 4333.4815679389285,
+      "cost": 84.73018039850402,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100463,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100464,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100465,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100466,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100467,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100468,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100469,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100470,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100471,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100472,
+      "pnl": 2657.9281778308796,
+      "cost": 104.67753147309759,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100473,
+      "pnl": 1972.0288517866284,
+      "cost": 102.40136367306263,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100474,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100475,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100476,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100477,
+      "pnl": 3004.6284813336097,
+      "cost": 95.02945274335488,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100478,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100479,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100480,
+      "pnl": 4717.100474232342,
+      "cost": 84.84420863370894,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100481,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100482,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100483,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100484,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100485,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100486,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100487,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100488,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100489,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100490,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100491,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100492,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100493,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100494,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100495,
+      "pnl": 1662.54450591153,
+      "cost": 107.89272549735159,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100496,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100497,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    },
+    {
+      "seed": 100498,
+      "pnl": 3534.737373222597,
+      "cost": 82.26133174028948,
+      "n_trades": 2,
+      "steps": 63
+    },
+    {
+      "seed": 100499,
+      "pnl": 0.0,
+      "cost": 0.0,
+      "n_trades": 0,
+      "steps": 63
+    }
+  ]
+}

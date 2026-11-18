@@ -1,0 +1,75 @@
+{
+  "artifacts": {
+    "action_log.json": "8d8e29b3a079f2218a25e4f2bacd52dfa38065fee578779ac52124462e55145e",
+    "equity.json": "82616613e41a47e87be3025c348a2caa7998ffdcad14a373b4bc4238c7332a9f",
+    "run.json": "4da7ef42456ced140717f60e2245f23d1e5742f5c0bef61315d1778b15f57a04"
+  },
+  "config": {
+    "cost": {
+      "commission_per_contract": 0.65,
+      "enabled": true,
+      "half_spread_frac": 0.0075,
+      "min_half_spread": 0.15
+    },
+    "env": {
+      "episode_days": 63,
+      "expiry_idx": 1,
+      "initial_cash": 50000.0,
+      "roll_dte": 5,
+      "short_delta": 0.16,
+      "wing_delta": 0.05
+    },
+    "market": {
+      "iv_premium_vol_pts": 1.0,
+      "n_days": 63,
+      "n_strikes_each_side": 16,
+      "r": 0.0,
+      "sigma": 0.2,
+      "spot0": 5000.0,
+      "strike_step": 50.0,
+      "tenor_days": [
+        21,
+        42
+      ],
+      "trading_days_per_year": 252
+    },
+    "n_episodes": 200,
+    "policy": "delta_seller",
+    "seed": 20000
+  },
+  "config_hash": "17aa152cc2868662",
+  "created_at": "2026-11-18T22:43:05+00:00",
+  "data": {
+    "panel": {},
+    "source": "synthetic"
+  },
+  "git_dirty": true,
+  "git_sha": "afdaa36c13356f5b20bdee0f4bf7d32e92ffd721",
+  "platform": {
+    "arch": "AMD64",
+    "numpy": "2.5.3",
+    "os": "Windows",
+    "python": "3.12.0"
+  },
+  "results": {
+    "mean_cost": 403.3810052692221,
+    "mean_pnl": -451.91091224067947,
+    "mean_trades": 4.04,
+    "se_pnl": 699.0242191982878,
+    "t_stat": -0.6464882043128304
+  },
+  "run_id": "17aa152cc2868662-s20000",
+  "schema_version": 1,
+  "versions": {
+    "gymnasium": "1.3.0",
+    "numpy": "2.5.3",
+    "optspread": "0.1.0",
+    "pandas": "3.1.0",
+    "pyarrow": "26.0.0",
+    "pydantic": "2.13.5",
+    "python": "3.12.0",
+    "scipy": "1.18.1",
+    "stable_baselines3": "2.9.0",
+    "torch": "2.14.0"
+  }
+}

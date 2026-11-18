@@ -1,0 +1,77 @@
+60 cells: 0 on disk, 60 to run, ~8.64 core-hours at the M1 rates (1,000 steps/s training, 1,800 evaluation), ~4h19m wall on 2 worker(s)
+[ 1/60] p=0.00  ppo          block   0  8189379004c15610-s100000  mean       -107    744.6s  eta 3h06m
+[ 2/60] p=0.00  ppo          block   1  ed112b2997757f4e-s100500  mean       -174    895.0s  eta 3h14m
+[ 3/60] p=0.00  ppo          block   2  f8349965c348b941-s101000  mean       -272    683.1s  eta 3h00m
+[ 4/60] p=0.00  ppo          block   3  e61f62fce3053bda-s101500  mean          0    672.2s  eta 2h45m
+[ 5/60] p=0.25  ppo          block   0  a82c446b33a2702c-s100000  mean         85    726.1s  eta 2h41m
+[ 6/60] p=0.00  ppo          block   4  527188ea48cfd3d1-s102000  mean     -1,122    877.2s  eta 2h36m
+[ 7/60] p=0.25  ppo          block   2  6e2ba638bdb57fd6-s101000  mean        769    706.7s  eta 2h31m
+[ 8/60] p=0.25  ppo          block   1  696988269f1f9ff7-s100500  mean        -77    721.0s  eta 2h21m
+[ 9/60] p=0.25  ppo          block   3  85000419cd6b2bd2-s101500  mean         13    654.7s  eta 2h16m
+[10/60] p=0.25  ppo          block   4  d79f2fdf3fe1c591-s102000  mean        -52    686.9s  eta 2h05m
+[11/60] p=0.50  ppo          block   0  01cb55e39f668100-s100000  mean         21    815.5s  eta 2h03m
+[12/60] p=0.50  ppo          block   1  a4fa7df1554e32e0-s100500  mean      1,398    954.9s  eta 1h57m
+[13/60] p=0.50  ppo          block   2  9d4dfd384df9c97a-s101000  mean        -88    711.4s  eta 1h53m
+[14/60] p=0.50  ppo          block   3  589728a64fd654ec-s101500  mean       -213    860.7s  eta 1h45m
+[15/60] p=0.50  ppo          block   4  2e53e6f6a11ba2f1-s102000  mean       -223    849.4s  eta 1h42m
+[16/60] p=1.00  ppo          block   0  ea5be29e60901c1a-s100000  mean      1,524    869.2s  eta 1h33m
+[17/60] p=1.00  ppo          block   1  9d67a4f51adfae81-s100500  mean      1,529   1048.8s  eta 1h32m
+[18/60] p=1.00  ppo          block   2  77ed0ea7f97894b6-s101000  mean      1,220    940.4s  eta 1h23m
+[19/60] p=1.00  ppo          block   3  329692c2c0f539c0-s101500  mean          0    702.8s  eta 1h19m
+[20/60] p=1.00  ppo          block   4  9c073b1c732cfa24-s102000  mean      1,034    866.4s  eta 1h10m
+[21/60] p=2.00  ppo          block   0  20df6237b4e4aecd-s100000  mean      2,391    974.6s  eta 1h07m
+[22/60] p=2.00  ppo          block   1  3b59209dd87f37ff-s100500  mean      2,929    982.9s  eta 57m53s
+[23/60] p=2.00  ppo          block   2  7e89e9036db34d15-s101000  mean      2,823    960.7s  eta 54m48s
+[24/60] p=2.00  ppo          block   3  4a48a04bb0099da1-s101500  mean      1,364    964.7s  eta 44m57s
+[25/60] p=2.00  ppo          block   4  94fac59bff3497bc-s102000  mean      2,201    894.7s  eta 41m32s
+[26/60] p=4.00  ppo          block   0  dfc058e6cb2dc055-s100000  mean      4,913    965.5s  eta 31m27s
+[27/60] p=4.00  ppo          block   1  7991b38d8f29bb85-s100500  mean      5,682    980.8s  eta 28m02s
+[28/60] p=4.00  ppo          block   2  4d7d2a93bb57c46c-s101000  mean      5,439    969.7s  eta 17m44s
+[29/60] p=4.00  ppo          block   3  3c5ee16ed65e3386-s101500  mean      1,353    870.0s  eta 14m07s
+[30/60] p=0.00  delta_seller block   0  65046cadd80098cf-s100000  mean       -392     18.3s  eta 14m07s
+[31/60] p=0.00  delta_seller block   1  07a4ade25d62e7e0-s100500  mean       -425     18.1s  eta 14m07s
+[32/60] p=0.00  delta_seller block   2  e04e005be5410283-s101000  mean       -927     18.1s  eta 14m07s
+[33/60] p=0.00  delta_seller block   3  dba6a12d80b3ae3f-s101500  mean       -625     18.1s  eta 14m07s
+[34/60] p=0.00  delta_seller block   4  085c6b5f8479e932-s102000  mean       -999     18.1s  eta 14m07s
+[35/60] p=0.25  delta_seller block   0  158ebc388a1010b6-s100000  mean       -132     18.1s  eta 14m07s
+[36/60] p=0.25  delta_seller block   1  eef378aa7767f82a-s100500  mean       -198     18.0s  eta 14m07s
+[37/60] p=0.25  delta_seller block   2  1c5609a70aeeafe8-s101000  mean       -732     18.0s  eta 14m08s
+[38/60] p=0.25  delta_seller block   3  c4d37db05cf6bc4f-s101500  mean       -454     18.0s  eta 14m08s
+[39/60] p=0.25  delta_seller block   4  aca85b080df52ede-s102000  mean       -796     18.0s  eta 14m08s
+[40/60] p=0.50  delta_seller block   0  2d38166be364aa10-s100000  mean         72     18.0s  eta 14m08s
+[41/60] p=0.50  delta_seller block   1  e8e7280dab5a5545-s100500  mean         26     18.0s  eta 14m08s
+[42/60] p=0.50  delta_seller block   2  0200d91969be65ba-s101000  mean       -520     18.1s  eta 14m08s
+[43/60] p=0.50  delta_seller block   3  af30e80c47d7ce5b-s101500  mean       -261     18.0s  eta 14m08s
+[44/60] p=0.50  delta_seller block   4  5e0ceca7262c2964-s102000  mean       -599     18.1s  eta 14m08s
+[45/60] p=1.00  delta_seller block   0  a9cd378ebf25db26-s100000  mean        469     18.1s  eta 14m08s
+[46/60] p=1.00  delta_seller block   1  df07a3e1d58c204d-s100500  mean        420     17.9s  eta 14m09s
+[47/60] p=1.00  delta_seller block   2  2396d25cb53851f0-s101000  mean       -139     18.1s  eta 14m09s
+[48/60] p=1.00  delta_seller block   3  7198f9de012d36ed-s101500  mean        179     18.0s  eta 14m09s
+[49/60] p=1.00  delta_seller block   4  4b1e683de21a7748-s102000  mean       -190     18.1s  eta 14m09s
+[50/60] p=2.00  delta_seller block   0  577680c7c41ce051-s100000  mean      1,149     18.0s  eta 14m09s
+[51/60] p=2.00  delta_seller block   1  21910b44c70e7d0c-s100500  mean      1,004     18.1s  eta 14m09s
+[52/60] p=2.00  delta_seller block   2  b95cba70e4e0df98-s101000  mean        600     18.1s  eta 14m09s
+[53/60] p=2.00  delta_seller block   3  ecb31bedd5fe6f3e-s101500  mean        837     18.3s  eta 14m09s
+[54/60] p=2.00  delta_seller block   4  5ba12f2d2a2925a2-s102000  mean        520     18.1s  eta 14m10s
+[55/60] p=4.00  delta_seller block   0  7ed5d3842e4d92d8-s100000  mean      2,402     18.1s  eta 14m10s
+[56/60] p=4.00  delta_seller block   1  26aa45f9ed35e706-s100500  mean      2,076     17.9s  eta 14m10s
+[57/60] p=4.00  delta_seller block   2  48c09ababad11496-s101000  mean      1,784     18.1s  eta 14m10s
+[58/60] p=4.00  delta_seller block   3  bc9e30278fe828e8-s101500  mean      2,122     17.9s  eta 14m10s
+[59/60] p=4.00  delta_seller block   4  4a30cb6533580fba-s102000  mean      1,766     18.1s  eta 14m10s
+[60/60] p=4.00  ppo          block   4  e608f959c816fc46-s102000  mean      4,958    985.7s  eta 0m00s
+
+ premium  arm              S     N   grand mean        se  trades
+    0.00  delta_seller     5   500         -673       125     4.0
+    0.00  ppo              5   500         -335       202     1.9
+    0.25  delta_seller     5   500         -462       135     4.0
+    0.25  ppo              5   500          148       158     3.5
+    0.50  delta_seller     5   500         -257       137     4.0
+    0.50  ppo              5   500          179       308     3.6
+    1.00  delta_seller     5   500          148       137     4.0
+    1.00  ppo              5   500        1,061       282     9.3
+    2.00  delta_seller     5   500          822       118     4.0
+    2.00  ppo              5   500        2,341       279    11.6
+    4.00  delta_seller     5   500        2,030       118     4.0
+    4.00  ppo              5   500        4,469       792     8.0
+grid 7d9d53d340006f02
+cells under C:\Users\domdd\vegalab_data\runs, listed in C:\Users\domdd\vegalab_data\runs\grid-7d9d53d340006f02.json (synthetic; costs on)

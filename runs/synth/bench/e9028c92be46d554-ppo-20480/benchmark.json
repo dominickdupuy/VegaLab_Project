@@ -1,0 +1,144 @@
+{
+  "dataset": "e9028c92be46d554",
+  "generator": "const_vrp",
+  "arm": "ppo",
+  "total_timesteps": 20480,
+  "oracle": "hold_strangle",
+  "noise_control": true,
+  "menu": [
+    {
+      "policy": "flat",
+      "mean": 0.0,
+      "se": 0.0
+    },
+    {
+      "policy": "hold_condor",
+      "mean": 2522.746423707531,
+      "se": 559.6960449197468
+    },
+    {
+      "policy": "roll_condor",
+      "mean": 2162.334548794856,
+      "se": 538.6394994362246
+    },
+    {
+      "policy": "hold_strangle",
+      "mean": 5284.509358875812,
+      "se": 884.8928741210038
+    },
+    {
+      "policy": "roll_strangle",
+      "mean": 4984.510360201872,
+      "se": 871.9402978969921
+    },
+    {
+      "policy": "hold_put_spread",
+      "mean": 1200.8584718360316,
+      "se": 542.9339299550464
+    },
+    {
+      "policy": "roll_put_spread",
+      "mean": 923.1814086953568,
+      "se": 527.3105078394689
+    }
+  ],
+  "rows": [
+    {
+      "policy": "noise_control",
+      "world": "twin",
+      "split": "train",
+      "mean": -1536.5683167785937,
+      "se": 1412.4525698848488,
+      "n": 32
+    },
+    {
+      "policy": "noise_control",
+      "world": "twin",
+      "split": "heldout",
+      "mean": -1024.7154344664805,
+      "se": 705.1507081533213,
+      "n": 128
+    },
+    {
+      "policy": "arm",
+      "world": "signal",
+      "split": "train",
+      "mean": 281.5663725972772,
+      "se": 1187.9804374244763,
+      "n": 32
+    },
+    {
+      "policy": "arm",
+      "world": "signal",
+      "split": "heldout",
+      "mean": 1015.9417069187075,
+      "se": 613.799825865563,
+      "n": 128
+    },
+    {
+      "policy": "arm",
+      "world": "twin",
+      "split": "heldout",
+      "mean": -1024.7154344664805,
+      "se": 705.1507081533213,
+      "n": 128
+    },
+    {
+      "policy": "oracle",
+      "world": "signal",
+      "split": "train",
+      "mean": 5110.0941917611235,
+      "se": 1815.7303567021359,
+      "n": 32
+    },
+    {
+      "policy": "oracle",
+      "world": "signal",
+      "split": "heldout",
+      "mean": 5099.810785109553,
+      "se": 1007.9581127153799,
+      "n": 128
+    },
+    {
+      "policy": "oracle",
+      "world": "twin",
+      "split": "heldout",
+      "mean": -188.973780136399,
+      "se": 1211.8255251688074,
+      "n": 128
+    },
+    {
+      "policy": "flat",
+      "world": "signal",
+      "split": "heldout",
+      "mean": 0.0,
+      "se": 0.0,
+      "n": 128
+    }
+  ],
+  "attainable": {
+    "value": 5288.784565245952,
+    "se": 278.1569624383751,
+    "verdict": "the planted edge is tradeable: the oracle earned it"
+  },
+  "captured": {
+    "value": 2040.657141385188,
+    "se": 230.33280418792495,
+    "verdict": "the arm earned money from the planted signal"
+  },
+  "capture_ratio": {
+    "value": 0.38584614597367106,
+    "se": 0.041813380229631554,
+    "verdict": "the share of the attainable edge the arm took"
+  },
+  "overfit_gap": {
+    "value": -734.3753343214303,
+    "se": 1337.1790253873435,
+    "verdict": "no detectable overfitting"
+  },
+  "noise_fit": {
+    "value": -511.85288231211325,
+    "se": 1578.6892611858243,
+    "verdict": "noise not memorised"
+  }
+}

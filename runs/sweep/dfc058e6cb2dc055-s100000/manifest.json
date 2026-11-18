@@ -1,0 +1,96 @@
+{
+  "artifacts": {
+    "policy.zip": "4813d7c99268f14bb380799107574e5b14a3f08f1c8a1b7f9b4373ba98402583",
+    "run.json": "30813655a72cfb8f7031e6fe6e1b6b34df20625fd0dd4939be6785583df34153"
+  },
+  "config": {
+    "cost": {
+      "commission_per_contract": 0.65,
+      "enabled": true,
+      "half_spread_frac": 0.0075,
+      "min_half_spread": 0.15
+    },
+    "env": {
+      "episode_days": 63,
+      "expiry_idx": 1,
+      "initial_cash": 1000000.0,
+      "roll_dte": 5,
+      "short_delta": 0.16,
+      "wing_delta": 0.05
+    },
+    "market": {
+      "iv_premium_vol_pts": 4.0,
+      "n_days": 63,
+      "n_strikes_each_side": 16,
+      "r": 0.04,
+      "sigma": 0.2,
+      "spot0": 5000.0,
+      "strike_step": 50.0,
+      "tenor_days": [
+        21,
+        42
+      ],
+      "trading_days_per_year": 252
+    },
+    "n_episodes": 500,
+    "policy": "ppo",
+    "seed": 100000,
+    "train": {
+      "algorithm": "ppo",
+      "device": "cpu",
+      "hyperparameters": {
+        "activation_fn": "tanh",
+        "batch_size": 64,
+        "clip_range": 0.2,
+        "clip_range_vf": null,
+        "ent_coef": 0.0,
+        "gae_lambda": 0.95,
+        "gamma": 0.99,
+        "learning_rate": 0.0003,
+        "max_grad_norm": 0.5,
+        "n_epochs": 10,
+        "n_steps": 2048,
+        "net_arch_pi": [
+          64,
+          64
+        ],
+        "net_arch_vf": [
+          64,
+          64
+        ],
+        "normalize_advantage": true,
+        "ortho_init": true,
+        "policy": "MlpPolicy",
+        "sde_sample_freq": -1,
+        "share_features_extractor": true,
+        "target_kl": null,
+        "use_sde": false,
+        "vf_coef": 0.5
+      },
+      "seed": 1000,
+      "total_timesteps": 1000000
+    }
+  },
+  "config_hash": "dfc058e6cb2dc055",
+  "created_at": "2026-10-26T15:29:03+00:00",
+  "git_dirty": false,
+  "git_sha": "8b47f99d89066eec82011a16b9badc1e888a27dc",
+  "results": {
+    "mean_cost": 658.425289952518,
+    "mean_pnl": 4912.7827494884805,
+    "mean_trades": 11.224,
+    "se_pnl": 563.2590943011882,
+    "t_stat": 8.722065563066609
+  },
+  "run_id": "dfc058e6cb2dc055-s100000",
+  "schema_version": 1,
+  "versions": {
+    "numpy": "2.5.3",
+    "optspread": "0.1.0",
+    "pydantic": "2.13.5",
+    "python": "3.12.0",
+    "scipy": "1.18.1",
+    "stable_baselines3": "2.9.0",
+    "torch": "2.14.0"
+  }
+}

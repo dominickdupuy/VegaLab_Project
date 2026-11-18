@@ -1,0 +1,40 @@
+{
+  "policy": "roll_strangle",
+  "menu": [
+    {
+      "policy": "flat",
+      "mean": 0.0,
+      "se": 0.0
+    },
+    {
+      "policy": "hold_condor",
+      "mean": 1811.3844319282548,
+      "se": 658.8539904531829
+    },
+    {
+      "policy": "roll_condor",
+      "mean": 2133.447156300014,
+      "se": 544.7912168751285
+    },
+    {
+      "policy": "hold_strangle",
+      "mean": 4251.8825811137585,
+      "se": 978.5717338443642
+    },
+    {
+      "policy": "roll_strangle",
+      "mean": 4869.253116275191,
+      "se": 836.5172030310181
+    },
+    {
+      "policy": "hold_put_spread",
+      "mean": 1519.5553104069068,
+      "se": 486.8376941994566
+    },
+    {
+      "policy": "roll_put_spread",
+      "mean": 1466.1996607002034,
+      "se": 461.1531591821927
+    }
+  ]
+}

@@ -1,0 +1,117 @@
+{
+  "key": "1574de29ec04c8fa",
+  "spec": {
+    "dataset": "e9028c92be46d554",
+    "arm": "ppo",
+    "axis": "n_train",
+    "values": [
+      4,
+      16,
+      64
+    ],
+    "total_timesteps": 20480,
+    "n_seeds": 3
+  },
+  "generator": "const_vrp",
+  "datasets": [
+    "e9028c92be46d554",
+    "302fbc00f5c38ba1",
+    "0fd5005cb6af0039",
+    "86568cf73ef45586"
+  ],
+  "points": [
+    {
+      "value": 4,
+      "dataset": "302fbc00f5c38ba1",
+      "n_train": 4,
+      "total_timesteps": 20480,
+      "attainable": {
+        "value": 5966.236961169848,
+        "se": 326.5895794058641,
+        "verdict": "the planted edge is tradeable: the oracle earned it"
+      },
+      "captured": {
+        "value": 3478.463974918537,
+        "se": 1250.4214934176416,
+        "verdict": "the arm earned money from the planted signal"
+      },
+      "capture_ratio": {
+        "value": 0.5830247771849288,
+        "se": 0.21199893512060375,
+        "verdict": "the share of the attainable edge the arm took"
+      },
+      "overfit_gap": {
+        "value": 5266.905756899031,
+        "se": 2309.643059322461,
+        "verdict": "overfit: the arm did better on its training paths than on new ones"
+      },
+      "noise_fit": {
+        "value": 7234.202306544207,
+        "se": 2971.7173084686115,
+        "verdict": "noise memorised: the noise-trained arm earned in sample only"
+      }
+    },
+    {
+      "value": 16,
+      "dataset": "0fd5005cb6af0039",
+      "n_train": 16,
+      "total_timesteps": 20480,
+      "attainable": {
+        "value": 5966.236961169848,
+        "se": 326.5895794058641,
+        "verdict": "the planted edge is tradeable: the oracle earned it"
+      },
+      "captured": {
+        "value": 3678.634370887716,
+        "se": 1254.0427525463701,
+        "verdict": "the arm earned money from the planted signal"
+      },
+      "capture_ratio": {
+        "value": 0.6165753044723884,
+        "se": 0.21288243487404634,
+        "verdict": "the share of the attainable edge the arm took"
+      },
+      "overfit_gap": {
+        "value": 481.7968012429567,
+        "se": 2481.644673804611,
+        "verdict": "no detectable overfitting"
+      },
+      "noise_fit": {
+        "value": 2216.8660998695154,
+        "se": 2954.620023858445,
+        "verdict": "noise not memorised"
+      }
+    },
+    {
+      "value": 64,
+      "dataset": "86568cf73ef45586",
+      "n_train": 64,
+      "total_timesteps": 20480,
+      "attainable": {
+        "value": 5966.236961169848,
+        "se": 326.5895794058641,
+        "verdict": "the planted edge is tradeable: the oracle earned it"
+      },
+      "captured": {
+        "value": 3666.7268197538874,
+        "se": 1256.554882011837,
+        "verdict": "the arm earned money from the planted signal"
+      },
+      "capture_ratio": {
+        "value": 0.6145794817768893,
+        "se": 0.21328091748030398,
+        "verdict": "the share of the attainable edge the arm took"
+      },
+      "overfit_gap": {
+        "value": -267.3557188495281,
+        "se": 1285.7421527493193,
+        "verdict": "no detectable overfitting"
+      },
+      "noise_fit": {
+        "value": -214.55401101017105,
+        "se": 1145.34099206228,
+        "verdict": "noise not memorised"
+      }
+    }
+  ]
+}

@@ -1,0 +1,112 @@
+{
+  "artifacts": {
+    "action_log.json": "1caf6609d1b9bb9104ad424db14107f8aa3914ea84398775a5422274597eccfd",
+    "equity.json": "b56c9f5590f38e711d1ac1d845bbd8d07b586b2ff39c0f3493dc3f3b413c4cc6",
+    "policy.zip": "d24d74462c86cb16aa2750af6341952295e2e967322aadcc2c31477ffe4ab601",
+    "run.json": "98924ba8cf3cffe9ab66a905618e44c5587182b4f97b98f1c6b608605ab6261e"
+  },
+  "config": {
+    "cost": {
+      "commission_per_contract": 0.65,
+      "enabled": true,
+      "half_spread_frac": 0.0075,
+      "min_half_spread": 0.15
+    },
+    "env": {
+      "episode_days": 63,
+      "expiry_idx": 1,
+      "initial_cash": 1000000.0,
+      "roll_dte": 5,
+      "short_delta": 0.16,
+      "wing_delta": 0.05
+    },
+    "market": {
+      "iv_premium_vol_pts": 0.5,
+      "n_days": 63,
+      "n_strikes_each_side": 16,
+      "r": 0.0,
+      "sigma": 0.2,
+      "spot0": 5000.0,
+      "strike_step": 50.0,
+      "tenor_days": [
+        21,
+        42
+      ],
+      "trading_days_per_year": 252
+    },
+    "n_episodes": 200,
+    "policy": "ppo",
+    "seed": 20000,
+    "train": {
+      "algorithm": "ppo",
+      "device": "cpu",
+      "hyperparameters": {
+        "activation_fn": "tanh",
+        "batch_size": 64,
+        "clip_range": 0.2,
+        "clip_range_vf": null,
+        "ent_coef": 0.0,
+        "gae_lambda": 0.95,
+        "gamma": 0.99,
+        "learning_rate": 0.0003,
+        "max_grad_norm": 0.5,
+        "n_epochs": 10,
+        "n_steps": 2048,
+        "net_arch_pi": [
+          64,
+          64
+        ],
+        "net_arch_vf": [
+          64,
+          64
+        ],
+        "normalize_advantage": true,
+        "ortho_init": true,
+        "policy": "MlpPolicy",
+        "sde_sample_freq": -1,
+        "share_features_extractor": true,
+        "target_kl": null,
+        "use_sde": false,
+        "vf_coef": 0.5
+      },
+      "seed": 20000,
+      "total_timesteps": 200000
+    }
+  },
+  "config_hash": "e8c19cb2671033af",
+  "created_at": "2026-11-18T22:53:27+00:00",
+  "data": {
+    "panel": {},
+    "source": "synthetic"
+  },
+  "git_dirty": true,
+  "git_sha": "afdaa36c13356f5b20bdee0f4bf7d32e92ffd721",
+  "platform": {
+    "arch": "AMD64",
+    "numpy": "2.5.3",
+    "os": "Windows",
+    "python": "3.12.0"
+  },
+  "results": {
+    "mean_cost": 0.0,
+    "mean_pnl": 0.0,
+    "mean_trades": 0.0,
+    "se_pnl": 0.0,
+    "t_stat": 0.0
+  },
+  "run_id": "e8c19cb2671033af-s20000",
+  "schema_version": 1,
+  "trainer": "optspread.train.train_ppo",
+  "versions": {
+    "gymnasium": "1.3.0",
+    "numpy": "2.5.3",
+    "optspread": "0.1.0",
+    "pandas": "3.1.0",
+    "pyarrow": "26.0.0",
+    "pydantic": "2.13.5",
+    "python": "3.12.0",
+    "scipy": "1.18.1",
+    "stable_baselines3": "2.9.0",
+    "torch": "2.14.0"
+  }
+}

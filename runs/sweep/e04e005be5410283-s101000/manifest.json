@@ -1,0 +1,60 @@
+{
+  "artifacts": {
+    "run.json": "f9d23c853161483466837b0a8ff187e299d8a67c10feba527da544b7544b4feb"
+  },
+  "config": {
+    "cost": {
+      "commission_per_contract": 0.65,
+      "enabled": true,
+      "half_spread_frac": 0.0075,
+      "min_half_spread": 0.15
+    },
+    "env": {
+      "episode_days": 63,
+      "expiry_idx": 1,
+      "initial_cash": 1000000.0,
+      "roll_dte": 5,
+      "short_delta": 0.16,
+      "wing_delta": 0.05
+    },
+    "market": {
+      "iv_premium_vol_pts": 0.0,
+      "n_days": 63,
+      "n_strikes_each_side": 16,
+      "r": 0.04,
+      "sigma": 0.2,
+      "spot0": 5000.0,
+      "strike_step": 50.0,
+      "tenor_days": [
+        21,
+        42
+      ],
+      "trading_days_per_year": 252
+    },
+    "n_episodes": 500,
+    "policy": "delta_seller",
+    "seed": 101000
+  },
+  "config_hash": "e04e005be5410283",
+  "created_at": "2026-10-26T15:52:47+00:00",
+  "git_dirty": false,
+  "git_sha": "8b47f99d89066eec82011a16b9badc1e888a27dc",
+  "results": {
+    "mean_cost": 390.9297894468466,
+    "mean_pnl": -927.2243455569495,
+    "mean_trades": 4.0,
+    "se_pnl": 425.6800885941442,
+    "t_stat": -2.178218738440905
+  },
+  "run_id": "e04e005be5410283-s101000",
+  "schema_version": 1,
+  "versions": {
+    "numpy": "2.5.3",
+    "optspread": "0.1.0",
+    "pydantic": "2.13.5",
+    "python": "3.12.0",
+    "scipy": "1.18.1",
+    "stable_baselines3": "2.9.0",
+    "torch": "2.14.0"
+  }
+}

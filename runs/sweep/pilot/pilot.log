@@ -1,0 +1,77 @@
+32 cells: 0 on disk, 32 to run, ~4.51 core-hours at the M1 rates (1,000 steps/s training, 1,800 evaluation), ~2h15m wall on 2 worker(s)
+[ 1/32] p=0.00  ppo          block   0  678708608ec63660-s4000  mean       -293    802.0s  eta 1h46m
+[ 2/32] p=0.00  ppo          block   1  68e251ca869b5dfd-s4200  mean     -1,304    884.7s  eta 1h39m
+[ 3/32] p=0.00  ppo          block   3  1a220aad9011acb8-s4600  mean       -467    826.7s  eta 1h37m
+[ 4/32] p=0.00  ppo          block   2  b95aab8f793c9a50-s4400  mean      1,179   1063.0s  eta 1h30m
+[ 5/32] p=0.00  ppo          block   4  fdbf18124477a7ff-s4800  mean          0    653.1s  eta 1h24m
+[ 6/32] p=0.00  ppo          block   5  4c61ce86cf09a474-s5000  mean        -50    877.5s  eta 1h11m
+[ 7/32] p=0.00  ppo          block   6  ea386b509873685a-s5200  mean         -2   1086.4s  eta 1h13m
+[ 8/32] p=0.00  ppo          block   7  3725c5e26c9d8dc9-s5400  mean       -119    920.7s  eta 1h00m
+[ 9/32] p=1.00  ppo          block   0  389cb8489134dd1b-s4000  mean      2,581    916.2s  eta 59m29s
+[10/32] p=1.00  ppo          block   1  61057e0212a54f66-s4200  mean       -571   1004.3s  eta 46m00s
+[11/32] p=1.00  ppo          block   2  bebba3bff1fcefe1-s4400  mean      2,514   1139.4s  eta 46m15s
+[12/32] p=1.00  ppo          block   3  8063244a400b17f5-s4600  mean      1,733   1214.1s  eta 32m31s
+[13/32] p=1.00  ppo          block   4  d06f6854ff8b9323-s4800  mean        620    739.0s  eta 31m06s
+[14/32] p=1.00  ppo          block   5  d28592463baae3e4-s5000  mean      1,108   1127.1s  eta 16m39s
+32 cells: 14 on disk, 18 to run, ~0.59 core-hours at the M1 rates (1,000 steps/s training, 1,800 evaluation), ~17m44s wall on 2 worker(s)
+[ 1/32] p=0.00  ppo          block   0  678708608ec63660-s4000  mean       -293  reused
+[ 2/32] p=0.00  ppo          block   1  68e251ca869b5dfd-s4200  mean     -1,304  reused
+[ 3/32] p=0.00  ppo          block   2  b95aab8f793c9a50-s4400  mean      1,179  reused
+[ 4/32] p=0.00  ppo          block   3  1a220aad9011acb8-s4600  mean       -467  reused
+[ 5/32] p=0.00  ppo          block   4  fdbf18124477a7ff-s4800  mean          0  reused
+[ 6/32] p=0.00  ppo          block   5  4c61ce86cf09a474-s5000  mean        -50  reused
+[ 7/32] p=0.00  ppo          block   6  ea386b509873685a-s5200  mean         -2  reused
+[ 8/32] p=0.00  ppo          block   7  3725c5e26c9d8dc9-s5400  mean       -119  reused
+[ 9/32] p=1.00  ppo          block   0  389cb8489134dd1b-s4000  mean      2,581  reused
+[10/32] p=1.00  ppo          block   1  61057e0212a54f66-s4200  mean       -571  reused
+[11/32] p=1.00  ppo          block   2  bebba3bff1fcefe1-s4400  mean      2,514  reused
+[12/32] p=1.00  ppo          block   3  8063244a400b17f5-s4600  mean      1,733  reused
+[13/32] p=1.00  ppo          block   4  d06f6854ff8b9323-s4800  mean        620  reused
+[14/32] p=1.00  ppo          block   5  d28592463baae3e4-s5000  mean      1,108  reused
+[15/32] p=1.00  ppo          block   7  9d780ebf0787df93-s5400  mean      1,507   1012.7s  eta 16m53s
+[16/32] p=1.00  ppo          block   6  e6c63ef0c62981ec-s5200  mean      1,064   1014.2s  eta 0m56s
+[17/32] p=0.00  delta_seller block   0  4e534e417dc4223d-s4000  mean       -817      7.2s  eta 0m56s
+[18/32] p=0.00  delta_seller block   1  408fb1a4ead2ddc1-s4200  mean       -682      7.1s  eta 0m49s
+[19/32] p=0.00  delta_seller block   2  c6e7bebd75c3c1d7-s4400  mean       -467      7.3s  eta 0m49s
+[20/32] p=0.00  delta_seller block   3  fae6ee6103353ac4-s4600  mean       -874      7.2s  eta 0m42s
+[21/32] p=0.00  delta_seller block   4  88a05eb42d63edb8-s4800  mean        550      7.2s  eta 0m42s
+[22/32] p=0.00  delta_seller block   5  aa638c6a5a0db265-s5000  mean       -457      7.1s  eta 0m35s
+[23/32] p=0.00  delta_seller block   6  3aa7cbb41f903afd-s5200  mean        234      7.1s  eta 0m35s
+[24/32] p=0.00  delta_seller block   7  a3c30b7c03589bd2-s5400  mean       -659      7.1s  eta 0m28s
+[25/32] p=1.00  delta_seller block   0  fb888b1555b19bca-s4000  mean        -11      7.1s  eta 0m28s
+[26/32] p=1.00  delta_seller block   1  03e0b95e5ad61a4c-s4200  mean        159      7.1s  eta 0m21s
+[27/32] p=1.00  delta_seller block   2  8396cb121bbf9225-s4400  mean        429      7.2s  eta 0m21s
+[28/32] p=1.00  delta_seller block   3  cbc9726b138cc3a2-s4600  mean         31      7.2s  eta 0m14s
+[29/32] p=1.00  delta_seller block   4  dbfd9a15fc40b8bf-s4800  mean      1,262      7.1s  eta 0m14s
+[30/32] p=1.00  delta_seller block   5  72d04260efd9f537-s5000  mean        343      7.1s  eta 0m07s
+[31/32] p=1.00  delta_seller block   6  d0e44043733f5e0a-s5200  mean      1,125      7.2s  eta 0m07s
+[32/32] p=1.00  delta_seller block   7  b324b2f30c671f4f-s5400  mean         85      7.1s  eta 0m00s
+
+ premium  arm              S     N   grand mean        se  trades
+    0.00  ppo              8   200         -132       242     3.3
+    0.00  delta_seller     8   200         -397       182     4.0
+    1.00  ppo              8   200        1,320       363     7.3
+    1.00  delta_seller     8   200          428       176     4.0
+grid acc8d0d33b3ba4ac
+
+ppo: C:\Users\domdd\vegalab_data\runs\pilot\matrix.npy
+S = 8 seeds x N = 200 episodes
+grand mean      1,451.5655
+MS_between      116,364,362.5162
+MS_within       105,996,836.4997
+tau^2           51,837.6301 (se 311,563.6422)
+sigma^2         105,996,836.4997 (se 3,756,958.2592)
+Var(grand mean) 72,727.726573 = tau^2/S + sigma^2/(S N)
+se(grand mean)  269.6808
+
+delta_seller: C:\Users\domdd\vegalab_data\runs\pilot\matrix_oracle.npy
+S = 8 seeds x N = 200 episodes
+grand mean      824.3149
+MS_between      1,033,848.1912
+MS_within       828,608.8573
+tau^2           1,026.1967 (se 2,766.9749)
+sigma^2         828,608.8573 (se 29,369.2623)
+Var(grand mean) 646.155120 = tau^2/S + sigma^2/(S N)
+se(grand mean)  25.4196
+
+next: python scripts/pilot_budget.py --delta <effect> --matrix C:\Users\domdd\vegalab_data\runs\pilot\matrix.npy

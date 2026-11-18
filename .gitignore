@@ -9,12 +9,12 @@ __pycache__/
 .mypy_cache/
 .pytest_cache/
 .ruff_cache/
-runs/
-attribution/
-actionmix/
+# demo branch: runs/, attribution/, actionmix/ and web/out/ are committed as seeded data
+# (all synthetic; the licensed OptionMetrics panel is never committed). See DEMO.md.
+attribution/webcache/
+runs/**/.jobs/
 web/node_modules
 web/.next/
-web/out/
 web/*.tsbuildinfo
 !web/app/runs/
 !web/app/attribution/

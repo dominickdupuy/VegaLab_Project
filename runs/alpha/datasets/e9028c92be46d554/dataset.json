@@ -1,0 +1,27 @@
+{
+  "created_at": "2026-11-15T21:54:16+00:00",
+  "git_sha": "f5e29e3ec7796ab7a9ad0de69c206eaea0798cb5",
+  "hash": "e9028c92be46d554",
+  "paths_sha256": "a565c69aad0610f4121df6d809edf97c308f30a7e7790ab5f58d685ff89e6484",
+  "seeds": {
+    "heldout": [
+      1048576,
+      1048704
+    ],
+    "train": [
+      0,
+      32
+    ]
+  },
+  "spec": {
+    "generator": {
+      "kind": "const_vrp",
+      "premium_pts": 4.0
+    },
+    "n_days": 63,
+    "n_heldout": 128,
+    "n_train": 32,
+    "seed": 0,
+    "sigma": 0.2
+  }
+}
